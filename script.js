@@ -1,41 +1,53 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, get, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-import firebaseConfig from './firebase-config.js';
+import { db } from './firebase-config.js';
+import { ref, set, get, push } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+document.addEventListener('DOMContentLoaded', () => {
+  const enrollBtn = document.getElementById('enroll-btn');
+  const phoneInput = document.getElementById('phone-number');
+  const tokenInput = document.getElementById('token-input');
+  const countrySelect = document.getElementById('country');
+  const manualInput = document.getElementById('manual-country');
+  const downloadBtn = document.getElementById('download-file');
 
-const enrollBtn = document.getElementById('enroll-btn');
-enrollBtn.addEventListener('click', async () => {
-  const number = document.getElementById('phone-number').value.trim();
-  const token = document.getElementById('token-input').value.trim();
-  const country = document.getElementById('country').value === 'other'
-    ? document.getElementById('manual-country').value.trim()
-    : document.getElementById('country').value;
+  countrySelect.addEventListener('change', () => {
+    manualInput.style.display = countrySelect.value === 'other' ? 'block' : 'none';
+  });
 
-  const snap = await get(ref(db, 'tokens/' + token));
-  if (!snap.exists() || !snap.val().active) return alert('Invalid or used token');
+  enrollBtn.addEventListener('click', async () => {
+    const phone = phoneInput.value.trim();
+    const token = tokenInput.value.trim();
+    const country = countrySelect.value === 'other' ? manualInput.value.trim() : countrySelect.value;
 
-  // One-time token logic
-  if (snap.val().singleUse) await update(ref(db, 'tokens/' + token), { active: false });
+    if (!phone || !token || !country) return alert('Please fill all fields');
 
-  const id = Date.now();
-  await set(ref(db, 'enrolled/' + id), { number, country, token });
-  alert('You are now enrolled!');
-});
+    const tokenRef = ref(db, `tokens/${token}`);
+    const tokenSnap = await get(tokenRef);
 
-onValue(ref(db, 'notifications/global'), (snapshot) => {
-  if (snapshot.exists()) alert("📣 ADMIN MESSAGE:\n" + snapshot.val().message);
-});
+    if (!tokenSnap.exists()) return alert('Invalid or expired token');
 
-document.getElementById('country').addEventListener('change', () => {
-  const manual = document.getElementById('manual-country');
-  manual.style.display = document.getElementById('country').value === 'other' ? 'block' : 'none';
-});
+    const tokenData = tokenSnap.val();
+    if (tokenData.used && tokenData.type === 'one-time') return alert('Token already used');
 
-document.getElementById('download-file').addEventListener('click', async () => {
-  const selected = document.getElementById('country').value;
-  const fileSnap = await get(ref(db, 'files/' + selected));
-  if (fileSnap.exists()) window.open(fileSnap.val().url, '_blank');
-  else alert('Contact file not yet available, please wait.');
+    const userId = push(ref(db, 'enrolled')).key;
+    await set(ref(db, `enrolled/${userId}`), {
+      phone,
+      country,
+      token,
+      timestamp: Date.now()
+    });
+
+    if (tokenData.type === 'one-time') {
+      await set(tokenRef, { ...tokenData, used: true });
+    }
+
+    alert('Enrollment successful!');
+  });
+
+  downloadBtn.addEventListener('click', async () => {
+    const country = countrySelect.value === 'other' ? manualInput.value.trim() : countrySelect.value;
+    const fileRef = ref(db, `files/${country}`);
+    const fileSnap = await get(fileRef);
+    if (!fileSnap.exists()) return alert('Contact file not yet available, please wait.');
+    window.open(fileSnap.val().url, '_blank');
+  });
 });
