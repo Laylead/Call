@@ -1,76 +1,94 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, onValue, set, push, update, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-import firebaseConfig from './firebase-config.js';
+// admin.js
+import { db } from './firebase-config.js';
+import {
+  ref,
+  set,
+  push,
+  get,
+  onValue
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
-function generateSecureToken() {
-  return "TK-" + crypto.randomUUID() + "-" + Math.floor(Math.random() * 9999);
-}
-
-function addTokenToDB(token, isSingleUse) {
-  set(ref(db, 'tokens/' + token), {
-    active: true,
-    singleUse: isSingleUse
-  }).then(() => loadTokens());
-}
-
-document.getElementById('generate-token').addEventListener('click', () => {
-  addTokenToDB(generateSecureToken(), false);
-});
-
-document.getElementById('generate-once').addEventListener('click', () => {
-  addTokenToDB(generateSecureToken(), true);
-});
-
-function loadTokens() {
+window.addEventListener('DOMContentLoaded', () => {
+  const generateBtn = document.getElementById('generate-token');
+  const tokenType = document.getElementById('token-type');
+  const tokenDisplay = document.getElementById('generated-token');
   const tokenList = document.getElementById('token-list');
-  onValue(ref(db, 'tokens'), (snap) => {
-    tokenList.innerHTML = '';
-    if (snap.exists()) {
-      Object.entries(snap.val()).forEach(([token, data]) => {
-        tokenList.innerHTML += `<li>${token} - ${data.active ? '✅ Active' : '❌ Used'} (${data.singleUse ? 'One-Time' : 'Multi'})</li>`;
-      });
-    }
-  });
-}
-loadTokens();
-
-document.getElementById('filter-country').addEventListener('change', loadUsers);
-function loadUsers() {
-  const selected = document.getElementById('filter-country').value;
+  const tokenFilter = document.getElementById('token-filter');
   const userList = document.getElementById('user-list');
-  onValue(ref(db, 'enrolled'), (snapshot) => {
-    userList.innerHTML = '';
-    if (snapshot.exists()) {
-      Object.values(snapshot.val()).forEach(entry => {
-        if (selected === 'All' || entry.country === selected) {
-          userList.innerHTML += `<li>${entry.number} | ${entry.country} | Token: ${entry.token}</li>`;
-        }
+  const userFilter = document.getElementById('user-country-filter');
+  const fileInput = document.getElementById('country-file');
+  const fileCountry = document.getElementById('file-country');
+  const uploadBtn = document.getElementById('upload-file');
+  const sendNotifBtn = document.getElementById('send-notification');
+  const notifText = document.getElementById('notification-text');
+
+  // 🔐 Generate Token
+  generateBtn.addEventListener('click', async () => {
+    const type = tokenType.value;
+    const token = [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
+    await set(ref(db, `tokens/${token}`), { used: false, type });
+    tokenDisplay.innerText = `Token: ${token}`;
+    loadTokens();
+  });
+
+  // 📋 Load Tokens
+  function loadTokens() {
+    onValue(ref(db, 'tokens'), snapshot => {
+      tokenList.innerHTML = '';
+      const filter = tokenFilter.value;
+      snapshot.forEach(child => {
+        const token = child.key;
+        const data = child.val();
+        if (filter === 'used' && !data.used) return;
+        if (filter === 'unused' && data.used) return;
+        const li = document.createElement('li');
+        li.textContent = `${token} (${data.type}) - ${data.used ? 'Used' : 'Unused'}`;
+        tokenList.appendChild(li);
       });
-    }
-  });
-}
-loadUsers();
+    });
+  }
 
-document.getElementById('upload-file-btn').addEventListener('click', () => {
-  const country = document.getElementById('upload-country').value;
-  const url = document.getElementById('file-link').value.trim();
-  if (!url) return alert("Paste a valid file URL");
-  set(ref(db, 'files/' + country), { url }).then(() => {
-    document.getElementById('upload-msg').innerText = "File uploaded.";
+  tokenFilter.addEventListener('change', loadTokens);
+  loadTokens();
+
+  // 👥 Load Enrolled Users
+  function loadUsers() {
+    onValue(ref(db, 'enrolled'), snapshot => {
+      userList.innerHTML = '';
+      const filter = userFilter.value;
+      snapshot.forEach(child => {
+        const user = child.val();
+        if (filter !== 'all' && user.country !== filter) return;
+        const li = document.createElement('li');
+        li.textContent = `${user.phone} (${user.country}) - Token: ${user.token}`;
+        userList.appendChild(li);
+      });
+    });
+  }
+
+  userFilter.addEventListener('change', loadUsers);
+  loadUsers();
+
+  // 📤 Upload Contact File
+  uploadBtn.addEventListener('click', async () => {
+    const file = fileInput.files[0];
+    const country = fileCountry.value.trim();
+    if (!file || !country) return alert('Fill all fields');
+
+    const url = URL.createObjectURL(file); // simulated upload
+    await set(ref(db, `files/${country}`), { url });
+    alert('File uploaded for ' + country);
+  });
+
+  // 📢 Send Notification
+  sendNotifBtn.addEventListener('click', async () => {
+    const message = notifText.value.trim();
+    if (!message) return alert('Write a message');
+    const id = push(ref(db, 'notifications')).key;
+    await set(ref(db, `notifications/${id}`), {
+      message,
+      timestamp: Date.now()
+    });
+    alert('Notification sent');
   });
 });
-
-document.getElementById('send-notif').addEventListener('click', () => {
-  const msg = document.getElementById('notif-msg').value.trim();
-  if (!msg) return alert("Type a message");
-  set(ref(db, 'notifications/global'), {
-    message: msg,
-    timestamp: Date.now()
-  }).then(() => {
-    document.getElementById('notif-status').innerText = "Notification sent!";
-  });
-});
-
