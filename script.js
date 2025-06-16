@@ -1,87 +1,57 @@
-// script.js
 import { db } from './firebase-config.js';
-import {
-  ref,
-  set,
-  get,
-  onValue,
-  child
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { ref, set, push, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-window.addEventListener('DOMContentLoaded', () => {
-  const enrollBtn = document.getElementById('enroll-btn');
-  const buyBtn = document.getElementById('buy-token');
-  const phoneInput = document.getElementById('phone-number');
-  const tokenInput = document.getElementById('token-input');
-  const countrySelect = document.getElementById('country');
-  const manualInput = document.getElementById('manual-country');
-  const stats = document.getElementById('stats');
-  const downloadBtn = document.getElementById('download-file');
+document.addEventListener("DOMContentLoaded", () => {
+  const enrollBtn = document.getElementById("enroll-btn");
+  const downloadBtn = document.getElementById("download-file");
+  const countrySelect = document.getElementById("country");
+  const manualCountryInput = document.getElementById("manual-country");
+  const stats = document.getElementById("stats");
 
-  const userDashboard = document.createElement('div');
-  userDashboard.id = "user-dashboard";
-  userDashboard.innerHTML = `
-    <h3>✅ You're Enrolled!</h3>
-    <p>Wait for others to save your number too.</p>
-    <div id="latest-notification"></div>
-  `;
-
-  countrySelect.addEventListener('change', () => {
-    manualInput.style.display = countrySelect.value === 'other' ? 'block' : 'none';
+  countrySelect.addEventListener("change", () => {
+    manualCountryInput.style.display = countrySelect.value === "other" ? "block" : "none";
   });
 
-  enrollBtn.addEventListener('click', async () => {
-    const phone = phoneInput.value.trim();
-    const token = tokenInput.value.trim();
-    const country = countrySelect.value === 'other' ? manualInput.value.trim() : countrySelect.value;
+  enrollBtn.addEventListener("click", async () => {
+    const phone = document.getElementById("phone-number").value.trim();
+    const token = document.getElementById("token-input").value.trim();
+    let country = countrySelect.value;
+    if (country === "other") {
+      country = manualCountryInput.value.trim();
+    }
+    if (!phone || !token || !country) return alert("Fill all fields");
 
-    if (!phone || !token || !country) return alert("Please fill all fields");
+    const tokenRef = ref(db, 'tokens/' + token);
+    const snap = await get(tokenRef);
+    if (!snap.exists()) return alert("Invalid token");
 
-    const tokenSnap = await get(ref(db, 'tokens/' + token));
-    if (!tokenSnap.exists()) return alert("Invalid token");
-
-    const tokenData = tokenSnap.val();
+    const tokenData = snap.val();
     if (tokenData.used && tokenData.type === 'one-time') return alert("Token already used");
 
-    const userRef = ref(db, 'enrolled/' + phone);
-    await set(userRef, { phone, country, token });
+    const userRef = push(ref(db, 'users'));
+    await set(userRef, { phone, country, time: Date.now() });
+    if (tokenData.type === 'one-time') await update(tokenRef, { used: true });
 
-    if (tokenData.type === 'one-time') {
-      await set(ref(db, 'tokens/' + token + '/used'), true);
-    }
-
-    document.querySelector('.container').innerHTML = '';
-    document.body.appendChild(userDashboard);
-    loadNotification();
+    alert("✅ Enrolled successfully!");
+    enrollBtn.disabled = true;
   });
 
-  buyBtn.addEventListener('click', () => {
-    window.location.href = 'https://wa.me/2349012345678?text=I%20want%20to%20buy%20activation%20token';
-  });
+  downloadBtn.addEventListener("click", async () => {
+    let country = countrySelect.value;
+    if (country === "other") country = manualCountryInput.value.trim();
+    if (!country) return alert("Select or type a country");
 
-  downloadBtn.addEventListener('click', async () => {
-    const country = countrySelect.value === 'other' ? manualInput.value.trim() : countrySelect.value;
-    const fileSnap = await get(ref(db, 'files/' + country));
-    if (!fileSnap.exists()) return alert('Contact file not yet available, please wait.');
-    const { url } = fileSnap.val();
+    const fileRef = ref(db, 'files/' + country);
+    const snap = await get(fileRef);
+    if (!snap.exists()) return alert("No file available for this country yet");
+
+    const url = snap.val().url;
     window.open(url, '_blank');
   });
 
-  function loadNotification() {
-    onValue(ref(db, 'notifications'), snap => {
-      let latest = null;
-      snap.forEach(child => {
-        const msg = child.val();
-        if (!latest || msg.timestamp > latest.timestamp) {
-          latest = msg;
-        }
-      });
-      if (latest) {
-        const notif = document.getElementById('latest-notification');
-        notif.innerHTML = `
-          <p><strong>📢 Message from Admin:</strong> ${latest.message}</p>
-        `;
-      }
-    });
-  }
+  onValue(ref(db, 'users'), snap => {
+    const data = snap.val();
+    const total = data ? Object.keys(data).length : 0;
+    stats.innerText = `🎉 ${total} people have enrolled — they can become your viewers & customers!`;
+  });
 });
