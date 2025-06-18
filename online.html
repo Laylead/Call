@@ -5,15 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LeadConnect Pro</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-    
-    <!-- External configuration -->
     <script src="configuration.js"></script>
-    
     <style>
         :root {
             --primary: #4361ee;
@@ -540,7 +535,7 @@
         
         @media (max-width: 480px) {
             .stats-grid {
-                grid-template-columns: 1fr;
+                grid-template极客-columns: 1fr;
             }
             
             .tab {
@@ -595,7 +590,7 @@
                         <div class="form-group">
                             <label class="form-label">Password</label>
                             <input type="password" id="register-password" class="form-control" placeholder="Create password">
-                        </div>
+                        </极客div>
                         <div class="form-group">
                             <label class="form-label">Referral Code (Optional)</label>
                             <input type="text" id="referral-code" class="form-control" placeholder="Enter referral code if any">
@@ -656,7 +651,7 @@
                 <div class="tab active" data-tab="admin-overview">Overview</div>
                 <div class="tab" data-tab="admin-tokens">Tokens</div>
                 <div class="tab" data-tab="admin-users">Users</div>
-                <div class="tab" data极客-tab="admin-affiliates">Affiliates</div>
+                <div class="tab" data-tab="admin-affiliates">Affiliates</div>
                 <div class="tab" data-tab="admin-withdrawals">Withdrawals</div>
                 <div class="tab" data-tab="admin-settings">Settings</div>
             </div>
@@ -670,11 +665,11 @@
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Affiliate Earnings</div>
-                        <div class="stat-value" id="total-earnings">$0</div>
+                        <div class="stat-value" id="total-earnings">$0</极客div>
                         <div>Total commissions paid</div>
                     </div>
                     <div class="stat-card">
-                        <极客div class="stat-label">Pending Withdrawals</div>
+                        <div class="stat-label">Pending Withdrawals</div>
                         <div class="stat-value" id="pending-withdrawals">$0</div>
                         <div>Awaiting approval</div>
                     </div>
@@ -840,7 +835,7 @@
                                     <th>Referrals</th>
                                     <th>Earned</th>
                                     <th>Withdrawn</th>
-                                    <th>Balance</极客th>
+                                    <th>Balance</th>
                                 </tr>
                             </thead>
                             <tbody id="affiliates-body">
@@ -916,7 +911,7 @@
                         <label class="form-label">System Notification Email</label>
                         <input type="email" id="notification-email" class="form-control" value="admin@leadconnect.com">
                     </div>
-                    <div class="form-group">
+                    <div class极客="form-group">
                         <button class="btn btn-primary" id="save-system-settings">
                             <i class="fas fa-save"></i> Save Settings
                         </button>
@@ -1158,7 +1153,7 @@
                     <div class="form-group">
                         <label class="form-label">Account Number</label>
                         <input type="text" id="user-account" class="form-control" placeholder="Enter your account number">
-                    </极客div>
+                    </div>
                     <div class="form-group">
                         <button class="btn btn-primary" id="update-account-btn">
                             <i class="fas fa-save"></i> Update Information
@@ -1170,12 +1165,16 @@
     </div>
 
     <script>
-        // Initialize Firebase using external configuration with error handling
+        // Initialize Firebase
         try {
             firebase.initializeApp(firebaseConfig);
         } catch (error) {
             console.error("Firebase initialization error", error);
-            alert("Firebase initialization failed. Please check configuration.");
+            document.getElementById('login-page').innerHTML = `
+                <div class="alert alert-danger">
+                    Configuration error: ${error.message}
+                </div>
+            `;
         }
         
         const auth = firebase.auth();
@@ -1248,7 +1247,7 @@
                     })
                     .then(userData => {
                         if (userData.status === 'active') {
-                            showPage('user-dashboard');
+                            showPage('user极客-dashboard');
                             updateUserDashboard(userData);
                         } else {
                             showPage('token-page');
@@ -1338,18 +1337,73 @@
                 document.getElementById('user-balance').textContent = `$${userData.balance.toFixed(2)}`;
                 document.getElementById('user-referrals').textContent = userData.referrals;
                 document.getElementById('user-pending').textContent = `$${userData.pendingWithdrawal.toFixed(2)}`;
-                document.getElementById('ref-link').value = `https://leadconnect.com/?ref=${userData.referralCode}`;
+                document.getElementById('ref-link').value = `${window.location.origin}?ref=${userData.referralCode}`;
                 document.getElementById('user-name').value = userData.name || "";
                 document.getElementById('user-email').value = userData.email || "";
                 document.getElementById('user-phone').value = userData.phone || "";
                 document.getElementById('user-account').value = userData.account || "";
                 
-                // Update referral progress
-                const minReferrals = 6; // Should come from settings
-                const progress = Math.min(100, (userData.referrals / minReferrals) * 100);
-                document.getElementById('referral-progress').style.width = `${progress}%`;
-                document.getElementById('current-referrals').textContent = userData.referrals;
-                document.getElementById('min-referrals-display').textContent = minReferrals;
+                // Get settings for min referrals
+                db.collection('settings').doc('affiliate').get().then(doc => {
+                    if (doc.exists) {
+                        const settings = doc.data();
+                        const minReferrals = settings.minReferrals || 6;
+                        const progress = Math.min(100, (userData.referrals / minReferrals) * 100);
+                        document.getElementById('referral-progress').style.width = `${progress}%`;
+                        document.getElementById('current-referrals').textContent = userData.referrals;
+                        document.getElementById('min-referrals-display').textContent = minReferrals;
+                        document.getElementById('min-referrals-text').textContent = minReferrals;
+                        document.getElementById('withdrawal-min-referrals').textContent = minReferrals;
+                        document.getElementById('withdrawal-min-amount').textContent = settings.minWithdrawal || 20;
+                        document.getElementById('commission-rate-display').textContent = `${settings.commissionRate || 15}%`;
+                    }
+                });
+                
+                // Load referral history
+                db.collection('users').where('referredBy', '==', userData.uid).get().then(snapshot => {
+                    const tbody = document.getElementById('user-referrals-body');
+                    tbody.innerHTML = '';
+                    
+                    if (snapshot.empty) {
+                        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">No referrals yet</td></tr>';
+                        return;
+                    }
+                    
+                    snapshot.forEach(doc => {
+                        const referral = doc.data();
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${referral.name || referral.email}</td>
+                            <td>${new Date(referral.createdAt?.toDate()).toLocaleDateString()}</td>
+                            <td><span class="badge badge-success">Active</span></td>
+                            <td>$${(settings?.commissionRate || 15).toFixed(2)}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                });
+                
+                // Load withdrawal history
+                db.collection('withdrawals').where('userId', '==', userData.uid).orderBy('requestedAt', 'desc').get().then(snapshot => {
+                    const tbody = document.getElementById('withdrawal-history-body');
+                    tbody.innerHTML = '';
+                    
+                    if (snapshot.empty) {
+                        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">No withdrawal history</td></tr>';
+                        return;
+                    }
+                    
+                    snapshot.forEach(doc => {
+                        const withdrawal = doc.data();
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${new Date(withdrawal.requestedAt?.toDate()).toLocaleDateString()}</td>
+                            <td>$${withdrawal.amount.toFixed(2)}</td>
+                            <td>${withdrawal.account}</td>
+                            <td><span class="status-p极客ending">${withdrawal.status}</span></td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                });
             }
         }
         
@@ -1363,6 +1417,24 @@
             // Load token stats
             db.collection('tokens').where('status', '==', 'active').get().then(snapshot => {
                 document.getElementById('active-tokens').textContent = snapshot.size;
+            });
+            
+            // Load earnings
+            db.collection('withdrawals').where('status', '==', 'paid').get().then(snapshot => {
+                let total = 0;
+                snapshot.forEach(doc => {
+                    total += doc.data().amount;
+                });
+                document.getElementById('total-earnings').textContent = `$${total.toFixed(2)}`;
+            });
+            
+            // Load pending withdrawals
+            db.collection('withdrawals').where('status', '==', 'pending').get().then(snapshot => {
+                let total = 0;
+                snapshot.forEach(doc => {
+                    total += doc.data().amount;
+                });
+                document.getElementById('pending-withdrawals').textContent = `$${total.toFixed(2)}`;
             });
             
             // Load recent activities
@@ -1382,6 +1454,111 @@
                     tbody.appendChild(row);
                 });
             });
+            
+            // Load tokens
+            db.collection('tokens').orderBy('generatedAt', 'desc').get().then(snapshot => {
+                const tbody = document.getElementById('tokens-body');
+                tbody.innerHTML = '';
+                
+                snapshot.forEach(doc => {
+                    const token = doc.data();
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${token.token}</td>
+                        <td>${token.type}</td>
+                        <td>${token.status}</td>
+                        <td>${new Date(token.generatedAt?.toDate()).toLocaleDateString()}</td>
+                        <td class="admin-actions">
+                            <button class="btn btn-danger btn-sm delete-token" data-id="${doc.id}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            });
+            
+            // Load users
+            db.collection('users').get().then(snapshot => {
+                const tbody = document.getElementById('users-body');
+                tbody.innerHTML = '';
+                
+                snapshot.forEach(doc => {
+                    const user = doc.data();
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${user.uid.substring(0, 8)}</td>
+                        <td>${user.name || '-'}</td>
+                        <td>${user.email}</td>
+                        <td>${new Date(user.createdAt?.toDate()).toLocaleDateString()}</td>
+                        <td><span class="badge ${user.status === 'active' ? 'badge-success' : 'badge-warning'}">${user.status}</span></td>
+                        <td class="admin-actions">
+                            <button class="btn btn-danger btn-sm delete-user" data-id="${doc.id}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            });
+            
+            // Load withdrawals
+            db.collection('withdrawals').orderBy('requestedAt', 'desc').get().then(snapshot => {
+                const tbody = document.getElementById('withdrawals-body');
+                tbody.innerHTML = '';
+                
+                snapshot.forEach(doc => {
+                    const withdrawal = doc.data();
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${withdrawal.userName}</td>
+                        <td>$${withdrawal.amount.toFixed(2)}</td>
+                        <td>${withdrawal.account}</td>
+                        <td>${new Date(withdrawal.requestedAt?.toDate()).toLocaleDateString()}</td>
+                        <td><span class="status-${withdrawal.status}">${withdrawal.status}</span></td>
+                        <td class="admin-actions">
+                            <button class="btn btn-success btn-sm approve-withdrawal" data-id="${doc.id}">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            <button class="btn btn-danger btn-sm reject-withdrawal" data-id="${doc.id}">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            });
+            
+            // Load affiliate earnings
+            db.collection('users').orderBy('referrals', 'desc').get().then(snapshot => {
+                const tbody = document.getElementById('affiliates-body');
+                tbody.innerHTML = '';
+                
+                snapshot.forEach(doc => {
+                    const user = doc.data();
+                    if (user.referrals > 0) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${user.name || user.email}</td>
+                            <td>${user.referrals}</td>
+                            <td>$${(user.balance + user.pendingWithdrawal).toFixed(2)}</td>
+                            <td>$${(user.balance).toFixed(2)}</td>
+                            <td>$${(user.pendingWithdrawal).toFixed(2)}</td>
+                        `;
+                        tbody.appendChild(row);
+                    }
+                });
+            });
+            
+            // Load settings
+            db.collection('settings').doc('affiliate').get().then(doc => {
+                if (doc.exists) {
+                    const settings = doc.data();
+                    document.getElementById('commission-rate').value = settings.commissionRate || 15;
+                    document.getElementById('min-withdrawal').value = settings.minWithdrawal || 20;
+                    document.getElementById('min-referrals').value = settings.minReferrals || 6;
+                }
+            });
         }
         
         // Validate token for user activation
@@ -1395,7 +1572,7 @@
                     const tokenDoc = snapshot.docs[0];
                     const tokenData = tokenDoc.data();
                     
-                    if (tokenData.status === 'used') {
+                    if (tokenData.status === 'used' || tokenData.uses >= tokenData.maxUses) {
                         return { valid: false, message: 'Token has already been used' };
                     }
                     
@@ -1409,6 +1586,13 @@
         
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
+            // Check for referral code in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const refCode = urlParams.get('ref');
+            if (refCode) {
+                document.getElementById('referral-code').value = refCode;
+            }
+            
             // Add event listeners for login/register buttons
             document.getElementById('login-btn').addEventListener('click', handleLogin);
             document.getElementById('register-btn').addEventListener('click', handleRegister);
@@ -1458,6 +1642,11 @@
                     
                     const tabId = this.getAttribute('data-tab');
                     document.getElementById(`${tabId}-tab`).classList.add('active');
+                    
+                    // Reload data when switching to certain tabs
+                    if (tabId === 'admin-tokens') {
+                        loadAdminDashboard();
+                    }
                 });
             });
             
@@ -1495,11 +1684,14 @@
                             const user = auth.currentUser;
                             
                             // Update token status
-                            db.collection('tokens').doc(result.tokenId).update({
-                                status: 'used',
+                            const updateData = {
+                                status: result.tokenData.type === 'one-time' ? 'used' : 'active',
                                 usedBy: user.uid,
-                                usedAt: firebase.firestore.FieldValue.serverTimestamp()
-                            });
+                                usedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                uses: firebase.firestore.FieldValue.increment(1)
+                            };
+                            
+                            db.collection('tokens').doc(result.tokenId).update(updateData);
                             
                             // Activate user
                             db.collection('users').doc(user.uid).update({
@@ -1550,7 +1742,7 @@
             
             // Generate tokens (admin)
             document.getElementById('generate-token')?.addEventListener('click', function() {
-                const tokenCount = document.getElementById('token-count').value;
+                const tokenCount = parseInt(document.getElementById('token-count').value);
                 const tokenType = document.getElementById('token-type').value;
                 const tokenDisplay = document.getElementById('generated-token');
                 
@@ -1580,9 +1772,9 @@
             
             // Save affiliate settings (admin)
             document.getElementById('save-affiliate-settings')?.addEventListener('click', function() {
-                const commissionRate = document.getElementById('commission-rate').value;
-                const minWithdrawal = document.getElementById('min-withdrawal').value;
-                const minReferrals = document.getElementById('min-referrals').value;
+                const commissionRate = parseFloat(document.getElementById('commission-rate').value);
+                const minWithdrawal = parseFloat(document.getElementById('min-withdrawal').value);
+                const minReferrals = parseInt(document.getElementById('min-referrals').value);
                 
                 db.collection('settings').doc('affiliate').set({
                     commissionRate: commissionRate,
@@ -1604,40 +1796,62 @@
                     return;
                 }
                 
-                if (amount < 20) {
-                    alert('Minimum withdrawal amount is $20');
-                    return;
-                }
-                
-                const user = auth.currentUser;
-                if (!user) return;
-                
-                // Get user data
-                getUserData().then(userData => {
-                    if (userData.balance < amount) {
-                        alert('Insufficient balance');
+                // Get min withdrawal amount from settings
+                db.collection('settings').doc('affiliate').get().then(doc => {
+                    const settings = doc.data();
+                    const minAmount = settings.minWithdrawal || 20;
+                    
+                    if (amount < minAmount) {
+                        alert(`Minimum withdrawal amount is $${minAmount}`);
                         return;
                     }
                     
-                    // Create withdrawal request
-                    db.collection('withdrawals').add({
-                        userId: user.uid,
-                        userName: userData.name,
-                        amount: amount,
-                        account: account,
-                        status: 'pending',
-                        requestedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    })
-                    .then(() => {
-                        // Update user balance
-                        db.collection('users').doc(user.uid).update({
-                            balance: firebase.firestore.FieldValue.increment(-amount),
-                            pendingWithdrawal: firebase.firestore.FieldValue.increment(amount)
-                        });
+                    const user = auth.currentUser;
+                    if (!user) return;
+                    
+                    // Get user data
+                    getUserData().then(userData => {
+                        if (userData.balance < amount) {
+                            alert('Insufficient balance');
+                            return;
+                        }
                         
-                        alert(`Withdrawal request for $${amount} submitted successfully!`);
-                        document.getElementById('withdraw-amount').value = '';
-                        document.getElementById('withdraw-account').value = '';
+                        // Check min referrals
+                        const minReferrals = settings.minReferrals || 6;
+                        if (userData.referrals < minReferrals) {
+                            alert(`You need at least ${minReferrals} referrals to withdraw`);
+                            return;
+                        }
+                        
+                        // Create withdrawal request
+                        db.collection('withdrawals').add({
+                            userId: user.uid,
+                            userName: userData.name,
+                            amount: amount,
+                            account: account,
+                            status: 'pending',
+                            requestedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        })
+                        .then(() => {
+                            // Update user balance
+                            db.collection('users').doc(user.uid).update({
+                                balance: firebase.firestore.FieldValue.increment(-amount),
+                                pendingWithdrawal: firebase.firestore.FieldValue.increment(amount)
+                            });
+                            
+                            // Log activity
+                            db.collection('activities').add({
+                                userId: user.uid,
+                                userName: user.email,
+                                action: 'Withdrawal Request',
+                                details: `Requested $${amount} withdrawal`,
+                                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                            
+                            alert(`Withdrawal request for $${amount} submitted successfully!`);
+                            document.getElementById('withdraw-amount').value = '';
+                            document.getElementById('withdraw-account').value = '';
+                        });
                     });
                 });
             });
@@ -1670,13 +1884,16 @@
             document.getElementById('enroll-btn')?.addEventListener('click', function() {
                 const phone = document.getElementById('phone-number').value;
                 const token = document.getElementById('token-input').value;
-                const country = document.getElementById('country').value;
+                const country = document.getElementById('country').value === 'other' ? 
+                    document.getElementById('manual-country').value : 
+                    document.getElementById('country').value;
                 
                 if (!phone || !token || !country) {
                     alert('Please fill all fields');
                     return;
                 }
                 
+                // In a real implementation, this would connect to your lead system
                 alert('Enrollment successful! You now have access to lead generation.');
             });
         });
