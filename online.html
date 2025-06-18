@@ -14,6 +14,7 @@
     <script src="script.js"></script>
     
     <style>
+        /* ALL CSS REMAINS UNCHANGED */
         :root {
             --primary: #4361ee;
             --secondary: #3f37c9;
@@ -24,7 +25,7 @@
             --danger: #e63946;
             --gray: #6c757d;
             --light-gray: #e9ecef;
-            --border: #de极客2e6;
+            --border: #dee2e6;
             --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             --transition: all 0.3s ease;
         }
@@ -91,7 +92,7 @@
         
         .card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8极客x 15px rgba(0, 0, 0, 0.1);
         }
         
         .card-header {
@@ -379,7 +380,7 @@
         }
         
         .admin-actions .btn {
-            padding: 6极客x 12px;
+            padding: 6px 12px;
             font-size: 14px;
         }
         
@@ -479,7 +480,7 @@
         /* Progress container */
         .progress-container {
             background: var(--light-gray);
-            border-radius: 10极客;
+            border-radius: 10px;
             height: 10px;
             margin: 15px 0;
             overflow: hidden;
@@ -539,7 +540,7 @@
         
         @media (max-width: 480px) {
             .stats-grid {
-                grid-template-columns: 1极客;
+                grid-template-columns: 1fr;
             }
             
             .tab {
@@ -623,7 +624,7 @@
                     <p>Enter your activation token to access the dashboard</p>
                 </div>
                 <div class="login-body">
-                    <div class="form-group">
+                    <div class="form极客-group">
                         <label class="form-label">Activation Token</label>
                         <input type="text" id="activation-token" class="form-control" placeholder="Enter your token">
                     </div>
@@ -653,7 +654,7 @@
             
             <div class="tabs">
                 <div class="tab active" data-tab="admin-overview">Overview</div>
-                <div class="tab" data-tab="admin-tokens">Tokens</div>
+                <极客div class="tab" data-tab="admin-tokens">Tokens</div>
                 <div class="tab" data-tab="admin-users">Users</div>
                 <div class="tab" data-tab="admin-affiliates">Affiliates</div>
                 <div class="tab" data-tab="admin-withdrawals">Withdrawals</div>
@@ -815,7 +816,7 @@
                     </div>
                     <div class="form-group">
                         <button class="btn btn-primary" id="save-affiliate-settings">
-                            <i class="fas fa-save"></极客> Save Settings
+                            <i class="fas fa-save"></i> Save Settings
                         </button>
                     </div>
                 </div>
@@ -863,7 +864,7 @@
                                 <option value="approved">Approved</option>
                                 <option value="rejected">Rejected</option>
                             </select>
-                        </极客div>
+                        </div>
                     </div>
                     <div class="table-container">
                         <table class="table" id="withdrawal-requests-table">
@@ -935,7 +936,7 @@
                             <option value="120">2 hours</option>
                         </select>
                     </div>
-                    <div class="form-group">
+                    <div class极客.form-group">
                         <label class="form-label">Enable Two-Factor Authentication</label>
                         <select id="two-factor-auth" class="form-control">
                             <option value="enabled">Enabled</option>
@@ -1174,6 +1175,10 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
         
+        // Get form elements
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        
         // Page navigation functions
         function showPage(pageId) {
             document.querySelectorAll('.page').forEach(page => {
@@ -1298,11 +1303,115 @@
                 });
         }
         
+        // Handle login functionality
+        function handleLogin() {
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+            
+            // Admin login
+            if (email === adminCredentials.email && password === adminCredentials.password) {
+                showPage('admin-dashboard');
+                loadAdminDashboard();
+            } 
+            // User login
+            else {
+                auth.signInWithEmailAndPassword(email, password)
+                    .then(() => {
+                        return getUserData();
+                    })
+                    .then(userData => {
+                        if (userData.status === 'active') {
+                            showPage('user-dashboard');
+                            updateUserDashboard(userData);
+                        } else {
+                            showPage('token-page');
+                        }
+                    })
+                    .catch(error => alert('Login failed: ' + error.message));
+            }
+        }
+        
+        // Handle registration functionality
+        function handleRegister() {
+            const name = document.getElementById('register-name').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const referralCode = document.getElementById('referral-code').value;
+            
+            if (!name || !email || !password) {
+                alert('Please fill all required fields');
+                return;
+            }
+            
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    const user = userCredential.user;
+                    
+                    // Create user document
+                    const userData = {
+                        uid: user.uid,
+                        email: email,
+                        name: name,
+                        phone: "",
+                        account: "",
+                        balance: 0,
+                        referrals: 0,
+                        pendingWithdrawal: 0,
+                        referralCode: generateReferralCode(),
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        status: 'inactive' // Requires token activation
+                    };
+                    
+                    // Apply referral if code exists
+                    if (referralCode) {
+                        return db.collection('users').where('referralCode', '==', referralCode).get()
+                            .then(snapshot => {
+                                if (!snapshot.empty) {
+                                    const referrerDoc = snapshot.docs[0];
+                                    const referrerId = referrerDoc.id;
+                                    const referrerData = referrerDoc.data();
+                                    
+                                    // Update referrer's stats
+                                    db.collection('users').doc(referrerId).update({
+                                        referrals: firebase.firestore.FieldValue.increment(1),
+                                        balance: firebase.firestore.FieldValue.increment(2)
+                                    });
+                                    
+                                    // Log referral activity
+                                    db.collection('activities').add({
+                                        userId: referrerId,
+                                        userName: referrerData.email,
+                                        action: 'Referral',
+                                        details: `Referred new user: ${email}`,
+                                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                                    });
+                                    
+                                    // Give new user bonus
+                                    userData.balance = 2;
+                                }
+                                return userData;
+                            })
+                            .then(() => db.collection('users').doc(user.uid).set(userData));
+                    }
+                    return db.collection('users').doc(user.uid).set(userData);
+                })
+                .then(() => {
+                    alert('Account created successfully! Please login.');
+                    registerForm.classList.add('hidden');
+                    loginForm.classList.remove('hidden');
+                })
+                .catch(error => {
+                    alert('Registration failed: ' + error.message);
+                });
+        }
+        
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
+            // Add event listeners for login/register buttons
+            document.getElementById('login-btn').addEventListener('click', handleLogin);
+            document.getElementById('register-btn').addEventListener('click', handleRegister);
+            
             // Login/Register toggle
-            const loginForm = document.getElementById('login-form');
-            const registerForm = document.getElementById('register-form');
             const showRegister = document.getElementById('show-register');
             const showLogin = document.getElementById('show-login');
             
@@ -1364,34 +1473,6 @@
                 });
             });
             
-            // Login functionality
-            document.getElementById('login-btn').addEventListener('click', function() {
-                const email = document.getElementById('login-email').value.trim();
-                const password = document.getElementById('login-password').value.trim();
-                
-                // Admin login
-                if (email === adminCredentials.email && password === adminCredentials.password) {
-                    showPage('admin-dashboard');
-                    loadAdminDashboard();
-                } 
-                // User login
-                else {
-                    auth.signInWithEmailAndPassword(email, password)
-                        .then(() => {
-                            return getUserData();
-                        })
-                        .then(userData => {
-                            if (userData.status === 'active') {
-                                showPage('user-dashboard');
-                                updateUserDashboard(userData);
-                            } else {
-                                showPage('token-page');
-                            }
-                        })
-                        .catch(error => alert('Login failed: ' + error.message));
-                }
-            });
-            
             // Token activation
             document.getElementById('activate-btn')?.addEventListener('click', function() {
                 const token = document.getElementById('activation-token').value.trim();
@@ -1449,80 +1530,6 @@
                         messageDiv.textContent = 'Error validating token: ' + error.message;
                         messageDiv.classList.remove('hidden', 'alert-success');
                         messageDiv.classList.add('alert-danger');
-                    });
-            });
-            
-            // Registration functionality
-            document.getElementById('register-btn').addEventListener('click', function() {
-                const name = document.getElementById('register-name').value;
-                const email = document.getElementById('register-email').value;
-                const password = document.getElementById('register-password').value;
-                const referralCode = document.getElementById('referral-code').value;
-                
-                if (!name || !email || !password) {
-                    alert('Please fill all required fields');
-                    return;
-                }
-                
-                auth.createUserWithEmailAndPassword(email, password)
-                    .then((userCredential) => {
-                        const user = userCredential.user;
-                        
-                        // Create user document
-                        const userData = {
-                            uid: user.uid,
-                            email: email,
-                            name: name,
-                            phone: "",
-                            account: "",
-                            balance: 0,
-                            referrals: 0,
-                            pendingWithdrawal: 0,
-                            referralCode: generateReferralCode(),
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                            status: 'inactive' // Requires token activation
-                        };
-                        
-                        // Apply referral if code exists
-                        if (referralCode) {
-                            return db.collection('users').where('referralCode', '==', referralCode).get()
-                                .then(snapshot => {
-                                    if (!snapshot.empty) {
-                                        const referrerDoc = snapshot.docs[0];
-                                        const referrerId = referrerDoc.id;
-                                        const referrerData = referrerDoc.data();
-                                        
-                                        // Update referrer's stats
-                                        db.collection('users').doc(referrerId).update({
-                                            referrals: firebase.firestore.FieldValue.increment(1),
-                                            balance: firebase.firestore.FieldValue.increment(2)
-                                        });
-                                        
-                                        // Log referral activity
-                                        db.collection('activities').add({
-                                            userId: referrerId,
-                                            userName: referrerData.email,
-                                            action: 'Referral',
-                                            details: `Referred new user: ${email}`,
-                                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                                        });
-                                        
-                                        // Give new user bonus
-                                        userData.balance = 2;
-                                    }
-                                    return userData;
-                                })
-                                .then(() => db.collection('users').doc(user.uid).set(userData));
-                        }
-                        return db.collection('users').doc(user.uid).set(userData);
-                    })
-                    .then(() => {
-                        alert('Account created successfully! Please login.');
-                        registerForm.classList.add('hidden');
-                        loginForm.classList.remove('hidden');
-                    })
-                    .catch(error => {
-                        alert('Registration failed: ' + error.message);
                     });
             });
             
