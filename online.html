@@ -3,2235 +3,1535 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LeadConnect Pro</title>
+    <title>LeadConnect - Admin & Affiliate System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <script src="configuration.js"></script>
     <style>
         :root {
             --primary: #4361ee;
             --secondary: #3f37c9;
             --success: #4cc9f0;
-            --dark: #1d3557;
+            --danger: #f72585;
+            --warning: #f8961e;
+            --info: #4895ef;
+            --dark: #212529;
             --light: #f8f9fa;
-            --warning: #f72585;
-            --danger: #e63946;
             --gray: #6c757d;
             --light-gray: #e9ecef;
-            --border: #dee2e6;
-            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             --transition: all 0.3s ease;
         }
-        
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        
+
         body {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
             color: var(--dark);
+            overflow-x: hidden;
         }
-        
+
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
+            display: flex;
+            min-height: 100vh;
         }
-        
-        .page {
-            display: none;
+
+        /* Sidebar */
+        .sidebar {
+            width: 250px;
+            background: var(--dark);
+            color: white;
+            padding: 20px 0;
+            transition: var(--transition);
         }
-        
-        .page.active {
-            display: block;
+
+        .logo {
+            text-align: center;
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
         }
-        
-        /* Header styles */
+
+        .logo h1 {
+            font-size: 24px;
+            color: white;
+        }
+
+        .logo span {
+            color: var(--info);
+        }
+
+        .nav-links {
+            list-style: none;
+            padding: 0 15px;
+        }
+
+        .nav-links li {
+            margin-bottom: 5px;
+        }
+
+        .nav-links a {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            border-radius: 5px;
+            transition: var(--transition);
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .nav-links i {
+            margin-right: 10px;
+            width: 25px;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            background: var(--light);
+            border-radius: 20px 0 0 20px;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px 0;
             margin-bottom: 30px;
-            border-bottom: 1px solid var(--border);
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--light-gray);
         }
-        
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 24px;
-            font-weight: 700;
+
+        .header h2 {
             color: var(--primary);
         }
-        
-        .logo i {
-            color: var(--success);
-        }
-        
-        /* Card styles */
-        .card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: var(--shadow);
-            padding: 25px;
-            margin-bottom: 25px;
-            transition: var(--transition);
-        }
-        
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        .card-header {
+
+        .user-info {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid var(--border);
+            gap: 15px;
         }
-        
-        .card-title {
-            font-size: 20px;
-            font-weight: 600;
-            color: var(--dark);
-        }
-        
-        /* Button styles */
-        .btn {
-            padding: 10px 20px;
-            border-radius: 8px;
-            border: none;
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition);
-            display: inline-flex;
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--info);
+            display: flex;
             align-items: center;
-            gap: 8px;
-        }
-        
-        .btn-primary {
-            background: var(--primary);
+            justify-content: center;
             color: white;
+            font-weight: bold;
         }
-        
-        .btn-primary:hover {
-            background: var(--secondary);
-        }
-        
-        .btn-success {
-            background: var(--success);
-            color: white;
-        }
-        
-        .btn-warning {
-            background: var(--warning);
-            color: white;
-        }
-        
-        .btn-danger {
+
+        .logout-btn {
             background: var(--danger);
             color: white;
-        }
-        
-        .btn-outline {
-            background: transparent;
-            border: 1px solid var(--primary);
-            color: var(--primary);
-        }
-        
-        .btn-outline:hover {
-            background: var(--primary);
-            color: white;
-        }
-        
-        /* Form styles */
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        .form-label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: var(--dark);
-        }
-        
-        .form-control {
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-size: 16px;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
             transition: var(--transition);
         }
-        
-        .form-control:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+
+        .logout-btn:hover {
+            background: #d11450;
         }
-        
-        /* Stats grid */
+
+        /* Stats Grid */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
-        
+
         .stat-card {
             background: white;
-            border-radius: 12px;
+            border-radius: 10px;
             padding: 20px;
-            text-align: center;
-            box-shadow: var(--shadow);
+            box-shadow: var(--card-shadow);
+            display: flex;
+            align-items: center;
+            transition: var(--transition);
         }
-        
-        .stat-value {
-            font-size: 32px;
-            font-weight: 700;
-            color: var(--primary);
-            margin: 10px 0;
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
         }
-        
-        .stat-label {
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 24px;
+        }
+
+        .icon-users { background: rgba(67, 97, 238, 0.2); color: var(--primary); }
+        .icon-earnings { background: rgba(76, 201, 240, 0.2); color: var(--info); }
+        .icon-withdrawals { background: rgba(248, 150, 30, 0.2); color: var(--warning); }
+        .icon-tokens { background: rgba(72, 149, 239, 0.2); color: var(--success); }
+
+        .stat-info h3 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .stat-info p {
             color: var(--gray);
             font-size: 14px;
         }
-        
-        /* Tabs */
-        .tabs {
+
+        /* Tables */
+        .card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--light-gray);
             display: flex;
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 20px;
-            overflow-x: auto;
+            justify-content: space-between;
+            align-items: center;
         }
-        
-        .tab {
-            padding: 12px 25px;
-            cursor: pointer;
-            font-weight: 500;
-            border-bottom: 3px solid transparent;
-            transition: var(--transition);
-            white-space: nowrap;
-        }
-        
-        .tab.active {
-            border-bottom: 3px solid var(--primary);
+
+        .card-header h3 {
             color: var(--primary);
         }
-        
-        .tab-content {
-            display: none;
-        }
-        
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.3s ease;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        
-        /* Table styles */
-        .table-container {
+
+        .card-body {
+            padding: 20px;
             overflow-x: auto;
         }
-        
-        .table {
+
+        table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 600px;
         }
-        
-        .table th, .table td {
+
+        th, td {
             padding: 12px 15px;
             text-align: left;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid var(--light-gray);
         }
-        
-        .table th {
-            background-color: var(--light);
-            font-weight: 600;
-            color: var(--dark);
-        }
-        
-        .table tr:hover {
-            background-color: var(--light-gray);
-        }
-        
-        /* Alert styles */
-        .alert {
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        
-        .alert-info {
-            background-color: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-        
-        .alert-success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .alert-danger {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        /* Badge styles */
-        .badge {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 10px;
-            font-size: 12px;
+
+        th {
+            background-color: rgba(67, 97, 238, 0.05);
+            color: var(--primary);
             font-weight: 600;
         }
-        
-        .badge-success {
-            background: #d4edda;
-            color: #155724;
+
+        tbody tr:hover {
+            background-color: rgba(67, 97, 238, 0.03);
         }
-        
-        .badge-warning {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .badge-info {
-            background: #d1ecf1;
-            color: #0c5460;
-        }
-        
-        /* Withdrawal status */
-        .withdrawal-status {
+
+        .status-badge {
             display: inline-block;
             padding: 5px 12px;
             border-radius: 20px;
             font-size: 12px;
-            font-weight: 600;
+            font-weight: 500;
         }
-        
-        .status-pending {
-            background: #fff3cd;
-            color: #856404;
+
+        .badge-active { background: rgba(76, 201, 240, 0.2); color: var(--info); }
+        .badge-pending { background: rgba(248, 150, 30, 0.2); color: var(--warning); }
+        .badge-suspended { background: rgba(247, 37, 133, 0.2); color: var(--danger); }
+        .badge-paid { background: rgba(76, 201, 240, 0.2); color: var(--info); }
+        .badge-used { background: rgba(247, 37, 133, 0.2); color: var(--danger); }
+        .badge-unused { background: rgba(76, 201, 240, 0.2); color: var(--info); }
+
+        .btn {
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition);
         }
-        
-        .status-paid {
-            background: #d4edda;
-            color: #155724;
+
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 13px;
         }
-        
-        .hidden {
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--secondary);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--light-gray);
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: var(--transition);
+        }
+
+        .tab.active {
+            border-bottom: 3px solid var(--primary);
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: var(--transition);
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+        }
+
+        .form-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-col {
+            flex: 1;
+        }
+
+        /* Authentication */
+        .auth-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .auth-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 450px;
+            overflow: hidden;
+        }
+
+        .auth-header {
+            background: var(--primary);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .auth-header h2 {
+            margin-bottom: 10px;
+        }
+
+        .auth-body {
+            padding: 30px;
+        }
+
+        .auth-footer {
+            padding: 20px 30px;
+            background: var(--light-gray);
+            text-align: center;
+        }
+
+        .auth-footer a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .auth-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .btn-block {
+            display: block;
+            width: 100%;
+            padding: 12px;
+        }
+
+        .notification {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
             display: none;
         }
         
-        /* Notification styles */
-        .notification-list li {
-            padding: 12px 0;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        .notification.success {
+            background-color: rgba(76, 201, 240, 0.2);
+            color: var(--info);
         }
         
-        .notification-list li:last-child {
-            border-bottom: none;
+        .notification.error {
+            background-color: rgba(247, 37, 133, 0.2);
+            color: var(--danger);
         }
-        
-        .notification-icon {
-            background: var(--success);
-            color: white;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-        
-        /* Admin actions */
-        .admin-actions {
-            display: flex;
-            gap: 8px;
-        }
-        
-        .admin-actions .btn {
-            padding: 6px 12px;
-            font-size: 14px;
-        }
-        
-        /* Login container */
-        .login-container {
-            max-width: 500px;
-            margin: 50px auto;
-            background: white;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-        
-        .login-header {
-            background: linear-gradient(to right, var(--primary), var(--secondary));
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-        
-        .login-body {
-            padding: 30px;
-        }
-        
-        .login-footer {
-            text-align: center;
-            padding: 20px;
-            background: var(--light);
-            color: var(--gray);
-        }
-        
-        .login-footer a {
-            color: var(--primary);
-            text-decoration: none;
-        }
-        
-        .switch-mode {
-            text-align: center;
-            margin-top: 20px;
-            color: var(--gray);
-        }
-        
-        .switch-mode a {
-            color: var(--primary);
-            cursor: pointer;
-            font-weight: 600;
-        }
-        
-        /* Referral link */
-        .referral-link {
-            background: var(--light);
-            border: 1px dashed var(--primary);
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        .referral-link input {
-            flex: 1;
-            background: transparent;
-            border: none;
-            font-size: 16px;
-            padding: 5px;
-        }
-        
-        .copy-btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-        
-        /* Video container */
-        .video-container {
-            position: relative;
-            padding-bottom: 56.25%;
-            height: 0;
-            overflow: hidden;
-            border-radius: 12px;
-            margin-top: 20px;
-        }
-        
-        .video-container iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-        
-        /* Progress container */
+
+        /* Progress bar */
         .progress-container {
-            background: var(--light-gray);
-            border-radius: 10px;
-            height: 10px;
-            margin: 15px 0;
-            overflow: hidden;
+            margin: 20px 0;
         }
         
         .progress-bar {
-            height: 100%;
-            background: var(--success);
+            height: 20px;
+            background-color: #e9ecef;
             border-radius: 10px;
-            transition: width 0.5s ease;
+            overflow: hidden;
         }
         
-        /* Loading spinner */
-        .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border-left-color: var(--primary);
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
+        .progress {
+            height: 100%;
+            background-color: var(--success);
+            border-radius: 10px;
+            transition: width 0.4s ease;
         }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            .container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                height: auto;
+            }
+            .main-content {
+                border-radius: 0;
+            }
         }
-        
-        /* Responsive styles */
+
         @media (max-width: 768px) {
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .header {
+            .form-row {
                 flex-direction: column;
-                gap: 15px;
-                text-align: center;
+                gap: 0;
             }
-            
-            .tabs {
-                overflow-x: auto;
-            }
-            
-            .admin-actions {
-                flex-direction: column;
-            }
-            
-            .card {
-                padding: 15px;
-            }
-            
-            .table th, .table td {
-                padding: 8px 10px;
-            }
-        }
-        
-        @media (max-width: 480px) {
             .stats-grid {
                 grid-template-columns: 1fr;
-            }
-            
-            .tab {
-                padding: 10px 15px;
-                font-size: 14px;
-            }
-            
-            .login-container {
-                margin: 20px auto;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Login Page -->
-        <div id="login-page" class="page active">
-            <div class="login-container">
-                <div class="login-header">
-                    <h1><i class="fas fa-users"></i> LeadConnect Pro</h1>
-                    <p>Generate leads & grow your business</p>
-                </div>
-                <div class="login-body">
-                    <div id="login-form">
-                        <div class="form-group">
-                            <label class="form-label">Email</label>
-                            <input type="email" id="login-email" class="form-control" placeholder="Enter your email" value="admin@leadconnect.com">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Password</label>
-                            <input type="password" id="login-password" class="form-control" placeholder="Enter password" value="admin123">
-                        </div>
-                        <div class="form-group">
-                            <button class="btn btn-primary" style="width:100%;" id="login-btn">
-                                <i class="fas fa-sign-in-alt"></i> Login
-                            </button>
-                        </div>
-                        <div class="switch-mode">
-                            Don't have an account? <a id="show-register">Register</a>
-                        </div>
-                    </div>
-                    
-                    <div id="register-form" class="hidden">
-                        <div class="form-group">
-                            <label class="form-label">Full Name</label>
-                            <input type="text" id="register-name" class="form-control" placeholder="Your full name">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Email</label>
-                            <input type="email" id="register-email" class="form-control" placeholder="Enter your email">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Password</label>
-                            <input type="password" id="register-password" class="form-control" placeholder="Create password">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Referral Code (Optional)</label>
-                            <input type="text" id="referral-code" class="form-control" placeholder="Enter referral code if any">
-                        </div>
-                        <div class="form-group">
-                            <button class="btn btn-primary" style="width:100%;" id="register-btn">
-                                <i class="fas fa-user-plus"></i> Create Account
-                            </button>
-                        </div>
-                        <div class="switch-mode">
-                            Already have an account? <a id="show-login">Login</a>
-                        </div>
-                    </div>
-                </div>
-                <div class="login-footer">
-                    <p>© 2023 LeadConnect Pro. All rights reserved.</p>
-                </div>
+    <!-- Authentication View -->
+    <div id="auth-view" class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h2>LeadConnect</h2>
+                <p>Admin & Affiliate Management System</p>
             </div>
-        </div>
-        
-        <!-- Admin Dashboard -->
-        <div id="admin-dashboard" class="page">
-            <div class="header">
-                <div class="logo">
-                    <i class="fas fa-user-shield"></i>
-                    <span>Admin Dashboard</span>
-                </div>
-                <div>
-                    <button class="btn btn-outline" id="admin-logout-btn">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
-                </div>
-            </div>
-            
-            <div class="tabs">
-                <div class="tab active" data-tab="admin-overview">Overview</div>
-                <div class="tab" data-tab="admin-tokens">Tokens</div>
-                <div class="tab" data-tab="admin-users">Users</div>
-                <div class="tab" data-tab="admin-affiliates">Affiliates</div>
-                <div class="tab" data-tab="admin-withdrawals">Withdrawals</div>
-                <div class="tab" data-tab="admin-settings">Settings</div>
-            </div>
-            
-            <div class="tab-content active" id="admin-overview-tab">
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-label">Total Users</div>
-                        <div class="stat-value" id="total-users">0</div>
-                        <div>Active in last 30 days</div>
+            <div class="auth-body">
+                <div id="notification-auth" class="notification"></div>
+                
+                <div id="login-form">
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" class="form-control" placeholder="Enter your email" value="admin@leadconnect.com">
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Affiliate Earnings</div>
-                        <div class="stat-value" id="total-earnings">$0</div>
-                        <div>Total commissions paid</div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" class="form-control" placeholder="Enter your password" value="admin123">
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Pending Withdrawals</div>
-                        <div class="stat-value" id="pending-withdrawals">$0</div>
-                        <div>Awaiting approval</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Active Tokens</div>
-                        <div class="stat-value" id="active-tokens">0</div>
-                        <div>Available for use</div>
-                    </div>
+                    <button id="login-btn" class="btn btn-primary btn-block">Login</button>
                 </div>
                 
+                <div id="register-form" style="display: none;">
+                    <div class="form-group">
+                        <label for="fullName">Full Name</label>
+                        <input type="text" id="fullName" class="form-control" placeholder="Enter your full name">
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-email">Email</label>
+                        <input type="email" id="reg-email" class="form-control" placeholder="Enter your email">
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-password">Password</label>
+                        <input type="password" id="reg-password" class="form-control" placeholder="Create a password">
+                    </div>
+                    <div class="form-group">
+                        <label for="referralCode">Referral Code (optional)</label>
+                        <input type="text" id="referralCode" class="form-control" placeholder="Enter referral code">
+                    </div>
+                    <div class="form-group">
+                        <label for="token">Activation Token</label>
+                        <input type="text" id="token" class="form-control" placeholder="Enter activation token" required>
+                    </div>
+                    <button id="register-btn" class="btn btn-primary btn-block">Register</button>
+                </div>
+            </div>
+            <div class="auth-footer">
+                <p id="auth-toggle">Don't have an account? <a href="#" id="show-register">Register</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="admin-dashboard" class="container" style="display: none;">
+        <aside class="sidebar">
+            <div class="logo">
+                <h1>Lead<span>Connect</span></h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#" class="active" data-tab="overview"><i class="fas fa-home"></i> Overview</a></li>
+                <li><a href="#" data-tab="tokens"><i class="fas fa-key"></i> Tokens</a></li>
+                <li><a href="#" data-tab="users"><i class="fas fa-users"></i> Users</a></li>
+                <li><a href="#" data-tab="affiliates"><i class="fas fa-handshake"></i> Affiliates</a></li>
+                <li><a href="#" data-tab="withdrawals"><i class="fas fa-money-bill-wave"></i> Withdrawals</a></li>
+                <li><a href="#" data-tab="settings"><i class="fas fa-cog"></i> Settings</a></li>
+                <li><a href="#" id="admin-logout"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <div class="header">
+                <h2 id="dashboard-title">Dashboard Overview</h2>
+                <div class="user-info">
+                    <div class="avatar" id="user-avatar">A</div>
+                    <div>
+                        <p id="user-name">Admin User</p>
+                        <small id="user-email">admin@leadconnect.com</small>
+                    </div>
+                    <button class="logout-btn" id="logout-btn">Logout</button>
+                </div>
+            </div>
+            
+            <div id="notification-dashboard" class="notification"></div>
+
+            <!-- Overview Tab -->
+            <div id="overview" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon icon-users">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="total-users">0</h3>
+                            <p>Total Users</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-earnings">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="total-earnings">$0</h3>
+                            <p>Total Earnings</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-withdrawals">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="pending-withdrawals">$0</h3>
+                            <p>Pending Withdrawals</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-tokens">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="active-tokens">0</h3>
+                            <p>Active Tokens</p>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card">
                     <div class="card-header">
-                        <div class="card-title">Recent Activities</div>
+                        <h3>Recent Activities</h3>
                     </div>
-                    <div class="table-container">
-                        <table class="table" id="recent-activities">
+                    <div class="card-body">
+                        <table id="recent-activities">
                             <thead>
                                 <tr>
-                                    <th>User</th>
                                     <th>Action</th>
-                                    <th>Time</th>
-                                    <th>Details</th>
+                                    <th>User</th>
+                                    <th>Timestamp</th>
                                 </tr>
                             </thead>
-                            <tbody id="recent-activities-body">
-                                <!-- Will be populated by JavaScript -->
+                            <tbody>
+                                <!-- Will be populated dynamically -->
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
-            
-            <div class="tab-content" id="admin-tokens-tab">
+
+            <!-- Tokens Tab -->
+            <div id="tokens" class="tab-content">
                 <div class="card">
                     <div class="card-header">
-                        <div class="card-title">Generate Tokens</div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Token Type</label>
-                        <select id="token-type" class="form-control">
-                            <option value="one-time">One-Time Use</option>
-                            <option value="multi-use">Reusable (5 uses)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Number of Tokens to Generate</label>
-                        <input type="number" id="token-count" class="form-control" value="5" min="1" max="100">
-                    </div>
-                    <div class="form-group">
-                        <button class="btn btn-primary" id="generate-token">
-                            <i class="fas fa-key"></i> Generate Tokens
-                        </button>
-                    </div>
-                    <div id="generated-token" class="alert alert-info hidden">
-                        Tokens generated successfully!
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Token Management</div>
+                        <h3>Token Management</h3>
                         <div>
-                            <select id="token-filter" class="form-control" style="width:auto">
-                                <option value="all">All Tokens</option>
-                                <option value="used">Used Tokens</option>
-                                <option value="unused">Unused Tokens</option>
+                            <select id="token-type" class="form-control" style="display: inline-block; width: auto;">
+                                <option value="one-time">One-time Token</option>
+                                <option value="reusable">Reusable Token</option>
                             </select>
+                            <button id="generate-token" class="btn btn-primary">Generate Token</button>
+                            <button id="bulk-generate" class="btn btn-success">Bulk Generate (5)</button>
                         </div>
                     </div>
-                    <div class="table-container">
-                        <table class="table" id="token-management-table">
+                    <div class="card-body">
+                        <div style="margin-bottom: 20px;">
+                            <label>Filter by Status:</label>
+                            <select id="token-status-filter" class="form-control" style="width: 200px; display: inline-block; margin-left: 10px;">
+                                <option value="all">All Tokens</option>
+                                <option value="unused">Unused</option>
+                                <option value="used">Used</option>
+                            </select>
+                        </div>
+                        <table id="tokens-table">
                             <thead>
                                 <tr>
                                     <th>Token</th>
                                     <th>Type</th>
                                     <th>Status</th>
-                                    <th>Generated</th>
-                                    <th>Actions</th>
+                                    <th>Generated Date</th>
+                                    <th>Used By</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="token-management-body">
-                                <!-- Will be populated by JavaScript -->
+                            <tbody>
+                                <!-- Will be populated dynamically -->
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
-            
-            <div class="tab-content" id="admin-users-tab">
+
+            <!-- Users Tab -->
+            <div id="users" class="tab-content">
                 <div class="card">
                     <div class="card-header">
-                        <div class="card-title">User Management</div>
+                        <h3>User Management</h3>
                         <div>
-                            <input type="text" id="user-search" class="form-control" placeholder="Search users..." style="width:200px">
+                            <input type="text" id="user-search" class="form-control" placeholder="Search users..." style="width: 250px;">
                         </div>
                     </div>
-                    <div class="table-container">
-                        <table class="table" id="user-management-table">
+                    <div class="card-body">
+                        <table id="users-table">
                             <thead>
                                 <tr>
                                     <th>ID</th>
                                     <th>Name</th>
                                     <th>Email</th>
-                                    <th>Joined</th>
+                                    <th>Join Date</th>
                                     <th>Status</th>
-                                    <th>Actions</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="user-management-body">
-                                <!-- Will be populated by JavaScript -->
+                            <tbody>
+                                <!-- Will be populated dynamically -->
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
-            
-            <div class="tab-content" id="admin-affiliates-tab">
+
+            <!-- Withdrawals Tab -->
+            <div id="withdrawals" class="tab-content">
                 <div class="card">
                     <div class="card-header">
-                        <div class="card-title">Affiliate Program Settings</div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Commission Rate (%)</label>
-                        <input type="number" id="commission-rate" class="form-control" value="15" min="1" max="50">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Minimum Withdrawal ($)</label>
-                        <input type="number" id="min-withdrawal" class="form-control" value="20" min="5">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Minimum Referrals for Withdrawal</label>
-                        <input type="number" id="min-referrals" class="form-control" value="6" min="1">
-                    </div>
-                    <div class="form-group">
-                        <button class="btn btn-primary" id="save-affiliate-settings">
-                            <i class="fas fa-save"></i> Save Settings
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Affiliate Earnings</div>
+                        <h3>Withdrawal Management</h3>
                         <div>
-                            <select id="affiliate-filter" class="form-control" style="width:auto">
-                                <option value="all">All Affiliates</option>
-                                <option value="top">Top Earners</option>
-                                <option value="new">New Affiliates</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="table-container">
-                        <table class="table" id="affiliate-earnings-table">
-                            <thead>
-                                <tr>
-                                    <th>Affiliate</th>
-                                    <th>Referrals</th>
-                                    <th>Earned</th>
-                                    <th>Withdrawn</th>
-                                    <th>Balance</th>
-                                </tr>
-                            </thead>
-                            <tbody id="affiliate-earnings-body">
-                                <!-- Will be populated by JavaScript -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="tab-content" id="admin-withdrawals-tab">
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Withdrawal Requests</div>
-                        <div>
-                            <select id="withdrawal-filter" class="form-control" style="width:auto">
-                                <option value="all">All Status</option>
+                            <select id="withdrawal-status-filter" class="form-control" style="width: 200px; display: inline-block;">
+                                <option value="all">All Statuses</option>
                                 <option value="pending">Pending</option>
                                 <option value="approved">Approved</option>
                                 <option value="rejected">Rejected</option>
                             </select>
                         </div>
                     </div>
-                    <div class="table-container">
-                        <table class="table" id="withdrawal-requests-table">
+                    <div class="card-body">
+                        <table id="withdrawals-table">
                             <thead>
                                 <tr>
                                     <th>User</th>
                                     <th>Amount</th>
                                     <th>Account</th>
-                                    <th>Requested</th>
+                                    <th>Date</th>
                                     <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="withdrawal-requests-body">
-                                <!-- Will be populated by JavaScript -->
+                            <tbody>
+                                <!-- Will be populated dynamically -->
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
-            
-            <div class="tab-content" id="admin-settings-tab">
+
+            <!-- Settings Tab -->
+            <div id="settings" class="tab-content">
                 <div class="card">
                     <div class="card-header">
-                        <div class="card-title">System Settings</div>
+                        <h3>System Settings</h3>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">System Maintenance Mode</label>
-                        <select id="maintenance-mode" class="form-control">
-                            <option value="disabled">Disabled</option>
-                            <option value="enabled">Enabled</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Currency</label>
-                        <select id="currency" class="form-control">
-                            <option value="USD">USD ($)</option>
-                            <option value="EUR">EUR (€)</option>
-                            <option value="GBP">GBP (£)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Max Affiliate Commission (%)</label>
-                        <input type="number" id="max-commission" class="form-control" value="30" min="5" max="50">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">System Notification Email</label>
-                        <input type="email" id="notification-email" class="form-control" value="admin@leadconnect.com">
-                    </div>
-                    <div class="form-group">
-                        <button class="btn btn-primary" id="save-system-settings">
-                            <i class="fas fa-save"></i> Save Settings
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Security Settings</div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Admin Session Timeout</label>
-                        <select id="session-timeout" class="form-control">
-                            <option value="15">15 minutes</option>
-                            <option value="30">30 minutes</option>
-                            <option value="60">1 hour</option>
-                            <option value="120">2 hours</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Enable Two-Factor Authentication</label>
-                        <select id="two-factor-auth" class="form-control">
-                            <option value="enabled">Enabled</option>
-                            <option value="disabled">Disabled</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Password Policy</label>
-                        <select id="password-policy" class="form-control">
-                            <option value="medium">Medium (8+ characters)</option>
-                            <option value="strong">Strong (12+ characters with complexity)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <button class="btn btn-primary" id="save-security-settings">
-                            <i class="fas fa-save"></i> Update Security
-                        </button>
+                    <div class="card-body">
+                        <form id="settings-form">
+                            <div class="form-group">
+                                <label for="maintenance-mode">Maintenance Mode</label>
+                                <select id="maintenance-mode" class="form-control">
+                                    <option value="false">Disabled</option>
+                                    <option value="true">Enabled</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="currency">Currency</label>
+                                <select id="currency" class="form-control">
+                                    <option value="USD">US Dollar ($)</option>
+                                    <option value="EUR">Euro (€)</option>
+                                    <option value="GBP">British Pound (£)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="commission-rate">Commission Rate (%)</label>
+                                <input type="number" id="commission-rate" class="form-control" min="1" max="50" value="15">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="min-withdrawal">Minimum Withdrawal Amount</label>
+                                <input type="number" id="min-withdrawal" class="form-control" min="1" value="20">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="min-referrals">Minimum Referrals for Withdrawal</label>
+                                <input type="number" id="min-referrals" class="form-control" min="1" value="6">
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">Save Settings</button>
+                        </form>
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- User Dashboard -->
-        <div id="user-dashboard" class="page">
+        </main>
+    </div>
+
+    <!-- User Dashboard -->
+    <div id="user-dashboard" class="container" style="display: none;">
+        <aside class="sidebar">
+            <div class="logo">
+                <h1>Lead<span>Connect</span></h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#" class="active" data-tab="user-dashboard"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="#" data-tab="user-referrals"><i class="fas fa-share-alt"></i> Referrals</a></li>
+                <li><a href="#" data-tab="user-withdrawals"><i class="fas fa-money-bill-wave"></i> Withdrawals</a></li>
+                <li><a href="#" data-tab="user-account"><i class="fas fa-user"></i> Account</a></li>
+                <li><a href="#" id="user-logout"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
             <div class="header">
-                <div class="logo">
-                    <i class="fas fa-bullhorn"></i>
-                    <span>LeadConnect Pro</span>
-                </div>
-                <div>
-                    <button class="btn btn-outline" id="logout-btn">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
-                </div>
-            </div>
-            
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">Total Balance</div>
-                    <div class="stat-value" id="user-balance">$0.00</div>
-                    <div>Available for withdrawal</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Active Referrals</div>
-                    <div class="stat-value" id="user-referrals">0</div>
-                    <div>Successful enrollments</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Pending Withdrawal</div>
-                    <div class="stat-value" id="user-pending">$0.00</div>
-                    <div>Awaiting approval</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Commission Rate</div>
-                    <div class="stat-value" id="user-commission">15%</div>
-                    <div>Per successful referral</div>
+                <h2 id="user-dashboard-title">My Dashboard</h2>
+                <div class="user-info">
+                    <div class="avatar" id="user-avatar">U</div>
+                    <div>
+                        <p id="user-name">User</p>
+                        <small id="user-email">user@example.com</small>
+                    </div>
+                    <button class="logout-btn" id="user-logout-btn">Logout</button>
                 </div>
             </div>
             
-            <div class="tabs">
-                <div class="tab active" data-tab="dashboard">Dashboard</div>
-                <div class="tab" data-tab="referrals">Referrals</div>
-                <div class="tab" data-tab="withdrawals">Withdrawals</div>
-                <div class="tab" data-tab="account">Account</div>
-            </div>
-            
-            <div class="tab-content active" id="dashboard-tab">
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Your Referral Program</div>
+            <div id="notification-user" class="notification"></div>
+
+            <!-- User Dashboard Tab -->
+            <div id="user-dashboard-tab" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon icon-users">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="user-balance">$0</h3>
+                            <p>Balance</p>
+                        </div>
                     </div>
-                    <p>Share your unique referral link and earn <span id="commission-rate-text">15%</span> commission for every successful enrollment.</p>
-                    
-                    <div class="referral-link">
-                        <input type="text" id="ref-link" value="" readonly>
-                        <button class="copy-btn" id="copy-btn">
-                            <i class="fas fa-copy"></i> Copy
-                        </button>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-earnings">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="user-referrals">0</h3>
+                            <p>Referrals</p>
+                        </div>
                     </div>
-                    
-                    <div class="progress-container">
-                        <div class="progress-bar" id="referral-progress" style="width: 0%;"></div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-withdrawals">
+                            <i class="fas fa-hourglass-half"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="pending-withdrawal">$0</h3>
+                            <p>Pending Withdrawal</p>
+                        </div>
                     </div>
-                    <p>You need <span id="min-referrals-text">6</span> active referrals to withdraw. You currently have <strong><span id="current-referrals">0</span> of <span id="total-referrals-needed">6</span></strong>.</p>
-                </div>
-                
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Enroll New Leads</div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Select Your Country</label>
-                        <select id="country" class="form-control">
-                            <option value="Nigeria">Nigeria</option>
-                            <option value="Ghana">Ghana</option>
-                            <option value="Kenya">Kenya</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <input type="text" id="manual-country" class="form-control" placeholder="Enter Country Manually" style="display:none">
-                    </div>
-                    <div class="form-group">
-                        <input type="text" id="phone-number" class="form-control" placeholder="Enter your WhatsApp number">
-                    </div>
-                    <div class="form-group">
-                        <input type="text" id="token-input" class="form-control" placeholder="Enter activation token">
-                    </div>
-                    <div class="form-group">
-                        <button class="btn btn-primary" id="enroll-btn">
-                            <i class="fas fa-user-plus"></i> Get Customers
-                        </button>
-                        <button class="btn btn-outline" id="buy-token">
-                            <i class="fas fa-shopping-cart"></i> Buy Token
-                        </button>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-tokens">
+                            <i class="fas fa-percentage"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="commission-rate">15%</h3>
+                            <p>Commission Rate</p>
+                        </div>
                     </div>
                 </div>
                 
                 <div class="card">
                     <div class="card-header">
-                        <div class="card-title">Training Video</div>
+                        <h3>Referral Program</h3>
                     </div>
-                    <p>Learn how to maximize your lead generation with our tutorial:</p>
-                    <div class="video-container">
-                        <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" allowfullscreen></iframe>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="tab-content" id="referrals-tab">
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Your Referrals</div>
-                    </div>
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Date Joined</th>
-                                <th>Status</th>
-                                <th>Earned</th>
-                            </tr>
-                        </thead>
-                        <tbody id="user-referrals-body">
-                            <!-- Will be populated by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            
-            <div class="tab-content" id="withdrawals-tab">
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Withdrawal Request</div>
-                    </div>
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i> You can withdraw funds once you have at least <span id="min-referrals-alert">6</span> active referrals. 
-                        Minimum withdrawal amount is $<span id="min-withdrawal-alert">20</span>.
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Amount to Withdraw ($)</label>
-                        <input type="number" id="withdraw-amount" class="form-control" placeholder="Enter amount">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Account Number</label>
-                        <input type="text" id="withdraw-account" class="form-control" placeholder="Enter your account number">
-                    </div>
-                    
-                    <div class="form-group">
-                        <button class="btn btn-primary" id="request-withdrawal-btn">
-                            <i class="fas fa-paper-plane"></i> Submit Request
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Withdrawal History</div>
-                    </div>
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Amount</th>
-                                <th>Account</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="withdrawal-history-body">
-                            <!-- Will be populated by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            
-            <div class="tab-content" id="account-tab">
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Account Information</div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Full Name</label>
-                        <input type="text" id="account-name" class="form-control" value="">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Email</label>
-                        <input type="email" id="account-email" class="form-control" value="" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Phone Number</label>
-                        <input type="text" id="account-phone" class="form-control" value="">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Account Number</label>
-                        <input type="text" id="account-number" class="form-control" placeholder="Enter your account number">
-                    </div>
-                    <div class="form-group">
-                        <button class="btn btn-primary" id="update-account-btn">
-                            <i class="fas fa-save"></i> Update Information
-                        </button>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Your Referral Link</label>
+                            <div style="display: flex;">
+                                <input type="text" id="referral-link" class="form-control" readonly value="https://leadconnect.com/?ref=ABCD123">
+                                <button id="copy-link" class="btn btn-primary" style="margin-left: 10px;">Copy</button>
+                            </div>
+                        </div>
+                        
+                        <div class="progress-container">
+                            <p>Progress to withdrawal eligibility: <span id="referral-count">0</span>/<span id="min-referrals-count">6</span> referrals</p>
+                            <div class="progress-bar">
+                                <div class="progress" id="referral-progress" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Training Resources</label>
+                            <div style="margin-top: 15px; text-align: center;">
+                                <iframe width="100%" height="315" src="https://www.youtube.com/embed/dQw4w9WgXcQ" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 15px; margin-top: 20px;">
+                            <button class="btn btn-primary">Get Customers</button>
+                            <button class="btn btn-success">Buy Token</button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+
+            <!-- Referrals Tab -->
+            <div id="user-referrals" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>My Referrals</h3>
+                    </div>
+                    <div class="card-body">
+                        <table id="referrals-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Join Date</th>
+                                    <th>Status</th>
+                                    <th>Earned Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Will be populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Withdrawals Tab -->
+            <div id="user-withdrawals" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Withdraw Funds</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="withdrawal-form">
+                            <div class="form-group">
+                                <label for="withdrawal-amount">Amount ($)</label>
+                                <input type="number" id="withdrawal-amount" class="form-control" min="20" step="1" placeholder="Minimum $20">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Withdrawal Method</label>
+                                <select id="withdrawal-method" class="form-control">
+                                    <option value="bank">Bank Transfer</option>
+                                    <option value="crypto">Crypto (TRX)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group" id="bank-details">
+                                <label for="account-number">Account Number</label>
+                                <input type="text" id="account-number" class="form-control" placeholder="Enter account number">
+                            </div>
+                            
+                            <div class="form-group" id="crypto-details" style="display: none;">
+                                <label for="tron-address">TRON (TRX) Address</label>
+                                <input type="text" id="tron-address" class="form-control" placeholder="Enter TRX address">
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary btn-block">Request Withdrawal</button>
+                        </form>
+                        
+                        <div class="card" style="margin-top: 30px;">
+                            <div class="card-header">
+                                <h3>Withdrawal History</h3>
+                            </div>
+                            <div class="card-body">
+                                <table id="withdrawal-history">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Amount</th>
+                                            <th>Method</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Will be populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Account Tab -->
+            <div id="user-account" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Account Settings</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="account-form">
+                            <div class="form-group">
+                                <label for="account-name">Full Name</label>
+                                <input type="text" id="account-name" class="form-control" placeholder="Enter your full name">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="account-email">Email</label>
+                                <input type="email" id="account-email" class="form-control" placeholder="Enter your email">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="account-phone">Phone</label>
+                                <input type="tel" id="account-phone" class="form-control" placeholder="Enter your phone number">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="account-number">Bank Account Number</label>
+                                <input type="text" id="account-number" class="form-control" placeholder="Enter account number">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="account-tron">TRON (TRX) Address</label>
+                                <input type="text" id="account-tron" class="form-control" placeholder="Enter TRX address">
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">Update Information</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
 
     <script>
-        // Firebase initialization (configuration is in configuration.js)
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
+        // Firebase Initialization
+        let auth, db;
+        const ADMIN_EMAIL = "admin@leadconnect.com";
         
-        // Current user data
-        let currentUser = null;
-        let userData = null;
-        
-        // Page navigation functions
-        function showPage(pageId) {
-            document.querySelectorAll('.page').forEach(page => {
-                page.classList.remove('active');
-            });
-            document.getElementById(pageId).classList.add('active');
+        try {
+            // Initialize Firebase from configuration.js
+            firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.firestore();
+        } catch (e) {
+            console.error("Firebase initialization error:", e);
+            showNotification('auth', 'error', 'Firebase configuration error. Please check configuration.js');
         }
 
-        // Initialize the application
-        document.addEventListener('DOMContentLoaded', function() {
-            // Check if user is already logged in
-            auth.onAuthStateChanged(user => {
-                if (user) {
-                    currentUser = user;
-                    // Check if user is admin
-                    if (user.email === 'admin@leadconnect.com') {
-                        loadAdminData();
-                        showPage('admin-dashboard');
-                    } else {
-                        loadUserData();
-                        showPage('user-dashboard');
-                    }
+        // DOM Elements
+        const authView = document.getElementById('auth-view');
+        const adminDashboard = document.getElementById('admin-dashboard');
+        const userDashboard = document.getElementById('user-dashboard');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const showRegister = document.getElementById('show-register');
+        const authToggle = document.getElementById('auth-toggle');
+        const loginBtn = document.getElementById('login-btn');
+        const registerBtn = document.getElementById('register-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const adminLogout = document.getElementById('admin-logout');
+        const userLogoutBtn = document.getElementById('user-logout-btn');
+        const tabLinks = document.querySelectorAll('.nav-links a');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const dashboardTitle = document.getElementById('dashboard-title');
+        const generateTokenBtn = document.getElementById('generate-token');
+        const bulkGenerateBtn = document.getElementById('bulk-generate');
+        const tokenStatusFilter = document.getElementById('token-status-filter');
+        const withdrawalStatusFilter = document.getElementById('withdrawal-status-filter');
+        const settingsForm = document.getElementById('settings-form');
+        const withdrawalForm = document.getElementById('withdrawal-form');
+        const accountForm = document.getElementById('account-form');
+        const referralLink = document.getElementById('referral-link');
+        const copyLinkBtn = document.getElementById('copy-link');
+        const withdrawalMethod = document.getElementById('withdrawal-method');
+
+        // Notification system
+        function showNotification(context, type, message) {
+            const notification = document.getElementById(`notification-${context}`);
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 5000);
+        }
+
+        // Toggle between login and register forms
+        showRegister.addEventListener('click', function(e) {
+            e.preventDefault();
+            loginForm.style.display = 'none';
+            registerForm.style.display = 'block';
+            authToggle.innerHTML = 'Already have an account? <a href="#" id="show-login">Login</a>';
+            
+            document.getElementById('show-login').addEventListener('click', function(e) {
+                e.preventDefault();
+                registerForm.style.display = 'none';
+                loginForm.style.display = 'block';
+                authToggle.innerHTML = 'Don\'t have an account? <a href="#" id="show-register">Register</a>';
+                showRegister.addEventListener('click', arguments.callee);
+            });
+        });
+
+        // Login functionality with Firebase
+        loginBtn.addEventListener('click', async function() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!email || !password) {
+                showNotification('auth', 'error', 'Please fill in all fields');
+                return;
+            }
+            
+            try {
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                
+                // Hide auth view
+                authView.style.display = 'none';
+                
+                // Check if admin
+                if (user.email === ADMIN_EMAIL) {
+                    adminDashboard.style.display = 'flex';
+                    loadAdminDashboard(user);
                 } else {
-                    showPage('login-page');
+                    userDashboard.style.display = 'flex';
+                    loadUserDashboard(user);
                 }
-            });
-            
-            // Login/Register toggle
-            const loginForm = document.getElementById('login-form');
-            const registerForm = document.getElementById('register-form');
-            const showRegister = document.getElementById('show-register');
-            const showLogin = document.getElementById('show-login');
-            
-            showRegister.addEventListener('click', function(e) {
-                e.preventDefault();
-                loginForm.classList.add('hidden');
-                registerForm.classList.remove('hidden');
-            });
-            
-            showLogin.addEventListener('click', function(e) {
-                e.preventDefault();
-                registerForm.classList.add('hidden');
-                loginForm.classList.remove('hidden');
-            });
-            
-            // Country selection
-            document.getElementById('country').addEventListener('change', function() {
-                const manualCountry = document.getElementById('manual-country');
-                manualCountry.style.display = this.value === 'other' ? 'block' : 'none';
-            });
-            
-            // Copy referral link
-            document.getElementById('copy-btn')?.addEventListener('click', function() {
-                const refLink = document.getElementById('ref-link');
-                refLink.select();
-                document.execCommand('copy');
-                alert('Referral link copied to clipboard!');
-            });
-            
-            // Tab switching for admin
-            const adminTabs = document.querySelectorAll('#admin-dashboard .tab');
-            adminTabs.forEach(tab => {
-                tab.addEventListener('click', function() {
-                    adminTabs.forEach(t => t.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    document.querySelectorAll('#admin-dashboard .tab-content').forEach(content => {
-                        content.classList.remove('active');
-                    });
-                    
-                    const tabId = this.getAttribute('data-tab');
-                    document.getElementById(`${tabId}-tab`).classList.add('active');
-                    
-                    // Load data for the selected tab
-                    if (tabId === 'admin-tokens') {
-                        loadTokenManagement();
-                    } else if (tabId === 'admin-users') {
-                        loadUserManagement();
-                    } else if (tabId === 'admin-affiliates') {
-                        loadAffiliateManagement();
-                    } else if (tabId === 'admin-withdrawals') {
-                        loadWithdrawalManagement();
-                    }
-                });
-            });
-            
-            // Tab switching for user
-            const userTabs = document.querySelectorAll('#user-dashboard .tab');
-            userTabs.forEach(tab => {
-                tab.addEventListener('click', function() {
-                    userTabs.forEach(t => t.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    document.querySelectorAll('#user-dashboard .tab-content').forEach(content => {
-                        content.classList.remove('active');
-                    });
-                    
-                    const tabId = this.getAttribute('data-tab');
-                    document.getElementById(`${tabId}-tab`).classList.add('active');
-                    
-                    // Load data for the selected tab
-                    if (tabId === 'referrals') {
-                        loadUserReferrals();
-                    } else if (tabId === 'withdrawals') {
-                        loadWithdrawalHistory();
-                    }
-                });
-            });
-            
-            // Login functionality
-            document.getElementById('login-btn').addEventListener('click', function() {
-                const email = document.getElementById('login-email').value;
-                const password = document.getElementById('login-password').value;
                 
-                if (!email || !password) {
-                    alert('Please enter both email and password');
+            } catch (error) {
+                console.error("Login error:", error);
+                showNotification('auth', 'error', `Login failed: ${error.message}`);
+            }
+        });
+
+        // Registration functionality
+        registerBtn.addEventListener('click', async function() {
+            const fullName = document.getElementById('fullName').value;
+            const email = document.getElementById('reg-email').value;
+            const password = document.getElementById('reg-password').value;
+            const referralCode = document.getElementById('referralCode').value;
+            const token = document.getElementById('token').value;
+            
+            if (!fullName || !email || !password || !token) {
+                showNotification('auth', 'error', 'Please fill in all required fields');
+                return;
+            }
+            
+            try {
+                // 1. Validate token
+                const tokenDoc = await db.collection('tokens').doc(token).get();
+                
+                if (!tokenDoc.exists) {
+                    showNotification('auth', 'error', 'Invalid activation token');
                     return;
                 }
                 
-                auth.signInWithEmailAndPassword(email, password)
-                    .then((userCredential) => {
-                        // Check if user has entered a token (for non-admin users)
-                        if (email !== 'admin@leadconnect.com') {
-                            checkTokenStatus();
-                        }
-                    })
-                    .catch((error) => {
-                        alert('Login failed: ' + error.message);
-                    });
-            });
-            
-            // Registration functionality
-            document.getElementById('register-btn').addEventListener('click', function() {
-                const name = document.getElementById('register-name').value;
-                const email = document.getElementById('register-email').value;
-                const password = document.getElementById('register-password').value;
-                const referralCode = document.getElementById('referral-code').value;
+                const tokenData = tokenDoc.data();
                 
-                if (!name || !email || !password) {
-                    alert('Please fill all required fields');
+                if (tokenData.status !== 'unused') {
+                    showNotification('auth', 'error', 'Token has already been used');
                     return;
                 }
                 
-                auth.createUserWithEmailAndPassword(email, password)
-                    .then((userCredential) => {
-                        // Create user document in Firestore
-                        return db.collection('users').doc(userCredential.user.uid).set({
-                            name: name,
-                            email: email,
-                            balance: 0,
-                            referrals: 0,
-                            referralCode: generateReferralCode(),
-                            referredBy: referralCode || null,
-                            accountNumber: '',
-                            phone: '',
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                    })
-                    .then(() => {
-                        alert('Account created successfully! Please login.');
-                        registerForm.classList.add('hidden');
-                        loginForm.classList.remove('hidden');
+                // 2. Create user
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                
+                // 3. Create user document
+                const userData = {
+                    uid: user.uid,
+                    name: fullName,
+                    email: email,
+                    role: 'user',
+                    status: 'active',
+                    balance: 0,
+                    referralCode: generateReferralCode(),
+                    joinDate: firebase.firestore.FieldValue.serverTimestamp(),
+                    tokens: [token]
+                };
+                
+                // 4. Apply referral if exists
+                if (referralCode) {
+                    // Find referrer
+                    const referrerQuery = await db.collection('users')
+                        .where('referralCode', '==', referralCode)
+                        .limit(1)
+                        .get();
+                    
+                    if (!referrerQuery.empty) {
+                        const referrerDoc = referrerQuery.docs[0];
+                        const referrerData = referrerDoc.data();
                         
-                        // If referral code was used, update referrer's data
-                        if (referralCode) {
-                            processReferral(referralCode);
-                        }
-                    })
-                    .catch((error) => {
-                        alert('Registration failed: ' + error.message);
-                    });
-            });
-            
-            // Logout functionality
-            document.getElementById('logout-btn')?.addEventListener('click', function() {
-                auth.signOut();
-            });
-            
-            document.getElementById('admin-logout-btn')?.addEventListener('click', function() {
-                auth.signOut();
-            });
-            
-            // Generate tokens
-            document.getElementById('generate-token')?.addEventListener('click', function() {
-                const tokenCount = parseInt(document.getElementById('token-count').value);
-                const tokenType = document.getElementById('token-type').value;
-                const tokenDisplay = document.getElementById('generated-token');
-                
-                if (isNaN(tokenCount) {
-                    alert('Please enter a valid number of tokens');
-                    return;
+                        // Update referrer's balance (15% commission)
+                        const commission = 15; // USD
+                        await db.collection('users').doc(referrerDoc.id).update({
+                            balance: firebase.firestore.FieldValue.increment(commission),
+                            referrals: firebase.firestore.FieldValue.arrayUnion(user.uid)
+                        });
+                        
+                        // Update new user
+                        userData.referredBy = referrerDoc.id;
+                        
+                        // Create referral record
+                        await db.collection('referrals').add({
+                            referrerId: referrerDoc.id,
+                            referredId: user.uid,
+                            amount: commission,
+                            date: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    }
                 }
                 
+                // 5. Save user to Firestore
+                await db.collection('users').doc(user.uid).set(userData);
+                
+                // 6. Update token status
+                await db.collection('tokens').doc(token).update({
+                    status: 'used',
+                    usedBy: user.uid,
+                    usedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // Show success and redirect to login
+                showNotification('auth', 'success', 'Registration successful! Please login.');
+                registerForm.style.display = 'none';
+                loginForm.style.display = 'block';
+                authToggle.innerHTML = 'Don\'t have an account? <a href="#" id="show-register">Register</a>';
+                
+            } catch (error) {
+                console.error("Registration error:", error);
+                showNotification('auth', 'error', `Registration failed: ${error.message}`);
+            }
+        });
+
+        // Generate referral code
+        function generateReferralCode() {
+            return Math.random().toString(36).substr(2, 8).toUpperCase();
+        }
+
+        // Token generation
+        generateTokenBtn.addEventListener('click', async function() {
+            const tokenType = document.getElementById('token-type').value;
+            
+            try {
+                // Generate token
+                const token = 'TK-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+                
+                // Save to Firestore
+                await db.collection('tokens').doc(token).set({
+                    type: tokenType,
+                    status: 'unused',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    createdBy: auth.currentUser.uid
+                });
+                
+                showNotification('dashboard', 'success', `Token generated: ${token}`);
+                
+            } catch (error) {
+                console.error("Token generation error:", error);
+                showNotification('dashboard', 'error', `Token generation failed: ${error.message}`);
+            }
+        });
+
+        // Bulk token generation
+        bulkGenerateBtn.addEventListener('click', async function() {
+            const tokenType = document.getElementById('token-type').value;
+            
+            try {
                 const batch = db.batch();
                 
-                for (let i = 0; i < tokenCount; i++) {
-                    const token = generateToken();
-                    const tokenRef = db.collection('tokens').doc();
+                for (let i = 0; i < 5; i++) {
+                    const token = 'TK-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+                    const tokenRef = db.collection('tokens').doc(token);
                     
                     batch.set(tokenRef, {
-                        token: token,
                         type: tokenType,
                         status: 'unused',
                         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                        usesLeft: tokenType === 'multi-use' ? 5 : 1
+                        createdBy: auth.currentUser.uid
                     });
                 }
                 
-                batch.commit()
-                    .then(() => {
-                        tokenDisplay.classList.remove('hidden');
-                        tokenDisplay.innerHTML = `
-                            <i class="fas fa-check-circle"></i> 
-                            Successfully generated ${tokenCount} ${tokenType} tokens
-                        `;
-                        
-                        setTimeout(() => {
-                            tokenDisplay.classList.add('hidden');
-                        }, 3000);
-                        
-                        // Refresh token list
-                        loadTokenManagement();
-                    })
-                    .catch(error => {
-                        alert('Error generating tokens: ' + error.message);
-                    });
-            });
+                await batch.commit();
+                showNotification('dashboard', 'success', '5 tokens generated successfully');
+                
+            } catch (error) {
+                console.error("Bulk token generation error:", error);
+                showNotification('dashboard', 'error', `Bulk token generation failed: ${error.message}`);
+            }
+        });
+
+        // Load admin dashboard
+        async function loadAdminDashboard(user) {
+            // Set user info
+            document.getElementById('user-name').textContent = 'Admin User';
+            document.getElementById('user-email').textContent = user.email;
+            document.getElementById('user-avatar').textContent = 'A';
             
-            // Save affiliate settings
-            document.getElementById('save-affiliate-settings')?.addEventListener('click', function() {
-                const commissionRate = parseInt(document.getElementById('commission-rate').value);
-                const minWithdrawal = parseInt(document.getElementById('min-withdrawal').value);
-                const minReferrals = parseInt(document.getElementById('min-referrals').value);
+            // Load stats
+            loadAdminStats();
+            
+            // Load tokens
+            loadTokens();
+            
+            // Load users
+            loadUsers();
+            
+            // Load withdrawals
+            loadWithdrawals();
+            
+            // Load settings
+            loadSettings();
+        }
+        
+        // Load user dashboard
+        async function loadUserDashboard(user) {
+            // Get user data
+            const userDoc = await db.collection('users').doc(user.uid).get();
+            const userData = userDoc.data();
+            
+            // Set user info
+            document.getElementById('user-name').textContent = userData.name;
+            document.getElementById('user-email').textContent = user.email;
+            document.getElementById('user-avatar').textContent = userData.name.charAt(0);
+            
+            // Set referral link
+            referralLink.value = `https://leadconnect.com/?ref=${userData.referralCode}`;
+            
+            // Set dashboard stats
+            document.getElementById('user-balance').textContent = `$${userData.balance || 0}`;
+            document.getElementById('user-referrals').textContent = userData.referrals?.length || 0;
+            document.getElementById('pending-withdrawal').textContent = '$0'; // Would need to calculate
+            
+            // Set progress bar
+            const referralCount = userData.referrals?.length || 0;
+            const minReferrals = 6;
+            const progress = Math.min(100, (referralCount / minReferrals) * 100);
+            
+            document.getElementById('referral-count').textContent = referralCount;
+            document.getElementById('min-referrals-count').textContent = minReferrals;
+            document.getElementById('referral-progress').style.width = `${progress}%`;
+            
+            // Load referral data
+            loadUserReferrals(user.uid);
+            
+            // Load withdrawal history
+            loadWithdrawalHistory(user.uid);
+        }
+        
+        // Load admin stats
+        async function loadAdminStats() {
+            try {
+                // Get total users
+                const usersSnapshot = await db.collection('users').get();
+                document.getElementById('total-users').textContent = usersSnapshot.size;
                 
-                if (isNaN(commissionRate) || isNaN(minWithdrawal) || isNaN(minReferrals)) {
-                    alert('Please enter valid numbers for all fields');
-                    return;
-                }
+                // Get pending withdrawals
+                const withdrawalsSnapshot = await db.collection('withdrawals')
+                    .where('status', '==', 'pending')
+                    .get();
                 
-                db.collection('settings').doc('affiliate').set({
-                    commissionRate: commissionRate,
-                    minWithdrawal: minWithdrawal,
-                    minReferrals: minReferrals
-                }, { merge: true })
-                .then(() => {
-                    alert('Affiliate settings saved successfully!');
-                })
-                .catch(error => {
-                    alert('Error saving settings: ' + error.message);
+                let pendingTotal = 0;
+                withdrawalsSnapshot.forEach(doc => {
+                    pendingTotal += doc.data().amount;
                 });
-            });
-            
-            // Save system settings
-            document.getElementById('save-system-settings')?.addEventListener('click', function() {
-                const maintenanceMode = document.getElementById('maintenance-mode').value;
-                const currency = document.getElementById('currency').value;
-                const maxCommission = parseInt(document.getElementById('max-commission').value);
-                const notificationEmail = document.getElementById('notification-email').value;
+                document.getElementById('pending-withdrawals').textContent = `$${pendingTotal}`;
                 
-                db.collection('settings').doc('system').set({
-                    maintenanceMode: maintenanceMode,
-                    currency: currency,
-                    maxCommission: maxCommission,
-                    notificationEmail: notificationEmail
-                }, { merge: true })
-                .then(() => {
-                    alert('System settings saved successfully!');
-                })
-                .catch(error => {
-                    alert('Error saving settings: ' + error.message);
+                // Get active tokens
+                const tokensSnapshot = await db.collection('tokens')
+                    .where('status', '==', 'unused')
+                    .get();
+                
+                document.getElementById('active-tokens').textContent = tokensSnapshot.size;
+                
+                // Total earnings would require more complex calculation
+                
+            } catch (error) {
+                console.error("Error loading admin stats:", error);
+            }
+        }
+        
+        // Load tokens
+        function loadTokens() {
+            const tokensTable = document.getElementById('tokens-table').querySelector('tbody');
+            tokensTable.innerHTML = '';
+            
+            db.collection('tokens').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+                tokensTable.innerHTML = '';
+                
+                snapshot.forEach(doc => {
+                    const token = doc.id;
+                    const data = doc.data();
+                    
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>${token}</td>
+                        <td>${data.type}</td>
+                        <td><span class="status-badge ${data.status === 'used' ? 'badge-used' : 'badge-unused'}">${data.status}</span></td>
+                        <td>${data.createdAt?.toDate().toLocaleDateString() || ''}</td>
+                        <td>${data.usedBy || '-'}</td>
+                        <td><button class="btn btn-danger btn-sm" data-token="${token}">Delete</button></td>
+                    `;
+                    
+                    tokensTable.appendChild(row);
                 });
+            }, error => {
+                console.error("Error loading tokens:", error);
             });
-            
-            // Save security settings
-            document.getElementById('save-security-settings')?.addEventListener('click', function() {
-                const sessionTimeout = document.getElementById('session-timeout').value;
-                const twoFactorAuth = document.getElementById('two-factor-auth').value;
-                const passwordPolicy = document.getElementById('password-policy').value;
-                
-                db.collection('settings').doc('security').set({
-                    sessionTimeout: sessionTimeout,
-                    twoFactorAuth: twoFactorAuth,
-                    passwordPolicy: passwordPolicy
-                }, { merge: true })
-                .then(() => {
-                    alert('Security settings updated successfully!');
-                })
-                .catch(error => {
-                    alert('Error updating settings: ' + error.message);
-                });
+        }
+        
+        // Logout functionality
+        function logout() {
+            auth.signOut().then(() => {
+                adminDashboard.style.display = 'none';
+                userDashboard.style.display = 'none';
+                authView.style.display = 'flex';
             });
+        }
+
+        // Event listeners
+        logoutBtn.addEventListener('click', logout);
+        adminLogout.addEventListener('click', logout);
+        userLogoutBtn.addEventListener('click', logout);
+
+        // Tab navigation
+        tabLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Remove active class from all tabs
+                tabLinks.forEach(l => l.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                this.classList.add('active');
+                const tabId = this.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+                
+                // Update dashboard title
+                dashboardTitle.textContent = this.textContent;
+            });
+        });
+
+        // Initialize with pre-filled admin credentials
+        document.getElementById('email').value = ADMIN_EMAIL;
+        document.getElementById('password').value = 'admin123';
+        
+        // Handle auth state changes
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                authView.style.display = 'none';
+                
+                if (user.email === ADMIN_EMAIL) {
+                    adminDashboard.style.display = 'flex';
+                    loadAdminDashboard(user);
+                } else {
+                    userDashboard.style.display = 'flex';
+                    loadUserDashboard(user);
+                }
+            } else {
+                authView.style.display = 'flex';
+                adminDashboard.style.display = 'none';
+                userDashboard.style.display = 'none';
+            }
+        });
+        
+        // Copy referral link
+        copyLinkBtn.addEventListener('click', function() {
+            referralLink.select();
+            document.execCommand('copy');
+            showNotification('user', 'success', 'Referral link copied to clipboard!');
+        });
+        
+        // Handle withdrawal method change
+        withdrawalMethod.addEventListener('change', function() {
+            if (this.value === 'bank') {
+                document.getElementById('bank-details').style.display = 'block';
+                document.getElementById('crypto-details').style.display = 'none';
+            } else {
+                document.getElementById('bank-details').style.display = 'none';
+                document.getElementById('crypto-details').style.display = 'block';
+            }
+        });
+        
+        // Withdrawal request
+        withdrawalForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
             
-            // Request withdrawal
-            document.getElementById('request-withdrawal-btn')?.addEventListener('click', function() {
-                const amount = parseFloat(document.getElementById('withdraw-amount').value);
-                const account = document.getElementById('withdraw-account').value;
+            const amount = parseFloat(document.getElementById('withdrawal-amount').value);
+            const method = document.getElementById('withdrawal-method').value;
+            
+            if (amount < 20) {
+                showNotification('user', 'error', 'Minimum withdrawal amount is $20');
+                return;
+            }
+            
+            try {
+                const user = auth.currentUser;
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                const userData = userDoc.data();
                 
-                if (!amount || !account) {
-                    alert('Please fill all fields');
-                    return;
-                }
-                
-                if (amount < userData.minWithdrawal) {
-                    alert(`Minimum withdrawal amount is $${userData.minWithdrawal}`);
-                    return;
-                }
-                
-                if (userData.referrals < userData.minReferrals) {
-                    alert(`You need at least ${userData.minReferrals} active referrals to withdraw`);
-                    return;
-                }
-                
-                if (amount > userData.balance) {
-                    alert('Insufficient balance');
+                if (userData.balance < amount) {
+                    showNotification('user', 'error', 'Insufficient balance');
                     return;
                 }
                 
                 // Create withdrawal request
-                db.collection('withdrawals').add({
-                    userId: currentUser.uid,
-                    userName: userData.name,
+                await db.collection('withdrawals').add({
+                    userId: user.uid,
                     amount: amount,
-                    account: account,
+                    method: method,
+                    accountInfo: method === 'bank' 
+                        ? document.getElementById('account-number').value 
+                        : document.getElementById('tron-address').value,
                     status: 'pending',
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                })
-                .then(() => {
-                    // Update user balance
-                    return db.collection('users').doc(currentUser.uid).update({
-                        balance: firebase.firestore.FieldValue.increment(-amount)
-                    });
-                })
-                .then(() => {
-                    alert(`Withdrawal request for $${amount} submitted successfully!`);
-                    document.getElementById('withdraw-amount').value = '';
-                    document.getElementById('withdraw-account').value = '';
-                    
-                    // Refresh user data
-                    loadUserData();
-                    loadWithdrawalHistory();
-                })
-                .catch(error => {
-                    alert('Error submitting withdrawal: ' + error.message);
                 });
-            });
-            
-            // Buy token
-            document.getElementById('buy-token')?.addEventListener('click', function() {
-                alert('Please contact admin to purchase token.');
-            });
-            
-            // Enroll
-            document.getElementById('enroll-btn')?.addEventListener('click', function() {
-                const phone = document.getElementById('phone-number').value;
-                const token = document.getElementById('token-input').value;
-                const country = document.getElementById('country').value === 'other' ? 
-                    document.getElementById('manual-country').value : 
-                    document.getElementById('country').value;
                 
-                if (!phone || !token || !country) {
-                    alert('Please fill all fields');
-                    return;
-                }
-                
-                // Validate token
-                validateToken(token)
-                    .then(tokenData => {
-                        if (!tokenData) {
-                            throw new Error('Invalid or expired token');
-                        }
-                        
-                        // Mark token as used
-                        return markTokenAsUsed(tokenData);
-                    })
-                    .then(() => {
-                        alert('Enrollment successful! You now have access to lead generation.');
-                        document.getElementById('token-input').value = '';
-                        
-                        // Update user phone number if changed
-                        if (phone !== userData.phone) {
-                            return db.collection('users').doc(currentUser.uid).update({
-                                phone: phone
-                            });
-                        }
-                    })
-                    .then(() => {
-                        // Refresh user data
-                        loadUserData();
-                    })
-                    .catch(error => {
-                        alert('Enrollment failed: ' + error.message);
-                    });
-            });
-            
-            // Update account info
-            document.getElementById('update-account-btn')?.addEventListener('click', function() {
-                const name = document.getElementById('account-name').value;
-                const phone = document.getElementById('account-phone').value;
-                const accountNumber = document.getElementById('account-number').value;
-                
-                if (!name) {
-                    alert('Please enter your name');
-                    return;
-                }
-                
-                db.collection('users').doc(currentUser.uid).update({
-                    name: name,
-                    phone: phone,
-                    accountNumber: accountNumber
-                })
-                .then(() => {
-                    alert('Account information updated successfully!');
-                    loadUserData();
-                })
-                .catch(error => {
-                    alert('Error updating account: ' + error.message);
+                // Deduct from user balance
+                await db.collection('users').doc(user.uid).update({
+                    balance: firebase.firestore.FieldValue.increment(-amount)
                 });
-            });
-            
-            // Token filter change
-            document.getElementById('token-filter')?.addEventListener('change', function() {
-                loadTokenManagement();
-            });
-            
-            // User search
-            document.getElementById('user-search')?.addEventListener('input', function() {
-                loadUserManagement();
-            });
-            
-            // Affiliate filter change
-            document.getElementById('affiliate-filter')?.addEventListener('change', function() {
-                loadAffiliateManagement();
-            });
-            
-            // Withdrawal filter change
-            document.getElementById('withdrawal-filter')?.addEventListener('change', function() {
-                loadWithdrawalManagement();
-            });
+                
+                showNotification('user', 'success', 'Withdrawal request submitted successfully');
+                withdrawalForm.reset();
+                
+            } catch (error) {
+                console.error("Withdrawal error:", error);
+                showNotification('user', 'error', `Withdrawal failed: ${error.message}`);
+            }
         });
         
-        // Helper functions
-        function generateToken() {
-            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-            let token = '';
-            for (let i = 0; i < 6; i++) {
-                token += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return token;
+        // Simulated functions for demonstration
+        function loadUsers() {
+            // Would connect to Firestore users collection
         }
         
-        function generateReferralCode() {
-            const chars = 'abcdefghijkmnopqrstuvwxyz0123456789';
-            let code = '';
-            for (let i = 0; i < 8; i++) {
-                code += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return code;
+        function loadWithdrawals() {
+            // Would connect to Firestore withdrawals collection
         }
         
-        function formatDate(timestamp) {
-            if (!timestamp) return '';
-            const date = timestamp.toDate();
-            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        function loadSettings() {
+            // Would load from Firestore settings collection
         }
         
-        function formatCurrency(amount) {
-            return '$' + parseFloat(amount).toFixed(2);
+        function loadUserReferrals(uid) {
+            // Would load user's referrals
         }
         
-        // Data loading functions
-        function loadAdminData() {
-            // Load stats
-            Promise.all([
-                db.collection('users').get(),
-                db.collection('tokens').where('status', '==', 'unused').get(),
-                db.collection('withdrawals').where('status', '==', 'pending').get(),
-                db.collection('withdrawals').where('status', '==', 'paid').get()
-            ])
-            .then(([usersSnapshot, tokensSnapshot, pendingWithdrawalsSnapshot, paidWithdrawalsSnapshot]) => {
-                // Total users
-                document.getElementById('total-users').textContent = usersSnapshot.size;
-                
-                // Active tokens
-                document.getElementById('active-tokens').textContent = tokensSnapshot.size;
-                
-                // Pending withdrawals
-                let pendingTotal = 0;
-                pendingWithdrawalsSnapshot.forEach(doc => {
-                    pendingTotal += doc.data().amount;
-                });
-                document.getElementById('pending-withdrawals').textContent = formatCurrency(pendingTotal);
-                
-                // Total earnings
-                let earningsTotal = 0;
-                paidWithdrawalsSnapshot.forEach(doc => {
-                    earningsTotal += doc.data().amount;
-                });
-                document.getElementById('total-earnings').textContent = formatCurrency(earningsTotal);
-                
-                // Recent activities
-                loadRecentActivities();
-            })
-            .catch(error => {
-                console.error('Error loading admin data:', error);
-            });
-        }
-        
-        function loadRecentActivities() {
-            const activitiesBody = document.getElementById('recent-activities-body');
-            activitiesBody.innerHTML = '';
-            
-            db.collection('activities')
-                .orderBy('createdAt', 'desc')
-                .limit(5)
-                .get()
-                .then(snapshot => {
-                    if (snapshot.empty) {
-                        activitiesBody.innerHTML = '<tr><td colspan="4">No recent activities</td></tr>';
-                        return;
-                    }
-                    
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        const row = document.createElement('tr');
-                        
-                        row.innerHTML = `
-                            <td>${data.userName || 'System'}</td>
-                            <td>${data.action}</td>
-                            <td>${formatDate(data.createdAt)}</td>
-                            <td>${data.details || ''}</td>
-                        `;
-                        
-                        activitiesBody.appendChild(row);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading activities:', error);
-                    activitiesBody.innerHTML = '<tr><td colspan="4">Error loading activities</td></tr>';
-                });
-        }
-        
-        function loadTokenManagement() {
-            const tokenBody = document.getElementById('token-management-body');
-            tokenBody.innerHTML = '';
-            
-            const filter = document.getElementById('token-filter').value;
-            let query = db.collection('tokens').orderBy('createdAt', 'desc');
-            
-            if (filter === 'used') {
-                query = query.where('status', '==', 'used');
-            } else if (filter === 'unused') {
-                query = query.where('status', '==', 'unused');
-            }
-            
-            query.get()
-                .then(snapshot => {
-                    if (snapshot.empty) {
-                        tokenBody.innerHTML = '<tr><td colspan="5">No tokens found</td></tr>';
-                        return;
-                    }
-                    
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        const row = document.createElement('tr');
-                        
-                        let statusBadge = '';
-                        if (data.status === 'unused') {
-                            statusBadge = '<span class="badge badge-success">Unused</span>';
-                        } else if (data.type === 'multi-use' && data.usesLeft > 0) {
-                            statusBadge = `<span class="badge badge-warning">Used (${5 - data.usesLeft}/5)</span>`;
-                        } else {
-                            statusBadge = '<span class="badge badge-info">Used</span>';
-                        }
-                        
-                        row.innerHTML = `
-                            <td>${data.token}</td>
-                            <td>${data.type === 'multi-use' ? 'Reusable' : 'One-Time'}</td>
-                            <td>${statusBadge}</td>
-                            <td>${formatDate(data.createdAt)}</td>
-                            <td>
-                                <div class="admin-actions">
-                                    <button class="btn btn-danger" data-id="${doc.id}">Delete</button>
-                                </div>
-                            </td>
-                        `;
-                        
-                        tokenBody.appendChild(row);
-                    });
-                    
-                    // Add event listeners to delete buttons
-                    document.querySelectorAll('#token-management-body .btn-danger').forEach(btn => {
-                        btn.addEventListener('click', function() {
-                            const tokenId = this.getAttribute('data-id');
-                            deleteToken(tokenId);
-                        });
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading tokens:', error);
-                    tokenBody.innerHTML = '<tr><td colspan="5">Error loading tokens</td></tr>';
-                });
-        }
-        
-        function deleteToken(tokenId) {
-            if (!confirm('Are you sure you want to delete this token?')) return;
-            
-            db.collection('tokens').doc(tokenId).delete()
-                .then(() => {
-                    alert('Token deleted successfully');
-                    loadTokenManagement();
-                })
-                .catch(error => {
-                    alert('Error deleting token: ' + error.message);
-                });
-        }
-        
-        function loadUserManagement() {
-            const userBody = document.getElementById('user-management-body');
-            userBody.innerHTML = '';
-            
-            const searchTerm = document.getElementById('user-search').value.toLowerCase();
-            let query = db.collection('users').orderBy('createdAt', 'desc');
-            
-            query.get()
-                .then(snapshot => {
-                    if (snapshot.empty) {
-                        userBody.innerHTML = '<tr><td colspan="6">No users found</td></tr>';
-                        return;
-                    }
-                    
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        
-                        // Filter by search term if provided
-                        if (searchTerm && 
-                            !data.name.toLowerCase().includes(searchTerm) && 
-                            !data.email.toLowerCase().includes(searchTerm)) {
-                            return;
-                        }
-                        
-                        const row = document.createElement('tr');
-                        
-                        row.innerHTML = `
-                            <td>#${doc.id.substring(0, 5)}</td>
-                            <td>${data.name}</td>
-                            <td>${data.email}</td>
-                            <td>${formatDate(data.createdAt)}</td>
-                            <td><span class="badge ${data.status === 'suspended' ? 'badge-warning' : 'badge-success'}">${data.status === 'suspended' ? 'Suspended' : 'Active'}</span></td>
-                            <td>
-                                <div class="admin-actions">
-                                    <button class="btn btn-outline" data-id="${doc.id}">Edit</button>
-                                    <button class="btn ${data.status === 'suspended' ? 'btn-success' : 'btn-danger'}" data-id="${doc.id}">
-                                        ${data.status === 'suspended' ? 'Activate' : 'Suspend'}
-                                    </button>
-                                </div>
-                            </td>
-                        `;
-                        
-                        userBody.appendChild(row);
-                    });
-                    
-                    // Add event listeners to action buttons
-                    document.querySelectorAll('#user-management-body .btn-outline').forEach(btn => {
-                        btn.addEventListener('click', function() {
-                            const userId = this.getAttribute('data-id');
-                            editUser(userId);
-                        });
-                    });
-                    
-                    document.querySelectorAll('#user-management-body .btn-success, #user-management-body .btn-danger').forEach(btn => {
-                        btn.addEventListener('click', function() {
-                            const userId = this.getAttribute('data-id');
-                            const currentStatus = this.classList.contains('btn-success') ? 'suspended' : 'active';
-                            toggleUserStatus(userId, currentStatus);
-                        });
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading users:', error);
-                    userBody.innerHTML = '<tr><td colspan="6">Error loading users</td></tr>';
-                });
-        }
-        
-        function editUser(userId) {
-            // In a real app, this would open a modal or form to edit user details
-            alert('Edit user functionality would open here for user ID: ' + userId);
-        }
-        
-        function toggleUserStatus(userId, currentStatus) {
-            const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
-            
-            db.collection('users').doc(userId).update({
-                status: newStatus
-            })
-            .then(() => {
-                alert(`User status updated to ${newStatus}`);
-                loadUserManagement();
-            })
-            .catch(error => {
-                alert('Error updating user status: ' + error.message);
-            });
-        }
-        
-        function loadAffiliateManagement() {
-            const affiliateBody = document.getElementById('affiliate-earnings-body');
-            affiliateBody.innerHTML = '';
-            
-            const filter = document.getElementById('affiliate-filter').value;
-            let query = db.collection('users').where('referrals', '>', 0).orderBy('referrals', 'desc');
-            
-            if (filter === 'new') {
-                query = query.orderBy('createdAt', 'desc');
-            }
-            
-            query.get()
-                .then(snapshot => {
-                    if (snapshot.empty) {
-                        affiliateBody.innerHTML = '<tr><td colspan="5">No affiliates found</td></tr>';
-                        return;
-                    }
-                    
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        const row = document.createElement('tr');
-                        
-                        row.innerHTML = `
-                            <td>${data.referralCode}</td>
-                            <td>${data.referrals || 0}</td>
-                            <td>${formatCurrency(data.totalEarned || 0)}</td>
-                            <td>${formatCurrency(data.totalWithdrawn || 0)}</td>
-                            <td>${formatCurrency((data.totalEarned || 0) - (data.totalWithdrawn || 0))}</td>
-                        `;
-                        
-                        affiliateBody.appendChild(row);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading affiliates:', error);
-                    affiliateBody.innerHTML = '<tr><td colspan="5">Error loading affiliates</td></tr>';
-                });
-        }
-        
-        function loadWithdrawalManagement() {
-            const withdrawalBody = document.getElementById('withdrawal-requests-body');
-            withdrawalBody.innerHTML = '';
-            
-            const filter = document.getElementById('withdrawal-filter').value;
-            let query = db.collection('withdrawals').orderBy('createdAt', 'desc');
-            
-            if (filter !== 'all') {
-                query = query.where('status', '==', filter);
-            }
-            
-            query.get()
-                .then(snapshot => {
-                    if (snapshot.empty) {
-                        withdrawalBody.innerHTML = '<tr><td colspan="6">No withdrawals found</td></tr>';
-                        return;
-                    }
-                    
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        const row = document.createElement('tr');
-                        
-                        const statusBadge = data.status === 'pending' ? 
-                            '<span class="withdrawal-status status-pending">Pending</span>' : 
-                            '<span class="withdrawal-status status-paid">Paid</span>';
-                        
-                        const actions = data.status === 'pending' ? 
-                            `<div class="admin-actions">
-                                <button class="btn btn-success" data-id="${doc.id}">Approve</button>
-                                <button class="btn btn-danger" data-id="${doc.id}">Reject</button>
-                            </div>` : 
-                            `<div class="admin-actions">
-                                <button class="btn btn-outline" data-id="${doc.id}">View</button>
-                            </div>`;
-                        
-                        row.innerHTML = `
-                            <td>${data.userName}</td>
-                            <td>${formatCurrency(data.amount)}</td>
-                            <td>${data.account ? '****' + data.account.slice(-4) : ''}</td>
-                            <td>${formatDate(data.createdAt)}</td>
-                            <td>${statusBadge}</td>
-                            <td>${actions}</td>
-                        `;
-                        
-                        withdrawalBody.appendChild(row);
-                    });
-                    
-                    // Add event listeners to action buttons
-                    document.querySelectorAll('#withdrawal-requests-body .btn-success').forEach(btn => {
-                        btn.addEventListener('click', function() {
-                            const withdrawalId = this.getAttribute('data-id');
-                            updateWithdrawalStatus(withdrawalId, 'paid');
-                        });
-                    });
-                    
-                    document.querySelectorAll('#withdrawal-requests-body .btn-danger').forEach(btn => {
-                        btn.addEventListener('click', function() {
-                            const withdrawalId = this.getAttribute('data-id');
-                            updateWithdrawalStatus(withdrawalId, 'rejected');
-                        });
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading withdrawals:', error);
-                    withdrawalBody.innerHTML = '<tr><td colspan="6">Error loading withdrawals</td></tr>';
-                });
-        }
-        
-        function updateWithdrawalStatus(withdrawalId, status) {
-            db.collection('withdrawals').doc(withdrawalId).update({
-                status: status,
-                processedAt: firebase.firestore.FieldValue.serverTimestamp()
-            })
-            .then(() => {
-                alert(`Withdrawal ${status} successfully`);
-                loadWithdrawalManagement();
-                
-                // If approved, update user's total withdrawn
-                if (status === 'paid') {
-                    db.collection('withdrawals').doc(withdrawalId).get()
-                        .then(doc => {
-                            const data = doc.data();
-                            return db.collection('users').doc(data.userId).update({
-                                totalWithdrawn: firebase.firestore.FieldValue.increment(data.amount)
-                            });
-                        })
-                        .catch(error => {
-                            console.error('Error updating user withdrawn amount:', error);
-                        });
-                }
-            })
-            .catch(error => {
-                alert('Error updating withdrawal: ' + error.message);
-            });
-        }
-        
-        function loadUserData() {
-            // Get user document
-            db.collection('users').doc(currentUser.uid).get()
-                .then(doc => {
-                    if (!doc.exists) {
-                        throw new Error('User data not found');
-                    }
-                    
-                    userData = doc.data();
-                    userData.id = doc.id;
-                    
-                    // Get affiliate settings
-                    return db.collection('settings').doc('affiliate').get();
-                })
-                .then(settingsDoc => {
-                    if (settingsDoc.exists) {
-                        const settings = settingsDoc.data();
-                        userData.commissionRate = settings.commissionRate || 15;
-                        userData.minWithdrawal = settings.minWithdrawal || 20;
-                        userData.minReferrals = settings.minReferrals || 6;
-                    } else {
-                        userData.commissionRate = 15;
-                        userData.minWithdrawal = 20;
-                        userData.minReferrals = 6;
-                    }
-                    
-                    // Update UI with user data
-                    updateUserDashboard();
-                })
-                .catch(error => {
-                    console.error('Error loading user data:', error);
-                    alert('Error loading your account data');
-                });
-        }
-        
-        function updateUserDashboard() {
-            // Update stats
-            document.getElementById('user-balance').textContent = formatCurrency(userData.balance || 0);
-            document.getElementById('user-referrals').textContent = userData.referrals || 0;
-            document.getElementById('user-commission').textContent = userData.commissionRate + '%';
-            
-            // Calculate pending withdrawals
-            db.collection('withdrawals')
-                .where('userId', '==', currentUser.uid)
-                .where('status', '==', 'pending')
-                .get()
-                .then(snapshot => {
-                    let pendingTotal = 0;
-                    snapshot.forEach(doc => {
-                        pendingTotal += doc.data().amount;
-                    });
-                    document.getElementById('user-pending').textContent = formatCurrency(pendingTotal);
-                });
-            
-            // Update referral link
-            document.getElementById('ref-link').value = 
-                window.location.origin + window.location.pathname + '?ref=' + userData.referralCode;
-            
-            // Update progress bar
-            const progressPercent = Math.min(100, (userData.referrals || 0) / userData.minReferrals * 100);
-            document.getElementById('referral-progress').style.width = progressPercent + '%';
-            
-            // Update referral requirements
-            document.getElementById('min-referrals-text').textContent = userData.minReferrals;
-            document.getElementById('min-referrals-alert').textContent = userData.minReferrals;
-            document.getElementById('min-withdrawal-alert').textContent = userData.minWithdrawal;
-            document.getElementById('total-referrals-needed').textContent = userData.minReferrals;
-            document.getElementById('current-referrals').textContent = userData.referrals || 0;
-            document.getElementById('commission-rate-text').textContent = userData.commissionRate + '%';
-            
-            // Update account info
-            document.getElementById('account-name').value = userData.name || '';
-            document.getElementById('account-email').value = userData.email || '';
-            document.getElementById('account-phone').value = userData.phone || '';
-            document.getElementById('account-number').value = userData.accountNumber || '';
-        }
-        
-        function loadUserReferrals() {
-            const referralsBody = document.getElementById('user-referrals-body');
-            referralsBody.innerHTML = '';
-            
-            db.collection('users')
-                .where('referredBy', '==', userData.referralCode)
-                .orderBy('createdAt', 'desc')
-                .get()
-                .then(snapshot => {
-                    if (snapshot.empty) {
-                        referralsBody.innerHTML = '<tr><td colspan="4">No referrals yet</td></tr>';
-                        return;
-                    }
-                    
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        const row = document.createElement('tr');
-                        
-                        row.innerHTML = `
-                            <td>${data.name}</td>
-                            <td>${formatDate(data.createdAt)}</td>
-                            <td><span class="badge badge-success">Active</span></td>
-                            <td>${formatCurrency(userData.commissionRate)}</td>
-                        `;
-                        
-                        referralsBody.appendChild(row);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading referrals:', error);
-                    referralsBody.innerHTML = '<tr><td colspan="4">Error loading referrals</td></tr>';
-                });
-        }
-        
-        function loadWithdrawalHistory() {
-            const historyBody = document.getElementById('withdrawal-history-body');
-            historyBody.innerHTML = '';
-            
-            db.collection('withdrawals')
-                .where('userId', '==', currentUser.uid)
-                .orderBy('createdAt', 'desc')
-                .get()
-                .then(snapshot => {
-                    if (snapshot.empty) {
-                        historyBody.innerHTML = '<tr><td colspan="4">No withdrawal history</td></tr>';
-                        return;
-                    }
-                    
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        const row = document.createElement('tr');
-                        
-                        const statusBadge = data.status === 'pending' ? 
-                            '<span class="withdrawal-status status-pending">Pending</span>' : 
-                            data.status === 'paid' ? 
-                            '<span class="withdrawal-status status-paid">Paid</span>' : 
-                            '<span class="badge badge-danger">Rejected</span>';
-                        
-                        row.innerHTML = `
-                            <td>${formatDate(data.createdAt)}</td>
-                            <td>${formatCurrency(data.amount)}</td>
-                            <td>${data.account ? '****' + data.account.slice(-4) : ''}</td>
-                            <td>${statusBadge}</td>
-                        `;
-                        
-                        historyBody.appendChild(row);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading withdrawal history:', error);
-                    historyBody.innerHTML = '<tr><td colspan="4">Error loading history</td></tr>';
-                });
-        }
-        
-        function processReferral(referralCode) {
-            // Find user with this referral code
-            db.collection('users')
-                .where('referralCode', '==', referralCode)
-                .limit(1)
-                .get()
-                .then(snapshot => {
-                    if (snapshot.empty) {
-                        console.log('Invalid referral code');
-                        return;
-                    }
-                    
-                    const referrerDoc = snapshot.docs[0];
-                    const referrerId = referrerDoc.id;
-                    const referrerData = referrerDoc.data();
-                    
-                    // Get commission rate
-                    return db.collection('settings').doc('affiliate').get()
-                        .then(settingsDoc => {
-                            const settings = settingsDoc.exists ? settingsDoc.data() : {};
-                            const commissionRate = settings.commissionRate || 15;
-                            
-                            // Update referrer's stats
-                            return db.collection('users').doc(referrerId).update({
-                                referrals: firebase.firestore.FieldValue.increment(1),
-                                balance: firebase.firestore.FieldValue.increment(commissionRate),
-                                totalEarned: firebase.firestore.FieldValue.increment(commissionRate)
-                            });
-                        });
-                })
-                .then(() => {
-                    console.log('Referral processed successfully');
-                })
-                .catch(error => {
-                    console.error('Error processing referral:', error);
-                });
-        }
-        
-        function checkTokenStatus() {
-            // Check if user has already used a token
-            db.collection('users').doc(currentUser.uid).get()
-                .then(doc => {
-                    if (doc.exists && doc.data().tokenUsed) {
-                        // User has already used a token, proceed to dashboard
-                        return;
-                    }
-                    
-                    // Show token input modal or redirect to token entry page
-                    alert('Please enter a valid token to access the dashboard');
-                    auth.signOut();
-                })
-                .catch(error => {
-                    console.error('Error checking token status:', error);
-                });
-        }
-        
-        function validateToken(token) {
-            return db.collection('tokens')
-                .where('token', '==', token)
-                .limit(1)
-                .get()
-                .then(snapshot => {
-                    if (snapshot.empty) {
-                        return null;
-                    }
-                    
-                    const doc = snapshot.docs[0];
-                    const data = doc.data();
-                    
-                    // Check if token is already used
-                    if (data.status === 'used' || (data.type === 'multi-use' && data.usesLeft <= 0)) {
-                        return null;
-                    }
-                    
-                    return {
-                        id: doc.id,
-                        ...data
-                    };
-                });
-        }
-        
-        function markTokenAsUsed(tokenData) {
-            // Mark token as used in tokens collection
-            let updateData = {};
-            
-            if (tokenData.type === 'one-time') {
-                updateData = {
-                    status: 'used',
-                    usedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    usedBy: currentUser.uid
-                };
-            } else {
-                updateData = {
-                    usesLeft: firebase.firestore.FieldValue.increment(-1),
-                    status: tokenData.usesLeft - 1 <= 0 ? 'used' : 'unused'
-                };
-            }
-            
-            return db.collection('tokens').doc(tokenData.id).update(updateData)
-                .then(() => {
-                    // Mark token as used in user document
-                    return db.collection('users').doc(currentUser.uid).update({
-                        tokenUsed: true
-                    });
-                });
+        function loadWithdrawalHistory(uid) {
+            // Would load user's withdrawal history
         }
     </script>
 </body>
