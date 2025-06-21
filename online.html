@@ -583,7 +583,7 @@
                             <label class="form-label">Full Name</label>
                             <input type="text" id="register-name" class="form-control" placeholder="Your full name">
                         </div>
-                        <div class="form-group">
+                        <极客div class="form-group">
                             <label class="form-label">Email</label>
                             <input type="email" id="register-email" class="form-control" placeholder="Enter your email">
                         </div>
@@ -613,7 +613,7 @@
         
         <!-- Admin Dashboard -->
         <div id="admin-dashboard" class="page">
-            <div class="header">
+            <div class极客.header">
                 <div class="logo">
                     <i class="fas fa-user-shield"></i>
                     <span>Admin Dashboard</span>
@@ -842,7 +842,7 @@
                                     <th>Account</th>
                                     <th>Requested</th>
                                     <th>Status</th>
-                                    <th>Actions</极客th>
+                                    <th>Actions</th> <!-- Fixed this line -->
                                 </tr>
                             </thead>
                             <tbody id="withdrawal-requests-body">
@@ -882,7 +882,7 @@
                         <input type="email" id="notification-email" class="form-control" placeholder="admin@leadconnect.com">
                     </div>
                     <div class="form-group">
-                        <button class="btn btn-primary" id="save-system-settings">
+                        <button class="btn btn-primary" id="save-system极客settings">
                             <i class="fas fa-save"></i> Save Settings
                         </button>
                     </div>
@@ -1548,7 +1548,7 @@
                 db.collection('withdrawals')
                     .where('status', '==', 'paid')
                     .get()
-                    .then(snapshot => {
+                    .then(snapshot极客 => {
                         let total = 0;
                         snapshot.forEach(doc => {
                             total += doc.data().amount;
@@ -1739,8 +1739,8 @@
             }
             
             function loadAffiliateEarnings() {
-                // Implementation would be similar to other loading functions
-                // In a real app, this would aggregate affiliate data
+                const tbody = document.getElementById('affiliate-earnings-body');
+                tbody.innerHTML = '<tr><td colspan="5">Data will be available in the next version</td></tr>';
             }
             
             function loadWithdrawalRequests() {
@@ -1871,32 +1871,56 @@
             
             // User Functions
             function setupUserDashboard(user) {
+                let affiliateSettings = {
+                    minReferrals: 6,
+                    minWithdrawal: 20,
+                    commissionRate: 15
+                };
+
+                // Update UI with default settings
+                updateAffiliateSettingsUI(affiliateSettings);
+
+                // Get affiliate settings from Firestore
+                db.collection('settings').doc('affiliate').get().then(doc => {
+                    if (doc.exists) {
+                        affiliateSettings = doc.data();
+                        updateAffiliateSettingsUI(affiliateSettings);
+                    }
+                });
+
                 // Load user data
                 db.collection('users').doc(user.uid).onSnapshot(doc => {
                     if (doc.exists) {
-                        const data = doc.data();
-                        
-                        // Update stats
-                        document.getElementById('user-balance').textContent = formatCurrency(data.balance || 0);
-                        document.getElementById('user-referrals').textContent = data.referralCount || 0;
-                        document.getElementById('user-commission').textContent = `${data.commissionRate || 15}%`;
-                        
-                        // Update referral progress
-                        const minReferrals = 6; // This would come from settings in a real app
-                        const currentReferrals = data.referralCount || 0;
-                        const progress = Math.min(100, (currentReferrals / minReferrals) * 100);
-                        
-                        document.getElementById('referral-progress-bar').style.width = `${progress}%`;
-                        document.getElementById('current-referrals').textContent = currentReferrals;
-                        document.getElementById('required-referrals').textContent = minReferrals;
+                        const userData = doc.data();
+                        updateUserDashboardUI(userData, affiliateSettings);
                     }
                 });
-                
-                // Load referrals
+
+                // Load referrals and withdrawal history
                 loadUserReferrals(user.uid);
-                
-                // Load withdrawal history
                 loadWithdrawalHistory(user.uid);
+            }
+            
+            function updateAffiliateSettingsUI(settings) {
+                document.getElementById('min-referrals-display').textContent = settings.minReferrals;
+                document.getElementById('min-ref-display').textContent = settings.minReferrals;
+                document.getElementById('min-withdraw-display').textContent = settings.minWithdrawal;
+                document.getElementById('user-commission').textContent = `${settings.commissionRate}%`;
+                document.getElementById('commission-display').textContent = `${settings.commissionRate}%`;
+            }
+            
+            function updateUserDashboardUI(userData, settings) {
+                // Update stats
+                document.getElementById('user-balance').textContent = formatCurrency(userData.balance || 0);
+                document.getElementById('user-referrals').textContent = userData.referralCount || 0;
+                
+                // Update progress bar
+                const minReferrals = settings.minReferrals || 6;
+                const currentReferrals = userData.referralCount || 0;
+                const progress = Math.min(100, (currentReferrals / minReferrals) * 100);
+                document.getElementById('referral-progress-bar').style.width = `${progress}%`;
+                document.getElementById('current-referrals').textContent = currentReferrals;
+                document.getElementById('required-referrals').textContent = minReferrals;
             }
             
             function loadUserReferrals(userId) {
@@ -1919,7 +1943,7 @@
                         <td>${ref.date}</td>
                         <td>${ref.status === 'active' ? 
                             '<span class="badge badge-success">Active</span>' : 
-                            '<span class="badge badge-warning">Pending</span>'}</td>
+                            '<span class极客.badge badge-warning">Pending</span>'}</td>
                         <td>${formatCurrency(ref.earned)}</td>
                     `;
                     tbody.appendChild(row);
