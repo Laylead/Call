@@ -491,6 +491,17 @@
     <script>
         // Initialize Firebase with configuration from external file
         firebase.initializeApp(firebaseConfig);
+        
+        // Enable offline persistence with error handling
+        firebase.firestore().enablePersistence()
+          .catch((err) => {
+            if (err.code == 'failed-precondition') {
+              console.log("Persistence failed - multiple tabs open");
+            } else if (err.code == 'unimplemented') {
+              console.log("Persistence not available in this browser");
+            }
+          });
+        
         const auth = firebase.auth();
         const db = firebase.firestore();
         const functions = firebase.functions();
@@ -511,14 +522,44 @@
             document.getElementById('register-form').classList.toggle('hidden', mode !== 'register');
         }
 
-        // Activity logger
+        // Enhanced activity logger with offline support
         function logEvent(uid, action, meta = {}) {
-            logs.add({
-                uid,
-                action,
-                meta,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            return new Promise((resolve) => {
+                const logData = {
+                    uid,
+                    action,
+                    meta,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                logs.add(logData)
+                  .then(resolve)
+                  .catch(err => {
+                    if (err.code === 'unavailable') {
+                      const offlineLogs = JSON.parse(localStorage.getItem('offlineLogs') || '[]');
+                      offlineLogs.push(logData);
+                      localStorage.setItem('offlineLogs', JSON.stringify(offlineLogs));
+                      resolve();
+                    }
+                  });
             });
+        }
+
+        // Process any pending offline logs when connection is restored
+        function processOfflineLogs() {
+            const offlineLogs = JSON.parse(localStorage.getItem('offlineLogs') || '[]');
+            if (offlineLogs.length === 0) return;
+            
+            const batch = db.batch();
+            offlineLogs.forEach(log => {
+                const ref = logs.doc();
+                batch.set(ref, log);
+            });
+            
+            batch.commit()
+              .then(() => {
+                localStorage.removeItem('offlineLogs');
+              });
         }
 
         // Set loading state for buttons
@@ -538,7 +579,7 @@
             }
         }
 
-        // Registration with validation
+        // Registration with validation and proper error handling
         function register() {
             const name = document.getElementById('reg-name').value.trim();
             const email = document.getElementById('reg-email').value.trim();
@@ -547,7 +588,6 @@
             const confirmPwd = document.getElementById('reg-confirm-password').value;
             const ref = document.getElementById('reg-ref').value.trim();
             
-            // Validation
             if (!name) return alert('Please enter your full name');
             if (!email || !validateEmail(email)) return alert('Please enter a valid email address');
             if (!phone) return alert('Please enter your phone number');
@@ -557,8 +597,8 @@
             setLoading('register-btn', true);
             
             auth.createUserWithEmailAndPassword(email, pwd)
-                .then(res => {
-                    return db.collection('users').doc(res.user.uid).set({
+                .then(userCredential => {
+                    return db.collection('users').doc(userCredential.user.uid).set({
                         name,
                         email,
                         phone,
@@ -570,14 +610,28 @@
                         referrals: 0,
                         commissionRate: 0.15,
                         twoFA: false
-                    }).then(() => logEvent(res.user.uid, 'register'));
+                    }).then(() => userCredential.user);
                 })
-                .then(() => {
-                    login();
-                    setLoading('register-btn', false);
+                .then(user => {
+                    return logEvent(user.uid, 'register').then(() => user);
+                })
+                .then(user => {
+                    currentUser = user;
+                    return db.collection('users').doc(user.uid).get();
+                })
+                .then(doc => {
+                    if (!doc.exists) throw new Error('User document not created');
+                    isAdmin = doc.data().role === 'admin';
+                    initApp();
                 })
                 .catch(err => {
-                    alert(err.message);
+                    console.error("Registration error:", err);
+                    alert(`Registration failed: ${err.message}`);
+                    if (auth.currentUser) {
+                        auth.currentUser.delete().catch(console.error);
+                    }
+                })
+                .finally(() => {
                     setLoading('register-btn', false);
                 });
         }
@@ -601,6 +655,8 @@
             auth.signInWithEmailAndPassword(email, pwd)
                 .then(res => db.collection('users').doc(res.user.uid).get().then(d => ({ user: res.user, data: d.data() })))
                 .then(({ user, data }) => {
+                    if (!data) throw new Error('User data not found');
+                    
                     if (data.twoFA) {
                         return auth.sendSignInLinkToEmail(email, {
                             url: window.location.href,
@@ -618,12 +674,15 @@
                 .then(({ user, data }) => {
                     currentUser = user;
                     isAdmin = data.role === 'admin';
-                    logEvent(user.uid, 'login');
+                    return logEvent(user.uid, 'login');
+                })
+                .then(() => {
                     initApp();
-                    setLoading('login-btn', false);
                 })
                 .catch(err => {
                     if (typeof err !== 'string') alert(err.message);
+                })
+                .finally(() => {
                     setLoading('login-btn', false);
                 });
         }
@@ -640,13 +699,23 @@
                 .catch(alert);
         }
 
-        // Auth state handler
+        // Auth state handler with offline support
         auth.onAuthStateChanged(u => {
             if (u) {
                 currentUser = u;
-                db.collection('users').doc(u.uid).get().then(d => {
-                    isAdmin = d.data().role === 'admin';
-                    initApp();
+                db.collection('users').doc(u.uid).get()
+                .then(doc => {
+                    if (doc.exists) {
+                        isAdmin = doc.data().role === 'admin';
+                        initApp();
+                        processOfflineLogs();
+                    } else {
+                        throw new Error('User document not found');
+                    }
+                })
+                .catch(err => {
+                    console.error("Auth state error:", err);
+                    auth.signOut();
                 });
             }
         });
@@ -662,7 +731,6 @@
             document.getElementById('auth-screen').classList.add('hidden');
             document.getElementById('app').classList.remove('hidden');
             
-            // Update user name in header
             db.collection('users').doc(currentUser.uid).get().then(doc => {
                 const userData = doc.data();
                 document.getElementById('user-name').innerText = userData.name;
@@ -764,7 +832,6 @@
                 </div>
             `;
             
-            // Load stats
             Promise.all([
                 db.collection('users').get(),
                 db.collection('transactions').get(),
@@ -785,7 +852,6 @@
                 document.getElementById('stat-tokens').innerText = tokensSnap.size;
             });
             
-            // Load recent activities
             logs.orderBy('timestamp', 'desc').limit(10).get().then(snap => {
                 let html = '<div class="table-container"><table class="table"><tr><th>User</th><th>Action</th><th>Time</th></tr>';
                 snap.forEach(doc => {
@@ -1018,7 +1084,6 @@
                 </div>
             `;
             
-            // Load settings
             db.collection('settings').doc('affiliate').get().then(doc => {
                 if (doc.exists) {
                     const d = doc.data();
@@ -1114,7 +1179,6 @@
                 
                 q.forEach(doc => {
                     const d = doc.data();
-                    // Filter by date if provided
                     if (date) {
                         const requestDate = d.requestedAt.toDate().toISOString().split('T')[0];
                         if (requestDate !== date) return;
@@ -1205,7 +1269,6 @@
                 </div>
             `;
             
-            // Load settings
             db.collection('settings').doc('system').get().then(doc => {
                 if (doc.exists) {
                     const d = doc.data();
@@ -1316,7 +1379,6 @@
                 };
             });
             
-            // Load recent activity
             logs.where('uid', '==', currentUser.uid)
                 .orderBy('timestamp', 'desc')
                 .limit(5)
@@ -1386,10 +1448,8 @@
                 </div>
             `;
             
-            // Set referral link
             document.getElementById('referral-link').value = window.location.origin + '?ref=' + currentUser.uid;
             
-            // Load referral stats
             db.collection('users').doc(currentUser.uid).get().then(doc => {
                 const d = doc.data();
                 const have = d.referrals || 0;
@@ -1454,12 +1514,10 @@
             msgEl.className = 'alert info';
             msgEl.style.display = 'block';
             
-            // In a real app, this would call a Cloud Function
             setTimeout(() => {
                 msgEl.innerText = 'Token activated successfully! $50 added to your account';
                 msgEl.className = 'alert success';
                 
-                // Update user balance
                 db.collection('users').doc(currentUser.uid).update({
                     balance: firebase.firestore.FieldValue.increment(50)
                 });
@@ -1504,7 +1562,6 @@
                 </div>
             `;
             
-            // Update payment details based on method
             document.getElementById('wd-method').onchange = updatePaymentDetails;
             updatePaymentDetails();
             loadWithdrawalHistory();
@@ -1567,7 +1624,6 @@
             msgEl.className = 'alert info';
             msgEl.style.display = 'block';
             
-            // Get account details
             let accountDetails = '';
             switch(method) {
                 case 'paypal':
@@ -1585,7 +1641,6 @@
                     break;
             }
             
-            // Create withdrawal request
             db.collection('users').doc(currentUser.uid).get().then(doc => {
                 const userData = doc.data();
                 
@@ -1603,7 +1658,6 @@
                 msgEl.innerText = 'Withdrawal request submitted successfully!';
                 msgEl.className = 'alert success';
                 
-                // Update user balance
                 return db.collection('users').doc(currentUser.uid).update({
                     balance: firebase.firestore.FieldValue.increment(-amount)
                 });
@@ -1706,7 +1760,6 @@
                 </div>
             `;
             
-            // Load user data
             db.collection('users').doc(currentUser.uid).get().then(doc => {
                 const d = doc.data();
                 document.getElementById('acc-name').value = d.name || '';
@@ -1715,7 +1768,6 @@
                 document.getElementById('acc-2fa').checked = d.twoFA || false;
             });
             
-            // Load payment info
             document.getElementById('acc-2fa').onchange = update2FA;
         }
         
@@ -1783,7 +1835,6 @@
                 return;
             }
             
-            // Reauthenticate user
             const user = auth.currentUser;
             const credential = firebase.auth.EmailAuthProvider.credential(
                 user.email, 
@@ -1810,7 +1861,6 @@
 
         // Initialize on load
         document.addEventListener('DOMContentLoaded', () => {
-            // Check for referral parameter
             const urlParams = new URLSearchParams(window.location.search);
             const refCode = urlParams.get('ref');
             if (refCode) {
