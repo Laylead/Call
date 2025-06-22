@@ -1,550 +1,1193 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LeadConnect</title>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LeadConnect Admin/User Dashboard</title>
+
+<!-- Font Awesome 6.4.0 -->
+<link
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+  rel="stylesheet"
+/>
+
+<style>
+  :root {
+    --primary-color: #4a90e2;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --info-color: #17a2b8;
+    --background-gradient: linear-gradient(135deg, #667eea, #764ba2);
+    --card-bg: #fff;
+    --text-color: #333;
+    --shadow: rgba(0, 0, 0, 0.1);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--background-gradient);
+    color: var(--text-color);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #app {
+    max-width: 1100px;
+    margin: 1rem auto;
+    background: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: 0 4px 10px var(--shadow);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Login/Register Forms */
+  #auth-section {
+    padding: 2rem;
+    max-width: 400px;
+    margin: 3rem auto;
+    background: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: 0 4px 10px var(--shadow);
+  }
+
+  #auth-section h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+
+  #auth-section form {
+    display: flex;
+    flex-direction: column;
+  }
+
+  #auth-section label {
+    margin-bottom: 0.3rem;
+    font-weight: 600;
+  }
+
+  #auth-section input,
+  #auth-section select {
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+  }
+
+  #auth-section button {
+    background: var(--primary-color);
+    color: white;
+    font-weight: 700;
+    padding: 0.6rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  #auth-section button:hover {
+    background: #356ac3;
+  }
+
+  #toggle-auth {
+    margin-top: 1rem;
+    text-align: center;
+    cursor: pointer;
+    color: var(--primary-color);
+  }
+
+  /* Dashboard Layout */
+  #dashboard {
+    display: flex;
+    flex-direction: column;
+    height: 90vh;
+  }
+
+  #dashboard-header {
+    background: var(--primary-color);
+    color: white;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  #dashboard-header h1 {
+    margin: 0;
+    font-size: 1.25rem;
+  }
+
+  #logout-btn {
+    background: transparent;
+    border: 1px solid white;
+    color: white;
+    padding: 0.3rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  #logout-btn:hover {
+    background: white;
+    color: var(--primary-color);
+  }
+
+  #dashboard-main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* Sidebar Tabs */
+  #dashboard-tabs {
+    background: #2c3e50;
+    width: 220px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #dashboard-tabs button.tab {
+    background: transparent;
+    border: none;
+    border-left: 4px solid transparent;
+    color: white;
+    padding: 1rem 1.25rem;
+    text-align: left;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.3s, border-left-color 0.3s;
+  }
+
+  #dashboard-tabs button.tab.active,
+  #dashboard-tabs button.tab:hover {
+    background: #34495e;
+    border-left-color: var(--primary-color);
+  }
+
+  /* Dashboard Content */
+  #dashboard-content {
+    flex: 1;
+    padding: 1rem 2rem;
+    overflow-y: auto;
+  }
+
+  /* Stat cards */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background: var(--card-bg);
+    box-shadow: 0 2px 8px var(--shadow);
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .stat-card i {
+    font-size: 2rem;
+    color: var(--primary-color);
+    width: 40px;
+  }
+
+  .stat-card div > div:first-child {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #555;
+  }
+
+  .stat-card div > div:last-child {
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+
+  /* Table styles */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+
+  table th,
+  table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #ddd;
+    text-align: left;
+  }
+
+  table th {
+    background: #f0f0f0;
+    font-weight: 700;
+  }
+
+  .badge {
+    padding: 0.25rem 0.6rem;
+    border-radius: 12px;
+    color: white;
+    font-weight: 600;
+    font-size: 0.75rem;
+    display: inline-block;
+    text-transform: capitalize;
+  }
+
+  .badge.success {
+    background-color: var(--success-color);
+  }
+
+  .badge.danger {
+    background-color: var(--danger-color);
+  }
+
+  .badge.warning {
+    background-color: var(--warning-color);
+    color: #333;
+  }
+
+  .badge.info {
+    background-color: var(--info-color);
+  }
+
+  .table-actions button {
+    margin-right: 0.5rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    border-radius: 4px;
+    border: none;
+  }
+
+  .table-actions button.btn-danger {
+    background: var(--danger-color);
+    color: white;
+  }
+
+  .table-actions button.btn-warning {
+    background: var(--warning-color);
+    color: #333;
+  }
+
+  .table-actions button:hover {
+    opacity: 0.85;
+  }
+
+  /* Form inputs */
+  input[type='text'],
+  input[type='email'],
+  input[type='password'],
+  input[type='number'],
+  select {
+    padding: 0.4rem 0.6rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 100%;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    #dashboard-main {
+      flex-direction: column;
+    }
+    #dashboard-tabs {
+      width: 100%;
+      flex-direction: row;
+      overflow-x: auto;
+    }
+    #dashboard-tabs button.tab {
+      flex: 1;
+      text-align: center;
+      border-left: none;
+      border-bottom: 3px solid transparent;
+    }
+    #dashboard-tabs button.tab.active,
+    #dashboard-tabs button.tab:hover {
+      border-left: none;
+      border-bottom-color: var(--primary-color);
+    }
+  }
+</style>
+</head>
+<body>
+
+<div id="auth-section" style="display:none;">
+  <h2 id="auth-title">Login</h2>
+  <form id="auth-form">
+    <div id="name-field" style="display:none;">
+      <label for="fullname">Full Name</label>
+      <input type="text" id="fullname" autocomplete="name" />
+    </div>
+    <label for="email">Email</label>
+    <input type="email" id="email" autocomplete="email" required />
+    <label for="password">Password</label>
+    <input type="password" id="password" autocomplete="current-password" required />
+    <div id="referral-field" style="display:none;">
+      <label for="referral">Referral Code (Optional)</label>
+      <input type="text" id="referral" />
+    </div>
+    <button type="submit" id="auth-submit-btn">Login</button>
+  </form>
+  <div id="toggle-auth">Don't have an account? Register here</div>
+</div>
+
+<div id="dashboard" style="display:none;">
+  <header id="dashboard-header">
+    <h1 id="dashboard-welcome">Dashboard</h1>
+    <button id="logout-btn"><i class="fa fa-sign-out-alt"></i> Logout</button>
+  </header>
+
+  <div id="dashboard-main">
+    <nav id="dashboard-tabs">
+      <!-- Tabs will be rendered dynamically -->
+    </nav>
+    <main id="dashboard-content">
+      <!-- Dashboard content will render here -->
+    </main>
+  </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 <script src="configuration.js"></script>
-<style>
-  :root {
-    --bg: #f0f2f5; --card-bg: #fff; --primary: #4a90e2;
-    --success: #28a745; --warning: #ffc107; --danger: #dc3545;
-  }
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:sans-serif;background:var(--bg);color:#333;}
-  .hidden{display:none !important;}
-  .container{max-width:1200px;margin:auto;padding:15px;}
-  header {background:linear-gradient(90deg,#4a90e2,#50c9c3);color:#fff;padding:20px;position:relative;text-align:center;}
-  .tabs{display:flex;border-bottom:1px solid #ccc;margin:20px 0 10px;}
-  .tab{padding:10px 15px;cursor:pointer;border-bottom:3px solid transparent;transition:border-color .2s;}
-  .tab.active{border-color:var(--primary);color:var(--primary);}
-  .card{background:var(--card-bg);padding:15px;margin-bottom:15px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.1);}
-  .badge{display:inline-block;padding:3px 7px;font-size:.8em;border-radius:4px;color:#fff;}
-  .badge.success{background:var(--success);} .badge.warning{background:var(--warning);}
-  .badge.info{background:var(--primary);} .badge.danger{background:var(--danger);}
-  .table{width:100%;border-collapse:collapse;margin:10px 0;font-size:.9em;}
-  .table th,.table td{padding:8px;border:1px solid #ddd;}
-  input,select{width:100%;padding:8px;margin:5px 0 15px;border:1px solid #ccc;border-radius:4px;}
-  button{padding:10px 15px;margin:5px 0;border:none;border-radius:4px;background:var(--primary);color:#fff;cursor:pointer;transition:background .2s;}
-  button.danger{background:var(--danger);}
-  .progress{width:100%;height:20px;background:#ddd;border-radius:4px;margin:5px 0;overflow:hidden;}
-  .progress-bar{height:100%;background:var(--success);width:0;transition:width .3s;}
-  .alert{padding:10px 15px;border-radius:4px;margin-bottom:15px;}
-  .alert.info{background:#e7f3fe;color:#31708f;}
-  .alert.success{background:#dff0d8;color:#3c763d;}
-  .alert.danger{background:#f2dede;color:#a94442;}
-  @media (max-width:768px){.tabs{flex-wrap:wrap;} .tab{flex:1;text-align:center;}}
-</style>
-</head>
-<body>
-<!-- Auth Screen -->
-<div id="auth-screen" class="container">
-  <div class="card" style="max-width:400px;margin:40px auto;">
-    <div class="tabs"><div id="to-login" class="tab active">Login</div><div id="to-register" class="tab">Register</div></div>
-    <div id="login-form">
-      <h3>Login</h3>
-      <input type="email" id="login-email" placeholder="Email"><input type="password" id="login-password" placeholder="Password">
-      <button onclick="login()">Login</button>
-      <small>(Admin: admin@leadconnect.com / admin123)</small>
-    </div>
-    <div id="register-form" class="hidden">
-      <h3>Register</h3>
-      <input type="text" id="reg-name" placeholder="Full Name"><input type="email" id="reg-email" placeholder="Email">
-      <input type="password" id="reg-password" placeholder="Password"><input type="text" id="reg-ref" placeholder="Referral Code (optional)">
-      <button onclick="register()">Register</button>
-    </div>
-  </div>
-</div>
-
-<!-- Main App -->
-<div id="app" class="container hidden">
-  <header><h1 id="app-title">Dashboard</h1><button onclick="logout()">Logout</button></header>
-  <div id="tabs" class="tabs"></div><div id="content"></div>
-</div>
-
 <script>
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth(), db = firebase.firestore(), logs = db.collection('logs');
-let currentUser = null, isAdmin = false;
+  // Initialize Firebase app from your configuration.js
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
 
-// UI toggles
-document.getElementById('to-login').onclick = () => switchForms('login');
-document.getElementById('to-register').onclick = () => switchForms('register');
-function switchForms(mode) {
-  document.getElementById('to-login').classList.toggle('active', mode==='login');
-  document.getElementById('to-register').classList.toggle('active', mode==='register');
-  document.getElementById('login-form').classList.toggle('hidden', mode!=='login');
-  document.getElementById('register-form').classList.toggle('hidden', mode!=='register');
-}
+  // Constants
+  const COMMISSION_RATE = 0.15; // 15%
+  const MIN_REFERRALS_WITHDRAWAL = 6;
+  const MIN_WITHDRAWAL_AMOUNT = 20;
+  const ADMIN_EMAIL = 'admin@leadconnect.com';
 
-// Activity logger
-function logEvent(uid, action, meta = {}) {
-  logs.add({ uid, action, meta, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
-}
+  // UI Elements
+  const authSection = document.getElementById('auth-section');
+  const dashboardSection = document.getElementById('dashboard');
 
-// Registration
-function register(){
-  const name = document.getElementById('reg-name').value.trim(),
-        email = document.getElementById('reg-email').value.trim(),
-        pwd = document.getElementById('reg-password').value,
-        ref = document.getElementById('reg-ref').value.trim();
-  if(pwd.length < 6) return alert('Password must be ≥6 characters');
-  auth.createUserWithEmailAndPassword(email,pwd)
-    .then(res => {
-      return db.collection('users').doc(res.user.uid).set({
-        name, email, ref, joined: firebase.firestore.FieldValue.serverTimestamp(),
-        role: 'user', status: 'active', balance: 0, referrals: 0, commissionRate: 0.15,
-        twoFA: false
-      }).then(() => logEvent(res.user.uid, 'register'));
-    })
-    .then(() => login())
-    .catch(alert);
-}
+  const authTitle = document.getElementById('auth-title');
+  const authForm = document.getElementById('auth-form');
+  const toggleAuth = document.getElementById('toggle-auth');
+  const authSubmitBtn = document.getElementById('auth-submit-btn');
 
-// Modified login with 2FA support
-function login(){
-  const email = document.getElementById('login-email').value.trim(),
-        pwd = document.getElementById('login-password').value;
-  
-  if(email==='admin@leadconnect.com' && pwd==='admin123'){
-    isAdmin=true; currentUser={uid:'admin', email}; initApp(); return;
+  const fullnameInput = document.getElementById('fullname');
+  const emailInput = document.getElementById('email');
+  const passwordInput = document.getElementById('password');
+  const referralInput = document.getElementById('referral');
+
+  const nameField = document.getElementById('name-field');
+  const referralField = document.getElementById('referral-field');
+
+  const dashboardWelcome = document.getElementById('dashboard-welcome');
+  const logoutBtn = document.getElementById('logout-btn');
+
+  const dashboardTabs = document.getElementById('dashboard-tabs');
+  const dashboardContent = document.getElementById('dashboard-content');
+
+  // State
+  let isLoginMode = true;
+  let currentUser = null;
+  let currentUserData = null;
+  let userRole = 'user'; // 'admin' or 'user'
+  let activeTab = '';
+
+  // Helper functions
+  function showAuth() {
+    dashboardSection.style.display = 'none';
+    authSection.style.display = 'block';
+    if (isLoginMode) {
+      authTitle.textContent = 'Login';
+      authSubmitBtn.textContent = 'Login';
+      nameField.style.display = 'none';
+      referralField.style.display = 'none';
+      toggleAuth.textContent = "Don't have an account? Register here";
+    } else {
+      authTitle.textContent = 'Register';
+      authSubmitBtn.textContent = 'Register';
+      nameField.style.display = 'block';
+      referralField.style.display = 'block';
+      toggleAuth.textContent = 'Already have an account? Login here';
+    }
   }
-  
-  auth.signInWithEmailAndPassword(email, pwd)
-    .then(res => db.collection('users').doc(res.user.uid).get().then(d=>({user:res.user, data:d.data()})))
-    .then(({user, data})=>{
-      if(data.twoFA){
-        return auth.sendSignInLinkToEmail(email, {
-          url: location.href, handleCodeInApp: true
-        }).then(()=>{
-          alert('2FA link sent to your email.');
-          db.collection('users').doc(user.uid).update({
-            twoFALinkSent: firebase.firestore.FieldValue.serverTimestamp()
-          });
-          throw '2FA pending';
-        });
+
+  function showDashboard() {
+    authSection.style.display = 'none';
+    dashboardSection.style.display = 'flex';
+  }
+
+  function clearForm() {
+    fullnameInput.value = '';
+    emailInput.value = '';
+    passwordInput.value = '';
+    referralInput.value = '';
+  }
+
+  function formatDate(timestamp) {
+    if (!timestamp) return '-';
+    let d = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return d.toLocaleString();
+  }
+
+  function showAlert(message, type = 'info') {
+    alert(message);
+  }
+
+  function generateToken(length = 12) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let token = '';
+    for (let i = 0; i < length; i++) {
+      token += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return token;
+  }
+
+  // AUTH LOGIC
+  toggleAuth.onclick = () => {
+    isLoginMode = !isLoginMode;
+    clearForm();
+    showAuth();
+  };
+
+  authForm.onsubmit = async (e) => {
+    e.preventDefault();
+    const email = emailInput.value.trim();
+    const password = passwordInput.value.trim();
+
+    if (!email || !password) {
+      showAlert('Please fill all required fields.', 'danger');
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      showAlert('Invalid email format.', 'danger');
+      return;
+    }
+
+    if (!isLoginMode) {
+      // Register mode
+      const fullname = fullnameInput.value.trim();
+      if (fullname.length < 3) {
+        showAlert('Full name must be at least 3 characters.', 'danger');
+        return;
       }
-      return {user, data};
-    })
-    .then(({user, data}) => {
-      currentUser = user;
-      isAdmin = data.role === 'admin';
-      logEvent(user.uid, 'login');
-      initApp();
-    })
-    .catch(err => { if(typeof err !== 'string') alert(err.message); });
-}
 
-// Handle email link for 2FA
-if(auth.isSignInWithEmailLink(window.location.href)){
-  let email = window.localStorage.getItem('emailForSignIn') || prompt('Confirm email for 2FA:');
-  auth.signInWithEmailLink(email, window.location.href)
-    .then(res => {
-      logEvent(res.user.uid, 'login_2fa');
-      window.history.replaceState({}, document.title, '/');
-      initApp();
-    })
-    .catch(alert);
-}
+      if (password.length < 6) {
+        showAlert('Password must be at least 6 characters.', 'danger');
+        return;
+      }
 
-// Auth and logout
-auth.onAuthStateChanged(u => {
-  if(u) {
-    currentUser = u;
-    db.collection('users').doc(u.uid).get().then(d=>{
-      isAdmin = d.data().role === 'admin';
-      initApp();
-    });
-  }
-});
-function logout(){ auth.signOut(); localStorage.clear(); window.location.reload(); }
+      try {
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        currentUser = userCredential.user;
 
-// Initialize app UI
-function initApp(){
-  document.getElementById('auth-screen').classList.add('hidden');
-  document.getElementById('app').classList.remove('hidden');
-  buildTabs();
-  const first = isAdmin ? 'Overview' : 'Dashboard';
-  setActiveTab(first); loadTab(first);
-}
+        // Save additional user info in Firestore
+        await db.collection('users').doc(currentUser.uid).set({
+          fullname,
+          email,
+          role: 'user',
+          referralCode: referralInput.value.trim() || '',
+          referrals: [],
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          status: 'active',
+          balance: 0,
+          commissionRate: COMMISSION_RATE,
+        });
 
-// Tabs setup
-const adminTabs = ['Overview','Tokens','Users','Affiliates','Withdrawals','Settings'],
-      userTabs = ['Dashboard','Referrals','Withdrawals','Account'];
-function buildTabs(){
-  const tabsEl = document.getElementById('tabs');
-  tabsEl.innerHTML = '';
-  (isAdmin ? adminTabs : userTabs).forEach(t => {
-    const div = document.createElement('div');
-    div.innerText = t; div.className = 'tab';
-    div.onclick = ()=>{ setActiveTab(t); loadTab(t); };
-    tabsEl.appendChild(div);
-  });
-}
-function setActiveTab(tab){
-  document.getElementById('app-title').innerText = tab;
-  document.querySelectorAll('.tabs .tab').forEach(el =>
-    el.classList.toggle('active', el.innerText === tab)
-  );
-}
-function loadTab(tab){
-  document.getElementById('content').innerHTML = '';
-  isAdmin ? loadAdminTab(tab) : loadUserTab(tab);
-}
+        showAlert('Registration successful! You are now logged in.', 'success');
+        currentUserData = await loadUserData(currentUser.uid);
+        userRole = currentUserData.role || 'user';
+        setupDashboard();
+      } catch (err) {
+        showAlert(err.message, 'danger');
+      }
 
-// Admin Functions
-function loadAdminTab(tab){
-  switch(tab){
-    case 'Overview': return adminOverview();
-    case 'Tokens':     return adminTokens();
-    case 'Users':      return adminUsers();
-    case 'Affiliates': return adminAffiliates();
-    case 'Withdrawals':return adminWithdrawals();
-    case 'Settings':   return adminSettings();
-  }
-}
+    } else {
+      // Login mode
+      try {
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        currentUser = userCredential.user;
+        currentUserData = await loadUserData(currentUser.uid);
+        userRole = currentUserData?.role || 'user';
 
-function adminOverview(){
-  const c = document.getElementById('content');
-  c.innerHTML = '';
-  const stats = {users:0, earnings:0, pending:0, tokens:0};
-  
-  db.collection('users').get().then(q=>{ stats.users=q.size; })
-  .then(()=> db.collection('transactions').get()).then(q=>{
-    q.forEach(d => { const t = d.data(); if(t.type==='earn') stats.earnings += t.amount; if(t.status==='pending') stats.pending += t.amount; });
-  })
-  .then(()=> db.collection('tokens').get())
-  .then(q => { stats.tokens = q.size; })
-  .then(()=> {
-    Object.entries({
-      'Total Users': stats.users,
-      'Total Earnings ($)': stats.earnings.toFixed(2),
-      'Pending Withdrawals ($)': stats.pending.toFixed(2),
-      'Active Tokens': stats.tokens
-    }).forEach(([label, val]) => {
-      const card = document.createElement('div');
-      card.className = 'card'; card.innerHTML=`<h4>${label}</h4><p>${val}</p>`;
-      c.appendChild(card);
-    });
-    logEvent('admin', 'view_overview');
-  });
-}
+        if (currentUserData.status === 'suspended') {
+          await auth.signOut();
+          showAlert('Your account is suspended. Contact admin.', 'danger');
+          return;
+        }
 
-function adminTokens(){
-  const c = document.getElementById('content');
-  c.innerHTML = `
-    <button onclick="adminCreateToken('one-time')">One‑Time Token</button>
-    <button onclick="adminCreateToken('reusable')">Reusable</button>
-    <button onclick="adminBulkGenerate()">Bulk</button>
-    <div>Filter: <select id="token-filter"><option value="">All</option><option>used</option><option>unused</option></select></div>
-    <div id="tok-table"></div>`;
-  document.getElementById('token-filter').onchange = adminRefreshTokens;
-  adminRefreshTokens();
-}
-
-function adminCreateToken(type){
-  const tok = Math.random().toString(36).substr(2,12);
-  db.collection('tokens').add({
-    token: tok, type, status:'unused', created: firebase.firestore.FieldValue.serverTimestamp()
-  }).then(()=>{ adminRefreshTokens(); logEvent('admin','create_token',{type,token:tok}); });
-}
-function adminBulkGenerate(){
-  const count = parseInt(prompt('Count (1–100)?','5'),10);
-  if(isNaN(count)||count<1||count>100)return;
-  const batch = db.batch();
-  for(let i=0;i<count;i++){
-    const ref = db.collection('tokens').doc();
-    batch.set(ref, {token:Math.random().toString(36).substr(2,12),type:'one-time',status:'unused',created:firebase.firestore.FieldValue.serverTimestamp()});
-  }
-  batch.commit().then(()=>{ adminRefreshTokens(); logEvent('admin','bulk_tokens',{count}); });
-}
-function adminRefreshTokens(){
-  const c=document.getElementById('tok-table'), f=document.getElementById('token-filter').value;
-  let query = db.collection('tokens').orderBy('created','desc');
-  if(f) query = query.where('status','==',f);
-  query.get().then(q=>{
-    let html = '<table class="table"><tr><th>Token</th><th>Type</th><th>Status</th><th>Created</th><th>Action</th></tr>';
-    q.forEach(doc => {
-      const d=doc.data();
-      html += `<tr><td>${d.token}</td><td>${d.type}</td><td>${d.status}</td><td>${d.created?.toDate().toLocaleString()||'-'}</td><td><button onclick="adminDeleteToken('${doc.id}')">Delete</button></td></tr>`;
-    });
-    html += '</table>'; c.innerHTML = html;
-  });
-}
-function adminDeleteToken(id){
-  if(confirm('Delete token?')) {
-    db.collection('tokens').doc(id).delete().then(()=>{ adminRefreshTokens(); logEvent('admin','delete_token',{id}); });
-  }
-}
-
-function adminUsers(){
-  const c = document.getElementById('content');
-  c.innerHTML = '<input placeholder="Search..." id="user-search"><div id="user-table"></div>';
-  document.getElementById('user-search').oninput = adminRefreshUsers;
-  adminRefreshUsers();
-}
-function adminRefreshUsers(){
-  const qstr=document.getElementById('user-search').value.trim().toLowerCase();
-  db.collection('users').orderBy('joined','desc').get().then(q=>{
-    let html='<table class="table"><tr><th>ID</th><th>Name</th><th>Email</th><th>Joined</th><th>Status</th><th>Action</th></tr>';
-    q.forEach(doc=>{
-      const d=doc.data();
-      if(qstr && !(d.name.toLowerCase().includes(qstr)||d.email.toLowerCase().includes(qstr)))return;
-      html+=`<tr><td>${doc.id}</td><td>${d.name}</td><td>${d.email}</td><td>${d.joined?.toDate().toLocaleDateString()||'-'}</td><td><span class="badge ${d.status==='active'?'success':'warning'}">${d.status}</span></td><td><button onclick="adminToggleUserStatus('${doc.id}','${d.status}')">${d.status==='active'?'Suspend':'Activate'}</button></td></tr>`;
-    });
-    html += '</table>'; document.getElementById('user-table').innerHTML = html;
-  });
-}
-function adminToggleUserStatus(uid, current){
-  const next = current==='active'?'suspended':'active';
-  db.collection('users').doc(uid).update({status: next})
-    .then(()=>{ adminRefreshUsers(); logEvent('admin','toggle_user',{uid,status:next}); });
-}
-
-function adminAffiliates(){
-  const c = document.getElementById('content');
-  c.innerHTML = `
-    <h3>Affiliate Settings</h3>
-    <div class="card">
-      Commission Rate: <input type="number" id="aff-commission"><br>
-      Min Referrals: <input type="number" id="aff-minref"><br>
-      Min Withdrawal ($): <input type="number" id="aff-minwd"><br>
-      <button onclick="adminSaveAffiliateSettings()">Save Settings</button>
-    </div>
-    <h3>Performance</h3><div id="aff-table"></div>`;
-  db.collection('settings').doc('affiliate').get().then(doc=>{
-    if(doc.exists){
-      const d=doc.data();
-      document.getElementById('aff-commission').value = d.commissionRate;
-      document.getElementById('aff-minref').value = d.minReferrals;
-      document.getElementById('aff-minwd').value = d.minWithdrawal;
+        showAlert('Login successful!', 'success');
+        setupDashboard();
+      } catch (err) {
+        showAlert('Login failed: ' + err.message, 'danger');
+      }
     }
-  });
-  adminRefreshAffPerformance();
-}
-function adminSaveAffiliateSettings(){
-  const data = {
-    commissionRate: parseFloat(document.getElementById('aff-commission').value),
-    minReferrals: parseInt(document.getElementById('aff-minref').value,10),
-    minWithdrawal: parseFloat(document.getElementById('aff-minwd').value)
   };
-  db.collection('settings').doc('affiliate').set(data).then(()=>{alert('Saved'); logEvent('admin','save_affiliate',data);});
-}
-function adminRefreshAffPerformance(){
-  db.collection('users').where('role','==','user').get().then(q=>{
-    let html='<table class="table"><tr><th>Affiliate</th><th>Referrals</th><th>Balance</th></tr>';
-    q.forEach(doc=>{
-      const d=doc.data(), bal=(d.referrals||0)*(d.commissionRate||0.15)*100;
-      html+=`<tr><td>${d.name}</td><td>${d.referrals||0}</td><td>$${bal.toFixed(2)}</td></tr>`;
-    });
-    html += '</table>'; document.getElementById('aff-table').innerHTML = html;
-  });
-}
 
-function adminWithdrawals(){
-  const c=document.getElementById('content');
-  c.innerHTML = '<h3>Withdrawals</h3><div id="wd-table"></div>';
-  adminRefreshWithdrawals();
-}
-function adminRefreshWithdrawals(){
-  db.collection('transactions').orderBy('created','desc').get().then(q=>{
-    let html='<table class="table"><tr><th>User</th><th>Amount</th><th>Account</th><th>Date</th><th>Status</th><th>Action</th></tr>';
-    q.forEach(doc=>{
-      const d = doc.data();
-      if(d.type!=='withdrawal') return;
-      html+=`<tr><td>${d.email}</td><td>$${d.amount.toFixed(2)}</td><td>${d.account}</td><td>${d.created.toDate().toLocaleString()}</td><td><span class="badge ${d.status==='pending'?'warning':'success'}">${d.status}</span></td><td>${d.status==='pending'?`<button onclick="adminApproveWithdrawal('${doc.id}')">Approve</button><button class="danger" onclick="adminRejectWithdrawal('${doc.id}')">Reject</button>`:'-'}</td></tr>`;
-    });
-    html += '</table>' ; document.getElementById('wd-table').innerHTML = html;
-  });
-}
-function adminApproveWithdrawal(id){
-  db.collection('transactions').doc(id).update({status:'paid'}).then(()=>{adminRefreshWithdrawals(); logEvent('admin','approve_withdrawal',{id});});
-}
-function adminRejectWithdrawal(id){
-  db.collection('transactions').doc(id).update({status:'rejected'}).then(()=>{adminRefreshWithdrawals(); logEvent('admin','reject_withdrawal',{id});});
-}
-
-function adminSettings(){
-  const c = document.getElementById('content');
-  c.innerHTML = `
-    <h3>System Settings</h3><div class="card">
-      Maintenance: <input type="checkbox" id="sys-maint"><br>
-      Currency: <select id="sys-currency"><option>USD</option><option>EUR</option></select><br>
-      Max Commission (%): <input type="number" id="sys-maxcom"><br>
-      Session Timeout (mins): <input type="number" id="sys-timeout"><br>
-      <button onclick="adminSaveSystemSettings()">Save</button>
-    </div>`;
-  db.collection('settings').doc('system').get().then(doc=>{
-    if(doc.exists){
-      const d=doc.data();
-      document.getElementById('sys-maint').checked = !!d.maintenance;
-      document.getElementById('sys-currency').value = d.currency;
-      document.getElementById('sys-maxcom').value = d.maxCommission;
-      document.getElementById('sys-timeout').value = d.sessionTimeout;
-    }
-  });
-}
-function adminSaveSystemSettings(){
-  const data = {
-    maintenance: document.getElementById('sys-maint').checked,
-    currency: document.getElementById('sys-currency').value,
-    maxCommission: parseFloat(document.getElementById('sys-maxcom').value),
-    sessionTimeout: parseInt(document.getElementById('sys-timeout').value,10)
-  };
-  db.collection('settings').doc('system').set(data).then(()=>{alert('Saved'); logEvent('admin','save_system',data);});
-}
-
-// User Functions
-function loadUserTab(tab){
-  switch(tab){
-    case 'Dashboard': return userDashboard();
-    case 'Referrals': return userReferrals();
-    case 'Withdrawals': return userWithdrawals();
-    case 'Account': return userAccount();
+  function validateEmail(email) {
+    // Simple regex email validation
+    const re = /\S+@\S+\.\S+/;
+    return re.test(email);
   }
-}
 
-function userDashboard(){
-  const c=document.getElementById('content');
-  c.innerHTML = '<h3>Your Stats</h3><div id="user-stats" class="card"></div>';
-  db.collection('users').doc(currentUser.uid).get().then(doc=>{
-    const d=doc.data(), bal=d.balance||0, refs=d.referrals||0, commissionRate=d.commissionRate||0.15;
-    document.getElementById('user-stats').innerHTML = `
-      <p><strong>Balance:</strong> $${bal.toFixed(2)}</p>
-      <p><strong>Referrals:</strong> ${refs}</p>
-      <p><strong>Commission Rate:</strong> ${(commissionRate*100).toFixed(1)}%</p>
-      <label><input type="checkbox" id="twofa-toggle" ${d.twoFA?'checked':''}> Enable 2FA (Email Link)</label>`;
-    document.getElementById('twofa-toggle').onchange = () => {
-      const on = document.getElementById('twofa-toggle').checked;
-      db.collection('users').doc(currentUser.uid).update({twoFA:on}).then(() => {
-        alert(`2FA ${on?'enabled':'disabled'}`);
-        logEvent(currentUser.uid,'toggle_2fa',{twoFA:on});
+  async function loadUserData(uid) {
+    try {
+      const doc = await db.collection('users').doc(uid).get();
+      return doc.exists ? doc.data() : null;
+    } catch {
+      return null;
+    }
+  }
+
+  // DASHBOARD LOGIC
+
+  logoutBtn.onclick = async () => {
+    await auth.signOut();
+    currentUser = null;
+    currentUserData = null;
+    userRole = 'user';
+    activeTab = '';
+    dashboardTabs.innerHTML = '';
+    dashboardContent.innerHTML = '';
+    showAuth();
+  };
+
+  function setupDashboard() {
+    showDashboard();
+    dashboardWelcome.textContent = `Welcome, ${currentUserData.fullname || currentUser.email}`;
+
+    if (userRole === 'admin') {
+      renderAdminTabs();
+      switchAdminTab('overview');
+    } else {
+      renderUserTabs();
+      switchUserTab('dashboard');
+    }
+  }
+
+  function renderAdminTabs() {
+    dashboardTabs.innerHTML = '';
+    const tabs = [
+      { id: 'overview', label: 'Overview', icon: 'fa-chart-pie' },
+      { id: 'tokens', label: 'Tokens', icon: 'fa-key' },
+      { id: 'users', label: 'Users', icon: 'fa-users' },
+      { id: 'affiliates', label: 'Affiliates', icon: 'fa-user-friends' },
+      { id: 'withdrawals', label: 'Withdrawals', icon: 'fa-wallet' },
+      { id: 'settings', label: 'Settings', icon: 'fa-cog' },
+    ];
+
+    tabs.forEach((tab) => {
+      const btn = document.createElement('button');
+      btn.className = 'tab';
+      btn.id = 'tab-' + tab.id;
+      btn.innerHTML = `<i class="fa ${tab.icon}"></i> ${tab.label}`;
+      btn.onclick = () => switchAdminTab(tab.id);
+      dashboardTabs.appendChild(btn);
+    });
+  }
+
+  function renderUserTabs() {
+    dashboardTabs.innerHTML = '';
+    const tabs = [
+      { id: 'dashboard', label: 'Dashboard', icon: 'fa-tachometer-alt' },
+      { id: 'referrals', label: 'Referrals', icon: 'fa-user-plus' },
+      { id: 'withdrawals', label: 'Withdrawals', icon: 'fa-wallet' },
+      { id: 'account', label: 'Account', icon: 'fa-user-cog' },
+    ];
+
+    tabs.forEach((tab) => {
+      const btn = document.createElement('button');
+      btn.className = 'tab';
+      btn.id = 'tab-' + tab.id;
+      btn.innerHTML = `<i class="fa ${tab.icon}"></i> ${tab.label}`;
+      btn.onclick = () => switchUserTab(tab.id);
+      dashboardTabs.appendChild(btn);
+    });
+  }
+
+  function clearActiveTabs() {
+    [...dashboardTabs.children].forEach((btn) => btn.classList.remove('active'));
+  }
+
+  async function switchAdminTab(tabId) {
+    activeTab = tabId;
+    clearActiveTabs();
+    document.getElementById('tab-' + tabId).classList.add('active');
+    dashboardContent.innerHTML = 'Loading...';
+
+    switch (tabId) {
+      case 'overview':
+        await renderAdminOverview();
+        break;
+      case 'tokens':
+        await renderAdminTokens();
+        break;
+      case 'users':
+        await renderAdminUsers();
+        break;
+      case 'affiliates':
+        await renderAdminAffiliates();
+        break;
+      case 'withdrawals':
+        await renderAdminWithdrawals();
+        break;
+      case 'settings':
+        await renderAdminSettings();
+        break;
+      default:
+        dashboardContent.innerHTML = '<p>Unknown tab</p>';
+    }
+  }
+
+  async function switchUserTab(tabId) {
+    activeTab = tabId;
+    clearActiveTabs();
+    document.getElementById('tab-' + tabId).classList.add('active');
+    dashboardContent.innerHTML = 'Loading...';
+
+    switch (tabId) {
+      case 'dashboard':
+        await renderUserDashboard();
+        break;
+      case 'referrals':
+        await renderUserReferrals();
+        break;
+      case 'withdrawals':
+        await renderUserWithdrawals();
+        break;
+      case 'account':
+        await renderUserAccount();
+        break;
+      default:
+        dashboardContent.innerHTML = '<p>Unknown tab</p>';
+    }
+  }
+
+  /* =======================
+    Admin Tab Renderers
+  ======================= */
+
+  async function renderAdminOverview() {
+    dashboardContent.innerHTML = '<h2>Overview</h2><p>Loading stats...</p>';
+
+    try {
+      // Stats
+      const usersSnapshot = await db.collection('users').get();
+      const tokensSnapshot = await db.collection('tokens').get();
+      const withdrawalsSnapshot = await db.collection('withdrawals').where('status', '==', 'pending').get();
+
+      const totalUsers = usersSnapshot.size;
+      const activeTokens = tokensSnapshot.docs.filter((doc) => doc.data().status === 'unused').length;
+      const pendingWithdrawals = withdrawalsSnapshot.size;
+
+      let totalEarnings = 0;
+      usersSnapshot.forEach((doc) => {
+        const user = doc.data();
+        totalEarnings += user.balance || 0;
       });
+
+      const html = `
+      <div class="stat-grid">
+        <div class="stat-card">
+          <i class="fa fa-users"></i>
+          <div>
+            <div>Total Users</div>
+            <div>${totalUsers}</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <i class="fa fa-dollar-sign"></i>
+          <div>
+            <div>Total Earnings</div>
+            <div>$${totalEarnings.toFixed(2)}</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <i class="fa fa-hourglass-half"></i>
+          <div>
+            <div>Pending Withdrawals</div>
+            <div>${pendingWithdrawals}</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <i class="fa fa-key"></i>
+          <div>
+            <div>Active Tokens</div>
+            <div>${activeTokens}</div>
+          </div>
+        </div>
+      </div>
+      `;
+
+      // Recent Activities (simple last 10 user activity logs)
+      const activitiesSnapshot = await db.collection('activities').orderBy('timestamp', 'desc').limit(10).get();
+      let activitiesHTML = '<h3>Recent Activities</h3><ul>';
+      activitiesSnapshot.forEach((doc) => {
+        const act = doc.data();
+        activitiesHTML += `<li>${act.userEmail || 'Unknown'} - ${act.action} - ${formatDate(act.timestamp)}</li>`;
+      });
+      activitiesHTML += '</ul>';
+
+      dashboardContent.innerHTML = html + activitiesHTML;
+    } catch (err) {
+      dashboardContent.innerHTML = `<p>Error loading overview: ${err.message}</p>`;
+    }
+  }
+
+  async function renderAdminTokens() {
+    dashboardContent.innerHTML = `
+    <h2>Tokens Management</h2>
+    <button id="generate-token-btn" style="margin-bottom:1rem; padding:0.5rem 1rem;">Generate New Token</button>
+    <table>
+      <thead>
+        <tr>
+          <th>Token</th>
+          <th>Status</th>
+          <th>Created At</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tokens-table-body">
+      </tbody>
+    </table>
+    `;
+
+    const tokensTableBody = document.getElementById('tokens-table-body');
+    document.getElementById('generate-token-btn').onclick = async () => {
+      const newToken = generateToken(16);
+      try {
+        await db.collection('tokens').add({
+          token: newToken,
+          status: 'unused',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        showAlert('Token generated successfully', 'success');
+        await renderAdminTokens();
+      } catch (err) {
+        showAlert('Failed to generate token: ' + err.message, 'danger');
+      }
     };
+
+    try {
+      const snapshot = await db.collection('tokens').orderBy('createdAt', 'desc').limit(50).get();
+      tokensTableBody.innerHTML = '';
+      snapshot.forEach((doc) => {
+        const t = doc.data();
+        const statusClass = t.status === 'unused' ? 'success' : 'danger';
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td><code>${t.token}</code></td>
+          <td><span class="badge ${statusClass}">${t.status}</span></td>
+          <td>${formatDate(t.createdAt)}</td>
+          <td class="table-actions">
+            <button class="btn-danger" data-id="${doc.id}">Delete</button>
+          </td>
+        `;
+        tokensTableBody.appendChild(row);
+
+        row.querySelector('button').onclick = async () => {
+          if (confirm('Delete this token?')) {
+            try {
+              await db.collection('tokens').doc(doc.id).delete();
+              showAlert('Token deleted', 'success');
+              await renderAdminTokens();
+            } catch (err) {
+              showAlert('Failed to delete token: ' + err.message, 'danger');
+            }
+          }
+        };
+      });
+    } catch (err) {
+      tokensTableBody.innerHTML = `<tr><td colspan="4">Error loading tokens: ${err.message}</td></tr>`;
+    }
+  }
+
+  async function renderAdminUsers() {
+    dashboardContent.innerHTML = `
+    <h2>Users Management</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Full Name</th>
+          <th>Email</th>
+          <th>Status</th>
+          <th>Balance</th>
+          <th>Role</th>
+          <th>Joined</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="users-table-body">
+      </tbody>
+    </table>
+    `;
+    const usersTableBody = document.getElementById('users-table-body');
+    usersTableBody.innerHTML = 'Loading users...';
+
+    try {
+      const snapshot = await db.collection('users').orderBy('createdAt', 'desc').get();
+      usersTableBody.innerHTML = '';
+      snapshot.forEach((doc) => {
+        const u = doc.data();
+        const statusClass = u.status === 'active' ? 'success' : 'danger';
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${u.fullname || '-'}</td>
+          <td>${u.email}</td>
+          <td><span class="badge ${statusClass}">${u.status}</span></td>
+          <td>$${(u.balance || 0).toFixed(2)}</td>
+          <td>${u.role || 'user'}</td>
+          <td>${formatDate(u.createdAt)}</td>
+          <td class="table-actions">
+            <button class="btn-warning" data-id="${doc.id}">${u.status === 'active' ? 'Suspend' : 'Activate'}</button>
+            <button class="btn-danger" data-id="${doc.id}">Delete</button>
+          </td>
+        `;
+        usersTableBody.appendChild(row);
+
+        const suspendBtn = row.querySelector('.btn-warning');
+        suspendBtn.onclick = async () => {
+          try {
+            const newStatus = u.status === 'active' ? 'suspended' : 'active';
+            await db.collection('users').doc(doc.id).update({ status: newStatus });
+            showAlert(`User ${newStatus}`, 'success');
+            await renderAdminUsers();
+          } catch (err) {
+            showAlert('Error updating user status: ' + err.message, 'danger');
+          }
+        };
+
+        const deleteBtn = row.querySelector('.btn-danger');
+        deleteBtn.onclick = async () => {
+          if (confirm('Delete this user? This action is irreversible.')) {
+            try {
+              await db.collection('users').doc(doc.id).delete();
+              showAlert('User deleted', 'success');
+              await renderAdminUsers();
+            } catch (err) {
+              showAlert('Error deleting user: ' + err.message, 'danger');
+            }
+          }
+        };
+      });
+    } catch (err) {
+      usersTableBody.innerHTML = `<tr><td colspan="7">Error loading users: ${err.message}</td></tr>`;
+    }
+  }
+
+  async function renderAdminAffiliates() {
+    dashboardContent.innerHTML = '<h2>Affiliates</h2><p>Loading affiliate data...</p>';
+
+    try {
+      const usersSnapshot = await db.collection('users').get();
+      let affiliatesHTML = '<table><thead><tr><th>Affiliate</th><th>Referrals Count</th><th>Commission Earned</th></tr></thead><tbody>';
+
+      usersSnapshot.forEach((doc) => {
+        const u = doc.data();
+        const referralCount = u.referrals?.length || 0;
+        const commission = (referralCount * COMMISSION_RATE * 10).toFixed(2); // example commission logic
+        if (referralCount > 0) {
+          affiliatesHTML += `<tr><td>${u.fullname || u.email}</td><td>${referralCount}</td><td>$${commission}</td></tr>`;
+        }
+      });
+
+      affiliatesHTML += '</tbody></table>';
+      dashboardContent.innerHTML = `<h2>Affiliates Overview</h2>` + affiliatesHTML;
+    } catch (err) {
+      dashboardContent.innerHTML = `<p>Error loading affiliates: ${err.message}</p>`;
+    }
+  }
+
+  async function renderAdminWithdrawals() {
+    dashboardContent.innerHTML = `
+    <h2>Withdrawal Requests</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Amount</th>
+          <th>Status</th>
+          <th>Requested At</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="withdrawals-table-body">
+      </tbody>
+    </table>
+    `;
+
+    const tbody = document.getElementById('withdrawals-table-body');
+    tbody.innerHTML = 'Loading withdrawal requests...';
+
+    try {
+      const snapshot = await db.collection('withdrawals').orderBy('requestedAt', 'desc').get();
+      tbody.innerHTML = '';
+      for (const doc of snapshot.docs) {
+        const w = doc.data();
+        const userRef = await db.collection('users').doc(w.userId).get();
+        const userName = userRef.exists ? userRef.data().fullname || userRef.data().email : 'Unknown User';
+        const statusClass = w.status === 'pending' ? 'warning' : w.status === 'approved' ? 'success' : 'danger';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${userName}</td>
+          <td>$${w.amount.toFixed(2)}</td>
+          <td><span class="badge ${statusClass}">${w.status}</span></td>
+          <td>${formatDate(w.requestedAt)}</td>
+          <td class="table-actions">
+            ${w.status === 'pending' ? `<button class="btn-warning" data-id="${doc.id}" data-action="approve">Approve</button>
+            <button class="btn-danger" data-id="${doc.id}" data-action="reject">Reject</button>` : '-'}
+          </td>
+        `;
+        tbody.appendChild(tr);
+
+        if (w.status === 'pending') {
+          tr.querySelector('[data-action="approve"]').onclick = async () => {
+            if (confirm('Approve this withdrawal?')) {
+              try {
+                await db.collection('withdrawals').doc(doc.id).update({ status: 'approved', processedAt: firebase.firestore.FieldValue.serverTimestamp() });
+                // Deduct balance
+                await db.collection('users').doc(w.userId).update({
+                  balance: firebase.firestore.FieldValue.increment(-w.amount),
+                });
+                showAlert('Withdrawal approved', 'success');
+                await renderAdminWithdrawals();
+              } catch (err) {
+                showAlert('Error approving withdrawal: ' + err.message, 'danger');
+              }
+            }
+          };
+          tr.querySelector('[data-action="reject"]').onclick = async () => {
+            if (confirm('Reject this withdrawal?')) {
+              try {
+                await db.collection('withdrawals').doc(doc.id).update({ status: 'rejected', processedAt: firebase.firestore.FieldValue.serverTimestamp() });
+                showAlert('Withdrawal rejected', 'info');
+                await renderAdminWithdrawals();
+              } catch (err) {
+                showAlert('Error rejecting withdrawal: ' + err.message, 'danger');
+              }
+            }
+          };
+        }
+      }
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="5">Error loading withdrawals: ${err.message}</td></tr>`;
+    }
+  }
+
+  async function renderAdminSettings() {
+    dashboardContent.innerHTML = `
+    <h2>Settings</h2>
+    <p>Commission Rate: ${(COMMISSION_RATE * 100).toFixed(2)}%</p>
+    <p>Minimum Referrals for Withdrawal: ${MIN_REFERRALS_WITHDRAWAL}</p>
+    <p>Minimum Withdrawal Amount: $${MIN_WITHDRAWAL_AMOUNT.toFixed(2)}</p>
+    <p>Admin Email: ${ADMIN_EMAIL}</p>
+    <p>Settings update coming soon.</p>
+    `;
+  }
+
+  /* =======================
+    User Tab Renderers
+  ======================= */
+
+  async function renderUserDashboard() {
+    dashboardContent.innerHTML = `
+    <h2>Dashboard</h2>
+    <p><strong>Balance:</strong> $${(currentUserData.balance || 0).toFixed(2)}</p>
+    <p><strong>Total Referrals:</strong> ${currentUserData.referrals?.length || 0}</p>
+    <p><strong>Referral Code:</strong> <code>${currentUserData.referralCode || '-'}</code></p>
+    `;
+  }
+
+  async function renderUserReferrals() {
+    dashboardContent.innerHTML = '<h2>Your Referrals</h2><p>Loading referrals...</p>';
+    try {
+      // Load referrals
+      const referralsIds = currentUserData.referrals || [];
+      if (referralsIds.length === 0) {
+        dashboardContent.innerHTML += '<p>You have no referrals yet.</p>';
+        return;
+      }
+
+      let referralsHTML = '<table><thead><tr><th>Full Name</th><th>Email</th><th>Joined</th></tr></thead><tbody>';
+      for (const uid of referralsIds) {
+        const refDoc = await db.collection('users').doc(uid).get();
+        if (refDoc.exists) {
+          const r = refDoc.data();
+          referralsHTML += `<tr><td>${r.fullname || '-'}</td><td>${r.email}</td><td>${formatDate(r.createdAt)}</td></tr>`;
+        }
+      }
+      referralsHTML += '</tbody></table>';
+      dashboardContent.innerHTML = `<h2>Your Referrals</h2>` + referralsHTML;
+    } catch (err) {
+      dashboardContent.innerHTML = `<p>Error loading referrals: ${err.message}</p>`;
+    }
+  }
+
+  async function renderUserWithdrawals() {
+    dashboardContent.innerHTML = `
+    <h2>Withdrawals</h2>
+    <p>Your current balance is $${(currentUserData.balance || 0).toFixed(2)}</p>
+    <p>Minimum referrals to withdraw: ${MIN_REFERRALS_WITHDRAWAL}</p>
+    <p>Minimum withdrawal amount: $${MIN_WITHDRAWAL_AMOUNT.toFixed(2)}</p>
+    <form id="withdrawal-form">
+      <label for="withdrawal-amount">Amount to withdraw</label>
+      <input type="number" id="withdrawal-amount" min="${MIN_WITHDRAWAL_AMOUNT}" step="0.01" required />
+      <button type="submit">Request Withdrawal</button>
+    </form>
+    <h3>Your Withdrawal History</h3>
+    <table>
+      <thead>
+        <tr><th>Amount</th><th>Status</th><th>Requested At</th></tr>
+      </thead>
+      <tbody id="withdrawals-history-body"></tbody>
+    </table>
+    `;
+
+    const form = document.getElementById('withdrawal-form');
+    const amountInput = document.getElementById('withdrawal-amount');
+    const historyBody = document.getElementById('withdrawals-history-body');
+
+    amountInput.value = MIN_WITHDRAWAL_AMOUNT;
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const amount = parseFloat(amountInput.value);
+      if (isNaN(amount) || amount < MIN_WITHDRAWAL_AMOUNT) {
+        showAlert(`Amount must be at least $${MIN_WITHDRAWAL_AMOUNT}`, 'danger');
+        return;
+      }
+      if (amount > (currentUserData.balance || 0)) {
+        showAlert('Insufficient balance', 'danger');
+        return;
+      }
+      if ((currentUserData.referrals?.length || 0) < MIN_REFERRALS_WITHDRAWAL) {
+        showAlert(`You need at least ${MIN_REFERRALS_WITHDRAWAL} referrals to withdraw.`, 'danger');
+        return;
+      }
+
+      try {
+        await db.collection('withdrawals').add({
+          userId: currentUser.uid,
+          amount,
+          status: 'pending',
+          requestedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        showAlert('Withdrawal request submitted.', 'success');
+        await refreshCurrentUserData();
+        await renderUserWithdrawals();
+      } catch (err) {
+        showAlert('Error submitting withdrawal: ' + err.message, 'danger');
+      }
+    };
+
+    try {
+      const snapshot = await db.collection('withdrawals').where('userId', '==', currentUser.uid).orderBy('requestedAt', 'desc').get();
+      historyBody.innerHTML = '';
+      snapshot.forEach((doc) => {
+        const w = doc.data();
+        const statusClass = w.status === 'pending' ? 'warning' : w.status === 'approved' ? 'success' : 'danger';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>$${w.amount.toFixed(2)}</td>
+          <td><span class="badge ${statusClass}">${w.status}</span></td>
+          <td>${formatDate(w.requestedAt)}</td>
+        `;
+        historyBody.appendChild(tr);
+      });
+    } catch (err) {
+      historyBody.innerHTML = `<tr><td colspan="3">Error loading withdrawal history: ${err.message}</td></tr>`;
+    }
+  }
+
+  async function renderUserAccount() {
+    dashboardContent.innerHTML = `
+    <h2>Account Settings</h2>
+    <form id="account-form">
+      <label for="account-fullname">Full Name</label>
+      <input type="text" id="account-fullname" value="${currentUserData.fullname || ''}" required />
+      <label for="account-email">Email (cannot be changed)</label>
+      <input type="email" id="account-email" value="${currentUserData.email || ''}" disabled />
+      <label for="account-password">New Password (leave blank to keep current)</label>
+      <input type="password" id="account-password" />
+      <button type="submit">Update Account</button>
+    </form>
+    `;
+
+    const form = document.getElementById('account-form');
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const newFullname = document.getElementById('account-fullname').value.trim();
+      const newPassword = document.getElementById('account-password').value;
+
+      if (newFullname.length < 3) {
+        showAlert('Full name must be at least 3 characters.', 'danger');
+        return;
+      }
+
+      try {
+        await db.collection('users').doc(currentUser.uid).update({
+          fullname: newFullname,
+        });
+
+        if (newPassword.length >= 6) {
+          await currentUser.updatePassword(newPassword);
+        }
+
+        showAlert('Account updated successfully.', 'success');
+        await refreshCurrentUserData();
+        setupDashboard();
+      } catch (err) {
+        showAlert('Error updating account: ' + err.message, 'danger');
+      }
+    };
+  }
+
+  async function refreshCurrentUserData() {
+    if (!currentUser) return;
+    currentUserData = await loadUserData(currentUser.uid);
+  }
+
+  // Initialize
+  auth.onAuthStateChanged(async (user) => {
+    if (user) {
+      currentUser = user;
+      currentUserData = await loadUserData(user.uid);
+      userRole = currentUserData?.role || 'user';
+      if (currentUserData.status === 'suspended') {
+        await auth.signOut();
+        showAlert('Your account is suspended. Contact admin.', 'danger');
+        showAuth();
+        return;
+      }
+      setupDashboard();
+    } else {
+      currentUser = null;
+      currentUserData = null;
+      userRole = 'user';
+      showAuth();
+    }
   });
-}
 
-function userReferrals(){
-  const c=document.getElementById('content');
-  c.innerHTML = `
-    <h3>Your Referral Program</h3>
-    <iframe width="100%" height="315" src="https://www.youtube.com/embed/dQw4w9WgXcQ" frameborder="0" allowfullscreen></iframe>
-    <button onclick="copyReferralLink()">Copy Link</button>
-    <div class="progress"><div id="ref-progress" class="progress-bar"></div></div><p id="ref-status"></p>
-    <h4>Your Referrals</h4><div id="ref-table"></div>
-    <h4>Activate Token</h4>
-    <input id="token-code" placeholder="Token code"><button onclick="activateToken()">Activate</button><div id="token-msg"></div>`;
-  db.collection('users').doc(currentUser.uid).get().then(doc=>{
-    const d=doc.data(), have=d.referrals||0, needed=6;
-    const pct = Math.min((have/needed)*100,100);
-    document.getElementById('ref-progress').style.width=`${pct}%`;
-    document.getElementById('ref-status').innerText=`Referrals: ${have}/${needed}`;
-  });
-  reloadReferralsTable();
-}
+  showAuth();
 
-function copyReferralLink(){
-  const url = location.origin + '?ref=' + currentUser.uid;
-  navigator.clipboard.writeText(url).then(()=>alert('Referral link copied!'));
-}
-
-function reloadReferralsTable(){
-  const c = document.getElementById('ref-table');
-  db.collection('users').where('ref','==',currentUser.uid).get().then(q=>{
-    let html='<table class="table"><tr><th>Name</th><th>Joined</th><th>Status</th></tr>';
-    q.forEach(doc=>{
-      const d=doc.data(); html+=`<tr><td>${d.name}</td><td>${d.joined?.toDate().toLocaleDateString() || '-'}</td><td><span class="badge ${d.status==='active'?'success':'warning'}">${d.status}</span></td></tr>`;
-    });
-    html+='</table>'; c.innerHTML=html;
-  });
-}
-
-function activateToken(){
-  const code = document.getElementById('token-code').value.trim();
-  if(!code) return;
-  db.collection('tokens').where('token','==',code).get()
-    .then(q=> {
-      if(q.empty) throw 'Invalid token';
-      const d=q.docs[0].data();
-      if(d.status==='used' && d.type==='one-time') throw 'Token already used';
-      return q.docs[0];
-    })
-    .then(doc => db.collection('tokens').doc(doc.id).update({status:'used',usedBy:currentUser.uid}))
-    .then(()=> { document.getElementById('token-msg').innerText='Token activated!'; logEvent(currentUser.uid,'activate_token',{code}); })
-    .catch(e => document.getElementById('token-msg').innerText=e);
-}
-
-function userWithdrawals(){
-  const c = document.getElementById('content');
-  c.innerHTML = `
-    <h3>Request Withdrawal ($20 min)</h3>
-    <input id="wd-amount" type="number" placeholder="Amount">
-    <input id="wd-account" placeholder="Account Info">
-    <button onclick="requestWithdrawal()">Request</button><div id="wd-msg"></div>
-    <h4>Withdrawal History</h4><div id="wd-history"></div>`;
-  loadUserWithdrawalHistory();
-}
-
-function requestWithdrawal(){
-  const amt=parseFloat(document.getElementById('wd-amount').value),
-        acc=document.getElementById('wd-account').value.trim();
-  if(isNaN(amt)||amt<20) return document.getElementById('wd-msg').innerText='Minimum $20';
-  if(!acc) return document.getElementById('wd-msg').innerText='Account info required';
-  db.collection('transactions').add({
-    uid:currentUser.uid, email:currentUser.email, type:'withdrawal',
-    amount:amt, account:acc, status:'pending', created:firebase.firestore.FieldValue.serverTimestamp()
-  }).then(()=>{
-    localStorage.setItem('pendingWithdrawal', amt);
-    document.getElementById('wd-msg').innerText='Requested';
-    logEvent(currentUser.uid,'request_withdrawal',{amount:amt,account:acc});
-    loadUserWithdrawalHistory();
-  });
-}
-
-function loadUserWithdrawalHistory(){
-  const c = document.getElementById('wd-history');
-  db.collection('transactions').where('uid','==',currentUser.uid).orderBy('created','desc').get().then(q=>{
-    let html='<table class="table"><tr><th>Amount</th><th>Date</th><th>Status</th></tr>';
-    q.forEach(doc=>{
-      const d=doc.data();
-      html+=`<tr><td>$${d.amount.toFixed(2)}</td><td>${d.created.toDate().toLocaleString()}</td><td><span class="badge ${d.status==='pending'?'warning':'success'}">${d.status}</span></td></tr>`;
-    });
-    html+='</table>'; c.innerHTML=html;
-  });
-}
-
-function userAccount(){
-  const c=document.getElementById('content');
-  c.innerHTML = `
-    <h3>Account Details</h3>
-    <input id="acc-name" placeholder="Name">
-    <input id="acc-email" placeholder="Email" disabled>
-    <input id="acc-phone" placeholder="Phone">
-    <input id="acc-account" placeholder="Account Info">
-    <button onclick="updateAccount()">Save</button><div id="acc-msg"></div>`;
-  db.collection('users').doc(currentUser.uid).get().then(doc=>{
-    const d=doc.data();
-    document.getElementById('acc-name').value=d.name||'';
-    document.getElementById('acc-email').value=d.email||'';
-    document.getElementById('acc-phone').value=d.phone||'';
-    document.getElementById('acc-account').value=d.account||'';
-  });
-}
-
-function updateAccount(){
-  const data = {
-    name: document.getElementById('acc-name').value.trim(),
-    phone: document.getElementById('acc-phone').value.trim(),
-    account: document.getElementById('acc-account').value.trim()
-  };
-  db.collection('users').doc(currentUser.uid).update(data)
-    .then(()=>{ document.getElementById('acc-msg').innerText='Saved!'; logEvent(currentUser.uid,'update_account', data); })
-    .catch(err => document.getElementById('acc-msg').innerText = err.message);
-}
 </script>
+
 </body>
 </html>
