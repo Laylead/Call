@@ -9,6 +9,6 @@ const firebaseConfig = {
 };
 
 const adminCredentials = {
-    email: "mynumba100@gmail.com",
+    email: "mynumba10@gmail.com",
     password: "mynumba100"
 };
