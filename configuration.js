@@ -8,8 +8,7 @@ const firebaseConfig = {
   appId: "1:593310501630:web:c241a05e0d7c4a810173af"
 };
 
-const ADMIN_CREDENTIALS = {
-    email: "admin@example.com",
-    password: "admin123",
-    name: "Admin User"
+const adminCredentials = {
+    email: "admin@yourdomain.com",
+    password: "admin123"
 };
