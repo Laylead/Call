@@ -446,6 +446,10 @@
                     <button id="login-btn" onclick="login()">
                         <i class="fas fa-sign-in-alt"></i> Login
                     </button>
+                    <div id="login-error" class="alert danger hidden" style="margin-top:15px;">
+                        <i class="fas fa-exclamation-circle"></i> 
+                        <span id="error-msg"></span>
+                    </div>
                 </div>
             </div>
             
@@ -468,6 +472,10 @@
                     <button id="register-btn" onclick="register()">
                         <i class="fas fa-user-plus"></i> Register
                     </button>
+                    <div id="register-error" class="alert danger hidden" style="margin-top:15px;">
+                        <i class="fas fa-exclamation-circle"></i> 
+                        <span id="register-error-msg"></span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -510,6 +518,7 @@
         let currentUser = null;
         let isAdmin = false;
         let loadingStates = {};
+        let userCache = {};
 
         // UI toggles
         document.getElementById('to-login').onclick = () => switchForms('login');
@@ -559,7 +568,8 @@
             batch.commit()
               .then(() => {
                 localStorage.removeItem('offlineLogs');
-              });
+              })
+              .catch(console.error);
         }
 
         // Set loading state for buttons
@@ -578,9 +588,22 @@
                 button.disabled = false;
             }
         }
+        
+        // Show error message
+        function showError(elementId, message) {
+            const errorElement = document.getElementById(elementId);
+            errorElement.classList.remove('hidden');
+            errorElement.querySelector('span').textContent = message;
+        }
+        
+        // Hide error message
+        function hideError(elementId) {
+            document.getElementById(elementId).classList.add('hidden');
+        }
 
         // Registration with validation and proper error handling
         function register() {
+            hideError('register-error');
             const name = document.getElementById('reg-name').value.trim();
             const email = document.getElementById('reg-email').value.trim();
             const phone = document.getElementById('reg-phone').value.trim();
@@ -588,11 +611,11 @@
             const confirmPwd = document.getElementById('reg-confirm-password').value;
             const ref = document.getElementById('reg-ref').value.trim();
             
-            if (!name) return alert('Please enter your full name');
-            if (!email || !validateEmail(email)) return alert('Please enter a valid email address');
-            if (!phone) return alert('Please enter your phone number');
-            if (pwd.length < 8) return alert('Password must be at least 8 characters');
-            if (pwd !== confirmPwd) return alert('Passwords do not match');
+            if (!name) return showError('register-error', 'Please enter your full name');
+            if (!email || !validateEmail(email)) return showError('register-error', 'Please enter a valid email address');
+            if (!phone) return showError('register-error', 'Please enter your phone number');
+            if (pwd.length < 8) return showError('register-error', 'Password must be at least 8 characters');
+            if (pwd !== confirmPwd) return showError('register-error', 'Passwords do not match');
             
             setLoading('register-btn', true);
             
@@ -617,16 +640,24 @@
                 })
                 .then(user => {
                     currentUser = user;
-                    return db.collection('users').doc(user.uid).get();
-                })
-                .then(doc => {
-                    if (!doc.exists) throw new Error('User document not created');
-                    isAdmin = doc.data().role === 'admin';
+                    userCache[user.uid] = {
+                        name,
+                        email,
+                        phone,
+                        ref,
+                        role: 'user',
+                        status: 'active',
+                        balance: 0,
+                        referrals: 0,
+                        commissionRate: 0.15,
+                        twoFA: false
+                    };
+                    isAdmin = false;
                     initApp();
                 })
                 .catch(err => {
                     console.error("Registration error:", err);
-                    alert(`Registration failed: ${err.message}`);
+                    showError('register-error', `Registration failed: ${err.message}`);
                     if (auth.currentUser) {
                         auth.currentUser.delete().catch(console.error);
                     }
@@ -644,75 +675,59 @@
 
         // Login function with security enhancements
         function login() {
+            hideError('login-error');
             const email = document.getElementById('login-email').value.trim();
             const pwd = document.getElementById('login-password').value;
             
-            if (!email || !validateEmail(email)) return alert('Please enter a valid email address');
-            if (!pwd) return alert('Please enter your password');
+            if (!email || !validateEmail(email)) return showError('login-error', 'Please enter a valid email address');
+            if (!pwd) return showError('login-error', 'Please enter your password');
             
             setLoading('login-btn', true);
             
-            // Check if it's admin login from configuration.js
+            // Admin login flow
             if (typeof adminCredentials !== 'undefined' && 
                 email === adminCredentials.email && 
                 pwd === adminCredentials.password) {
                 
+                // First try to log in normally
                 auth.signInWithEmailAndPassword(email, pwd)
                     .then(res => {
-                        return db.collection('users').doc(res.user.uid).get().then(d => {
-                            if (!d.exists) {
-                                // Create admin user if doesn't exist
-                                return db.collection('users').doc(res.user.uid).set({
-                                    name: "Admin",
-                                    email: email,
-                                    role: 'admin',
-                                    status: 'active',
-                                    balance: 0,
-                                    referrals: 0,
-                                    commissionRate: 0.15,
-                                    twoFA: false,
-                                    joined: firebase.firestore.FieldValue.serverTimestamp()
-                                }).then(() => ({ user: res.user, data: { role: 'admin' } }));
-                            }
-                            return { user: res.user, data: d.data() };
-                        });
-                    })
-                    .then(({ user, data }) => {
-                        if (!data) throw new Error('User data not found');
-                        
-                        // Ensure admin role
-                        if (data.role !== 'admin') {
-                            return db.collection('users').doc(user.uid).update({ role: 'admin' })
-                                .then(() => ({ user, data: { ...data, role: 'admin' }}));
-                        }
-                        return { user, data };
-                    })
-                    .then(({ user, data }) => {
-                        if (data.twoFA) {
-                            return auth.sendSignInLinkToEmail(email, {
-                                url: window.location.href,
-                                handleCodeInApp: true
-                            }).then(() => {
-                                alert('2FA verification link sent to your email.');
-                                db.collection('users').doc(user.uid).update({
-                                    twoFALinkSent: firebase.firestore.FieldValue.serverTimestamp()
-                                });
-                                throw '2FA pending';
+                        // Check if user document exists
+                        return db.collection('users').doc(res.user.uid).get()
+                            .then(doc => {
+                                if (doc.exists) {
+                                    return { user: res.user, data: doc.data() };
+                                } else {
+                                    // Create admin document if it doesn't exist
+                                    return db.collection('users').doc(res.user.uid).set({
+                                        name: "Admin",
+                                        email: email,
+                                        role: 'admin',
+                                        status: 'active',
+                                        balance: 0,
+                                        referrals: 0,
+                                        commissionRate: 0.15,
+                                        twoFA: false,
+                                        joined: firebase.firestore.FieldValue.serverTimestamp()
+                                    }).then(() => ({ user: res.user, data: { role: 'admin' } }));
+                                }
                             });
-                        }
-                        return { user, data };
                     })
                     .then(({ user, data }) => {
                         currentUser = user;
                         isAdmin = true;
+                        userCache[user.uid] = data;
                         return logEvent(user.uid, 'admin_login');
                     })
                     .then(() => {
                         initApp();
                     })
                     .catch(err => {
-                        if (typeof err !== 'string') {
-                            alert(`Admin login failed: ${err.message}`);
+                        if (err.code === 'auth/user-not-found') {
+                            // Create admin user if doesn't exist
+                            createAdminUser(email, pwd);
+                        } else {
+                            showError('login-error', `Admin login failed: ${err.message}`);
                         }
                     })
                     .finally(() => {
@@ -723,10 +738,28 @@
             
             // Regular user login
             auth.signInWithEmailAndPassword(email, pwd)
-                .then(res => db.collection('users').doc(res.user.uid).get().then(d => ({ user: res.user, data: d.data() })))
+                .then(res => {
+                    return db.collection('users').doc(res.user.uid).get()
+                        .then(doc => {
+                            if (doc.exists) {
+                                return { user: res.user, data: doc.data() };
+                            } else {
+                                // Create a minimal user document if it doesn't exist
+                                return db.collection('users').doc(res.user.uid).set({
+                                    name: email,
+                                    email: email,
+                                    role: 'user',
+                                    status: 'active',
+                                    balance: 0,
+                                    referrals: 0,
+                                    commissionRate: 0.15,
+                                    twoFA: false,
+                                    joined: firebase.firestore.FieldValue.serverTimestamp()
+                                }).then(() => ({ user: res.user, data: { role: 'user' } }));
+                            }
+                        });
+                })
                 .then(({ user, data }) => {
-                    if (!data) throw new Error('User data not found');
-                    
                     if (data.twoFA) {
                         return auth.sendSignInLinkToEmail(email, {
                             url: window.location.href,
@@ -744,13 +777,56 @@
                 .then(({ user, data }) => {
                     currentUser = user;
                     isAdmin = data.role === 'admin';
+                    userCache[user.uid] = data;
                     return logEvent(user.uid, 'login');
                 })
                 .then(() => {
                     initApp();
                 })
                 .catch(err => {
-                    if (typeof err !== 'string') alert(err.message);
+                    if (typeof err !== 'string') showError('login-error', err.message);
+                })
+                .finally(() => {
+                    setLoading('login-btn', false);
+                });
+        }
+        
+        // Create admin user if doesn't exist
+        function createAdminUser(email, password) {
+            auth.createUserWithEmailAndPassword(email, password)
+                .then(userCredential => {
+                    return db.collection('users').doc(userCredential.user.uid).set({
+                        name: "Admin",
+                        email: email,
+                        role: 'admin',
+                        status: 'active',
+                        balance: 0,
+                        referrals: 0,
+                        commissionRate: 0.15,
+                        twoFA: false,
+                        joined: firebase.firestore.FieldValue.serverTimestamp()
+                    }).then(() => userCredential.user);
+                })
+                .then(user => {
+                    currentUser = user;
+                    isAdmin = true;
+                    userCache[user.uid] = {
+                        name: "Admin",
+                        email: email,
+                        role: 'admin',
+                        status: 'active',
+                        balance: 0,
+                        referrals: 0,
+                        commissionRate: 0.15,
+                        twoFA: false
+                    };
+                    return logEvent(user.uid, 'admin_created');
+                })
+                .then(() => {
+                    initApp();
+                })
+                .catch(err => {
+                    showError('login-error', `Admin creation failed: ${err.message}`);
                 })
                 .finally(() => {
                     setLoading('login-btn', false);
@@ -766,26 +842,71 @@
                     window.history.replaceState({}, document.title, '/');
                     initApp();
                 })
-                .catch(alert);
+                .catch(err => {
+                    showError('login-error', `2FA failed: ${err.message}`);
+                });
         }
 
         // Auth state handler with offline support
         auth.onAuthStateChanged(u => {
             if (u) {
                 currentUser = u;
+                
+                // First try to get user data from cache
+                if (userCache[u.uid]) {
+                    const data = userCache[u.uid];
+                    isAdmin = data.role === 'admin';
+                    initApp();
+                    processOfflineLogs();
+                    return;
+                }
+                
+                // If not in cache, try to get from Firestore
                 db.collection('users').doc(u.uid).get()
                 .then(doc => {
                     if (doc.exists) {
-                        isAdmin = doc.data().role === 'admin';
+                        const data = doc.data();
+                        userCache[u.uid] = data;
+                        isAdmin = data.role === 'admin';
                         initApp();
                         processOfflineLogs();
                     } else {
-                        throw new Error('User document not found');
+                        // Create minimal user data for offline use
+                        const minimalData = {
+                            name: u.email,
+                            email: u.email,
+                            role: 'user',
+                            status: 'active',
+                            balance: 0,
+                            referrals: 0,
+                            commissionRate: 0.15,
+                            twoFA: false
+                        };
+                        userCache[u.uid] = minimalData;
+                        isAdmin = false;
+                        initApp();
+                        
+                        // Try to save to Firestore if online
+                        db.collection('users').doc(u.uid).set(minimalData)
+                            .catch(err => console.log("Offline - user data not saved to Firestore"));
                     }
                 })
                 .catch(err => {
                     console.error("Auth state error:", err);
-                    auth.signOut();
+                    // Offline - use minimal data
+                    const minimalData = {
+                        name: u.email,
+                        email: u.email,
+                        role: 'user',
+                        status: 'active',
+                        balance: 0,
+                        referrals: 0,
+                        commissionRate: 0.15,
+                        twoFA: false
+                    };
+                    userCache[u.uid] = minimalData;
+                    isAdmin = false;
+                    initApp();
                 });
             }
         });
@@ -793,6 +914,7 @@
         function logout() { 
             auth.signOut(); 
             localStorage.clear();
+            userCache = {};
             window.location.reload();
         }
 
@@ -801,10 +923,10 @@
             document.getElementById('auth-screen').classList.add('hidden');
             document.getElementById('app').classList.remove('hidden');
             
-            db.collection('users').doc(currentUser.uid).get().then(doc => {
-                const userData = doc.data();
-                document.getElementById('user-name').innerText = userData.name;
-            });
+            // Use cached user data if available
+            if (currentUser && userCache[currentUser.uid]) {
+                document.getElementById('user-name').innerText = userCache[currentUser.uid].name || currentUser.email;
+            }
             
             buildTabs();
             const first = isAdmin ? 'Overview' : 'Dashboard';
@@ -902,41 +1024,48 @@
                 </div>
             `;
             
-            Promise.all([
-                db.collection('users').get(),
-                db.collection('transactions').get(),
-                db.collection('tokens').get()
-            ]).then(([usersSnap, txSnap, tokensSnap]) => {
-                let earnings = 0;
-                let pending = 0;
-                
-                txSnap.forEach(doc => {
-                    const t = doc.data();
-                    if (t.type === 'earn') earnings += t.amount;
-                    if (t.status === 'pending') pending += t.amount;
+            // Try to fetch data but handle offline case
+            try {
+                Promise.all([
+                    db.collection('users').get(),
+                    db.collection('transactions').get(),
+                    db.collection('tokens').get()
+                ]).then(([usersSnap, txSnap, tokensSnap]) => {
+                    let earnings = 0;
+                    let pending = 0;
+                    
+                    txSnap.forEach(doc => {
+                        const t = doc.data();
+                        if (t.type === 'earn') earnings += t.amount;
+                        if (t.status === 'pending') pending += t.amount;
+                    });
+                    
+                    document.getElementById('stat-users').innerText = usersSnap.size;
+                    document.getElementById('stat-earnings').innerText = '$' + earnings.toFixed(2);
+                    document.getElementById('stat-pending').innerText = '$' + pending.toFixed(2);
+                    document.getElementById('stat-tokens').innerText = tokensSnap.size;
                 });
                 
-                document.getElementById('stat-users').innerText = usersSnap.size;
-                document.getElementById('stat-earnings').innerText = '$' + earnings.toFixed(2);
-                document.getElementById('stat-pending').innerText = '$' + pending.toFixed(2);
-                document.getElementById('stat-tokens').innerText = tokensSnap.size;
-            });
-            
-            logs.orderBy('timestamp', 'desc').limit(10).get().then(snap => {
-                let html = '<div class="table-container"><table class="table"><tr><th>User</th><th>Action</th><th>Time</th></tr>';
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    html += `
-                        <tr>
-                            <td>${d.uid}</td>
-                            <td>${d.action}</td>
-                            <td>${d.timestamp.toDate().toLocaleString()}</td>
-                        </tr>
-                    `;
+                logs.orderBy('timestamp', 'desc').limit(10).get().then(snap => {
+                    let html = '<div class="table-container"><table class="table"><tr><th>User</th><th>Action</th><th>Time</th></tr>';
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        html += `
+                            <tr>
+                                <td>${d.uid}</td>
+                                <td>${d.action}</td>
+                                <td>${d.timestamp?.toDate().toLocaleString() || '-'}</td>
+                            </tr>
+                        `;
+                    });
+                    html += '</table></div>';
+                    document.getElementById('recent-activities').innerHTML = html;
                 });
-                html += '</table></div>';
-                document.getElementById('recent-activities').innerHTML = html;
-            });
+            } catch (e) {
+                console.log("Offline - couldn't load overview data");
+                document.getElementById('recent-activities').innerHTML = 
+                    '<div class="alert info">Offline mode - data not available</div>';
+            }
             
             logEvent(currentUser.uid, 'view_admin_overview');
         }
@@ -1409,8 +1538,8 @@
                 </div>
             `;
             
-            db.collection('users').doc(currentUser.uid).get().then(doc => {
-                const d = doc.data();
+            if (currentUser && userCache[currentUser.uid]) {
+                const d = userCache[currentUser.uid];
                 const bal = d.balance || 0;
                 const refs = d.referrals || 0;
                 const commissionRate = d.commissionRate || 0.15;
@@ -1447,31 +1576,37 @@
                         logEvent(currentUser.uid, 'toggle_2fa', { twoFA: on });
                     });
                 };
-            });
+            }
             
-            logs.where('uid', '==', currentUser.uid)
-                .orderBy('timestamp', 'desc')
-                .limit(5)
-                .get()
-                .then(snap => {
-                    let html = '<table class="table"><tr><th>Action</th><th>Time</th></tr>';
-                    
-                    if (snap.empty) {
-                        html = '<p>No recent activity</p>';
-                    } else {
-                        snap.forEach(doc => {
-                            const d = doc.data();
-                            html += `
-                                <tr>
-                                    <td>${d.action}</td>
-                                    <td>${d.timestamp.toDate().toLocaleString()}</td>
-                                </tr>
-                            `;
-                        });
-                    }
-                    
-                    document.getElementById('user-activity').innerHTML = html;
-                });
+            // Load recent activity
+            try {
+                logs.where('uid', '==', currentUser.uid)
+                    .orderBy('timestamp', 'desc')
+                    .limit(5)
+                    .get()
+                    .then(snap => {
+                        let html = '<table class="table"><tr><th>Action</th><th>Time</th></tr>';
+                        
+                        if (snap.empty) {
+                            html = '<p>No recent activity</p>';
+                        } else {
+                            snap.forEach(doc => {
+                                const d = doc.data();
+                                html += `
+                                    <tr>
+                                        <td>${d.action}</td>
+                                        <td>${d.timestamp.toDate().toLocaleString()}</td>
+                                    </tr>
+                                `;
+                            });
+                        }
+                        
+                        document.getElementById('user-activity').innerHTML = html;
+                    });
+            } catch (e) {
+                document.getElementById('user-activity').innerHTML = 
+                    '<div class="alert info">Offline mode - recent activity not available</div>';
+            }
         }
 
         function userReferrals() {
@@ -1520,15 +1655,15 @@
             
             document.getElementById('referral-link').value = window.location.origin + '?ref=' + currentUser.uid;
             
-            db.collection('users').doc(currentUser.uid).get().then(doc => {
-                const d = doc.data();
+            if (currentUser && userCache[currentUser.uid]) {
+                const d = userCache[currentUser.uid];
                 const have = d.referrals || 0;
                 const needed = 6;
                 const pct = Math.min((have / needed) * 100, 100);
                 
                 document.getElementById('ref-progress').style.width = `${pct}%`;
                 document.getElementById('ref-status').innerText = `Referrals: ${have}/${needed} (${Math.round(pct)}%)`;
-            });
+            }
             
             reloadReferralsTable();
         }
@@ -1542,31 +1677,35 @@
         
         function reloadReferralsTable() {
             const c = document.getElementById('ref-table');
-            db.collection('users').where('ref', '==', currentUser.uid).get().then(q => {
-                let html = '';
-                
-                if (q.empty) {
-                    html = '<div class="alert info"><i class="fas fa-info-circle"></i> You have no referrals yet</div>';
-                } else {
-                    html = '<table class="table"><tr><th>Name</th><th>Email</th><th>Joined</th><th>Status</th></tr>';
+            try {
+                db.collection('users').where('ref', '==', currentUser.uid).get().then(q => {
+                    let html = '';
                     
-                    q.forEach(doc => {
-                        const d = doc.data();
-                        html += `
-                            <tr>
-                                <td>${d.name}</td>
-                                <td>${d.email}</td>
-                                <td>${d.joined?.toDate().toLocaleDateString() || '-'}</td>
-                                <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
-                            </tr>
-                        `;
-                    });
+                    if (q.empty) {
+                        html = '<div class="alert info"><i class="fas fa-info-circle"></i> You have no referrals yet</div>';
+                    } else {
+                        html = '<table class="table"><tr><th>Name</th><th>Email</th><th>Joined</th><th>Status</th></tr>';
+                        
+                        q.forEach(doc => {
+                            const d = doc.data();
+                            html += `
+                                <tr>
+                                    <td>${d.name}</td>
+                                    <td>${d.email}</td>
+                                    <td>${d.joined?.toDate().toLocaleDateString() || '-'}</td>
+                                    <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
+                                </tr>
+                            `;
+                        });
+                        
+                        html += '</table>';
+                    }
                     
-                    html += '</table>';
-                }
-                
-                c.innerHTML = html;
-            });
+                    c.innerHTML = html;
+                });
+            } catch (e) {
+                c.innerHTML = '<div class="alert info">Offline mode - referral data not available</div>';
+            }
         }
         
         function activateToken() {
@@ -1587,6 +1726,11 @@
             setTimeout(() => {
                 msgEl.innerText = 'Token activated successfully! $50 added to your account';
                 msgEl.className = 'alert success';
+                
+                // Update balance in cache and Firestore
+                if (currentUser && userCache[currentUser.uid]) {
+                    userCache[currentUser.uid].balance = (userCache[currentUser.uid].balance || 0) + 50;
+                }
                 
                 db.collection('users').doc(currentUser.uid).update({
                     balance: firebase.firestore.FieldValue.increment(50)
@@ -1711,6 +1855,11 @@
                     break;
             }
             
+            // Update balance in cache
+            if (currentUser && userCache[currentUser.uid]) {
+                userCache[currentUser.uid].balance = (userCache[currentUser.uid].balance || 0) - amount;
+            }
+            
             db.collection('users').doc(currentUser.uid).get().then(doc => {
                 const userData = doc.data();
                 
@@ -1747,35 +1896,39 @@
         
         function loadWithdrawalHistory() {
             const c = document.getElementById('wd-history');
-            db.collection('withdrawals')
-                .where('userId', '==', currentUser.uid)
-                .orderBy('requestedAt', 'desc')
-                .get()
-                .then(q => {
-                    let html = '';
-                    
-                    if (q.empty) {
-                        html = '<p>No withdrawal history</p>';
-                    } else {
-                        html = '<table class="table"><tr><th>Amount</th><th>Method</th><th>Date</th><th>Status</th></tr>';
+            try {
+                db.collection('withdrawals')
+                    .where('userId', '==', currentUser.uid)
+                    .orderBy('requestedAt', 'desc')
+                    .get()
+                    .then(q => {
+                        let html = '';
                         
-                        q.forEach(doc => {
-                            const d = doc.data();
-                            html += `
-                                <tr>
-                                    <td>$${d.amount.toFixed(2)}</td>
-                                    <td>${d.method}</td>
-                                    <td>${d.requestedAt.toDate().toLocaleDateString()}</td>
-                                    <td><span class="badge ${d.status === 'pending' ? 'warning' : d.status === 'approved' ? 'success' : 'danger'}">${d.status}</span></td>
-                                </tr>
-                            `;
-                        });
+                        if (q.empty) {
+                            html = '<p>No withdrawal history</p>';
+                        } else {
+                            html = '<table class="table"><tr><th>Amount</th><th>Method</th><th>Date</th><th>Status</th></tr>';
+                            
+                            q.forEach(doc => {
+                                const d = doc.data();
+                                html += `
+                                    <tr>
+                                        <td>$${d.amount.toFixed(2)}</td>
+                                        <td>${d.method}</td>
+                                        <td>${d.requestedAt.toDate().toLocaleDateString()}</td>
+                                        <td><span class="badge ${d.status === 'pending' ? 'warning' : d.status === 'approved' ? 'success' : 'danger'}">${d.status}</span></td>
+                                    </tr>
+                                `;
+                            });
+                            
+                            html += '</table>';
+                        }
                         
-                        html += '</table>';
-                    }
-                    
-                    c.innerHTML = html;
-                });
+                        c.innerHTML = html;
+                    });
+            } catch (e) {
+                c.innerHTML = '<div class="alert info">Offline mode - withdrawal history not available</div>';
+            }
         }
 
         function userAccount() {
@@ -1830,13 +1983,13 @@
                 </div>
             `;
             
-            db.collection('users').doc(currentUser.uid).get().then(doc => {
-                const d = doc.data();
+            if (currentUser && userCache[currentUser.uid]) {
+                const d = userCache[currentUser.uid];
                 document.getElementById('acc-name').value = d.name || '';
                 document.getElementById('acc-email').value = d.email || '';
                 document.getElementById('acc-phone').value = d.phone || '';
                 document.getElementById('acc-2fa').checked = d.twoFA || false;
-            });
+            }
             
             document.getElementById('acc-2fa').onchange = update2FA;
         }
@@ -1863,6 +2016,13 @@
                 msgEl.className = 'alert danger';
                 msgEl.style.display = 'block';
                 return;
+            }
+            
+            // Update in cache
+            if (currentUser && userCache[currentUser.uid]) {
+                userCache[currentUser.uid].name = name;
+                userCache[currentUser.uid].phone = phone;
+                document.getElementById('user-name').innerText = name;
             }
             
             db.collection('users').doc(currentUser.uid).update({
@@ -1936,6 +2096,9 @@
             if (refCode) {
                 localStorage.setItem('referralCode', refCode);
             }
+            
+            // Initialize offline logs processing
+            processOfflineLogs();
         });
     </script>
 </body>
