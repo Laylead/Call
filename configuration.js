@@ -10,6 +10,6 @@ const firebaseConfig = {
 
 const ADMIN_CREDENTIALS = {
     email: "admin@example.com",
-    password: "secure_admin_password",
+    password: "admin123",
     name: "Admin User"
 };
