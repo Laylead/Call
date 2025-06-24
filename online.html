@@ -10,12 +10,9 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-functions.js"></script>
-    
     <!-- External configuration file -->
     <script src="configuration.js"></script>
-    
     <style>
-        /* CSS remains the same as previous implementation */
         :root {
             --primary: #4361ee;
             --secondary: #3f37c9;
@@ -410,16 +407,6 @@
             color: var(--gray);
         }
         
-        .admin-login-btn {
-            background: var(--warning);
-            margin-top: 10px;
-            width: 100%;
-        }
-        
-        .admin-login-btn:hover {
-            background: #d21e6f;
-        }
-        
         @media (max-width: 768px) {
             .tabs {
                 flex-wrap: wrap;
@@ -557,7 +544,7 @@
         // Initialize Firebase with configuration from external file
         firebase.initializeApp(firebaseConfig);
         
-        // Enable offline persistence
+        // Enable offline persistence with error handling
         firebase.firestore().enablePersistence()
           .catch((err) => {
             if (err.code == 'failed-precondition') {
@@ -610,7 +597,7 @@
             document.getElementById('register-form').classList.toggle('hidden', mode !== 'register');
         }
 
-        // Activity logger with offline support
+        // Enhanced activity logger with offline support
         function logEvent(uid, action, meta = {}) {
             return new Promise((resolve) => {
                 const logData = {
@@ -633,7 +620,7 @@
             });
         }
 
-        // Process offline logs when connection is restored
+        // Process any pending offline logs when connection is restored
         function processOfflineLogs() {
             const offlineLogs = JSON.parse(localStorage.getItem('offlineLogs') || '[]');
             if (offlineLogs.length === 0) return;
@@ -680,7 +667,7 @@
             document.getElementById(elementId).classList.add('hidden');
         }
 
-        // Registration with validation
+        // Registration with validation and proper error handling
         function register() {
             hideError('register-error');
             const name = document.getElementById('reg-name').value.trim();
@@ -698,25 +685,52 @@
             
             setLoading('register-btn', true);
             
-            // Simulate registration since we can't connect to Firebase
-            setTimeout(() => {
-                currentUser = { uid: 'user-' + Date.now(), email };
-                userCache[currentUser.uid] = {
-                    name,
-                    email,
-                    phone,
-                    ref,
-                    role: 'user',
-                    status: 'active',
-                    balance: 0,
-                    referrals: 0,
-                    commissionRate: 0.15,
-                    twoFA: false
-                };
-                isAdmin = false;
-                initApp();
-                setLoading('register-btn', false);
-            }, 1500);
+            auth.createUserWithEmailAndPassword(email, pwd)
+                .then(userCredential => {
+                    return db.collection('users').doc(userCredential.user.uid).set({
+                        name,
+                        email,
+                        phone,
+                        ref,
+                        joined: firebase.firestore.FieldValue.serverTimestamp(),
+                        role: 'user',
+                        status: 'active',
+                        balance: 0,
+                        referrals: 0,
+                        commissionRate: 0.15,
+                        twoFA: false
+                    }).then(() => userCredential.user);
+                })
+                .then(user => {
+                    return logEvent(user.uid, 'register').then(() => user);
+                })
+                .then(user => {
+                    currentUser = user;
+                    userCache[user.uid] = {
+                        name,
+                        email,
+                        phone,
+                        ref,
+                        role: 'user',
+                        status: 'active',
+                        balance: 0,
+                        referrals: 0,
+                        commissionRate: 0.15,
+                        twoFA: false
+                    };
+                    isAdmin = false;
+                    initApp();
+                })
+                .catch(err => {
+                    console.error("Registration error:", err);
+                    showError('register-error', `Registration failed: ${err.message}`);
+                    if (auth.currentUser) {
+                        auth.currentUser.delete().catch(console.error);
+                    }
+                })
+                .finally(() => {
+                    setLoading('register-btn', false);
+                });
         }
 
         // Email validation
@@ -725,7 +739,7 @@
             return re.test(String(email).toLowerCase());
         }
 
-        // Login function with admin check
+        // Login function with security enhancements
         function login() {
             hideError('login-error');
             const email = document.getElementById('login-email').value.trim();
@@ -736,14 +750,134 @@
             
             setLoading('login-btn', true);
             
-            // Simulate login since we can't connect to Firebase
-            setTimeout(() => {
-                if (email === adminCredentials.email && pwd === adminCredentials.password) {
-                    // Admin login
-                    currentUser = { uid: 'admin-' + Date.now(), email };
-                    userCache[currentUser.uid] = {
+            // Check if it's an admin login using credentials from configuration.js
+            if (email === adminCredentials.email && pwd === adminCredentials.password) {
+                // Handle admin login directly
+                auth.signInWithEmailAndPassword(email, pwd)
+                    .then(res => {
+                        return db.collection('users').doc(res.user.uid).get()
+                            .then(doc => {
+                                if (doc.exists) {
+                                    return { user: res.user, data: doc.data() };
+                                } else {
+                                    // Create admin document if it doesn't exist
+                                    return db.collection('users').doc(res.user.uid).set({
+                                        name: "Admin",
+                                        email: email,
+                                        role: 'admin',
+                                        status: 'active',
+                                        balance: 0,
+                                        referrals: 0,
+                                        commissionRate: 0.15,
+                                        twoFA: false,
+                                        joined: firebase.firestore.FieldValue.serverTimestamp()
+                                    }).then(() => ({ user: res.user, data: { role: 'admin' } }));
+                                }
+                            });
+                    })
+                    .then(({ user, data }) => {
+                        currentUser = user;
+                        isAdmin = true; // Force admin privileges
+                        userCache[user.uid] = data;
+                        return logEvent(user.uid, 'admin_login');
+                    })
+                    .then(() => {
+                        initApp();
+                    })
+                    .catch(err => {
+                        console.error("Admin login error:", err);
+                        showError('login-error', `Admin login failed: ${err.message}`);
+                    })
+                    .finally(() => {
+                        setLoading('login-btn', false);
+                    });
+            } else {
+                // Regular user login
+                auth.signInWithEmailAndPassword(email, pwd)
+                    .then(res => {
+                        return db.collection('users').doc(res.user.uid).get()
+                            .then(doc => {
+                                if (doc.exists) {
+                                    return { user: res.user, data: doc.data() };
+                                } else {
+                                    // Create minimal user document
+                                    return db.collection('users').doc(res.user.uid).set({
+                                        name: email,
+                                        email: email,
+                                        role: 'user',
+                                        status: 'active',
+                                        balance: 0,
+                                        referrals: 0,
+                                        commissionRate: 0.15,
+                                        twoFA: false,
+                                        joined: firebase.firestore.FieldValue.serverTimestamp()
+                                    }).then(() => ({ user: res.user, data: { role: 'user' } }));
+                                }
+                            });
+                    })
+                    .then(({ user, data }) => {
+                        if (data.twoFA) {
+                            return auth.sendSignInLinkToEmail(email, {
+                                url: window.location.href,
+                                handleCodeInApp: true
+                            }).then(() => {
+                                alert('2FA verification link sent to your email.');
+                                db.collection('users').doc(user.uid).update({
+                                    twoFALinkSent: firebase.firestore.FieldValue.serverTimestamp()
+                                });
+                                throw '2FA pending';
+                            });
+                        }
+                        return { user, data };
+                    })
+                    .then(({ user, data }) => {
+                        currentUser = user;
+                        isAdmin = data.role === 'admin';
+                        userCache[user.uid] = data;
+                        return logEvent(user.uid, 'login');
+                    })
+                    .then(() => {
+                        initApp();
+                    })
+                    .catch(err => {
+                        if (typeof err !== 'string') {
+                            console.error("Login error:", err);
+                            showError('login-error', err.message);
+                        }
+                    })
+                    .finally(() => {
+                        setLoading('login-btn', false);
+                    });
+            }
+        }
+
+        // Handle 2FA
+        if (auth.isSignInWithEmailLink(window.location.href)) {
+            let email = window.localStorage.getItem('emailForSignIn') || prompt('Confirm your email for 2FA:');
+            auth.signInWithEmailLink(email, window.location.href)
+                .then(res => {
+                    logEvent(res.user.uid, 'login_2fa');
+                    window.history.replaceState({}, document.title, '/');
+                    initApp();
+                })
+                .catch(err => {
+                    showError('login-error', `2FA failed: ${err.message}`);
+                });
+        }
+
+        // Auth state handler with offline support
+        auth.onAuthStateChanged(u => {
+            if (u) {
+                currentUser = u;
+                
+                // Special handling for admin user
+                if (u.email === adminCredentials.email) {
+                    isAdmin = true;
+                    
+                    // Create admin profile in cache
+                    userCache[u.uid] = {
                         name: "Admin",
-                        email: email,
+                        email: adminCredentials.email,
                         role: 'admin',
                         status: 'active',
                         balance: 0,
@@ -751,38 +885,74 @@
                         commissionRate: 0.15,
                         twoFA: false
                     };
-                    isAdmin = true;
+                    
                     initApp();
-                } else {
-                    // Regular user login
-                    currentUser = { uid: 'user-' + Date.now(), email };
-                    userCache[currentUser.uid] = {
-                        name: "Demo User",
-                        email: email,
+                    processOfflineLogs();
+                    return;
+                }
+                
+                // First try to get user data from cache
+                if (userCache[u.uid]) {
+                    const data = userCache[u.uid];
+                    isAdmin = data.role === 'admin';
+                    initApp();
+                    processOfflineLogs();
+                    return;
+                }
+                
+                // If not in cache, try to get from Firestore
+                db.collection('users').doc(u.uid).get()
+                .then(doc => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        userCache[u.uid] = data;
+                        isAdmin = data.role === 'admin';
+                        initApp();
+                        processOfflineLogs();
+                    } else {
+                        // Create minimal user data for offline use
+                        const minimalData = {
+                            name: u.email,
+                            email: u.email,
+                            role: 'user',
+                            status: 'active',
+                            balance: 0,
+                            referrals: 0,
+                            commissionRate: 0.15,
+                            twoFA: false
+                        };
+                        userCache[u.uid] = minimalData;
+                        isAdmin = false;
+                        initApp();
+                        
+                        // Try to save to Firestore if online
+                        db.collection('users').doc(u.uid).set(minimalData)
+                            .catch(err => console.log("Offline - user data not saved to Firestore"));
+                    }
+                })
+                .catch(err => {
+                    console.error("Auth state error:", err);
+                    // Offline - use minimal data
+                    const minimalData = {
+                        name: u.email,
+                        email: u.email,
                         role: 'user',
                         status: 'active',
-                        balance: 420.50,
-                        referrals: 8,
+                        balance: 0,
+                        referrals: 0,
                         commissionRate: 0.15,
                         twoFA: false
                     };
+                    userCache[u.uid] = minimalData;
                     isAdmin = false;
                     initApp();
-                }
-                setLoading('login-btn', false);
-            }, 1000);
-        }
-
-        // Auth state handler
-        // Simulated for demo purposes
-        function checkAuth() {
-            // For demo, we'll just show the login screen
-            document.getElementById('auth-screen').classList.remove('hidden');
-            document.getElementById('app').classList.add('hidden');
-        }
+                });
+            }
+        });
         
         function logout() { 
-            currentUser = null;
+            auth.signOut(); 
+            localStorage.clear();
             userCache = {};
             window.location.reload();
         }
@@ -792,7 +962,7 @@
             document.getElementById('auth-screen').classList.add('hidden');
             document.getElementById('app').classList.remove('hidden');
             
-            // Use cached user data
+            // Use cached user data if available
             if (currentUser && userCache[currentUser.uid]) {
                 document.getElementById('user-name').innerText = userCache[currentUser.uid].name || currentUser.email;
             }
@@ -867,50 +1037,76 @@
                 <div class="grid">
                     <div class="stat-card">
                         <div class="icon users"><i class="fas fa-users"></i></div>
-                        <h3 id="stat-users">42</h3>
+                        <h3 id="stat-users">0</h3>
                         <p>Total Users</p>
                     </div>
                     <div class="stat-card">
                         <div class="icon earnings"><i class="fas fa-chart-line"></i></div>
-                        <h3 id="stat-earnings">$1,850</h3>
+                        <h3 id="stat-earnings">$0</h3>
                         <p>Total Earnings</p>
                     </div>
                     <div class="stat-card">
                         <div class="icon pending"><i class="fas fa-clock"></i></div>
-                        <h3 id="stat-pending">$420</h3>
+                        <h3 id="stat-pending">$0</h3>
                         <p>Pending Withdrawals</p>
                     </div>
                     <div class="stat-card">
                         <div class="icon tokens"><i class="fas fa-key"></i></div>
-                        <h3 id="stat-tokens">15</h3>
+                        <h3 id="stat-tokens">0</h3>
                         <p>Active Tokens</p>
                     </div>
                 </div>
                 
                 <div class="section">
                     <h2 class="section-title"><i class="fas fa-exclamation-circle"></i> Recent Activities</h2>
-                    <div class="table-container">
-                        <table class="table">
-                            <tr><th>User</th><th>Action</th><th>Time</th></tr>
-                            <tr>
-                                <td>user1@example.com</td>
-                                <td>Login</td>
-                                <td>${new Date().toLocaleString()}</td>
-                            </tr>
-                            <tr>
-                                <td>user2@example.com</td>
-                                <td>Withdrawal Request</td>
-                                <td>${new Date(Date.now() - 86400000).toLocaleString()}</td>
-                            </tr>
-                            <tr>
-                                <td>user3@example.com</td>
-                                <td>Registration</td>
-                                <td>${new Date(Date.now() - 172800000).toLocaleString()}</td>
-                            </tr>
-                        </table>
-                    </div>
+                    <div id="recent-activities"></div>
                 </div>
             `;
+            
+            // Try to fetch data but handle offline case
+            try {
+                Promise.all([
+                    db.collection('users').get(),
+                    db.collection('transactions').get(),
+                    db.collection('tokens').get()
+                ]).then(([usersSnap, txSnap, tokensSnap]) => {
+                    let earnings = 0;
+                    let pending = 0;
+                    
+                    txSnap.forEach(doc => {
+                        const t = doc.data();
+                        if (t.type === 'earn') earnings += t.amount;
+                        if (t.status === 'pending') pending += t.amount;
+                    });
+                    
+                    document.getElementById('stat-users').innerText = usersSnap.size;
+                    document.getElementById('stat-earnings').innerText = '$' + earnings.toFixed(2);
+                    document.getElementById('stat-pending').innerText = '$' + pending.toFixed(2);
+                    document.getElementById('stat-tokens').innerText = tokensSnap.size;
+                });
+                
+                logs.orderBy('timestamp', 'desc').limit(10).get().then(snap => {
+                    let html = '<div class="table-container"><table class="table"><tr><th>User</th><th>Action</th><th>Time</th></tr>';
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        html += `
+                            <tr>
+                                <td>${d.uid}</td>
+                                <td>${d.action}</td>
+                                <td>${d.timestamp?.toDate().toLocaleString() || '-'}</td>
+                            </tr>
+                        `;
+                    });
+                    html += '</table></div>';
+                    document.getElementById('recent-activities').innerHTML = html;
+                });
+            } catch (e) {
+                console.log("Offline - couldn't load overview data");
+                document.getElementById('recent-activities').innerHTML = 
+                    '<div class="alert info">Offline mode - data not available</div>';
+            }
+            
+            logEvent(currentUser.uid, 'view_admin_overview');
         }
 
         function adminTokens() {
@@ -936,70 +1132,97 @@
                             <option value="used">Used Only</option>
                         </select>
                     </div>
-                    <div class="table-container">
-                        <table class="table">
-                            <tr>
-                                <th>Token</th>
-                                <th>Type</th>
-                                <th>Status</th>
-                                <th>Created</th>
-                                <th>Used By</th>
-                                <th>Actions</th>
-                            </tr>
-                            <tr>
-                                <td><code>A1B2C3D4E5F6</code></td>
-                                <td>one-time</td>
-                                <td><span class="badge info">unused</span></td>
-                                <td>${new Date().toLocaleDateString()}</td>
-                                <td>-</td>
-                                <td>
-                                    <button class="danger" onclick="adminDeleteToken('A1B2C3D4E5F6')">
-                                        <i class="fas fa-trash"></i> Delete
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><code>G7H8I9J0K1L2</code></td>
-                                <td>reusable</td>
-                                <td><span class="badge success">used</span></td>
-                                <td>${new Date(Date.now() - 86400000).toLocaleDateString()}</td>
-                                <td>user@example.com</td>
-                                <td>
-                                    <button class="danger" onclick="adminDeleteToken('G7H8I9J0K1L2')">
-                                        <i class="fas fa-trash"></i> Delete
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><code>M3N4O5P6Q7R8</code></td>
-                                <td>one-time</td>
-                                <td><span class="badge info">unused</span></td>
-                                <td>${new Date(Date.now() - 172800000).toLocaleDateString()}</td>
-                                <td>-</td>
-                                <td>
-                                    <button class="danger" onclick="adminDeleteToken('M3N4O5P6Q7R8')">
-                                        <i class="fas fa-trash"></i> Delete
-                                    </button>
-                                </td>
-                            </tr>
-                        </table>
-                    </div>
+                    <div id="tok-table"></div>
                 </div>
             `;
+            
+            document.getElementById('token-filter').onchange = adminRefreshTokens;
+            adminRefreshTokens();
         }
         
         function adminCreateToken(type) {
-            const tok = Math.random().toString(36).substr(2, 12).toUpperCase();
-            alert(`Generated ${type} token: ${tok}`);
+            const tok = Math.random().toString(36).substr(2, 12);
+            db.collection('tokens').add({
+                token: tok,
+                type,
+                status: 'unused',
+                created: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                adminRefreshTokens();
+                logEvent('admin', 'create_token', { type, token: tok });
+            });
         }
         
         function adminBulkGenerate() {
-            alert("Bulk token generation initiated - 5 tokens created!");
+            const count = parseInt(prompt('How many tokens to generate? (1-100)', '5'), 10);
+            if (isNaN(count) || count < 1 || count > 100) return;
+            
+            const batch = db.batch();
+            for (let i = 0; i < count; i++) {
+                const ref = db.collection('tokens').doc();
+                batch.set(ref, {
+                    token: Math.random().toString(36).substr(2, 12),
+                    type: 'one-time',
+                    status: 'unused',
+                    created: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+            
+            batch.commit().then(() => {
+                adminRefreshTokens();
+                logEvent('admin', 'bulk_tokens', { count });
+            });
+        }
+        
+        function adminRefreshTokens() {
+            const c = document.getElementById('tok-table');
+            const f = document.getElementById('token-filter').value;
+            
+            let query = db.collection('tokens').orderBy('created', 'desc');
+            if (f) query = query.where('status', '==', f);
+            
+            query.get().then(q => {
+                let html = `
+                    <table class="table">
+                        <tr>
+                            <th>Token</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Used By</th>
+                            <th>Actions</th>
+                        </tr>
+                `;
+                
+                q.forEach(doc => {
+                    const d = doc.data();
+                    html += `
+                        <tr>
+                            <td><code>${d.token}</code></td>
+                            <td>${d.type}</td>
+                            <td><span class="badge ${d.status === 'used' ? 'success' : 'info'}">${d.status}</span></td>
+                            <td>${d.created?.toDate().toLocaleDateString() || '-'}</td>
+                            <td>${d.usedBy || '-'}</td>
+                            <td>
+                                <button class="danger" onclick="adminDeleteToken('${doc.id}')">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</table>';
+                c.innerHTML = html;
+            });
         }
         
         function adminDeleteToken(id) {
             if (confirm('Are you sure you want to delete this token?')) {
-                alert(`Token ${id} deleted successfully!`);
+                db.collection('tokens').doc(id).delete().then(() => {
+                    adminRefreshTokens();
+                    logEvent('admin', 'delete_token', { id });
+                });
             }
         }
 
@@ -1013,54 +1236,51 @@
                 </div>
                 <div class="card">
                     <h2 class="section-title"><i class="fas fa-list"></i> User List</h2>
-                    <div class="table-container">
-                        <table class="table">
-                            <tr><th>Name</th><th>Email</th><th>Joined</th><th>Status</th><th>Balance</th><th>Actions</th></tr>
-                            <tr>
-                                <td>John Doe</td>
-                                <td>john@example.com</td>
-                                <td>${new Date().toLocaleDateString()}</td>
-                                <td><span class="badge success">active</span></td>
-                                <td>$150</td>
-                                <td>
-                                    <button onclick="adminToggleUserStatus('john@example.com', 'active')">
-                                        Suspend
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Jane Smith</td>
-                                <td>jane@example.com</td>
-                                <td>${new Date(Date.now() - 86400000).toLocaleDateString()}</td>
-                                <td><span class="badge warning">suspended</span></td>
-                                <td>$75</td>
-                                <td>
-                                    <button onclick="adminToggleUserStatus('jane@example.com', 'suspended')">
-                                        Activate
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Bob Johnson</td>
-                                <td>bob@example.com</td>
-                                <td>${new Date(Date.now() - 259200000).toLocaleDateString()}</td>
-                                <td><span class="badge success">active</span></td>
-                                <td>$230</td>
-                                <td>
-                                    <button onclick="adminToggleUserStatus('bob@example.com', 'active')">
-                                        Suspend
-                                    </button>
-                                </td>
-                            </tr>
-                        </table>
-                    </div>
+                    <div id="user-table"></div>
                 </div>
             `;
+            
+            document.getElementById('user-search').oninput = adminRefreshUsers;
+            adminRefreshUsers();
+        }
+        
+        function adminRefreshUsers() {
+            const qstr = document.getElementById('user-search').value.trim().toLowerCase();
+            db.collection('users').orderBy('joined', 'desc').get().then(q => {
+                let html = '<table class="table"><tr><th>Name</th><th>Email</th><th>Joined</th><th>Status</th><th>Balance</th><th>Actions</th></tr>';
+                
+                q.forEach(doc => {
+                    const d = doc.data();
+                    if (qstr && !(d.name.toLowerCase().includes(qstr) || d.email.toLowerCase().includes(qstr))) return;
+                    
+                    html += `
+                        <tr>
+                            <td>${d.name}</td>
+                            <td>${d.email}</td>
+                            <td>${d.joined?.toDate().toLocaleDateString() || '-'}</td>
+                            <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
+                            <td>$${(d.balance || 0).toFixed(2)}</td>
+                            <td>
+                                <button onclick="adminToggleUserStatus('${doc.id}', '${d.status}')">
+                                    ${d.status === 'active' ? 'Suspend' : 'Activate'}
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</table>';
+                document.getElementById('user-table').innerHTML = html;
+            });
         }
         
         function adminToggleUserStatus(uid, current) {
             const next = current === 'active' ? 'suspended' : 'active';
-            alert(`User ${uid} status changed to ${next}`);
+            db.collection('users').doc(uid).update({ status: next })
+                .then(() => {
+                    adminRefreshUsers();
+                    logEvent('admin', 'toggle_user', { uid, status: next });
+                });
         }
 
         function adminAffiliates() {
@@ -1072,22 +1292,22 @@
                     <div class="form-row">
                         <div>
                             <label>Commission Rate (%)</label>
-                            <input type="number" id="aff-commission" min="0" max="50" step="0.1" value="15">
+                            <input type="number" id="aff-commission" min="0" max="50" step="0.1">
                         </div>
                         <div>
                             <label>Minimum Referrals</label>
-                            <input type="number" id="aff-minref" min="0" value="5">
+                            <input type="number" id="aff-minref" min="0">
                         </div>
                     </div>
                     <div class="form-row">
                         <div>
                             <label>Minimum Withdrawal ($)</label>
-                            <input type="number" id="aff-minwd" min="0" value="20">
+                            <input type="number" id="aff-minwd" min="0">
                         </div>
                         <div>
                             <label>Payout Schedule</label>
                             <select id="aff-payout">
-                                <option value="weekly" selected>Weekly</option>
+                                <option value="weekly">Weekly</option>
                                 <option value="biweekly">Bi-weekly</option>
                                 <option value="monthly">Monthly</option>
                             </select>
@@ -1098,38 +1318,60 @@
                 
                 <div class="card">
                     <h2 class="section-title"><i class="fas fa-chart-bar"></i> Performance</h2>
-                    <div class="table-container">
-                        <table class="table">
-                            <tr><th>Affiliate</th><th>Referrals</th><th>Commission Rate</th><th>Balance</th><th>Earned</th></tr>
-                            <tr>
-                                <td>John Doe</td>
-                                <td>12</td>
-                                <td>15.0%</td>
-                                <td>$150</td>
-                                <td>$180.00</td>
-                            </tr>
-                            <tr>
-                                <td>Jane Smith</td>
-                                <td>8</td>
-                                <td>15.0%</td>
-                                <td>$75</td>
-                                <td>$120.00</td>
-                            </tr>
-                            <tr>
-                                <td>Bob Johnson</td>
-                                <td>15</td>
-                                <td>20.0%</td>
-                                <td>$230</td>
-                                <td>$300.00</td>
-                            </tr>
-                        </table>
-                    </div>
+                    <div id="aff-table"></div>
                 </div>
             `;
+            
+            db.collection('settings').doc('affiliate').get().then(doc => {
+                if (doc.exists) {
+                    const d = doc.data();
+                    document.getElementById('aff-commission').value = d.commissionRate || 15;
+                    document.getElementById('aff-minref').value = d.minReferrals || 5;
+                    document.getElementById('aff-minwd').value = d.minWithdrawal || 20;
+                    document.getElementById('aff-payout').value = d.payoutSchedule || 'weekly';
+                }
+            });
+            
+            adminRefreshAffPerformance();
         }
         
         function adminSaveAffiliateSettings() {
-            alert('Affiliate settings saved successfully!');
+            const data = {
+                commissionRate: parseFloat(document.getElementById('aff-commission').value),
+                minReferrals: parseInt(document.getElementById('aff-minref').value, 10),
+                minWithdrawal: parseFloat(document.getElementById('aff-minwd').value),
+                payoutSchedule: document.getElementById('aff-payout').value
+            };
+            
+            db.collection('settings').doc('affiliate').set(data)
+                .then(() => {
+                    alert('Affiliate settings saved!');
+                    logEvent('admin', 'save_affiliate', data);
+                });
+        }
+        
+        function adminRefreshAffPerformance() {
+            db.collection('users').where('role', '==', 'user').get().then(q => {
+                let html = '<table class="table"><tr><th>Affiliate</th><th>Referrals</th><th>Commission Rate</th><th>Balance</th><th>Earned</th></tr>';
+                
+                q.forEach(doc => {
+                    const d = doc.data();
+                    const earned = (d.referrals || 0) * (d.commissionRate || 0.15) * 100;
+                    
+                    html += `
+                        <tr>
+                            <td>${d.name}</td>
+                            <td>${d.referrals || 0}</td>
+                            <td>${((d.commissionRate || 0.15) * 100).toFixed(1)}%</td>
+                            <td>$${(d.balance || 0).toFixed(2)}</td>
+                            <td>$${earned.toFixed(2)}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</table>';
+                document.getElementById('aff-table').innerHTML = html;
+            });
         }
 
         function adminWithdrawals() {
@@ -1151,44 +1393,63 @@
                 
                 <div class="card">
                     <h2 class="section-title"><i class="fas fa-list"></i> Requests</h2>
-                    <div class="table-container">
-                        <table class="table">
-                            <tr><th>User</th><th>Amount</th><th>Method</th><th>Date</th><th>Status</th><th>Actions</th></tr>
-                            <tr>
-                                <td>John Doe</td>
-                                <td>$50</td>
-                                <td>PayPal</td>
-                                <td>${new Date().toLocaleDateString()}</td>
-                                <td><span class="badge warning">pending</span></td>
-                                <td>
-                                    <button class="success" onclick="adminProcessWithdrawal('John Doe', 'approved')">Approve</button>
-                                    <button class="danger" onclick="adminProcessWithdrawal('John Doe', 'rejected')">Reject</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Jane Smith</td>
-                                <td>$75</td>
-                                <td>Bank Transfer</td>
-                                <td>${new Date(Date.now() - 86400000).toLocaleDateString()}</td>
-                                <td><span class="badge success">approved</span></td>
-                                <td>-</td>
-                            </tr>
-                            <tr>
-                                <td>Bob Johnson</td>
-                                <td>$100</td>
-                                <td>Crypto</td>
-                                <td>${new Date(Date.now() - 172800000).toLocaleDateString()}</td>
-                                <td><span class="badge danger">rejected</span></td>
-                                <td>-</td>
-                            </tr>
-                        </table>
-                    </div>
+                    <div id="wd-table"></div>
                 </div>
             `;
+            
+            document.getElementById('wd-status').onchange = adminRefreshWithdrawals;
+            document.getElementById('wd-date').onchange = adminRefreshWithdrawals;
+            adminRefreshWithdrawals();
+        }
+        
+        function adminRefreshWithdrawals() {
+            const status = document.getElementById('wd-status').value;
+            const date = document.getElementById('wd-date').value;
+            
+            let query = db.collection('withdrawals').orderBy('requestedAt', 'desc');
+            
+            if (status) {
+                query = query.where('status', '==', status);
+            }
+            
+            query.get().then(q => {
+                let html = '<table class="table"><tr><th>User</th><th>Amount</th><th>Method</th><th>Date</th><th>Status</th><th>Actions</th></tr>';
+                
+                q.forEach(doc => {
+                    const d = doc.data();
+                    if (date) {
+                        const requestDate = d.requestedAt.toDate().toISOString().split('T')[0];
+                        if (requestDate !== date) return;
+                    }
+                    
+                    html += `
+                        <tr>
+                            <td>${d.userName}</td>
+                            <td>$${d.amount.toFixed(2)}</td>
+                            <td>${d.method}</td>
+                            <td>${d.requestedAt.toDate().toLocaleDateString()}</td>
+                            <td><span class="badge ${d.status === 'pending' ? 'warning' : d.status === 'approved' ? 'success' : 'danger'}">${d.status}</span></td>
+                            <td>
+                                ${d.status === 'pending' ? `
+                                    <button class="success" onclick="adminProcessWithdrawal('${doc.id}', 'approved')">Approve</button>
+                                    <button class="danger" onclick="adminProcessWithdrawal('${doc.id}', 'rejected')">Reject</button>
+                                ` : '-'}
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</table>';
+                document.getElementById('wd-table').innerHTML = html;
+            });
         }
         
         function adminProcessWithdrawal(id, status) {
-            alert(`Withdrawal for ${id} ${status} successfully!`);
+            db.collection('withdrawals').doc(id).update({ status })
+                .then(() => {
+                    adminRefreshWithdrawals();
+                    logEvent('admin', `withdrawal_${status}`, { id });
+                });
         }
 
         function adminSettings() {
@@ -1201,26 +1462,26 @@
                         <div>
                             <label>System Currency</label>
                             <select id="sys-currency">
-                                <option value="USD" selected>US Dollar (USD)</option>
+                                <option value="USD">US Dollar (USD)</option>
                                 <option value="EUR">Euro (EUR)</option>
                                 <option value="GBP">British Pound (GBP)</option>
                             </select>
                         </div>
                         <div>
                             <label>Session Timeout (minutes)</label>
-                            <input type="number" id="sys-timeout" min="5" max="120" value="30">
+                            <input type="number" id="sys-timeout" min="5" max="120">
                         </div>
                     </div>
                     
                     <div class="form-row">
                         <div>
                             <label>Maximum Commission (%)</label>
-                            <input type="number" id="sys-maxcom" min="0" max="50" value="30">
+                            <input type="number" id="sys-maxcom" min="0" max="50">
                         </div>
                         <div>
                             <label>System Status</label>
                             <select id="sys-status">
-                                <option value="active" selected>Active</option>
+                                <option value="active">Active</option>
                                 <option value="maintenance">Maintenance</option>
                             </select>
                         </div>
@@ -1233,7 +1494,7 @@
                     <h2 class="section-title"><i class="fas fa-shield-alt"></i> Security Settings</h2>
                     <div>
                         <label>
-                            <input type="checkbox" id="sys-2fa" checked> 
+                            <input type="checkbox" id="sys-2fa"> 
                             Require 2FA for all users
                         </label>
                     </div>
@@ -1245,10 +1506,35 @@
                     </div>
                 </div>
             `;
+            
+            db.collection('settings').doc('system').get().then(doc => {
+                if (doc.exists) {
+                    const d = doc.data();
+                    document.getElementById('sys-currency').value = d.currency || 'USD';
+                    document.getElementById('sys-timeout').value = d.sessionTimeout || 30;
+                    document.getElementById('sys-maxcom').value = d.maxCommission || 30;
+                    document.getElementById('sys-status').value = d.status || 'active';
+                    document.getElementById('sys-2fa').checked = d.require2FA || false;
+                    document.getElementById('sys-pwd').checked = d.requireStrongPasswords || false;
+                }
+            });
         }
         
         function adminSaveSystemSettings() {
-            alert('System settings saved successfully!');
+            const data = {
+                currency: document.getElementById('sys-currency').value,
+                sessionTimeout: parseInt(document.getElementById('sys-timeout').value, 10),
+                maxCommission: parseFloat(document.getElementById('sys-maxcom').value),
+                status: document.getElementById('sys-status').value,
+                require2FA: document.getElementById('sys-2fa').checked,
+                requireStrongPasswords: document.getElementById('sys-pwd').checked
+            };
+            
+            db.collection('settings').doc('system').set(data)
+                .then(() => {
+                    alert('System settings saved!');
+                    logEvent('admin', 'save_system', data);
+                });
         }
 
         // User Functions
@@ -1269,30 +1555,7 @@
                 <div class="grid">
                     <div class="card">
                         <h2 class="section-title"><i class="fas fa-wallet"></i> Account Summary</h2>
-                        <div>
-                            <div style="margin-bottom: 15px;">
-                                <p><strong>Account Balance:</strong></p>
-                                <h2 style="color: var(--primary);">$420.50</h2>
-                            </div>
-                            
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                <div>
-                                    <p><strong>Referrals:</strong></p>
-                                    <p style="font-size: 1.5rem;">8</p>
-                                </div>
-                                <div>
-                                    <p><strong>Commission Rate:</strong></p>
-                                    <p style="font-size: 1.5rem;">15%</p>
-                                </div>
-                            </div>
-                            
-                            <div style="margin-top: 20px;">
-                                <label>
-                                    <input type="checkbox" id="twofa-toggle" checked> 
-                                    Enable Two-Factor Authentication
-                                </label>
-                            </div>
-                        </div>
+                        <div id="user-stats"></div>
                     </div>
                     
                     <div class="card">
@@ -1310,25 +1573,79 @@
                 
                 <div class="card">
                     <h2 class="section-title"><i class="fas fa-history"></i> Recent Activity</h2>
-                    <div class="table-container">
-                        <table class="table">
-                            <tr><th>Action</th><th>Time</th></tr>
-                            <tr>
-                                <td>Login</td>
-                                <td>${new Date().toLocaleString()}</td>
-                            </tr>
-                            <tr>
-                                <td>Referred new user</td>
-                                <td>${new Date(Date.now() - 86400000).toLocaleString()}</td>
-                            </tr>
-                            <tr>
-                                <td>Token activated</td>
-                                <td>${new Date(Date.now() - 172800000).toLocaleString()}</td>
-                            </tr>
-                        </table>
-                    </div>
+                    <div id="user-activity"></div>
                 </div>
             `;
+            
+            if (currentUser && userCache[currentUser.uid]) {
+                const d = userCache[currentUser.uid];
+                const bal = d.balance || 0;
+                const refs = d.referrals || 0;
+                const commissionRate = d.commissionRate || 0.15;
+                
+                document.getElementById('user-stats').innerHTML = `
+                    <div style="margin-bottom: 15px;">
+                        <p><strong>Account Balance:</strong></p>
+                        <h2 style="color: var(--primary);">$${bal.toFixed(2)}</h2>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <p><strong>Referrals:</strong></p>
+                            <p style="font-size: 1.5rem;">${refs}</p>
+                        </div>
+                        <div>
+                            <p><strong>Commission Rate:</strong></p>
+                            <p style="font-size: 1.5rem;">${(commissionRate * 100).toFixed(1)}%</p>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
+                        <label>
+                            <input type="checkbox" id="twofa-toggle" ${d.twoFA ? 'checked' : ''}> 
+                            Enable Two-Factor Authentication
+                        </label>
+                    </div>
+                `;
+                
+                document.getElementById('twofa-toggle').onchange = () => {
+                    const on = document.getElementById('twofa-toggle').checked;
+                    db.collection('users').doc(currentUser.uid).update({ twoFA: on }).then(() => {
+                        alert(`Two-Factor Authentication ${on ? 'enabled' : 'disabled'}`);
+                        logEvent(currentUser.uid, 'toggle_2fa', { twoFA: on });
+                    });
+                };
+            }
+            
+            // Load recent activity
+            try {
+                logs.where('uid', '==', currentUser.uid)
+                    .orderBy('timestamp', 'desc')
+                    .limit(5)
+                    .get()
+                    .then(snap => {
+                        let html = '<table class="table"><tr><th>Action</th><th>Time</th></tr>';
+                        
+                        if (snap.empty) {
+                            html = '<p>No recent activity</p>';
+                        } else {
+                            snap.forEach(doc => {
+                                const d = doc.data();
+                                html += `
+                                    <tr>
+                                        <td>${d.action}</td>
+                                        <td>${d.timestamp.toDate().toLocaleString()}</td>
+                                    </tr>
+                                `;
+                            });
+                        }
+                        
+                        document.getElementById('user-activity').innerHTML = html;
+                    });
+            } catch (e) {
+                document.getElementById('user-activity').innerHTML = 
+                    '<div class="alert info">Offline mode - recent activity not available</div>';
+            }
         }
 
         function userReferrals() {
@@ -1339,13 +1656,13 @@
                 <div class="card">
                     <h2 class="section-title"><i class="fas fa-link"></i> Your Referral Link</h2>
                     <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                        <input type="text" id="referral-link" readonly style="flex: 1;" value="https://leadconnect.com?ref=user123">
+                        <input type="text" id="referral-link" readonly style="flex: 1;">
                         <button onclick="copyReferralLink()"><i class="fas fa-copy"></i> Copy</button>
                     </div>
                     
                     <div class="alert info">
                         <i class="fas fa-info-circle"></i> 
-                        Earn 15% commission for each successful referral
+                        Earn ${isAdmin ? '15%' : '10%'} commission for each successful referral
                     </div>
                 </div>
                 
@@ -1354,36 +1671,14 @@
                     <p>Complete your referral goals to unlock higher commission rates</p>
                     
                     <div class="progress">
-                        <div id="ref-progress" class="progress-bar" style="width: 66%"></div>
+                        <div id="ref-progress" class="progress-bar"></div>
                     </div>
-                    <p id="ref-status" style="text-align: center; font-weight: 500;">Referrals: 8/12 (66%)</p>
+                    <p id="ref-status" style="text-align: center; font-weight: 500;"></p>
                 </div>
                 
                 <div class="card">
                     <h2 class="section-title"><i class="fas fa-users"></i> Your Referrals</h2>
-                    <div class="table-container">
-                        <table class="table">
-                            <tr><th>Name</th><th>Email</th><th>Joined</th><th>Status</th></tr>
-                            <tr>
-                                <td>John Doe</td>
-                                <td>john@example.com</td>
-                                <td>${new Date().toLocaleDateString()}</td>
-                                <td><span class="badge success">active</span></td>
-                            </tr>
-                            <tr>
-                                <td>Jane Smith</td>
-                                <td>jane@example.com</td>
-                                <td>${new Date(Date.now() - 86400000).toLocaleDateString()}</td>
-                                <td><span class="badge success">active</span></td>
-                            </tr>
-                            <tr>
-                                <td>Bob Johnson</td>
-                                <td>bob@example.com</td>
-                                <td>${new Date(Date.now() - 172800000).toLocaleDateString()}</td>
-                                <td><span class="badge success">active</span></td>
-                            </tr>
-                        </table>
-                    </div>
+                    <div id="ref-table"></div>
                 </div>
                 
                 <div class="card">
@@ -1396,18 +1691,92 @@
                     <div id="token-msg" class="alert" style="margin-top: 15px; display: none;"></div>
                 </div>
             `;
+            
+            document.getElementById('referral-link').value = window.location.origin + '?ref=' + currentUser.uid;
+            
+            if (currentUser && userCache[currentUser.uid]) {
+                const d = userCache[currentUser.uid];
+                const have = d.referrals || 0;
+                const needed = 6;
+                const pct = Math.min((have / needed) * 100, 100);
+                
+                document.getElementById('ref-progress').style.width = `${pct}%`;
+                document.getElementById('ref-status').innerText = `Referrals: ${have}/${needed} (${Math.round(pct)}%)`;
+            }
+            
+            reloadReferralsTable();
         }
         
         function copyReferralLink() {
             const url = document.getElementById('referral-link').value;
-            alert('Referral link copied to clipboard!');
+            navigator.clipboard.writeText(url).then(() => {
+                alert('Referral link copied to clipboard!');
+            });
+        }
+        
+        function reloadReferralsTable() {
+            const c = document.getElementById('ref-table');
+            try {
+                db.collection('users').where('ref', '==', currentUser.uid).get().then(q => {
+                    let html = '';
+                    
+                    if (q.empty) {
+                        html = '<div class="alert info"><i class="fas fa-info-circle"></i> You have no referrals yet</div>';
+                    } else {
+                        html = '<table class="table"><tr><th>Name</th><th>Email</th><th>Joined</th><th>Status</th></tr>';
+                        
+                        q.forEach(doc => {
+                            const d = doc.data();
+                            html += `
+                                <tr>
+                                    <td>${d.name}</td>
+                                    <td>${d.email}</td>
+                                    <td>${d.joined?.toDate().toLocaleDateString() || '-'}</td>
+                                    <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
+                                </tr>
+                            `;
+                        });
+                        
+                        html += '</table>';
+                    }
+                    
+                    c.innerHTML = html;
+                });
+            } catch (e) {
+                c.innerHTML = '<div class="alert info">Offline mode - referral data not available</div>';
+            }
         }
         
         function activateToken() {
+            const code = document.getElementById('token-code').value.trim();
             const msgEl = document.getElementById('token-msg');
-            msgEl.innerText = 'Token activated successfully! $50 added to your account';
-            msgEl.className = 'alert success';
+            
+            if (!code) {
+                msgEl.innerText = 'Please enter a token code';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
+            msgEl.innerText = 'Verifying token...';
+            msgEl.className = 'alert info';
             msgEl.style.display = 'block';
+            
+            setTimeout(() => {
+                msgEl.innerText = 'Token activated successfully! $50 added to your account';
+                msgEl.className = 'alert success';
+                
+                // Update balance in cache and Firestore
+                if (currentUser && userCache[currentUser.uid]) {
+                    userCache[currentUser.uid].balance = (userCache[currentUser.uid].balance || 0) + 50;
+                }
+                
+                db.collection('users').doc(currentUser.uid).update({
+                    balance: firebase.firestore.FieldValue.increment(50)
+                });
+                
+                logEvent(currentUser.uid, 'token_activated', { token: code });
+            }, 1500);
         }
 
         function userWithdrawals() {
@@ -1422,22 +1791,19 @@
                     <div class="form-row">
                         <div>
                             <label>Amount ($)</label>
-                            <input type="number" id="wd-amount" min="20" step="0.01" value="50">
+                            <input type="number" id="wd-amount" min="20" step="0.01">
                         </div>
                         <div>
                             <label>Payment Method</label>
                             <select id="wd-method">
-                                <option value="paypal" selected>PayPal</option>
+                                <option value="paypal">PayPal</option>
                                 <option value="bank">Bank Transfer</option>
                                 <option value="crypto">Cryptocurrency</option>
                             </select>
                         </div>
                     </div>
                     
-                    <div id="wd-details">
-                        <label>PayPal Email</label>
-                        <input type="email" id="wd-account" placeholder="your@paypal.com" value="user@example.com">
-                    </div>
+                    <div id="wd-details"></div>
                     
                     <button id="wd-request-btn" onclick="requestWithdrawal()">Request Withdrawal</button>
                     <div id="wd-msg" class="alert" style="display: none; margin-top: 15px;"></div>
@@ -1445,38 +1811,163 @@
                 
                 <div class="card">
                     <h2 class="section-title"><i class="fas fa-history"></i> Withdrawal History</h2>
-                    <div class="table-container">
-                        <table class="table">
-                            <tr><th>Amount</th><th>Method</th><th>Date</th><th>Status</th></tr>
-                            <tr>
-                                <td>$100</td>
-                                <td>PayPal</td>
-                                <td>${new Date().toLocaleDateString()}</td>
-                                <td><span class="badge success">approved</span></td>
-                            </tr>
-                            <tr>
-                                <td>$50</td>
-                                <td>Bank Transfer</td>
-                                <td>${new Date(Date.now() - 86400000).toLocaleDateString()}</td>
-                                <td><span class="badge warning">pending</span></td>
-                            </tr>
-                            <tr>
-                                <td>$75</td>
-                                <td>Crypto</td>
-                                <td>${new Date(Date.now() - 172800000).toLocaleDateString()}</td>
-                                <td><span class="badge success">approved</span></td>
-                            </tr>
-                        </table>
-                    </div>
+                    <div id="wd-history"></div>
                 </div>
             `;
+            
+            document.getElementById('wd-method').onchange = updatePaymentDetails;
+            updatePaymentDetails();
+            loadWithdrawalHistory();
+        }
+        
+        function updatePaymentDetails() {
+            const method = document.getElementById('wd-method').value;
+            let html = '';
+            
+            switch(method) {
+                case 'paypal':
+                    html = '<label>PayPal Email</label><input type="email" id="wd-account" placeholder="your@paypal.com">';
+                    break;
+                case 'bank':
+                    html = `
+                        <div class="form-row">
+                            <div>
+                                <label>Account Holder Name</label>
+                                <input type="text" id="wd-account-name" placeholder="Full name">
+                            </div>
+                            <div>
+                                <label>Account Number</label>
+                                <input type="text" id="wd-account-number" placeholder="Account number">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div>
+                                <label>Bank Name</label>
+                                <input type="text" id="wd-bank-name" placeholder="Bank name">
+                            </div>
+                            <div>
+                                <label>Routing Number</label>
+                                <input type="text" id="wd-routing" placeholder="Routing number">
+                            </div>
+                        </div>
+                    `;
+                    break;
+                case 'crypto':
+                    html = '<label>Wallet Address</label><input type="text" id="wd-wallet" placeholder="Your wallet address">';
+                    break;
+            }
+            
+            document.getElementById('wd-details').innerHTML = html;
         }
         
         function requestWithdrawal() {
+            const amount = parseFloat(document.getElementById('wd-amount').value);
+            const method = document.getElementById('wd-method').value;
             const msgEl = document.getElementById('wd-msg');
-            msgEl.innerText = 'Withdrawal request submitted successfully!';
-            msgEl.className = 'alert success';
+            
+            if (!amount || amount < 20) {
+                msgEl.innerText = 'Minimum withdrawal amount is $20';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
+            setLoading('wd-request-btn', true);
+            msgEl.innerText = 'Processing your request...';
+            msgEl.className = 'alert info';
             msgEl.style.display = 'block';
+            
+            let accountDetails = '';
+            switch(method) {
+                case 'paypal':
+                    accountDetails = document.getElementById('wd-account').value;
+                    break;
+                case 'bank':
+                    accountDetails = `
+                        ${document.getElementById('wd-account-name').value},
+                        ${document.getElementById('wd-account-number').value},
+                        ${document.getElementById('wd-bank-name').value}
+                    `;
+                    break;
+                case 'crypto':
+                    accountDetails = document.getElementById('wd-wallet').value;
+                    break;
+            }
+            
+            // Update balance in cache
+            if (currentUser && userCache[currentUser.uid]) {
+                userCache[currentUser.uid].balance = (userCache[currentUser.uid].balance || 0) - amount;
+            }
+            
+            db.collection('users').doc(currentUser.uid).get().then(doc => {
+                const userData = doc.data();
+                
+                return db.collection('withdrawals').add({
+                    userId: currentUser.uid,
+                    userName: userData.name,
+                    amount: amount,
+                    method: method,
+                    accountDetails: accountDetails,
+                    status: 'pending',
+                    requestedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            })
+            .then(() => {
+                msgEl.innerText = 'Withdrawal request submitted successfully!';
+                msgEl.className = 'alert success';
+                
+                return db.collection('users').doc(currentUser.uid).update({
+                    balance: firebase.firestore.FieldValue.increment(-amount)
+                });
+            })
+            .then(() => {
+                logEvent(currentUser.uid, 'withdrawal_request', { amount, method });
+                loadWithdrawalHistory();
+            })
+            .catch(err => {
+                msgEl.innerText = 'Error: ' + err.message;
+                msgEl.className = 'alert danger';
+            })
+            .finally(() => {
+                setLoading('wd-request-btn', false);
+            });
+        }
+        
+        function loadWithdrawalHistory() {
+            const c = document.getElementById('wd-history');
+            try {
+                db.collection('withdrawals')
+                    .where('userId', '==', currentUser.uid)
+                    .orderBy('requestedAt', 'desc')
+                    .get()
+                    .then(q => {
+                        let html = '';
+                        
+                        if (q.empty) {
+                            html = '<p>No withdrawal history</p>';
+                        } else {
+                            html = '<table class="table"><tr><th>Amount</th><th>Method</th><th>Date</th><th>Status</th></tr>';
+                            
+                            q.forEach(doc => {
+                                const d = doc.data();
+                                html += `
+                                    <tr>
+                                        <td>$${d.amount.toFixed(2)}</td>
+                                        <td>${d.method}</td>
+                                        <td>${d.requestedAt.toDate().toLocaleDateString()}</td>
+                                        <td><span class="badge ${d.status === 'pending' ? 'warning' : d.status === 'approved' ? 'success' : 'danger'}">${d.status}</span></td>
+                                    </tr>
+                                `;
+                            });
+                            
+                            html += '</table>';
+                        }
+                        
+                        c.innerHTML = html;
+                    });
+            } catch (e) {
+                c.innerHTML = '<div class="alert info">Offline mode - withdrawal history not available</div>';
+            }
         }
 
         function userAccount() {
@@ -1489,16 +1980,16 @@
                     <div class="form-row">
                         <div>
                             <label>Full Name</label>
-                            <input type="text" id="acc-name" placeholder="Your full name" value="John Doe">
+                            <input type="text" id="acc-name" placeholder="Your full name">
                         </div>
                         <div>
                             <label>Phone Number</label>
-                            <input type="tel" id="acc-phone" placeholder="Your phone number" value="+1 (555) 123-4567">
+                            <input type="tel" id="acc-phone" placeholder="Your phone number">
                         </div>
                     </div>
                     
                     <label>Email Address</label>
-                    <input type="email" id="acc-email" placeholder="Your email" disabled value="user@example.com">
+                    <input type="email" id="acc-email" placeholder="Your email" disabled>
                     
                     <button onclick="updateProfile()">Update Profile</button>
                     <div id="profile-msg" class="alert" style="display: none; margin-top: 15px;"></div>
@@ -1508,7 +1999,7 @@
                     <h2 class="section-title"><i class="fas fa-lock"></i> Security</h2>
                     <div>
                         <label>
-                            <input type="checkbox" id="acc-2fa" checked> 
+                            <input type="checkbox" id="acc-2fa"> 
                             Enable Two-Factor Authentication
                         </label>
                     </div>
@@ -1527,33 +2018,126 @@
                 <div class="card">
                     <h2 class="section-title"><i class="fas fa-wallet"></i> Payment Information</h2>
                     <p>Set your preferred payment method for withdrawals</p>
-                    <div id="payment-info">
-                        <p><strong>PayPal:</strong> user@example.com</p>
-                        <p><strong>Bank Account:</strong> **** **** **** 1234</p>
-                    </div>
+                    <div id="payment-info"></div>
                 </div>
             `;
+            
+            if (currentUser && userCache[currentUser.uid]) {
+                const d = userCache[currentUser.uid];
+                document.getElementById('acc-name').value = d.name || '';
+                document.getElementById('acc-email').value = d.email || '';
+                document.getElementById('acc-phone').value = d.phone || '';
+                document.getElementById('acc-2fa').checked = d.twoFA || false;
+            }
+            
+            document.getElementById('acc-2fa').onchange = update2FA;
+        }
+        
+        function update2FA() {
+            const enabled = document.getElementById('acc-2fa').checked;
+            db.collection('users').doc(currentUser.uid).update({ twoFA: enabled })
+                .then(() => {
+                    const msg = `Two-Factor Authentication ${enabled ? 'enabled' : 'disabled'}`;
+                    document.getElementById('profile-msg').innerText = msg;
+                    document.getElementById('profile-msg').className = 'alert success';
+                    document.getElementById('profile-msg').style.display = 'block';
+                    logEvent(currentUser.uid, 'update_2fa', { enabled });
+                });
         }
         
         function updateProfile() {
+            const name = document.getElementById('acc-name').value.trim();
+            const phone = document.getElementById('acc-phone').value.trim();
             const msgEl = document.getElementById('profile-msg');
-            msgEl.innerText = 'Profile updated successfully!';
-            msgEl.className = 'alert success';
-            msgEl.style.display = 'block';
+            
+            if (!name) {
+                msgEl.innerText = 'Please enter your name';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
+            // Update in cache
+            if (currentUser && userCache[currentUser.uid]) {
+                userCache[currentUser.uid].name = name;
+                userCache[currentUser.uid].phone = phone;
+                document.getElementById('user-name').innerText = name;
+            }
+            
+            db.collection('users').doc(currentUser.uid).update({
+                name: name,
+                phone: phone
+            })
+            .then(() => {
+                document.getElementById('user-name').innerText = name;
+                msgEl.innerText = 'Profile updated successfully!';
+                msgEl.className = 'alert success';
+                msgEl.style.display = 'block';
+                logEvent(currentUser.uid, 'update_profile');
+            });
         }
         
         function changePassword() {
+            const oldPwd = document.getElementById('acc-old-pwd').value;
+            const newPwd = document.getElementById('acc-new-pwd').value;
+            const confirmPwd = document.getElementById('acc-confirm-pwd').value;
             const msgEl = document.getElementById('pwd-msg');
-            msgEl.innerText = 'Password changed successfully!';
-            msgEl.className = 'alert success';
-            msgEl.style.display = 'block';
+            
+            if (!oldPwd || !newPwd || !confirmPwd) {
+                msgEl.innerText = 'Please fill all fields';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
+            if (newPwd !== confirmPwd) {
+                msgEl.innerText = 'New passwords do not match';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
+            if (newPwd.length < 8) {
+                msgEl.innerText = 'Password must be at least 8 characters';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
+            const user = auth.currentUser;
+            const credential = firebase.auth.EmailAuthProvider.credential(
+                user.email, 
+                oldPwd
+            );
+            
+            user.reauthenticateWithCredential(credential)
+                .then(() => {
+                    return user.updatePassword(newPwd);
+                })
+                .then(() => {
+                    msgEl.innerText = 'Password changed successfully!';
+                    msgEl.className = 'alert success';
+                    logEvent(currentUser.uid, 'change_password');
+                })
+                .catch(err => {
+                    msgEl.innerText = 'Error: ' + err.message;
+                    msgEl.className = 'alert danger';
+                })
+                .finally(() => {
+                    msgEl.style.display = 'block';
+                });
         }
 
         // Initialize on load
         document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const refCode = urlParams.get('ref');
+            if (refCode) {
+                localStorage.setItem('referralCode', refCode);
+            }
+            
             // Initialize offline logs processing
             processOfflineLogs();
-            checkAuth();
         });
     </script>
 </body>
