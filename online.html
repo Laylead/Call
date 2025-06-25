@@ -751,134 +751,21 @@
             
             setLoading('login-btn', true);
             
-            // Check if it's an admin login using credentials from script.js
-            if (adminCredentials && email === adminCredentials.email && pwd === adminCredentials.password) {
+            // Check for admin login
+            if (email === "admin@leadconnect.com") {
                 // Handle admin login directly
-                auth.signInWithEmailAndPassword(email, pwd)
-                    .then(res => {
-                        return db.collection('users').doc(res.user.uid).get()
-                            .then(doc => {
-                                if (doc.exists) {
-                                    return { user: res.user, data: doc.data() };
-                                } else {
-                                    // Create admin document if it doesn't exist
-                                    return db.collection('users').doc(res.user.uid).set({
-                                        name: "Admin",
-                                        email: email,
-                                        role: 'admin',
-                                        status: 'active',
-                                        balance: 0,
-                                        referrals: 0,
-                                        commissionRate: 0.15,
-                                        twoFA: false,
-                                        joined: firebase.firestore.FieldValue.serverTimestamp()
-                                    }).then(() => ({ user: res.user, data: { role: 'admin' } }));
-                                }
-                            });
-                    })
-                    .then(({ user, data }) => {
-                        currentUser = user;
-                        isAdmin = true; // Force admin privileges
-                        userCache[user.uid] = data;
-                        return logEvent(user.uid, 'admin_login');
-                    })
-                    .then(() => {
-                        initApp();
-                    })
-                    .catch(err => {
-                        console.error("Admin login error:", err);
-                        showError('login-error', `Admin login failed: ${err.message}`);
-                    })
-                    .finally(() => {
-                        setLoading('login-btn', false);
-                    });
-            } else {
-                // Regular user login
-                auth.signInWithEmailAndPassword(email, pwd)
-                    .then(res => {
-                        return db.collection('users').doc(res.user.uid).get()
-                            .then(doc => {
-                                if (doc.exists) {
-                                    return { user: res.user, data: doc.data() };
-                                } else {
-                                    // Create minimal user document
-                                    return db.collection('users').doc(res.user.uid).set({
-                                        name: email,
-                                        email: email,
-                                        role: 'user',
-                                        status: 'active',
-                                        balance: 0,
-                                        referrals: 0,
-                                        commissionRate: 0.15,
-                                        twoFA: false,
-                                        joined: firebase.firestore.FieldValue.serverTimestamp()
-                                    }).then(() => ({ user: res.user, data: { role: 'user' } }));
-                                }
-                            });
-                    })
-                    .then(({ user, data }) => {
-                        if (data.twoFA) {
-                            return auth.sendSignInLinkToEmail(email, {
-                                url: window.location.href,
-                                handleCodeInApp: true
-                            }).then(() => {
-                                alert('2FA verification link sent to your email.');
-                                db.collection('users').doc(user.uid).update({
-                                    twoFALinkSent: firebase.firestore.FieldValue.serverTimestamp()
-                                });
-                                throw '2FA pending';
-                            });
-                        }
-                        return { user, data };
-                    })
-                    .then(({ user, data }) => {
-                        currentUser = user;
-                        isAdmin = data.role === 'admin';
-                        userCache[user.uid] = data;
-                        return logEvent(user.uid, 'login');
-                    })
-                    .then(() => {
-                        initApp();
-                    })
-                    .catch(err => {
-                        if (typeof err !== 'string') {
-                            console.error("Login error:", err);
-                            showError('login-error', err.message);
-                        }
-                    })
-                    .finally(() => {
-                        setLoading('login-btn', false);
-                    });
-            }
-        }
-
-        // Handle 2FA
-        if (auth.isSignInWithEmailLink(window.location.href)) {
-            let email = window.localStorage.getItem('emailForSignIn') || prompt('Confirm your email for 2FA:');
-            auth.signInWithEmailLink(email, window.location.href)
-                .then(res => {
-                    logEvent(res.user.uid, 'login_2fa');
-                    window.history.replaceState({}, document.title, '/');
-                    initApp();
-                })
-                .catch(err => {
-                    showError('login-error', `2FA failed: ${err.message}`);
-                });
-        }
-
-        // Auth state handler with offline support
-        auth.onAuthStateChanged(u => {
-            if (u) {
-                currentUser = u;
-                
-                // Special handling for admin user
-                if (adminCredentials && u.email === adminCredentials.email) {
-                    isAdmin = true;
+                if (adminCredentials && pwd === adminCredentials.password) {
+                    // Create admin session
+                    currentUser = {
+                        uid: 'admin-uid',
+                        email: email,
+                        displayName: "Admin User"
+                    };
                     
                     // Create admin profile in cache
-                    userCache[u.uid] = {
-                        name: "Admin",
-                        email: adminCredentials.email,
+                    userCache['admin-uid'] = {
+                        name: "Admin User",
+                        email: email,
                         role: 'admin',
                         status: 'active',
                         balance: 0,
@@ -887,19 +774,126 @@
                         twoFA: false
                     };
                     
+                    isAdmin = true;
+                    
+                    // Store admin session in localStorage
+                    localStorage.setItem('adminSession', JSON.stringify({
+                        email: email,
+                        timestamp: new Date().getTime()
+                    }));
+                    
                     initApp();
-                    processOfflineLogs();
+                    setLoading('login-btn', false);
+                    return;
+                } else {
+                    showError('login-error', 'Invalid admin credentials');
+                    setLoading('login-btn', false);
                     return;
                 }
-                
-                // First try to get user data from cache
-                if (userCache[u.uid]) {
-                    const data = userCache[u.uid];
+            }
+            
+            // Regular user login
+            auth.signInWithEmailAndPassword(email, pwd)
+                .then(res => {
+                    return db.collection('users').doc(res.user.uid).get()
+                        .then(doc => {
+                            if (doc.exists) {
+                                return { user: res.user, data: doc.data() };
+                            } else {
+                                // Create minimal user document
+                                return db.collection('users').doc(res.user.uid).set({
+                                    name: email,
+                                    email: email,
+                                    role: 'user',
+                                    status: 'active',
+                                    balance: 0,
+                                    referrals: 0,
+                                    commissionRate: 0.15,
+                                    twoFA: false,
+                                    joined: firebase.firestore.FieldValue.serverTimestamp()
+                                }).then(() => ({ user: res.user, data: { role: 'user' } }));
+                            }
+                        });
+                })
+                .then(({ user, data }) => {
+                    if (data.twoFA) {
+                        return auth.sendSignInLinkToEmail(email, {
+                            url: window.location.href,
+                            handleCodeInApp: true
+                        }).then(() => {
+                            alert('2FA verification link sent to your email.');
+                            db.collection('users').doc(user.uid).update({
+                                twoFALinkSent: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                            throw '2FA pending';
+                        });
+                    }
+                    return { user, data };
+                })
+                .then(({ user, data }) => {
+                    currentUser = user;
                     isAdmin = data.role === 'admin';
+                    userCache[user.uid] = data;
+                    return logEvent(user.uid, 'login');
+                })
+                .then(() => {
                     initApp();
-                    processOfflineLogs();
-                    return;
+                })
+                .catch(err => {
+                    if (typeof err !== 'string') {
+                        console.error("Login error:", err);
+                        showError('login-error', err.message);
+                    }
+                })
+                .finally(() => {
+                    setLoading('login-btn', false);
+                });
+        }
+
+        // Check for existing admin session on page load
+        function checkAdminSession() {
+            const session = localStorage.getItem('adminSession');
+            if (session) {
+                const sessionData = JSON.parse(session);
+                // Check if session is still valid (1 hour expiration)
+                const now = new Date().getTime();
+                if ((now - sessionData.timestamp) < 3600000) { // 1 hour
+                    currentUser = {
+                        uid: 'admin-uid',
+                        email: sessionData.email,
+                        displayName: "Admin User"
+                    };
+                    
+                    userCache['admin-uid'] = {
+                        name: "Admin User",
+                        email: sessionData.email,
+                        role: 'admin',
+                        status: 'active',
+                        balance: 0,
+                        referrals: 0,
+                        commissionRate: 0.15,
+                        twoFA: false
+                    };
+                    
+                    isAdmin = true;
+                    return true;
                 }
+            }
+            return false;
+        }
+
+        // Auth state handler with offline support
+        auth.onAuthStateChanged(u => {
+            // Check if we have a valid admin session first
+            if (checkAdminSession()) {
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('app').classList.remove('hidden');
+                initApp();
+                return;
+            }
+            
+            if (u) {
+                currentUser = u;
                 
                 // If not in cache, try to get from Firestore
                 db.collection('users').doc(u.uid).get()
@@ -951,9 +945,18 @@
             }
         });
         
-        function logout() { 
-            auth.signOut(); 
-            localStorage.clear();
+        function logout() {
+            // Clear admin session if exists
+            localStorage.removeItem('adminSession');
+            
+            // Firebase logout for regular users
+            if (currentUser && currentUser.uid !== 'admin-uid') {
+                auth.signOut();
+            }
+            
+            // Reset state
+            currentUser = null;
+            isAdmin = false;
             userCache = {};
             window.location.reload();
         }
