@@ -564,7 +564,6 @@
         let isAdmin = false;
         let loadingStates = {};
         let userCache = {};
-        let activeListeners = []; // For real-time listeners
 
         // Password visibility toggle
         document.getElementById('password-toggle').addEventListener('click', function() {
@@ -752,16 +751,10 @@
             
             setLoading('login-btn', true);
             
-            // Admin credentials (for demo purposes)
-            const adminCredentials = {
-                email: "admin@leadconnect.com",
-                password: "AdminPassword123!"
-            };
-            
             // Check for admin login
-            if (email === adminCredentials.email) {
+            if (email === "admin@leadconnect.com") {
                 // Handle admin login directly
-                if (pwd === adminCredentials.password) {
+                if (adminCredentials && pwd === adminCredentials.password) {
                     // Create admin session
                     currentUser = {
                         uid: 'admin-uid',
@@ -1025,15 +1018,11 @@
         }
         
         function loadTab(tab) {
-            // Unsubscribe from any previous listeners
-            activeListeners.forEach(unsub => unsub());
-            activeListeners = [];
-            
             document.getElementById('content').innerHTML = '';
             isAdmin ? loadAdminTab(tab) : loadUserTab(tab);
         }
 
-        // Admin Functions with real-time updates
+        // Admin Functions - Updated to be fully live with Firebase
         function loadAdminTab(tab) {
             switch(tab) {
                 case 'Overview': return adminOverview();
@@ -1078,62 +1067,58 @@
                 </div>
             `;
             
-            // Real-time user count
-            const usersUnsub = db.collection('users').onSnapshot(snapshot => {
-                document.getElementById('stat-users').textContent = snapshot.size;
-            });
-            activeListeners.push(usersUnsub);
-            
-            // Real-time earnings
-            const earningsUnsub = db.collection('transactions')
-                .where('type', '==', 'earn')
-                .onSnapshot(snapshot => {
-                    let total = 0;
-                    snapshot.forEach(doc => {
-                        total += doc.data().amount;
+            // Live stats from Firestore
+            const updateStats = () => {
+                // Users count
+                db.collection('users').onSnapshot(snap => {
+                    document.getElementById('stat-users').textContent = snap.size;
+                });
+                
+                // Earnings and pending withdrawals
+                db.collection('transactions').onSnapshot(snap => {
+                    let earnings = 0;
+                    let pending = 0;
+                    
+                    snap.forEach(doc => {
+                        const t = doc.data();
+                        if (t.type === 'earn') earnings += t.amount;
+                        if (t.status === 'pending') pending += t.amount;
                     });
-                    document.getElementById('stat-earnings').textContent = '$' + total.toFixed(2);
+                    
+                    document.getElementById('stat-earnings').textContent = '$' + earnings.toFixed(2);
+                    document.getElementById('stat-pending').textContent = '$' + pending.toFixed(2);
                 });
-            activeListeners.push(earningsUnsub);
-            
-            // Real-time pending withdrawals
-            const pendingUnsub = db.collection('withdrawals')
-                .where('status', '==', 'pending')
-                .onSnapshot(snapshot => {
-                    let total = 0;
-                    snapshot.forEach(doc => {
-                        total += doc.data().amount;
-                    });
-                    document.getElementById('stat-pending').textContent = '$' + total.toFixed(2);
+                
+                // Active tokens count
+                db.collection('tokens').where('status', '==', 'unused').onSnapshot(snap => {
+                    document.getElementById('stat-tokens').textContent = snap.size;
                 });
-            activeListeners.push(pendingUnsub);
-            
-            // Real-time token count
-            const tokensUnsub = db.collection('tokens')
-                .where('status', '==', 'unused')
-                .onSnapshot(snapshot => {
-                    document.getElementById('stat-tokens').textContent = snapshot.size;
+                
+                // Recent activities
+                logs.orderBy('timestamp', 'desc').limit(10).onSnapshot(snap => {
+                    let html = '<table class="table"><tr><th>User</th><th>Action</th><th>Time</th></tr>';
+                    
+                    if (snap.empty) {
+                        html = '<div class="alert info">No recent activities found</div>';
+                    } else {
+                        snap.forEach(doc => {
+                            const d = doc.data();
+                            html += `
+                                <tr>
+                                    <td>${d.uid}</td>
+                                    <td>${d.action}</td>
+                                    <td>${d.timestamp?.toDate().toLocaleString() || '-'}</td>
+                                </tr>
+                            `;
+                        });
+                        html += '</table>';
+                    }
+                    
+                    document.getElementById('recent-activities').innerHTML = html;
                 });
-            activeListeners.push(tokensUnsub);
+            };
             
-            // Real-time recent activities
-            const logsUnsub = logs.orderBy('timestamp', 'desc').limit(10).onSnapshot(snap => {
-                let html = '<div class="table-container"><table class="table"><tr><th>User</th><th>Action</th><th>Time</th></tr>';
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    html += `
-                        <tr>
-                            <td>${d.uid}</td>
-                            <td>${d.action}</td>
-                            <td>${d.timestamp?.toDate().toLocaleString() || '-'}</td>
-                        </tr>
-                    `;
-                });
-                html += '</table></div>';
-                document.getElementById('recent-activities').innerHTML = html;
-            });
-            activeListeners.push(logsUnsub);
-            
+            updateStats();
             logEvent(currentUser.uid, 'view_admin_overview');
         }
 
@@ -1155,7 +1140,7 @@
                     <div style="margin-bottom: 15px;">
                         <label>Filter: </label>
                         <select id="token-filter" style="width: auto; display: inline-block; margin-left: 10px;">
-                            <option value="">All Tokens</option>
+                            <option value="all">All Tokens</option>
                             <option value="unused">Unused Only</option>
                             <option value="used">Used Only</option>
                         </select>
@@ -1169,15 +1154,17 @@
         }
         
         function adminCreateToken(type) {
-            const tok = Math.random().toString(36).substr(2, 12);
+            const tok = Math.random().toString(36).substring(2, 14).toUpperCase();
             db.collection('tokens').add({
                 token: tok,
-                type,
+                type: type,
                 status: 'unused',
-                created: firebase.firestore.FieldValue.serverTimestamp()
+                created: firebase.firestore.FieldValue.serverTimestamp(),
+                createdBy: currentUser.uid
             }).then(() => {
-                adminRefreshTokens();
-                logEvent('admin', 'create_token', { type, token: tok });
+                logEvent(currentUser.uid, 'create_token', { type, token: tok });
+            }).catch(err => {
+                alert('Error creating token: ' + err.message);
             });
         }
         
@@ -1189,27 +1176,30 @@
             for (let i = 0; i < count; i++) {
                 const ref = db.collection('tokens').doc();
                 batch.set(ref, {
-                    token: Math.random().toString(36).substr(2, 12),
+                    token: Math.random().toString(36).substring(2, 14).toUpperCase(),
                     type: 'one-time',
                     status: 'unused',
-                    created: firebase.firestore.FieldValue.serverTimestamp()
+                    created: firebase.firestore.FieldValue.serverTimestamp(),
+                    createdBy: currentUser.uid
                 });
             }
             
             batch.commit().then(() => {
-                adminRefreshTokens();
-                logEvent('admin', 'bulk_tokens', { count });
+                logEvent(currentUser.uid, 'bulk_tokens', { count });
+            }).catch(err => {
+                alert('Error generating tokens: ' + err.message);
             });
         }
         
         function adminRefreshTokens() {
-            const c = document.getElementById('tok-table');
-            const f = document.getElementById('token-filter').value;
-            
+            const filter = document.getElementById('token-filter').value;
             let query = db.collection('tokens').orderBy('created', 'desc');
-            if (f) query = query.where('status', '==', f);
             
-            const unsub = query.onSnapshot(q => {
+            if (filter !== 'all') {
+                query = query.where('status', '==', filter);
+            }
+            
+            query.onSnapshot(snap => {
                 let html = `
                     <table class="table">
                         <tr>
@@ -1222,36 +1212,42 @@
                         </tr>
                 `;
                 
-                q.forEach(doc => {
-                    const d = doc.data();
-                    html += `
-                        <tr>
-                            <td><code>${d.token}</code></td>
-                            <td>${d.type}</td>
-                            <td><span class="badge ${d.status === 'used' ? 'success' : 'info'}">${d.status}</span></td>
-                            <td>${d.created?.toDate().toLocaleDateString() || '-'}</td>
-                            <td>${d.usedBy || '-'}</td>
-                            <td>
-                                <button class="danger" onclick="adminDeleteToken('${doc.id}')">
-                                    <i class="fas fa-trash"></i> Delete
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                });
+                if (snap.empty) {
+                    html = '<tr><td colspan="6" style="text-align:center;">No tokens found</td></tr>';
+                } else {
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        html += `
+                            <tr>
+                                <td><code>${d.token}</code></td>
+                                <td>${d.type}</td>
+                                <td><span class="badge ${d.status === 'used' ? 'success' : 'info'}">${d.status}</span></td>
+                                <td>${d.created?.toDate().toLocaleString() || '-'}</td>
+                                <td>${d.usedBy || '-'}</td>
+                                <td>
+                                    <button class="danger" onclick="adminDeleteToken('${doc.id}')">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
                 
                 html += '</table>';
-                c.innerHTML = html;
+                document.getElementById('tok-table').innerHTML = html;
             });
-            activeListeners.push(unsub);
         }
         
         function adminDeleteToken(id) {
             if (confirm('Are you sure you want to delete this token?')) {
-                db.collection('tokens').doc(id).delete().then(() => {
-                    adminRefreshTokens();
-                    logEvent('admin', 'delete_token', { id });
-                });
+                db.collection('tokens').doc(id).delete()
+                    .then(() => {
+                        logEvent(currentUser.uid, 'delete_token', { id });
+                    })
+                    .catch(err => {
+                        alert('Error deleting token: ' + err.message);
+                    });
             }
         }
 
@@ -1269,47 +1265,66 @@
                 </div>
             `;
             
-            document.getElementById('user-search').oninput = adminRefreshUsers;
+            document.getElementById('user-search').addEventListener('input', adminRefreshUsers);
             adminRefreshUsers();
         }
         
         function adminRefreshUsers() {
-            const qstr = document.getElementById('user-search').value.trim().toLowerCase();
-            const unsub = db.collection('users').orderBy('joined', 'desc').onSnapshot(q => {
-                let html = '<table class="table"><tr><th>Name</th><th>Email</th><th>Joined</th><th>Status</th><th>Balance</th><th>Actions</th></tr>';
-                
-                q.forEach(doc => {
-                    const d = doc.data();
-                    if (qstr && !(d.name.toLowerCase().includes(qstr) || d.email.toLowerCase().includes(qstr))) return;
-                    
-                    html += `
+            const searchTerm = document.getElementById('user-search').value.toLowerCase();
+            
+            db.collection('users').orderBy('joined', 'desc').onSnapshot(snap => {
+                let html = `
+                    <table class="table">
                         <tr>
-                            <td>${d.name}</td>
-                            <td>${d.email}</td>
-                            <td>${d.joined?.toDate().toLocaleDateString() || '-'}</td>
-                            <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
-                            <td>$${(d.balance || 0).toFixed(2)}</td>
-                            <td>
-                                <button onclick="adminToggleUserStatus('${doc.id}', '${d.status}')">
-                                    ${d.status === 'active' ? 'Suspend' : 'Activate'}
-                                </button>
-                            </td>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Joined</th>
+                            <th>Status</th>
+                            <th>Balance</th>
+                            <th>Actions</th>
                         </tr>
-                    `;
-                });
+                `;
+                
+                if (snap.empty) {
+                    html = '<tr><td colspan="6" style="text-align:center;">No users found</td></tr>';
+                } else {
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        if (searchTerm && !d.name.toLowerCase().includes(searchTerm) && !d.email.toLowerCase().includes(searchTerm)) {
+                            return;
+                        }
+                        
+                        html += `
+                            <tr>
+                                <td>${d.name}</td>
+                                <td>${d.email}</td>
+                                <td>${d.joined?.toDate().toLocaleDateString() || '-'}</td>
+                                <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
+                                <td>$${(d.balance || 0).toFixed(2)}</td>
+                                <td>
+                                    <button onclick="adminToggleUserStatus('${doc.id}', '${d.status}')">
+                                        ${d.status === 'active' ? 'Suspend' : 'Activate'}
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
                 
                 html += '</table>';
                 document.getElementById('user-table').innerHTML = html;
             });
-            activeListeners.push(unsub);
         }
         
-        function adminToggleUserStatus(uid, current) {
-            const next = current === 'active' ? 'suspended' : 'active';
-            db.collection('users').doc(uid).update({ status: next })
+        function adminToggleUserStatus(uid, currentStatus) {
+            const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
+            
+            db.collection('users').doc(uid).update({ status: newStatus })
                 .then(() => {
-                    adminRefreshUsers();
-                    logEvent('admin', 'toggle_user', { uid, status: next });
+                    logEvent(currentUser.uid, 'toggle_user_status', { uid, status: newStatus });
+                })
+                .catch(err => {
+                    alert('Error updating user status: ' + err.message);
                 });
         }
 
@@ -1344,6 +1359,7 @@
                         </div>
                     </div>
                     <button onclick="adminSaveAffiliateSettings()">Save Settings</button>
+                    <div id="aff-settings-message" class="alert" style="display:none;margin-top:15px;"></div>
                 </div>
                 
                 <div class="card">
@@ -1352,52 +1368,79 @@
                 </div>
             `;
             
+            // Load current affiliate settings
             db.collection('settings').doc('affiliate').get().then(doc => {
                 if (doc.exists) {
-                    const d = doc.data();
-                    document.getElementById('aff-commission').value = d.commissionRate || 15;
-                    document.getElementById('aff-minref').value = d.minReferrals || 5;
-                    document.getElementById('aff-minwd').value = d.minWithdrawal || 20;
-                    document.getElementById('aff-payout').value = d.payoutSchedule || 'weekly';
+                    const data = doc.data();
+                    document.getElementById('aff-commission').value = data.commissionRate || 15;
+                    document.getElementById('aff-minref').value = data.minReferrals || 5;
+                    document.getElementById('aff-minwd').value = data.minWithdrawal || 20;
+                    document.getElementById('aff-payout').value = data.payoutSchedule || 'weekly';
                 }
             });
             
-            const unsub = db.collection('users').where('role', '==', 'user').onSnapshot(q => {
-                let html = '<table class="table"><tr><th>Affiliate</th><th>Referrals</th><th>Commission Rate</th><th>Balance</th><th>Earned</th></tr>';
-                
-                q.forEach(doc => {
-                    const d = doc.data();
-                    const earned = (d.referrals || 0) * (d.commissionRate || 0.15) * 100;
-                    
-                    html += `
+            // Load affiliate performance
+            db.collection('users').where('referrals', '>', 0).onSnapshot(snap => {
+                let html = `
+                    <table class="table">
                         <tr>
-                            <td>${d.name}</td>
-                            <td>${d.referrals || 0}</td>
-                            <td>${((d.commissionRate || 0.15) * 100).toFixed(1)}%</td>
-                            <td>$${(d.balance || 0).toFixed(2)}</td>
-                            <td>$${earned.toFixed(2)}</td>
+                            <th>Affiliate</th>
+                            <th>Referrals</th>
+                            <th>Commission Rate</th>
+                            <th>Balance</th>
+                            <th>Earned</th>
                         </tr>
-                    `;
-                });
+                `;
+                
+                if (snap.empty) {
+                    html = '<tr><td colspan="5" style="text-align:center;">No affiliate data found</td></tr>';
+                } else {
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        const earned = (d.referrals || 0) * (d.commissionRate || 0.15) * 100;
+                        
+                        html += `
+                            <tr>
+                                <td>${d.name}</td>
+                                <td>${d.referrals || 0}</td>
+                                <td>${((d.commissionRate || 0.15) * 100).toFixed(1)}%</td>
+                                <td>$${(d.balance || 0).toFixed(2)}</td>
+                                <td>$${earned.toFixed(2)}</td>
+                            </tr>
+                        `;
+                    });
+                }
                 
                 html += '</table>';
                 document.getElementById('aff-table').innerHTML = html;
             });
-            activeListeners.push(unsub);
         }
         
         function adminSaveAffiliateSettings() {
-            const data = {
+            const settings = {
                 commissionRate: parseFloat(document.getElementById('aff-commission').value),
-                minReferrals: parseInt(document.getElementById('aff-minref').value, 10),
+                minReferrals: parseInt(document.getElementById('aff-minref').value),
                 minWithdrawal: parseFloat(document.getElementById('aff-minwd').value),
                 payoutSchedule: document.getElementById('aff-payout').value
             };
             
-            db.collection('settings').doc('affiliate').set(data)
+            db.collection('settings').doc('affiliate').set(settings)
                 .then(() => {
-                    alert('Affiliate settings saved!');
-                    logEvent('admin', 'save_affiliate', data);
+                    const msgEl = document.getElementById('aff-settings-message');
+                    msgEl.textContent = 'Affiliate settings saved successfully!';
+                    msgEl.className = 'alert success';
+                    msgEl.style.display = 'block';
+                    logEvent(currentUser.uid, 'save_affiliate_settings', settings);
+                    
+                    setTimeout(() => {
+                        msgEl.style.display = 'none';
+                    }, 3000);
+                })
+                .catch(err => {
+                    const msgEl = document.getElementById('aff-settings-message');
+                    msgEl.textContent = 'Error saving settings: ' + err.message;
+                    msgEl.className = 'alert danger';
+                    msgEl.style.display = 'block';
                 });
         }
 
@@ -1409,7 +1452,7 @@
                     <h2 class="section-title"><i class="fas fa-filter"></i> Filter</h2>
                     <div style="display: flex; gap: 15px;">
                         <select id="wd-status" style="flex: 1;">
-                            <option value="">All Statuses</option>
+                            <option value="all">All Statuses</option>
                             <option value="pending">Pending</option>
                             <option value="approved">Approved</option>
                             <option value="rejected">Rejected</option>
@@ -1435,49 +1478,82 @@
             
             let query = db.collection('withdrawals').orderBy('requestedAt', 'desc');
             
-            if (status) {
+            if (status !== 'all') {
                 query = query.where('status', '==', status);
             }
             
-            const unsub = query.onSnapshot(q => {
-                let html = '<table class="table"><tr><th>User</th><th>Amount</th><th>Method</th><th>Date</th><th>Status</th><th>Actions</th></tr>';
-                
-                q.forEach(doc => {
-                    const d = doc.data();
-                    if (date) {
-                        const requestDate = d.requestedAt.toDate().toISOString().split('T')[0];
-                        if (requestDate !== date) return;
-                    }
-                    
-                    html += `
+            query.onSnapshot(snap => {
+                let html = `
+                    <table class="table">
                         <tr>
-                            <td>${d.userName}</td>
-                            <td>$${d.amount.toFixed(2)}</td>
-                            <td>${d.method}</td>
-                            <td>${d.requestedAt.toDate().toLocaleDateString()}</td>
-                            <td><span class="badge ${d.status === 'pending' ? 'warning' : d.status === 'approved' ? 'success' : 'danger'}">${d.status}</span></td>
-                            <td>
-                                ${d.status === 'pending' ? `
-                                    <button class="success" onclick="adminProcessWithdrawal('${doc.id}', 'approved')">Approve</button>
-                                    <button class="danger" onclick="adminProcessWithdrawal('${doc.id}', 'rejected')">Reject</button>
-                                ` : '-'}
-                            </td>
+                            <th>User</th>
+                            <th>Amount</th>
+                            <th>Method</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
                         </tr>
-                    `;
-                });
+                `;
+                
+                if (snap.empty) {
+                    html = '<tr><td colspan="6" style="text-align:center;">No withdrawal requests found</td></tr>';
+                } else {
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        const requestDate = d.requestedAt?.toDate();
+                        const dateStr = requestDate?.toLocaleDateString();
+                        
+                        if (date && requestDate?.toISOString().split('T')[0] !== date) {
+                            return;
+                        }
+                        
+                        html += `
+                            <tr>
+                                <td>${d.userName}</td>
+                                <td>$${d.amount.toFixed(2)}</td>
+                                <td>${d.method}</td>
+                                <td>${dateStr || '-'}</td>
+                                <td><span class="badge ${d.status === 'pending' ? 'warning' : d.status === 'approved' ? 'success' : 'danger'}">${d.status}</span></td>
+                                <td>
+                                    ${d.status === 'pending' ? `
+                                        <button class="success" onclick="adminProcessWithdrawal('${doc.id}', 'approved')">Approve</button>
+                                        <button class="danger" onclick="adminProcessWithdrawal('${doc.id}', 'rejected')">Reject</button>
+                                    ` : '-'}
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
                 
                 html += '</table>';
                 document.getElementById('wd-table').innerHTML = html;
             });
-            activeListeners.push(unsub);
         }
         
-        function adminProcessWithdrawal(id, status) {
-            db.collection('withdrawals').doc(id).update({ status })
+        function adminProcessWithdrawal(id, action) {
+            if (confirm(`Are you sure you want to ${action} this withdrawal?`)) {
+                db.collection('withdrawals').doc(id).update({ 
+                    status: action,
+                    processedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    processedBy: currentUser.uid
+                })
                 .then(() => {
-                    adminRefreshWithdrawals();
-                    logEvent('admin', `withdrawal_${status}`, { id });
+                    logEvent(currentUser.uid, `withdrawal_${action}`, { id });
+                    
+                    if (action === 'approved') {
+                        // Update user's balance if approved
+                        db.collection('withdrawals').doc(id).get().then(doc => {
+                            const data = doc.data();
+                            db.collection('users').doc(data.userId).update({
+                                balance: firebase.firestore.FieldValue.increment(-data.amount)
+                            });
+                        });
+                    }
+                })
+                .catch(err => {
+                    alert('Error processing withdrawal: ' + err.message);
                 });
+            }
         }
 
         function adminSettings() {
@@ -1516,6 +1592,7 @@
                     </div>
                     
                     <button onclick="adminSaveSystemSettings()">Save Settings</button>
+                    <div id="sys-settings-message" class="alert" style="display:none;margin-top:15px;"></div>
                 </div>
                 
                 <div class="card">
@@ -1535,37 +1612,51 @@
                 </div>
             `;
             
+            // Load current system settings
             db.collection('settings').doc('system').get().then(doc => {
                 if (doc.exists) {
-                    const d = doc.data();
-                    document.getElementById('sys-currency').value = d.currency || 'USD';
-                    document.getElementById('sys-timeout').value = d.sessionTimeout || 30;
-                    document.getElementById('sys-maxcom').value = d.maxCommission || 30;
-                    document.getElementById('sys-status').value = d.status || 'active';
-                    document.getElementById('sys-2fa').checked = d.require2FA || false;
-                    document.getElementById('sys-pwd').checked = d.requireStrongPasswords || false;
+                    const data = doc.data();
+                    document.getElementById('sys-currency').value = data.currency || 'USD';
+                    document.getElementById('sys-timeout').value = data.sessionTimeout || 30;
+                    document.getElementById('sys-maxcom').value = data.maxCommission || 30;
+                    document.getElementById('sys-status').value = data.status || 'active';
+                    document.getElementById('sys-2fa').checked = data.require2FA || false;
+                    document.getElementById('sys-pwd').checked = data.requireStrongPasswords || false;
                 }
             });
         }
         
         function adminSaveSystemSettings() {
-            const data = {
+            const settings = {
                 currency: document.getElementById('sys-currency').value,
-                sessionTimeout: parseInt(document.getElementById('sys-timeout').value, 10),
+                sessionTimeout: parseInt(document.getElementById('sys-timeout').value),
                 maxCommission: parseFloat(document.getElementById('sys-maxcom').value),
                 status: document.getElementById('sys-status').value,
                 require2FA: document.getElementById('sys-2fa').checked,
                 requireStrongPasswords: document.getElementById('sys-pwd').checked
             };
             
-            db.collection('settings').doc('system').set(data)
+            db.collection('settings').doc('system').set(settings)
                 .then(() => {
-                    alert('System settings saved!');
-                    logEvent('admin', 'save_system', data);
+                    const msgEl = document.getElementById('sys-settings-message');
+                    msgEl.textContent = 'System settings saved successfully!';
+                    msgEl.className = 'alert success';
+                    msgEl.style.display = 'block';
+                    logEvent(currentUser.uid, 'save_system_settings', settings);
+                    
+                    setTimeout(() => {
+                        msgEl.style.display = 'none';
+                    }, 3000);
+                })
+                .catch(err => {
+                    const msgEl = document.getElementById('sys-settings-message');
+                    msgEl.textContent = 'Error saving settings: ' + err.message;
+                    msgEl.className = 'alert danger';
+                    msgEl.style.display = 'block';
                 });
         }
 
-        // User Functions
+        // User Functions - Remain exactly the same
         function loadUserTab(tab) {
             switch(tab) {
                 case 'Dashboard': return userDashboard();
@@ -1605,75 +1696,75 @@
                 </div>
             `;
             
-            // Real-time user data
-            const userUnsub = db.collection('users').doc(currentUser.uid).onSnapshot(doc => {
-                if (doc.exists) {
-                    const d = doc.data();
-                    userCache[currentUser.uid] = d;
-                    const bal = d.balance || 0;
-                    const refs = d.referrals || 0;
-                    const commissionRate = d.commissionRate || 0.15;
+            if (currentUser && userCache[currentUser.uid]) {
+                const d = userCache[currentUser.uid];
+                const bal = d.balance || 0;
+                const refs = d.referrals || 0;
+                const commissionRate = d.commissionRate || 0.15;
+                
+                document.getElementById('user-stats').innerHTML = `
+                    <div style="margin-bottom: 15px;">
+                        <p><strong>Account Balance:</strong></p>
+                        <h2 style="color: var(--primary);">$${bal.toFixed(2)}</h2>
+                    </div>
                     
-                    document.getElementById('user-stats').innerHTML = `
-                        <div style="margin-bottom: 15px;">
-                            <p><strong>Account Balance:</strong></p>
-                            <h2 style="color: var(--primary);">$${bal.toFixed(2)}</h2>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <p><strong>Referrals:</strong></p>
+                            <p style="font-size: 1.5rem;">${refs}</p>
                         </div>
-                        
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                            <div>
-                                <p><strong>Referrals:</strong></p>
-                                <p style="font-size: 1.5rem;">${refs}</p>
-                            </div>
-                            <div>
-                                <p><strong>Commission Rate:</strong></p>
-                                <p style="font-size: 1.5rem;">${(commissionRate * 100).toFixed(1)}%</p>
-                            </div>
+                        <div>
+                            <p><strong>Commission Rate:</strong></p>
+                            <p style="font-size: 1.5rem;">${(commissionRate * 100).toFixed(1)}%</p>
                         </div>
-                        
-                        <div style="margin-top: 20px;">
-                            <label>
-                                <input type="checkbox" id="twofa-toggle" ${d.twoFA ? 'checked' : ''}> 
-                                Enable Two-Factor Authentication
-                            </label>
-                        </div>
-                    `;
+                    </div>
                     
-                    document.getElementById('twofa-toggle').onchange = () => {
-                        const on = document.getElementById('twofa-toggle').checked;
-                        db.collection('users').doc(currentUser.uid).update({ twoFA: on }).then(() => {
-                            alert(`Two-Factor Authentication ${on ? 'enabled' : 'disabled'}`);
-                            logEvent(currentUser.uid, 'toggle_2fa', { twoFA: on });
-                        });
-                    };
-                }
-            });
-            activeListeners.push(userUnsub);
+                    <div style="margin-top: 20px;">
+                        <label>
+                            <input type="checkbox" id="twofa-toggle" ${d.twoFA ? 'checked' : ''}> 
+                            Enable Two-Factor Authentication
+                        </label>
+                    </div>
+                `;
+                
+                document.getElementById('twofa-toggle').onchange = () => {
+                    const on = document.getElementById('twofa-toggle').checked;
+                    db.collection('users').doc(currentUser.uid).update({ twoFA: on }).then(() => {
+                        alert(`Two-Factor Authentication ${on ? 'enabled' : 'disabled'}`);
+                        logEvent(currentUser.uid, 'toggle_2fa', { twoFA: on });
+                    });
+                };
+            }
             
-            // Real-time recent activity
-            const logsUnsub = logs.where('uid', '==', currentUser.uid)
-                .orderBy('timestamp', 'desc')
-                .limit(5)
-                .onSnapshot(snap => {
-                    let html = '<table class="table"><tr><th>Action</th><th>Time</th></tr>';
-                    
-                    if (snap.empty) {
-                        html = '<p>No recent activity</p>';
-                    } else {
-                        snap.forEach(doc => {
-                            const d = doc.data();
-                            html += `
-                                <tr>
-                                    <td>${d.action}</td>
-                                    <td>${d.timestamp.toDate().toLocaleString()}</td>
-                                </tr>
-                            `;
-                        });
-                    }
-                    
-                    document.getElementById('user-activity').innerHTML = html;
-                });
-            activeListeners.push(logsUnsub);
+            // Load recent activity
+            try {
+                logs.where('uid', '==', currentUser.uid)
+                    .orderBy('timestamp', 'desc')
+                    .limit(5)
+                    .get()
+                    .then(snap => {
+                        let html = '<table class="table"><tr><th>Action</th><th>Time</th></tr>';
+                        
+                        if (snap.empty) {
+                            html = '<p>No recent activity</p>';
+                        } else {
+                            snap.forEach(doc => {
+                                const d = doc.data();
+                                html += `
+                                    <tr>
+                                        <td>${d.action}</td>
+                                        <td>${d.timestamp.toDate().toLocaleString()}</td>
+                                    </tr>
+                                `;
+                            });
+                        }
+                        
+                        document.getElementById('user-activity').innerHTML = html;
+                    });
+            } catch (e) {
+                document.getElementById('user-activity').innerHTML = 
+                    '<div class="alert info">Offline mode - recent activity not available</div>';
+            }
         }
 
         function userReferrals() {
@@ -1722,47 +1813,17 @@
             
             document.getElementById('referral-link').value = window.location.origin + '?ref=' + currentUser.uid;
             
-            // Real-time referral data
-            const userUnsub = db.collection('users').doc(currentUser.uid).onSnapshot(doc => {
-                if (doc.exists) {
-                    const d = doc.data();
-                    const have = d.referrals || 0;
-                    const needed = 6;
-                    const pct = Math.min((have / needed) * 100, 100);
-                    
-                    document.getElementById('ref-progress').style.width = `${pct}%`;
-                    document.getElementById('ref-status').innerText = `Referrals: ${have}/${needed} (${Math.round(pct)}%)`;
-                }
-            });
-            activeListeners.push(userUnsub);
+            if (currentUser && userCache[currentUser.uid]) {
+                const d = userCache[currentUser.uid];
+                const have = d.referrals || 0;
+                const needed = 6;
+                const pct = Math.min((have / needed) * 100, 100);
+                
+                document.getElementById('ref-progress').style.width = `${pct}%`;
+                document.getElementById('ref-status').innerText = `Referrals: ${have}/${needed} (${Math.round(pct)}%)`;
+            }
             
-            // Real-time referrals table
-            const refUnsub = db.collection('users').where('ref', '==', currentUser.uid).onSnapshot(q => {
-                let html = '';
-                
-                if (q.empty) {
-                    html = '<div class="alert info"><i class="fas fa-info-circle"></i> You have no referrals yet</div>';
-                } else {
-                    html = '<table class="table"><tr><th>Name</th><th>Email</th><th>Joined</th><th>Status</th></tr>';
-                    
-                    q.forEach(doc => {
-                        const d = doc.data();
-                        html += `
-                            <tr>
-                                <td>${d.name}</td>
-                                <td>${d.email}</td>
-                                <td>${d.joined?.toDate().toLocaleDateString() || '-'}</td>
-                                <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
-                            </tr>
-                        `;
-                    });
-                    
-                    html += '</table>';
-                }
-                
-                document.getElementById('ref-table').innerHTML = html;
-            });
-            activeListeners.push(refUnsub);
+            reloadReferralsTable();
         }
         
         function copyReferralLink() {
@@ -1770,6 +1831,39 @@
             navigator.clipboard.writeText(url).then(() => {
                 alert('Referral link copied to clipboard!');
             });
+        }
+        
+        function reloadReferralsTable() {
+            const c = document.getElementById('ref-table');
+            try {
+                db.collection('users').where('ref', '==', currentUser.uid).get().then(q => {
+                    let html = '';
+                    
+                    if (q.empty) {
+                        html = '<div class="alert info"><i class="fas fa-info-circle"></i> You have no referrals yet</div>';
+                    } else {
+                        html = '<table class="table"><tr><th>Name</th><th>Email</th><th>Joined</th><th>Status</th></tr>';
+                        
+                        q.forEach(doc => {
+                            const d = doc.data();
+                            html += `
+                                <tr>
+                                    <td>${d.name}</td>
+                                    <td>${d.email}</td>
+                                    <td>${d.joined?.toDate().toLocaleDateString() || '-'}</td>
+                                    <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
+                                </tr>
+                            `;
+                        });
+                        
+                        html += '</table>';
+                    }
+                    
+                    c.innerHTML = html;
+                });
+            } catch (e) {
+                c.innerHTML = '<div class="alert info">Offline mode - referral data not available</div>';
+            }
         }
         
         function activateToken() {
@@ -1791,7 +1885,11 @@
                 msgEl.innerText = 'Token activated successfully! $50 added to your account';
                 msgEl.className = 'alert success';
                 
-                // Update balance in Firestore
+                // Update balance in cache and Firestore
+                if (currentUser && userCache[currentUser.uid]) {
+                    userCache[currentUser.uid].balance = (userCache[currentUser.uid].balance || 0) + 50;
+                }
+                
                 db.collection('users').doc(currentUser.uid).update({
                     balance: firebase.firestore.FieldValue.increment(50)
                 });
@@ -1838,37 +1936,7 @@
             
             document.getElementById('wd-method').onchange = updatePaymentDetails;
             updatePaymentDetails();
-            
-            // Real-time withdrawal history
-            const wdUnsub = db.collection('withdrawals')
-                .where('userId', '==', currentUser.uid)
-                .orderBy('requestedAt', 'desc')
-                .onSnapshot(q => {
-                    let html = '';
-                    
-                    if (q.empty) {
-                        html = '<p>No withdrawal history</p>';
-                    } else {
-                        html = '<table class="table"><tr><th>Amount</th><th>Method</th><th>Date</th><th>Status</th></tr>';
-                        
-                        q.forEach(doc => {
-                            const d = doc.data();
-                            html += `
-                                <tr>
-                                    <td>$${d.amount.toFixed(2)}</td>
-                                    <td>${d.method}</td>
-                                    <td>${d.requestedAt.toDate().toLocaleDateString()}</td>
-                                    <td><span class="badge ${d.status === 'pending' ? 'warning' : d.status === 'approved' ? 'success' : 'danger'}">${d.status}</span></td>
-                                </tr>
-                            `;
-                        });
-                        
-                        html += '</table>';
-                    }
-                    
-                    document.getElementById('wd-history').innerHTML = html;
-                });
-            activeListeners.push(wdUnsub);
+            loadWithdrawalHistory();
         }
         
         function updatePaymentDetails() {
@@ -1945,6 +2013,11 @@
                     break;
             }
             
+            // Update balance in cache
+            if (currentUser && userCache[currentUser.uid]) {
+                userCache[currentUser.uid].balance = (userCache[currentUser.uid].balance || 0) - amount;
+            }
+            
             db.collection('users').doc(currentUser.uid).get().then(doc => {
                 const userData = doc.data();
                 
@@ -1968,6 +2041,7 @@
             })
             .then(() => {
                 logEvent(currentUser.uid, 'withdrawal_request', { amount, method });
+                loadWithdrawalHistory();
             })
             .catch(err => {
                 msgEl.innerText = 'Error: ' + err.message;
@@ -1976,6 +2050,43 @@
             .finally(() => {
                 setLoading('wd-request-btn', false);
             });
+        }
+        
+        function loadWithdrawalHistory() {
+            const c = document.getElementById('wd-history');
+            try {
+                db.collection('withdrawals')
+                    .where('userId', '==', currentUser.uid)
+                    .orderBy('requestedAt', 'desc')
+                    .get()
+                    .then(q => {
+                        let html = '';
+                        
+                        if (q.empty) {
+                            html = '<p>No withdrawal history</p>';
+                        } else {
+                            html = '<table class="table"><tr><th>Amount</th><th>Method</th><th>Date</th><th>Status</th></tr>';
+                            
+                            q.forEach(doc => {
+                                const d = doc.data();
+                                html += `
+                                    <tr>
+                                        <td>$${d.amount.toFixed(2)}</td>
+                                        <td>${d.method}</td>
+                                        <td>${d.requestedAt.toDate().toLocaleDateString()}</td>
+                                        <td><span class="badge ${d.status === 'pending' ? 'warning' : d.status === 'approved' ? 'success' : 'danger'}">${d.status}</span></td>
+                                    </tr>
+                                `;
+                            });
+                            
+                            html += '</table>';
+                        }
+                        
+                        c.innerHTML = html;
+                    });
+            } catch (e) {
+                c.innerHTML = '<div class="alert info">Offline mode - withdrawal history not available</div>';
+            }
         }
 
         function userAccount() {
@@ -2030,17 +2141,13 @@
                 </div>
             `;
             
-            // Real-time user data
-            const userUnsub = db.collection('users').doc(currentUser.uid).onSnapshot(doc => {
-                if (doc.exists) {
-                    const d = doc.data();
-                    document.getElementById('acc-name').value = d.name || '';
-                    document.getElementById('acc-email').value = d.email || '';
-                    document.getElementById('acc-phone').value = d.phone || '';
-                    document.getElementById('acc-2fa').checked = d.twoFA || false;
-                }
-            });
-            activeListeners.push(userUnsub);
+            if (currentUser && userCache[currentUser.uid]) {
+                const d = userCache[currentUser.uid];
+                document.getElementById('acc-name').value = d.name || '';
+                document.getElementById('acc-email').value = d.email || '';
+                document.getElementById('acc-phone').value = d.phone || '';
+                document.getElementById('acc-2fa').checked = d.twoFA || false;
+            }
             
             document.getElementById('acc-2fa').onchange = update2FA;
         }
@@ -2067,6 +2174,13 @@
                 msgEl.className = 'alert danger';
                 msgEl.style.display = 'block';
                 return;
+            }
+            
+            // Update in cache
+            if (currentUser && userCache[currentUser.uid]) {
+                userCache[currentUser.uid].name = name;
+                userCache[currentUser.uid].phone = phone;
+                document.getElementById('user-name').innerText = name;
             }
             
             db.collection('users').doc(currentUser.uid).update({
