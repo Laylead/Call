@@ -10,6 +10,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-functions.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
     <!-- External configuration files -->
     <script src="configuration.js"></script>
     <script src="script.js"></script>
@@ -407,69 +408,123 @@
             cursor: pointer;
             color: var(--gray);
         }
-        
+
+        /* Modal styles */
         .modal {
             display: none;
             position: fixed;
-            top: 0;
+            z-index: 1000;
             left: 0;
+            top: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
+            background-color: rgba(0,0,0,0.5);
+            overflow: auto;
         }
-        
+
         .modal-content {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            width: 90%;
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
             max-width: 500px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
         }
-        
-        .close-modal {
+
+        .close {
+            color: #aaa;
             float: right;
-            font-size: 1.5rem;
+            font-size: 28px;
+            font-weight: bold;
             cursor: pointer;
         }
-        
+
+        .close:hover {
+            color: black;
+        }
+
+        /* Video container */
         .video-container {
             position: relative;
-            padding-bottom: 56.25%; /* 16:9 */
+            padding-bottom: 56.25%;
             height: 0;
             overflow: hidden;
             margin: 20px 0;
         }
-        
+
         .video-container iframe {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            border: none;
             border-radius: 8px;
         }
-        
+
+        /* Download button */
         .download-btn {
             display: inline-block;
-            padding: 12px 25px;
-            background: var(--primary);
+            padding: 12px 24px;
+            background-color: var(--success);
             color: white;
             text-decoration: none;
             border-radius: 8px;
+            font-weight: 500;
             margin: 10px 0;
             transition: all 0.3s ease;
         }
-        
+
         .download-btn:hover {
-            background: var(--secondary);
+            background-color: #3a9fc7;
             transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(76, 201, 240, 0.25);
         }
-        
+
+        /* Enrollment section */
+        .enrollment-section {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-radius: 12px;
+            margin: 30px 0;
+        }
+
+        .enrollment-section h2 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+
+        .enrollment-section p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+        }
+
+        .enrollment-count {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 20px 0;
+            color: var(--success);
+        }
+
+        /* WhatsApp input */
+        .whatsapp-input {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .whatsapp-input input {
+            flex: 1;
+            margin: 0;
+        }
+
+        .whatsapp-input button {
+            margin: 0;
+        }
+
+        /* Responsive adjustments */
         @media (max-width: 768px) {
             .tabs {
                 flex-wrap: wrap;
@@ -488,6 +543,15 @@
             .grid {
                 grid-template-columns: 1fr;
             }
+
+            .modal-content {
+                width: 90%;
+                margin: 20% auto;
+            }
+
+            .whatsapp-input {
+                flex-direction: column;
+            }
         }
         
         @media (max-width: 480px) {
@@ -499,6 +563,18 @@
             
             .tab {
                 flex: 1 0 100%;
+            }
+
+            .enrollment-section h2 {
+                font-size: 1.5rem;
+            }
+
+            .enrollment-section p {
+                font-size: 1rem;
+            }
+
+            .enrollment-count {
+                font-size: 2rem;
             }
         }
     </style>
@@ -603,15 +679,15 @@
         <div id="content"></div>
     </div>
 
-    <!-- Enrollment Modal -->
-    <div id="enroll-modal" class="modal">
+    <!-- Token Modal -->
+    <div id="tokenModal" class="modal">
         <div class="modal-content">
-            <span class="close-modal" onclick="closeModal()">&times;</span>
-            <h2>Enroll in WhatsApp Lead Program</h2>
-            <p>Enter your activation token to enroll:</p>
-            <input type="text" id="enroll-token" placeholder="Enter token code">
-            <button onclick="validateEnrollmentToken()">Validate Token</button>
-            <div id="enroll-message" class="alert hidden" style="margin-top:15px;"></div>
+            <span class="close" onclick="closeModal('tokenModal')">&times;</span>
+            <h2>Enter Enrollment Token</h2>
+            <p>You need a valid token to enroll in the program</p>
+            <input type="text" id="enrollmentToken" placeholder="Enter your token">
+            <button onclick="verifyEnrollmentToken()">Verify Token</button>
+            <div id="tokenMessage" class="alert hidden" style="margin-top:15px;"></div>
         </div>
     </div>
 
@@ -631,6 +707,7 @@
         
         const auth = firebase.auth();
         const db = firebase.firestore();
+        const storage = firebase.storage();
         const functions = firebase.functions();
         const logs = db.collection('logs');
         
@@ -660,6 +737,15 @@
             passwordInput.setAttribute('type', type);
             this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
         });
+
+        // Modal functions
+        function openModal(id) {
+            document.getElementById(id).style.display = 'block';
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
 
         // UI toggles
         document.getElementById('to-login').onclick = () => switchForms('login');
@@ -853,7 +939,8 @@
                         commissionRate: 0.15,
                         twoFA: false,
                         enrolled: true,
-                        whatsappNumber: 'admin'
+                        whatsappNumber: 'admin',
+                        enrollmentDate: new Date()
                     };
                     
                     isAdmin = true;
@@ -959,7 +1046,8 @@
                         commissionRate: 0.15,
                         twoFA: false,
                         enrolled: true,
-                        whatsappNumber: 'admin'
+                        whatsappNumber: 'admin',
+                        enrollmentDate: new Date()
                     };
                     
                     isAdmin = true;
@@ -1071,7 +1159,7 @@
         }
 
         // Tabs setup
-        const adminTabs = ['Overview', 'Enrollments', 'Tokens', 'Users', 'Affiliates', 'Withdrawals', 'Settings'];
+        const adminTabs = ['Overview', 'Tokens', 'Users', 'Enrollments', 'Withdrawals', 'Settings', 'Content'];
         const userTabs = ['Dashboard', 'Referrals', 'Withdrawals', 'Account'];
         
         function buildTabs() {
@@ -1099,14 +1187,14 @@
             const icons = {
                 'Overview': 'fa-tachometer-alt',
                 'Dashboard': 'fa-tachometer-alt',
-                'Enrollments': 'fa-users',
                 'Tokens': 'fa-key',
                 'Users': 'fa-users',
-                'Affiliates': 'fa-handshake',
+                'Enrollments': 'fa-user-plus',
                 'Withdrawals': 'fa-money-check-alt',
                 'Settings': 'fa-cog',
                 'Referrals': 'fa-user-friends',
-                'Account': 'fa-user-cog'
+                'Account': 'fa-user-cog',
+                'Content': 'fa-file-alt'
             };
             return icons[tab] || 'fa-file';
         }
@@ -1116,16 +1204,16 @@
             isAdmin ? loadAdminTab(tab) : loadUserTab(tab);
         }
 
-        // Admin Functions - Updated to be fully live with Firebase
+        // Admin Functions - Fully live with Firebase
         function loadAdminTab(tab) {
             switch(tab) {
                 case 'Overview': return adminOverview();
-                case 'Enrollments': return adminEnrollments();
                 case 'Tokens': return adminTokens();
                 case 'Users': return adminUsers();
-                case 'Affiliates': return adminAffiliates();
+                case 'Enrollments': return adminEnrollments();
                 case 'Withdrawals': return adminWithdrawals();
                 case 'Settings': return adminSettings();
+                case 'Content': return adminContent();
             }
         }
 
@@ -1151,8 +1239,8 @@
                     </div>
                     <div class="stat-card">
                         <div class="icon tokens"><i class="fas fa-key"></i></div>
-                        <h3 id="stat-tokens">0</h3>
-                        <p>Active Tokens</p>
+                        <h3 id="stat-enrollments">0</h3>
+                        <p>Active Enrollments</p>
                     </div>
                 </div>
                 
@@ -1184,9 +1272,9 @@
                     document.getElementById('stat-pending').textContent = '$' + pending.toFixed(2);
                 });
                 
-                // Active tokens count
-                db.collection('tokens').where('status', '==', 'unused').onSnapshot(snap => {
-                    document.getElementById('stat-tokens').textContent = snap.size;
+                // Active enrollments count
+                db.collection('users').where('enrolled', '==', true).onSnapshot(snap => {
+                    document.getElementById('stat-enrollments').textContent = snap.size;
                 });
                 
                 // Recent activities
@@ -1217,184 +1305,10 @@
             logEvent(currentUser.uid, 'view_admin_overview');
         }
 
-        function adminEnrollments() {
-            const c = document.getElementById('content');
-            c.innerHTML = `
-                <h1 class="page-title"><i class="fas fa-users"></i> WhatsApp Lead Enrollments</h1>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-filter"></i> Filter Enrollments</h2>
-                    <div style="display: flex; gap: 15px;">
-                        <select id="enrollment-filter" style="flex: 1;">
-                            <option value="all">All Enrollments</option>
-                            <option value="active">Active Only</option>
-                            <option value="pending">Pending Only</option>
-                        </select>
-                        <input type="date" id="enrollment-date" style="flex: 1;">
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-list"></i> Enrollment Records</h2>
-                    <div id="enrollment-table"></div>
-                </div>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-plus-circle"></i> Add New Enrollment</h2>
-                    <div class="form-row">
-                        <div>
-                            <label>User Email</label>
-                            <input type="email" id="new-enrollment-email" placeholder="User email">
-                        </div>
-                        <div>
-                            <label>WhatsApp Number</label>
-                            <input type="text" id="new-enrollment-whatsapp" placeholder="WhatsApp number">
-                        </div>
-                    </div>
-                    <button onclick="adminAddEnrollment()">Add Enrollment</button>
-                    <div id="enrollment-message" class="alert" style="display:none;margin-top:15px;"></div>
-                </div>
-            `;
-            
-            document.getElementById('enrollment-filter').onchange = adminRefreshEnrollments;
-            document.getElementById('enrollment-date').onchange = adminRefreshEnrollments;
-            adminRefreshEnrollments();
-        }
-        
-        function adminRefreshEnrollments() {
-            const filter = document.getElementById('enrollment-filter').value;
-            const date = document.getElementById('enrollment-date').value;
-            
-            let query = db.collection('users').where('enrolled', '==', true);
-            
-            if (filter === 'active') {
-                query = query.where('status', '==', 'active');
-            } else if (filter === 'pending') {
-                query = query.where('status', '==', 'pending');
-            }
-            
-            query.onSnapshot(snap => {
-                let html = `
-                    <table class="table">
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>WhatsApp</th>
-                            <th>Enrolled On</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                `;
-                
-                if (snap.empty) {
-                    html = '<tr><td colspan="6" style="text-align:center;">No enrollment records found</td></tr>';
-                } else {
-                    snap.forEach(doc => {
-                        const d = doc.data();
-                        const enrollDate = d.enrollmentDate?.toDate();
-                        const dateStr = enrollDate?.toLocaleDateString();
-                        
-                        if (date && enrollDate?.toISOString().split('T')[0] !== date) {
-                            return;
-                        }
-                        
-                        html += `
-                            <tr>
-                                <td>${d.name}</td>
-                                <td>${d.email}</td>
-                                <td>${d.whatsappNumber || '-'}</td>
-                                <td>${dateStr || '-'}</td>
-                                <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
-                                <td>
-                                    <button class="danger" onclick="adminRemoveEnrollment('${doc.id}')">
-                                        <i class="fas fa-trash"></i> Remove
-                                    </button>
-                                </td>
-                            </tr>
-                        `;
-                    });
-                }
-                
-                html += '</table>';
-                document.getElementById('enrollment-table').innerHTML = html;
-            });
-        }
-        
-        function adminAddEnrollment() {
-            const email = document.getElementById('new-enrollment-email').value.trim();
-            const whatsapp = document.getElementById('new-enrollment-whatsapp').value.trim();
-            const msgEl = document.getElementById('enrollment-message');
-            
-            if (!email || !validateEmail(email)) {
-                msgEl.innerText = 'Please enter a valid email';
-                msgEl.className = 'alert danger';
-                msgEl.style.display = 'block';
-                return;
-            }
-            
-            if (!whatsapp) {
-                msgEl.innerText = 'Please enter a WhatsApp number';
-                msgEl.className = 'alert danger';
-                msgEl.style.display = 'block';
-                return;
-            }
-            
-            // Find user by email
-            db.collection('users').where('email', '==', email).get()
-                .then(snap => {
-                    if (snap.empty) {
-                        throw new Error('User not found');
-                    }
-                    
-                    const userDoc = snap.docs[0];
-                    return db.collection('users').doc(userDoc.id).update({
-                        enrolled: true,
-                        whatsappNumber: whatsapp,
-                        enrollmentDate: firebase.firestore.FieldValue.serverTimestamp(),
-                        status: 'active'
-                    });
-                })
-                .then(() => {
-                    msgEl.innerText = 'Enrollment added successfully!';
-                    msgEl.className = 'alert success';
-                    msgEl.style.display = 'block';
-                    logEvent(currentUser.uid, 'add_enrollment', { email, whatsapp });
-                    
-                    // Clear fields
-                    document.getElementById('new-enrollment-email').value = '';
-                    document.getElementById('new-enrollment-whatsapp').value = '';
-                    
-                    // Refresh table
-                    adminRefreshEnrollments();
-                })
-                .catch(err => {
-                    msgEl.innerText = 'Error: ' + err.message;
-                    msgEl.className = 'alert danger';
-                    msgEl.style.display = 'block';
-                });
-        }
-        
-        function adminRemoveEnrollment(userId) {
-            if (confirm('Are you sure you want to remove this enrollment?')) {
-                db.collection('users').doc(userId).update({
-                    enrolled: false,
-                    whatsappNumber: '',
-                    enrollmentDate: null
-                })
-                .then(() => {
-                    logEvent(currentUser.uid, 'remove_enrollment', { userId });
-                    adminRefreshEnrollments();
-                })
-                .catch(err => {
-                    alert('Error removing enrollment: ' + err.message);
-                });
-            }
-        }
-
         function adminTokens() {
             const c = document.getElementById('content');
             c.innerHTML = `
-                <h1 class="page-title"><i class="fas fa-key"></i> Token Management</h1>
+                <h1 class="page-title"><i class="fas fa-key"></i> Enrollment Tokens</h1>
                 <div class="card">
                     <h2 class="section-title"><i class="fas fa-plus-circle"></i> Generate Tokens</h2>
                     <div style="display: flex; gap: 15px; margin-bottom: 20px;">
@@ -1569,7 +1483,7 @@
                                 <td>${d.email}</td>
                                 <td>${d.joined?.toDate().toLocaleDateString() || '-'}</td>
                                 <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
-                                <td><span class="badge ${d.enrolled ? 'success' : 'danger'}">${d.enrolled ? 'Yes' : 'No'}</span></td>
+                                <td><span class="badge ${d.enrolled ? 'success' : 'warning'}">${d.enrolled ? 'Yes' : 'No'}</span></td>
                                 <td>
                                     <button onclick="adminToggleUserStatus('${doc.id}', '${d.status}')">
                                         ${d.status === 'active' ? 'Suspend' : 'Activate'}
@@ -1597,120 +1511,82 @@
                 });
         }
 
-        function adminAffiliates() {
+        function adminEnrollments() {
             const c = document.getElementById('content');
             c.innerHTML = `
-                <h1 class="page-title"><i class="fas fa-handshake"></i> Affiliate Program</h1>
+                <h1 class="page-title"><i class="fas fa-user-plus"></i> Enrollment Management</h1>
                 <div class="card">
-                    <h2 class="section-title"><i class="fas fa-cog"></i> Settings</h2>
-                    <div class="form-row">
-                        <div>
-                            <label>Commission Rate (%)</label>
-                            <input type="number" id="aff-commission" min="0" max="50" step="0.1">
-                        </div>
-                        <div>
-                            <label>Minimum Referrals</label>
-                            <input type="number" id="aff-minref" min="0">
-                        </div>
+                    <h2 class="section-title"><i class="fas fa-filter"></i> Filter Enrollments</h2>
+                    <div style="display: flex; gap: 15px;">
+                        <select id="enrollment-filter" style="flex: 1;">
+                            <option value="all">All Enrollments</option>
+                            <option value="today">Today</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                        </select>
                     </div>
-                    <div class="form-row">
-                        <div>
-                            <label>Minimum Withdrawal ($)</label>
-                            <input type="number" id="aff-minwd" min="0">
-                        </div>
-                        <div>
-                            <label>Payout Schedule</label>
-                            <select id="aff-payout">
-                                <option value="weekly">Weekly</option>
-                                <option value="biweekly">Bi-weekly</option>
-                                <option value="monthly">Monthly</option>
-                            </select>
-                        </div>
-                    </div>
-                    <button onclick="adminSaveAffiliateSettings()">Save Settings</button>
-                    <div id="aff-settings-message" class="alert" style="display:none;margin-top:15px;"></div>
                 </div>
                 
                 <div class="card">
-                    <h2 class="section-title"><i class="fas fa-chart-bar"></i> Performance</h2>
-                    <div id="aff-table"></div>
+                    <h2 class="section-title"><i class="fas fa-list"></i> Enrolled Users</h2>
+                    <div id="enrollment-table"></div>
                 </div>
             `;
             
-            // Load current affiliate settings
-            db.collection('settings').doc('affiliate').get().then(doc => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    document.getElementById('aff-commission').value = data.commissionRate || 15;
-                    document.getElementById('aff-minref').value = data.minReferrals || 5;
-                    document.getElementById('aff-minwd').value = data.minWithdrawal || 20;
-                    document.getElementById('aff-payout').value = data.payoutSchedule || 'weekly';
-                }
-            });
+            document.getElementById('enrollment-filter').onchange = adminRefreshEnrollments;
+            adminRefreshEnrollments();
+        }
+        
+        function adminRefreshEnrollments() {
+            const filter = document.getElementById('enrollment-filter').value;
+            let query = db.collection('users').where('enrolled', '==', true).orderBy('enrollmentDate', 'desc');
             
-            // Load affiliate performance
-            db.collection('users').where('referrals', '>', 0).onSnapshot(snap => {
+            if (filter === 'today') {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                query = query.where('enrollmentDate', '>=', today);
+            } else if (filter === 'week') {
+                const weekAgo = new Date();
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                query = query.where('enrollmentDate', '>=', weekAgo);
+            } else if (filter === 'month') {
+                const monthAgo = new Date();
+                monthAgo.setMonth(monthAgo.getMonth() - 1);
+                query = query.where('enrollmentDate', '>=', monthAgo);
+            }
+            
+            query.onSnapshot(snap => {
                 let html = `
                     <table class="table">
                         <tr>
-                            <th>Affiliate</th>
-                            <th>Referrals</th>
-                            <th>Commission Rate</th>
-                            <th>Balance</th>
-                            <th>Earned</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>WhatsApp</th>
+                            <th>Enrollment Date</th>
+                            <th>Status</th>
                         </tr>
                 `;
                 
                 if (snap.empty) {
-                    html = '<tr><td colspan="5" style="text-align:center;">No affiliate data found</td></tr>';
+                    html = '<tr><td colspan="5" style="text-align:center;">No enrollments found</td></tr>';
                 } else {
                     snap.forEach(doc => {
                         const d = doc.data();
-                        const earned = (d.referrals || 0) * (d.commissionRate || 0.15) * 100;
-                        
                         html += `
                             <tr>
                                 <td>${d.name}</td>
-                                <td>${d.referrals || 0}</td>
-                                <td>${((d.commissionRate || 0.15) * 100).toFixed(1)}%</td>
-                                <td>$${(d.balance || 0).toFixed(2)}</td>
-                                <td>$${earned.toFixed(2)}</td>
+                                <td>${d.email}</td>
+                                <td>${d.whatsappNumber || '-'}</td>
+                                <td>${d.enrollmentDate?.toDate().toLocaleString() || '-'}</td>
+                                <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
                             </tr>
                         `;
                     });
                 }
                 
                 html += '</table>';
-                document.getElementById('aff-table').innerHTML = html;
+                document.getElementById('enrollment-table').innerHTML = html;
             });
-        }
-        
-        function adminSaveAffiliateSettings() {
-            const settings = {
-                commissionRate: parseFloat(document.getElementById('aff-commission').value),
-                minReferrals: parseInt(document.getElementById('aff-minref').value),
-                minWithdrawal: parseFloat(document.getElementById('aff-minwd').value),
-                payoutSchedule: document.getElementById('aff-payout').value
-            };
-            
-            db.collection('settings').doc('affiliate').set(settings)
-                .then(() => {
-                    const msgEl = document.getElementById('aff-settings-message');
-                    msgEl.textContent = 'Affiliate settings saved successfully!';
-                    msgEl.className = 'alert success';
-                    msgEl.style.display = 'block';
-                    logEvent(currentUser.uid, 'save_affiliate_settings', settings);
-                    
-                    setTimeout(() => {
-                        msgEl.style.display = 'none';
-                    }, 3000);
-                })
-                .catch(err => {
-                    const msgEl = document.getElementById('aff-settings-message');
-                    msgEl.textContent = 'Error saving settings: ' + err.message;
-                    msgEl.className = 'alert danger';
-                    msgEl.style.display = 'block';
-                });
         }
 
         function adminWithdrawals() {
@@ -1925,6 +1801,165 @@
                 });
         }
 
+        function adminContent() {
+            const c = document.getElementById('content');
+            c.innerHTML = `
+                <h1 class="page-title"><i class="fas fa-file-alt"></i> Content Management</h1>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-bullhorn"></i> Announcements</h2>
+                    <textarea id="announcement-text" rows="5" placeholder="Enter announcement text"></textarea>
+                    <button onclick="saveAnnouncement()">Save Announcement</button>
+                    <div id="announcement-message" class="alert" style="display:none;margin-top:15px;"></div>
+                </div>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-video"></i> Video Content</h2>
+                    <input type="text" id="video-url" placeholder="YouTube or video URL">
+                    <button onclick="saveVideoUrl()">Save Video URL</button>
+                    <div id="video-message" class="alert" style="display:none;margin-top:15px;"></div>
+                </div>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-file-download"></i> Downloadable File</h2>
+                    <input type="file" id="file-upload">
+                    <button onclick="uploadFile()">Upload File</button>
+                    <div id="file-message" class="alert" style="display:none;margin-top:15px;"></div>
+                    <div id="current-file" style="margin-top:15px;"></div>
+                </div>
+            `;
+            
+            // Load current content
+            db.collection('content').doc('announcement').get().then(doc => {
+                if (doc.exists) {
+                    document.getElementById('announcement-text').value = doc.data().text || '';
+                }
+            });
+            
+            db.collection('content').doc('video').get().then(doc => {
+                if (doc.exists) {
+                    document.getElementById('video-url').value = doc.data().url || '';
+                }
+            });
+            
+            db.collection('content').doc('file').get().then(doc => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    document.getElementById('current-file').innerHTML = `
+                        <p>Current file: <strong>${data.name}</strong></p>
+                        <a href="${data.url}" class="download-btn" target="_blank">
+                            <i class="fas fa-download"></i> Download Current File
+                        </a>
+                    `;
+                }
+            });
+        }
+        
+        function saveAnnouncement() {
+            const text = document.getElementById('announcement-text').value;
+            const msgEl = document.getElementById('announcement-message');
+            
+            db.collection('content').doc('announcement').set({ text })
+                .then(() => {
+                    msgEl.textContent = 'Announcement saved successfully!';
+                    msgEl.className = 'alert success';
+                    msgEl.style.display = 'block';
+                    logEvent(currentUser.uid, 'save_announcement');
+                    
+                    setTimeout(() => {
+                        msgEl.style.display = 'none';
+                    }, 3000);
+                })
+                .catch(err => {
+                    msgEl.textContent = 'Error saving announcement: ' + err.message;
+                    msgEl.className = 'alert danger';
+                    msgEl.style.display = 'block';
+                });
+        }
+        
+        function saveVideoUrl() {
+            const url = document.getElementById('video-url').value;
+            const msgEl = document.getElementById('video-message');
+            
+            if (!url) {
+                msgEl.textContent = 'Please enter a video URL';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
+            db.collection('content').doc('video').set({ url })
+                .then(() => {
+                    msgEl.textContent = 'Video URL saved successfully!';
+                    msgEl.className = 'alert success';
+                    msgEl.style.display = 'block';
+                    logEvent(currentUser.uid, 'save_video_url');
+                    
+                    setTimeout(() => {
+                        msgEl.style.display = 'none';
+                    }, 3000);
+                })
+                .catch(err => {
+                    msgEl.textContent = 'Error saving video URL: ' + err.message;
+                    msgEl.className = 'alert danger';
+                    msgEl.style.display = 'block';
+                });
+        }
+        
+        function uploadFile() {
+            const fileInput = document.getElementById('file-upload');
+            const msgEl = document.getElementById('file-message');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                msgEl.textContent = 'Please select a file to upload';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const storageRef = storage.ref('downloads/' + file.name);
+            const uploadTask = storageRef.put(file);
+            
+            msgEl.textContent = 'Uploading file...';
+            msgEl.className = 'alert info';
+            msgEl.style.display = 'block';
+            
+            uploadTask.on('state_changed', 
+                (snapshot) => {
+                    // Progress monitoring can be added here
+                }, 
+                (error) => {
+                    msgEl.textContent = 'Upload failed: ' + error.message;
+                    msgEl.className = 'alert danger';
+                }, 
+                () => {
+                    uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
+                        db.collection('content').doc('file').set({
+                            name: file.name,
+                            url: downloadURL,
+                            uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        })
+                        .then(() => {
+                            msgEl.textContent = 'File uploaded successfully!';
+                            msgEl.className = 'alert success';
+                            document.getElementById('current-file').innerHTML = `
+                                <p>Current file: <strong>${file.name}</strong></p>
+                                <a href="${downloadURL}" class="download-btn" target="_blank">
+                                    <i class="fas fa-download"></i> Download Current File
+                                </a>
+                            `;
+                            logEvent(currentUser.uid, 'upload_file', { name: file.name });
+                        })
+                        .catch(err => {
+                            msgEl.textContent = 'Error saving file info: ' + err.message;
+                            msgEl.className = 'alert danger';
+                        });
+                    });
+                }
+            );
+        }
+
         // User Functions
         function loadUserTab(tab) {
             switch(tab) {
@@ -1937,155 +1972,230 @@
 
         function userDashboard() {
             const c = document.getElementById('content');
+            
+            if (currentUser && userCache[currentUser.uid] && !userCache[currentUser.uid].enrolled) {
+                // Show enrollment page for non-enrolled users
+                c.innerHTML = `
+                    <div class="enrollment-section">
+                        <h2>WhatsApp Lead Generation Program</h2>
+                        <p>You need to enroll in the program to access the dashboard</p>
+                        <div class="enrollment-count" id="enrollment-count">0</div>
+                        <p>people have already enrolled</p>
+                    </div>
+                    
+                    <div class="card">
+                        <h2 class="section-title"><i class="fab fa-whatsapp"></i> Enroll Now</h2>
+                        <p>Enter your WhatsApp number to enroll in our lead generation program</p>
+                        
+                        <div class="whatsapp-input">
+                            <input type="tel" id="whatsapp-number" placeholder="Your WhatsApp number with country code">
+                            <button onclick="openTokenModal()">Enroll</button>
+                        </div>
+                        
+                        <div id="enrollment-message" class="alert hidden" style="margin-top:15px;"></div>
+                    </div>
+                    
+                    <div class="card">
+                        <h2 class="section-title"><i class="fas fa-bullhorn"></i> Announcement</h2>
+                        <div id="announcement-content"></div>
+                    </div>
+                    
+                    <div class="card">
+                        <h2 class="section-title"><i class="fas fa-download"></i> Download Resource</h2>
+                        <div id="download-content"></div>
+                    </div>
+                    
+                    <div class="card">
+                        <h2 class="section-title"><i class="fas fa-video"></i> Training Video</h2>
+                        <div id="video-content"></div>
+                    </div>
+                    
+                    <div class="card">
+                        <h2 class="section-title"><i class="fas fa-lightbulb"></i> Imagine This</h2>
+                        <p>Imagine getting <span id="enrolled-count" style="font-weight:bold;color:var(--primary);">0</span> as your customers.</p>
+                    </div>
+                `;
+                
+                // Load enrollment count
+                db.collection('users').where('enrolled', '==', true).onSnapshot(snap => {
+                    document.getElementById('enrollment-count').textContent = snap.size;
+                    document.getElementById('enrolled-count').textContent = snap.size;
+                });
+                
+                // Load announcement
+                db.collection('content').doc('announcement').onSnapshot(doc => {
+                    if (doc.exists) {
+                        document.getElementById('announcement-content').innerHTML = doc.data().text || '<p>No announcements yet.</p>';
+                    }
+                });
+                
+                // Load video
+                db.collection('content').doc('video').onSnapshot(doc => {
+                    if (doc.exists && doc.data().url) {
+                        const url = doc.data().url;
+                        let embedHtml = '';
+                        
+                        if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                            // YouTube embed
+                            const videoId = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+                            if (videoId && videoId[1]) {
+                                embedHtml = `
+                                    <div class="video-container">
+                                        <iframe src="https://www.youtube.com/embed/${videoId[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                                    </div>
+                                `;
+                            } else {
+                                embedHtml = `<p><a href="${url}" target="_blank">Watch Video</a></p>`;
+                            }
+                        } else {
+                            // Generic video link
+                            embedHtml = `<p><a href="${url}" target="_blank">Watch Video</a></p>`;
+                        }
+                        
+                        document.getElementById('video-content').innerHTML = embedHtml;
+                    } else {
+                        document.getElementById('video-content').innerHTML = '<p>No video available yet.</p>';
+                    }
+                });
+                
+                // Load downloadable file
+                db.collection('content').doc('file').onSnapshot(doc => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        document.getElementById('download-content').innerHTML = `
+                            <a href="${data.url}" class="download-btn" target="_blank">
+                                <i class="fas fa-download"></i> Download ${data.name}
+                            </a>
+                        `;
+                    } else {
+                        document.getElementById('download-content').innerHTML = '<p>No file available for download yet.</p>';
+                    }
+                });
+                
+                return;
+            }
+            
+            // Regular dashboard for enrolled users
             c.innerHTML = `
                 <h1 class="page-title"><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
                 
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-whatsapp"></i> WhatsApp Lead Program</h2>
-                    
-                    <div id="enrollment-status">
-                        <!-- Dynamic content based on enrollment status -->
+                <div class="grid">
+                    <div class="card">
+                        <h2 class="section-title"><i class="fas fa-wallet"></i> Account Summary</h2>
+                        <div id="user-stats"></div>
                     </div>
                     
-                    <div class="alert info" style="margin-top:20px;">
-                        <i class="fas fa-info-circle"></i> 
-                        <span id="enrolled-count">Loading enrolled users count...</span>
-                    </div>
-                    
-                    <div style="text-align:center;margin:30px 0;">
-                        <h3>Imagine getting <span id="enrolled-count-2" style="color:var(--primary);">0</span> as your customers.</h3>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-download"></i> Download Resources</h2>
-                    <a href="#" class="download-btn" onclick="downloadResource()">
-                        <i class="fas fa-file-pdf"></i> Download Lead Generation Guide
-                    </a>
-                </div>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-video"></i> Training Video</h2>
-                    <div class="video-container">
-                        <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" frameborder="0" allowfullscreen></iframe>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-bullhorn"></i> Announcements</h2>
-                    <div id="announcements">
-                        <div class="alert info">
-                            <i class="fas fa-info-circle"></i> Welcome to LeadConnect! Check back here for important updates.
+                    <div class="card">
+                        <h2 class="section-title"><i class="fas fa-chart-bar"></i> Performance</h2>
+                        <div style="text-align: center; padding: 20px;">
+                            <div style="height:200px;display:flex;align-items:flex-end;justify-content:center;gap:20px;">
+                                <div style="width:40px;background:var(--primary);height:80%;border-radius:5px;"></div>
+                                <div style="width:40px;background:var(--success);height:60%;border-radius:5px;"></div>
+                                <div style="width:40px;background:var(--warning);height:40%;border-radius:5px;"></div>
+                                <div style="width:40px;background:var(--danger);height:30%;border-radius:5px;"></div>
+                            </div>
                         </div>
                     </div>
+                </div>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-history"></i> Recent Activity</h2>
+                    <div id="user-activity"></div>
                 </div>
             `;
             
-            // Load enrollment status
-            updateEnrollmentStatus();
-            
-            // Load enrolled users count
-            db.collection('users').where('enrolled', '==', true).onSnapshot(snap => {
-                const count = snap.size;
-                document.getElementById('enrolled-count').textContent = 
-                    `Currently ${count} users enrolled in the WhatsApp Lead Program`;
-                document.getElementById('enrolled-count-2').textContent = count;
-            });
-            
-            // Load announcements
-            db.collection('announcements').orderBy('created', 'desc').limit(3).onSnapshot(snap => {
-                const container = document.getElementById('announcements');
-                container.innerHTML = '';
+            if (currentUser && userCache[currentUser.uid]) {
+                const d = userCache[currentUser.uid];
+                const bal = d.balance || 0;
+                const refs = d.referrals || 0;
+                const commissionRate = d.commissionRate || 0.15;
                 
-                if (snap.empty) {
-                    container.innerHTML = `
-                        <div class="alert info">
-                            <i class="fas fa-info-circle"></i> No announcements at this time.
-                        </div>
-                    `;
-                } else {
-                    snap.forEach(doc => {
-                        const data = doc.data();
-                        container.innerHTML += `
-                            <div class="alert info" style="margin-bottom:10px;">
-                                <i class="fas fa-bullhorn"></i>
-                                <strong>${data.title}</strong> - ${data.message}
-                                <small style="display:block;margin-top:5px;color:var(--gray);">
-                                    ${data.created.toDate().toLocaleDateString()}
-                                </small>
-                            </div>
-                        `;
-                    });
-                }
-            });
-        }
-        
-        function updateEnrollmentStatus() {
-            const container = document.getElementById('enrollment-status');
-            
-            if (!currentUser || !userCache[currentUser.uid]) {
-                container.innerHTML = '<div class="alert warning">Loading your enrollment status...</div>';
-                return;
-            }
-            
-            const userData = userCache[currentUser.uid];
-            
-            if (userData.enrolled) {
-                container.innerHTML = `
-                    <div class="alert success">
-                        <i class="fas fa-check-circle"></i> 
-                        You are enrolled in the WhatsApp Lead Program!
-                    </div>
-                    <div style="margin:15px 0;">
-                        <p><strong>Your WhatsApp Number:</strong> ${userData.whatsappNumber || 'Not specified'}</p>
-                        <p><strong>Enrolled On:</strong> ${userData.enrollmentDate?.toDate().toLocaleDateString() || 'Unknown date'}</p>
-                    </div>
-                `;
-            } else {
-                container.innerHTML = `
-                    <div class="alert warning">
-                        <i class="fas fa-exclamation-circle"></i> 
-                        You need to enroll in the program to access the dashboard
+                document.getElementById('user-stats').innerHTML = `
+                    <div style="margin-bottom: 15px;">
+                        <p><strong>Account Balance:</strong></p>
+                        <h2 style="color: var(--primary);">$${bal.toFixed(2)}</h2>
                     </div>
                     
-                    <div class="form-row" style="margin-top:20px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                         <div>
-                            <label>Your WhatsApp Number</label>
-                            <input type="text" id="whatsapp-number" placeholder="+1234567890">
+                            <p><strong>Referrals:</strong></p>
+                            <p style="font-size: 1.5rem;">${refs}</p>
                         </div>
                         <div>
-                            <label style="visibility:hidden;">Enroll Button</label>
-                            <button onclick="showEnrollModal()">Enroll Now</button>
+                            <p><strong>Commission Rate:</strong></p>
+                            <p style="font-size: 1.5rem;">${(commissionRate * 100).toFixed(1)}%</p>
                         </div>
                     </div>
+                    
+                    <div style="margin-top: 20px;">
+                        <label>
+                            <input type="checkbox" id="twofa-toggle" ${d.twoFA ? 'checked' : ''}> 
+                            Enable Two-Factor Authentication
+                        </label>
+                    </div>
                 `;
+                
+                document.getElementById('twofa-toggle').onchange = () => {
+                    const on = document.getElementById('twofa-toggle').checked;
+                    db.collection('users').doc(currentUser.uid).update({ twoFA: on }).then(() => {
+                        alert(`Two-Factor Authentication ${on ? 'enabled' : 'disabled'}`);
+                        logEvent(currentUser.uid, 'toggle_2fa', { twoFA: on });
+                    });
+                };
+            }
+            
+            // Load recent activity
+            try {
+                logs.where('uid', '==', currentUser.uid)
+                    .orderBy('timestamp', 'desc')
+                    .limit(5)
+                    .get()
+                    .then(snap => {
+                        let html = '<table class="table"><tr><th>Action</th><th>Time</th></tr>';
+                        
+                        if (snap.empty) {
+                            html = '<p>No recent activity</p>';
+                        } else {
+                            snap.forEach(doc => {
+                                const d = doc.data();
+                                html += `
+                                    <tr>
+                                        <td>${d.action}</td>
+                                        <td>${d.timestamp.toDate().toLocaleString()}</td>
+                                    </tr>
+                                `;
+                            });
+                        }
+                        
+                        document.getElementById('user-activity').innerHTML = html;
+                    });
+            } catch (e) {
+                document.getElementById('user-activity').innerHTML = 
+                    '<div class="alert info">Offline mode - recent activity not available</div>';
             }
         }
-        
-        function showEnrollModal() {
+
+        function openTokenModal() {
             const whatsappNumber = document.getElementById('whatsapp-number').value.trim();
+            const msgEl = document.getElementById('enrollment-message');
             
             if (!whatsappNumber) {
-                alert('Please enter your WhatsApp number');
+                msgEl.innerText = 'Please enter your WhatsApp number';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
                 return;
             }
             
-            // Save WhatsApp number temporarily
-            if (currentUser && userCache[currentUser.uid]) {
-                userCache[currentUser.uid].whatsappNumber = whatsappNumber;
-            }
-            
-            document.getElementById('enroll-modal').style.display = 'flex';
+            document.getElementById('tokenMessage').className = 'alert hidden';
+            document.getElementById('tokenMessage').style.display = 'none';
+            document.getElementById('enrollmentToken').value = '';
+            openModal('tokenModal');
         }
-        
-        function closeModal() {
-            document.getElementById('enroll-modal').style.display = 'none';
-            document.getElementById('enroll-message').style.display = 'none';
-        }
-        
-        function validateEnrollmentToken() {
-            const token = document.getElementById('enroll-token').value.trim();
-            const msgEl = document.getElementById('enroll-message');
+
+        function verifyEnrollmentToken() {
+            const token = document.getElementById('enrollmentToken').value.trim();
+            const whatsappNumber = document.getElementById('whatsapp-number').value.trim();
+            const msgEl = document.getElementById('tokenMessage');
             
             if (!token) {
                 msgEl.innerText = 'Please enter a token';
@@ -2094,12 +2204,12 @@
                 return;
             }
             
-            msgEl.innerText = 'Validating token...';
+            msgEl.innerText = 'Verifying token...';
             msgEl.className = 'alert info';
             msgEl.style.display = 'block';
             
             // Check token in Firestore
-            db.collection('tokens').where('token', '==', token).where('status', '==', 'unused').get()
+            db.collection('tokens').where('token', '==', token).where('status', '==', 'unused').limit(1).get()
                 .then(snap => {
                     if (snap.empty) {
                         throw new Error('Invalid or already used token');
@@ -2113,43 +2223,36 @@
                         status: 'used',
                         usedBy: currentUser.uid,
                         usedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    }).then(() => tokenData.type);
-                })
-                .then(tokenType => {
-                    // Update user enrollment status
-                    const whatsappNumber = userCache[currentUser.uid].whatsappNumber;
-                    
-                    return db.collection('users').doc(currentUser.uid).update({
-                        enrolled: true,
-                        whatsappNumber: whatsappNumber,
-                        enrollmentDate: firebase.firestore.FieldValue.serverTimestamp(),
-                        status: 'active'
+                    }).then(() => {
+                        // Update user enrollment status
+                        return db.collection('users').doc(currentUser.uid).update({
+                            enrolled: true,
+                            whatsappNumber: whatsappNumber,
+                            enrollmentDate: firebase.firestore.FieldValue.serverTimestamp()
+                        });
                     });
                 })
                 .then(() => {
                     // Update local cache
                     userCache[currentUser.uid].enrolled = true;
+                    userCache[currentUser.uid].whatsappNumber = whatsappNumber;
                     userCache[currentUser.uid].enrollmentDate = new Date();
                     
-                    msgEl.innerText = 'Enrollment successful! Welcome to the WhatsApp Lead Program.';
+                    msgEl.innerText = 'Enrollment successful! Welcome to the program.';
                     msgEl.className = 'alert success';
                     
-                    // Close modal after 2 seconds
+                    logEvent(currentUser.uid, 'enrollment_success', { token, whatsappNumber });
+                    
                     setTimeout(() => {
-                        closeModal();
-                        updateEnrollmentStatus();
-                        logEvent(currentUser.uid, 'enrollment_success');
+                        closeModal('tokenModal');
+                        loadTab('Dashboard');
                     }, 2000);
                 })
                 .catch(err => {
                     msgEl.innerText = 'Error: ' + err.message;
                     msgEl.className = 'alert danger';
+                    logEvent(currentUser.uid, 'enrollment_failed', { error: err.message });
                 });
-        }
-        
-        function downloadResource() {
-            alert('Downloading resource...');
-            logEvent(currentUser.uid, 'download_resource');
         }
 
         function userReferrals() {
