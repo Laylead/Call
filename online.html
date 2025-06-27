@@ -10,6 +10,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-functions.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
     <!-- External configuration files -->
     <script src="configuration.js"></script>
     <script src="script.js"></script>
@@ -418,32 +419,48 @@
             width: 100%;
             height: 100%;
             background-color: rgba(0,0,0,0.5);
-            overflow: auto;
         }
         
         .modal-content {
-            background-color: #fefefe;
+            background-color: white;
             margin: 10% auto;
             padding: 20px;
             border-radius: 8px;
-            max-width: 500px;
             width: 90%;
+            max-width: 500px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.2);
         }
         
-        .close {
-            color: #aaa;
+        .close-modal {
             float: right;
-            font-size: 28px;
-            font-weight: bold;
+            font-size: 1.5rem;
             cursor: pointer;
         }
         
-        .close:hover {
-            color: black;
+        /* WhatsApp lead specific styles */
+        .lead-card {
+            text-align: center;
+            padding: 30px;
         }
         
-        /* Video container */
+        .lead-card h2 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: var(--primary);
+        }
+        
+        .lead-card .lead-count {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--success);
+            margin: 20px 0;
+        }
+        
+        .lead-form {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
         .video-container {
             position: relative;
             padding-bottom: 56.25%;
@@ -461,31 +478,31 @@
             border-radius: 8px;
         }
         
-        /* Download button */
+        .download-section {
+            background: rgba(67, 97, 238, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
         .download-btn {
             display: inline-block;
             padding: 12px 25px;
-            background: var(--success);
+            background: var(--primary);
             color: white;
             text-decoration: none;
             border-radius: 8px;
-            margin: 10px 0;
-            transition: all 0.3s ease;
+            margin-top: 10px;
         }
         
-        .download-btn:hover {
-            background: #3a9fc7;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(76, 201, 240, 0.25);
-        }
-        
-        /* WhatsApp enrollment form */
-        .enrollment-form {
-            background: white;
+        .ad-banner {
+            background: #f8f9fa;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: var(--shadow);
             margin: 20px 0;
+            text-align: center;
+            border: 1px dashed var(--gray);
         }
         
         @media (max-width: 768px) {
@@ -622,14 +639,14 @@
     </div>
 
     <!-- Token Modal -->
-    <div id="tokenModal" class="modal">
+    <div id="token-modal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeModal('tokenModal')">&times;</span>
+            <span class="close-modal" onclick="closeModal()">&times;</span>
             <h2>Enter Activation Token</h2>
             <p>Please enter your activation token to enroll in the WhatsApp lead program</p>
-            <input type="text" id="enrollmentToken" placeholder="Enter token here">
-            <button onclick="validateEnrollmentToken()" style="margin-top: 15px;">Validate Token</button>
-            <div id="tokenMessage" class="alert hidden" style="margin-top:15px;"></div>
+            <input type="text" id="enrollment-token" placeholder="Enter token" style="margin: 15px 0;">
+            <button onclick="verifyEnrollmentToken()">Verify Token</button>
+            <div id="token-message" class="alert" style="display:none;margin-top:15px;"></div>
         </div>
     </div>
 
@@ -649,14 +666,17 @@
         
         const auth = firebase.auth();
         const db = firebase.firestore();
+        const storage = firebase.storage();
         const functions = firebase.functions();
         const logs = db.collection('logs');
+        const leads = db.collection('leads');
         
         let currentUser = null;
         let isAdmin = false;
         let loadingStates = {};
         let userCache = {};
-        
+        let enrolledStatus = false;
+
         // Password visibility toggle
         document.getElementById('password-toggle').addEventListener('click', function() {
             const passwordInput = document.getElementById('login-password');
@@ -688,6 +708,74 @@
             document.getElementById('to-register').classList.toggle('active', mode === 'register');
             document.getElementById('login-form').classList.toggle('hidden', mode !== 'login');
             document.getElementById('register-form').classList.toggle('hidden', mode !== 'register');
+        }
+
+        // Modal functions
+        function openModal() {
+            document.getElementById('token-modal').style.display = 'block';
+        }
+        
+        function closeModal() {
+            document.getElementById('token-modal').style.display = 'none';
+        }
+        
+        function verifyEnrollmentToken() {
+            const token = document.getElementById('enrollment-token').value.trim();
+            const msgEl = document.getElementById('token-message');
+            
+            if (!token) {
+                msgEl.innerText = 'Please enter a token';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
+            msgEl.innerText = 'Verifying token...';
+            msgEl.className = 'alert info';
+            msgEl.style.display = 'block';
+            
+            // Check token in Firestore
+            db.collection('tokens').where('token', '==', token).where('status', '==', 'unused').limit(1).get()
+                .then(snap => {
+                    if (snap.empty) {
+                        throw new Error('Invalid or already used token');
+                    }
+                    
+                    const tokenDoc = snap.docs[0];
+                    const tokenData = tokenDoc.data();
+                    
+                    // Mark token as used
+                    return db.collection('tokens').doc(tokenDoc.id).update({
+                        status: 'used',
+                        usedBy: currentUser.uid,
+                        usedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }).then(() => {
+                        // Update user's enrolled status
+                        return db.collection('users').doc(currentUser.uid).update({
+                            enrolled: true,
+                            enrolledAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            enrolledWith: token
+                        });
+                    });
+                })
+                .then(() => {
+                    msgEl.innerText = 'Token verified! You are now enrolled in the program.';
+                    msgEl.className = 'alert success';
+                    enrolledStatus = true;
+                    userCache[currentUser.uid].enrolled = true;
+                    
+                    // Close modal after 2 seconds
+                    setTimeout(() => {
+                        closeModal();
+                        loadTab('Dashboard'); // Refresh the dashboard
+                    }, 2000);
+                    
+                    logEvent(currentUser.uid, 'token_verified', { token });
+                })
+                .catch(err => {
+                    msgEl.innerText = 'Error: ' + err.message;
+                    msgEl.className = 'alert danger';
+                });
         }
 
         // Enhanced activity logger with offline support
@@ -792,9 +880,9 @@
                         referrals: 0,
                         commissionRate: 0.15,
                         twoFA: false,
-                        whatsappEnrolled: false,
+                        enrolled: false,
                         whatsappNumber: '',
-                        enrollmentDate: null
+                        leadsCount: 0
                     }).then(() => userCredential.user);
                 })
                 .then(user => {
@@ -813,9 +901,9 @@
                         referrals: 0,
                         commissionRate: 0.15,
                         twoFA: false,
-                        whatsappEnrolled: false,
+                        enrolled: false,
                         whatsappNumber: '',
-                        enrollmentDate: null
+                        leadsCount: 0
                     };
                     isAdmin = false;
                     initApp();
@@ -869,7 +957,8 @@
                         balance: 0,
                         referrals: 0,
                         commissionRate: 0.15,
-                        twoFA: false
+                        twoFA: false,
+                        enrolled: true
                     };
                     
                     isAdmin = true;
@@ -908,9 +997,9 @@
                                     referrals: 0,
                                     commissionRate: 0.15,
                                     twoFA: false,
-                                    whatsappEnrolled: false,
+                                    enrolled: false,
                                     whatsappNumber: '',
-                                    enrollmentDate: null,
+                                    leadsCount: 0,
                                     joined: firebase.firestore.FieldValue.serverTimestamp()
                                 }).then(() => ({ user: res.user, data: { role: 'user' } }));
                             }
@@ -935,6 +1024,7 @@
                     currentUser = user;
                     isAdmin = data.role === 'admin';
                     userCache[user.uid] = data;
+                    enrolledStatus = data.enrolled || false;
                     return logEvent(user.uid, 'login');
                 })
                 .then(() => {
@@ -973,7 +1063,8 @@
                         balance: 0,
                         referrals: 0,
                         commissionRate: 0.15,
-                        twoFA: false
+                        twoFA: false,
+                        enrolled: true
                     };
                     
                     isAdmin = true;
@@ -1003,6 +1094,7 @@
                         const data = doc.data();
                         userCache[u.uid] = data;
                         isAdmin = data.role === 'admin';
+                        enrolledStatus = data.enrolled || false;
                         initApp();
                         processOfflineLogs();
                     } else {
@@ -1016,12 +1108,13 @@
                             referrals: 0,
                             commissionRate: 0.15,
                             twoFA: false,
-                            whatsappEnrolled: false,
+                            enrolled: false,
                             whatsappNumber: '',
-                            enrollmentDate: null
+                            leadsCount: 0
                         };
                         userCache[u.uid] = minimalData;
                         isAdmin = false;
+                        enrolledStatus = false;
                         initApp();
                         
                         // Try to save to Firestore if online
@@ -1041,12 +1134,13 @@
                         referrals: 0,
                         commissionRate: 0.15,
                         twoFA: false,
-                        whatsappEnrolled: false,
+                        enrolled: false,
                         whatsappNumber: '',
-                        enrollmentDate: null
+                        leadsCount: 0
                     };
                     userCache[u.uid] = minimalData;
                     isAdmin = false;
+                    enrolledStatus = false;
                     initApp();
                 });
             }
@@ -1065,6 +1159,7 @@
             currentUser = null;
             isAdmin = false;
             userCache = {};
+            enrolledStatus = false;
             window.location.reload();
         }
 
@@ -1079,14 +1174,14 @@
             }
             
             buildTabs();
-            const first = isAdmin ? 'Overview' : 'Home';
+            const first = isAdmin ? 'Overview' : 'Dashboard';
             setActiveTab(first);
             loadTab(first);
         }
 
         // Tabs setup
-        const adminTabs = ['Overview', 'Tokens', 'Users', 'Affiliates', 'Withdrawals', 'Settings'];
-        const userTabs = ['Home', 'Dashboard', 'Referrals', 'Withdrawals', 'Account'];
+        const adminTabs = ['Overview', 'Leads', 'Tokens', 'Users', 'Affiliates', 'Withdrawals', 'Content', 'Settings'];
+        const userTabs = ['Dashboard', 'Referrals', 'Withdrawals', 'Account'];
         
         function buildTabs() {
             const tabsEl = document.getElementById('tabs');
@@ -1112,15 +1207,16 @@
         function getTabIcon(tab) {
             const icons = {
                 'Overview': 'fa-tachometer-alt',
-                'Home': 'fa-home',
                 'Dashboard': 'fa-tachometer-alt',
+                'Leads': 'fa-users',
                 'Tokens': 'fa-key',
                 'Users': 'fa-users',
                 'Affiliates': 'fa-handshake',
                 'Withdrawals': 'fa-money-check-alt',
                 'Settings': 'fa-cog',
                 'Referrals': 'fa-user-friends',
-                'Account': 'fa-user-cog'
+                'Account': 'fa-user-cog',
+                'Content': 'fa-file-alt'
             };
             return icons[tab] || 'fa-file';
         }
@@ -1134,10 +1230,12 @@
         function loadAdminTab(tab) {
             switch(tab) {
                 case 'Overview': return adminOverview();
+                case 'Leads': return adminLeads();
                 case 'Tokens': return adminTokens();
                 case 'Users': return adminUsers();
                 case 'Affiliates': return adminAffiliates();
                 case 'Withdrawals': return adminWithdrawals();
+                case 'Content': return adminContent();
                 case 'Settings': return adminSettings();
             }
         }
@@ -1167,21 +1265,15 @@
                         <h3 id="stat-tokens">0</h3>
                         <p>Active Tokens</p>
                     </div>
-                </div>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-whatsapp"></i> WhatsApp Enrollment Stats</h2>
-                    <div class="grid">
-                        <div class="stat-card">
-                            <div class="icon users"><i class="fas fa-user-check"></i></div>
-                            <h3 id="stat-enrolled">0</h3>
-                            <p>Enrolled Users</p>
-                        </div>
-                        <div class="stat-card">
-                            <div class="icon earnings"><i class="fas fa-phone-alt"></i></div>
-                            <h3 id="stat-numbers">0</h3>
-                            <p>WhatsApp Numbers</p>
-                        </div>
+                    <div class="stat-card">
+                        <div class="icon users"><i class="fas fa-user-plus"></i></div>
+                        <h3 id="stat-leads">0</h3>
+                        <p>Total Leads</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="icon users"><i class="fas fa-check-circle"></i></div>
+                        <h3 id="stat-enrolled">0</h3>
+                        <p>Enrolled Users</p>
                     </div>
                 </div>
                 
@@ -1196,6 +1288,16 @@
                 // Users count
                 db.collection('users').onSnapshot(snap => {
                     document.getElementById('stat-users').textContent = snap.size;
+                });
+                
+                // Enrolled users count
+                db.collection('users').where('enrolled', '==', true).onSnapshot(snap => {
+                    document.getElementById('stat-enrolled').textContent = snap.size;
+                });
+                
+                // Leads count
+                leads.onSnapshot(snap => {
+                    document.getElementById('stat-leads').textContent = snap.size;
                 });
                 
                 // Earnings and pending withdrawals
@@ -1216,16 +1318,6 @@
                 // Active tokens count
                 db.collection('tokens').where('status', '==', 'unused').onSnapshot(snap => {
                     document.getElementById('stat-tokens').textContent = snap.size;
-                });
-                
-                // Enrolled users count
-                db.collection('users').where('whatsappEnrolled', '==', true).onSnapshot(snap => {
-                    document.getElementById('stat-enrolled').textContent = snap.size;
-                });
-                
-                // WhatsApp numbers count
-                db.collection('users').where('whatsappNumber', '!=', '').onSnapshot(snap => {
-                    document.getElementById('stat-numbers').textContent = snap.size;
                 });
                 
                 // Recent activities
@@ -1254,6 +1346,98 @@
             
             updateStats();
             logEvent(currentUser.uid, 'view_admin_overview');
+        }
+
+        function adminLeads() {
+            const c = document.getElementById('content');
+            c.innerHTML = `
+                <h1 class="page-title"><i class="fas fa-users"></i> Lead Management</h1>
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-filter"></i> Filter Leads</h2>
+                    <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                        <select id="lead-filter" style="flex: 1;">
+                            <option value="all">All Leads</option>
+                            <option value="today">Today</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                        </select>
+                        <input type="text" id="lead-search" placeholder="Search by name or number" style="flex: 1;">
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-list"></i> Lead List</h2>
+                    <div id="lead-table"></div>
+                </div>
+            `;
+            
+            document.getElementById('lead-filter').onchange = adminRefreshLeads;
+            document.getElementById('lead-search').addEventListener('input', adminRefreshLeads);
+            adminRefreshLeads();
+        }
+        
+        function adminRefreshLeads() {
+            const filter = document.getElementById('lead-filter').value;
+            const searchTerm = document.getElementById('lead-search').value.toLowerCase();
+            
+            let query = leads.orderBy('createdAt', 'desc');
+            
+            if (filter !== 'all') {
+                const now = new Date();
+                let startDate;
+                
+                if (filter === 'today') {
+                    startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                } else if (filter === 'week') {
+                    const day = now.getDay();
+                    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+                    startDate = new Date(now.setDate(diff));
+                } else if (filter === 'month') {
+                    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                }
+                
+                query = query.where('createdAt', '>=', startDate);
+            }
+            
+            query.onSnapshot(snap => {
+                let html = `
+                    <table class="table">
+                        <tr>
+                            <th>Name</th>
+                            <th>WhatsApp Number</th>
+                            <th>Enrolled By</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                        </tr>
+                `;
+                
+                if (snap.empty) {
+                    html = '<tr><td colspan="5" style="text-align:center;">No leads found</td></tr>';
+                } else {
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        
+                        if (searchTerm && 
+                            !d.name.toLowerCase().includes(searchTerm) && 
+                            !d.whatsappNumber.toLowerCase().includes(searchTerm)) {
+                            return;
+                        }
+                        
+                        html += `
+                            <tr>
+                                <td>${d.name}</td>
+                                <td>${d.whatsappNumber}</td>
+                                <td>${d.enrolledBy || 'System'}</td>
+                                <td>${d.createdAt?.toDate().toLocaleString() || '-'}</td>
+                                <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
+                            </tr>
+                        `;
+                    });
+                }
+                
+                html += '</table>';
+                document.getElementById('lead-table').innerHTML = html;
+            });
         }
 
         function adminTokens() {
@@ -1414,17 +1598,18 @@
                             <th>Email</th>
                             <th>Joined</th>
                             <th>Status</th>
-                            <th>WhatsApp</th>
+                            <th>Enrolled</th>
+                            <th>Leads</th>
                             <th>Actions</th>
                         </tr>
                 `;
                 
                 if (snap.empty) {
-                    html = '<tr><td colspan="6" style="text-align:center;">No users found</td></tr>';
+                    html = '<tr><td colspan="7" style="text-align:center;">No users found</td></tr>';
                 } else {
                     snap.forEach(doc => {
                         const d = doc.data();
-                        if (searchTerm && !d.name.toLowerCase().includes(searchTerm) {
+                        if (searchTerm && !d.name.toLowerCase().includes(searchTerm) && !d.email.toLowerCase().includes(searchTerm)) {
                             return;
                         }
                         
@@ -1434,11 +1619,8 @@
                                 <td>${d.email}</td>
                                 <td>${d.joined?.toDate().toLocaleDateString() || '-'}</td>
                                 <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
-                                <td>
-                                    ${d.whatsappEnrolled ? 
-                                        `<span class="badge success">Enrolled</span><br>${d.whatsappNumber || 'N/A'}` : 
-                                        '<span class="badge danger">Not Enrolled</span>'}
-                                </td>
+                                <td><span class="badge ${d.enrolled ? 'success' : 'danger'}">${d.enrolled ? 'Yes' : 'No'}</span></td>
+                                <td>${d.leadsCount || 0}</td>
                                 <td>
                                     <button onclick="adminToggleUserStatus('${doc.id}', '${d.status}')">
                                         ${d.status === 'active' ? 'Suspend' : 'Activate'}
@@ -1694,6 +1876,200 @@
             }
         }
 
+        function adminContent() {
+            const c = document.getElementById('content');
+            c.innerHTML = `
+                <h1 class="page-title"><i class="fas fa-file-alt"></i> Content Management</h1>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-video"></i> Promotional Video</h2>
+                    <div id="video-container" class="video-container">
+                        <p>No video uploaded yet</p>
+                    </div>
+                    <input type="file" id="video-upload" accept="video/*" style="margin: 15px 0;">
+                    <button onclick="uploadVideo()">Upload Video</button>
+                    <div id="video-message" class="alert" style="display:none;margin-top:15px;"></div>
+                </div>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-file-download"></i> Downloadable File</h2>
+                    <div id="file-info" class="download-section">
+                        <p>No file uploaded yet</p>
+                    </div>
+                    <input type="file" id="file-upload" style="margin: 15px 0;">
+                    <button onclick="uploadFile()">Upload File</button>
+                    <div id="file-message" class="alert" style="display:none;margin-top:15px;"></div>
+                </div>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-bullhorn"></i> Notifications & Ads</h2>
+                    <textarea id="ad-content" rows="5" placeholder="Enter notification or ad content"></textarea>
+                    <button onclick="saveAdContent()">Save Content</button>
+                    <div id="ad-message" class="alert" style="display:none;margin-top:15px;"></div>
+                </div>
+            `;
+            
+            // Load existing content
+            loadContent();
+        }
+        
+        function loadContent() {
+            // Load video
+            db.collection('content').doc('video').get().then(doc => {
+                if (doc.exists && doc.data().url) {
+                    document.getElementById('video-container').innerHTML = `
+                        <iframe src="${doc.data().url}" frameborder="0" allowfullscreen></iframe>
+                    `;
+                }
+            });
+            
+            // Load file
+            db.collection('content').doc('file').get().then(doc => {
+                if (doc.exists && doc.data().url) {
+                    document.getElementById('file-info').innerHTML = `
+                        <h3>${doc.data().name || 'Download File'}</h3>
+                        <p>${doc.data().description || ''}</p>
+                        <a href="${doc.data().url}" class="download-btn" download>
+                            <i class="fas fa-download"></i> Download Now
+                        </a>
+                    `;
+                }
+            });
+            
+            // Load ad content
+            db.collection('content').doc('ad').get().then(doc => {
+                if (doc.exists && doc.data().text) {
+                    document.getElementById('ad-content').value = doc.data().text;
+                }
+            });
+        }
+        
+        function uploadVideo() {
+            const fileInput = document.getElementById('video-upload');
+            const file = fileInput.files[0];
+            const msgEl = document.getElementById('video-message');
+            
+            if (!file) {
+                msgEl.innerText = 'Please select a video file';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
+            msgEl.innerText = 'Uploading video...';
+            msgEl.className = 'alert info';
+            msgEl.style.display = 'block';
+            
+            const storageRef = storage.ref(`content/videos/${file.name}`);
+            const uploadTask = storageRef.put(file);
+            
+            uploadTask.on('state_changed', 
+                (snapshot) => {
+                    // Progress monitoring can be added here
+                }, 
+                (error) => {
+                    msgEl.innerText = 'Upload failed: ' + error.message;
+                    msgEl.className = 'alert danger';
+                }, 
+                () => {
+                    uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
+                        db.collection('content').doc('video').set({
+                            url: downloadURL,
+                            name: file.name,
+                            uploadedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            uploadedBy: currentUser.uid
+                        }).then(() => {
+                            msgEl.innerText = 'Video uploaded successfully!';
+                            msgEl.className = 'alert success';
+                            document.getElementById('video-container').innerHTML = `
+                                <iframe src="${downloadURL}" frameborder="0" allowfullscreen></iframe>
+                            `;
+                            logEvent(currentUser.uid, 'upload_video', { name: file.name });
+                        });
+                    });
+                }
+            );
+        }
+        
+        function uploadFile() {
+            const fileInput = document.getElementById('file-upload');
+            const file = fileInput.files[0];
+            const msgEl = document.getElementById('file-message');
+            
+            if (!file) {
+                msgEl.innerText = 'Please select a file';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
+            msgEl.innerText = 'Uploading file...';
+            msgEl.className = 'alert info';
+            msgEl.style.display = 'block';
+            
+            const storageRef = storage.ref(`content/files/${file.name}`);
+            const uploadTask = storageRef.put(file);
+            
+            uploadTask.on('state_changed', 
+                (snapshot) => {
+                    // Progress monitoring can be added here
+                }, 
+                (error) => {
+                    msgEl.innerText = 'Upload failed: ' + error.message;
+                    msgEl.className = 'alert danger';
+                }, 
+                () => {
+                    uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
+                        db.collection('content').doc('file').set({
+                            url: downloadURL,
+                            name: file.name,
+                            description: 'Downloadable resource',
+                            uploadedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            uploadedBy: currentUser.uid
+                        }).then(() => {
+                            msgEl.innerText = 'File uploaded successfully!';
+                            msgEl.className = 'alert success';
+                            document.getElementById('file-info').innerHTML = `
+                                <h3>${file.name}</h3>
+                                <p>Downloadable resource</p>
+                                <a href="${downloadURL}" class="download-btn" download>
+                                    <i class="fas fa-download"></i> Download Now
+                                </a>
+                            `;
+                            logEvent(currentUser.uid, 'upload_file', { name: file.name });
+                        });
+                    });
+                }
+            );
+        }
+        
+        function saveAdContent() {
+            const content = document.getElementById('ad-content').value;
+            const msgEl = document.getElementById('ad-message');
+            
+            if (!content) {
+                msgEl.innerText = 'Please enter some content';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
+            db.collection('content').doc('ad').set({
+                text: content,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedBy: currentUser.uid
+            }).then(() => {
+                msgEl.innerText = 'Content saved successfully!';
+                msgEl.className = 'alert success';
+                msgEl.style.display = 'block';
+                logEvent(currentUser.uid, 'save_ad_content');
+            }).catch(err => {
+                msgEl.innerText = 'Error saving content: ' + err.message;
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+            });
+        }
+
         function adminSettings() {
             const c = document.getElementById('content');
             c.innerHTML = `
@@ -1748,32 +2124,6 @@
                         </label>
                     </div>
                 </div>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-whatsapp"></i> WhatsApp Lead Settings</h2>
-                    <div>
-                        <label>WhatsApp Lead Title</label>
-                        <input type="text" id="whatsapp-title" placeholder="e.g. Join Our WhatsApp Group">
-                    </div>
-                    <div>
-                        <label>WhatsApp Lead Description</label>
-                        <textarea id="whatsapp-desc" placeholder="Description about the WhatsApp lead program"></textarea>
-                    </div>
-                    <div>
-                        <label>Video URL</label>
-                        <input type="url" id="whatsapp-video" placeholder="YouTube or other video URL">
-                    </div>
-                    <div>
-                        <label>Download File URL</label>
-                        <input type="url" id="whatsapp-file" placeholder="URL to downloadable file">
-                    </div>
-                    <div>
-                        <label>Notification Message</label>
-                        <textarea id="whatsapp-notification" placeholder="Notification to show users"></textarea>
-                    </div>
-                    <button onclick="saveWhatsAppSettings()">Save WhatsApp Settings</button>
-                    <div id="whatsapp-settings-message" class="alert" style="display:none;margin-top:15px;"></div>
-                </div>
             `;
             
             // Load current system settings
@@ -1788,48 +2138,6 @@
                     document.getElementById('sys-pwd').checked = data.requireStrongPasswords || false;
                 }
             });
-            
-            // Load WhatsApp settings
-            db.collection('settings').doc('whatsapp').get().then(doc => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    document.getElementById('whatsapp-title').value = data.title || '';
-                    document.getElementById('whatsapp-desc').value = data.description || '';
-                    document.getElementById('whatsapp-video').value = data.videoUrl || '';
-                    document.getElementById('whatsapp-file').value = data.fileUrl || '';
-                    document.getElementById('whatsapp-notification').value = data.notification || '';
-                }
-            });
-        }
-        
-        function saveWhatsAppSettings() {
-            const settings = {
-                title: document.getElementById('whatsapp-title').value,
-                description: document.getElementById('whatsapp-desc').value,
-                videoUrl: document.getElementById('whatsapp-video').value,
-                fileUrl: document.getElementById('whatsapp-file').value,
-                notification: document.getElementById('whatsapp-notification').value,
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            };
-            
-            db.collection('settings').doc('whatsapp').set(settings)
-                .then(() => {
-                    const msgEl = document.getElementById('whatsapp-settings-message');
-                    msgEl.textContent = 'WhatsApp settings saved successfully!';
-                    msgEl.className = 'alert success';
-                    msgEl.style.display = 'block';
-                    logEvent(currentUser.uid, 'save_whatsapp_settings', settings);
-                    
-                    setTimeout(() => {
-                        msgEl.style.display = 'none';
-                    }, 3000);
-                })
-                .catch(err => {
-                    const msgEl = document.getElementById('whatsapp-settings-message');
-                    msgEl.textContent = 'Error saving settings: ' + err.message;
-                    msgEl.className = 'alert danger';
-                    msgEl.style.display = 'block';
-                });
         }
         
         function adminSaveSystemSettings() {
@@ -1865,7 +2173,6 @@
         // User Functions
         function loadUserTab(tab) {
             switch(tab) {
-                case 'Home': return userHome();
                 case 'Dashboard': return userDashboard();
                 case 'Referrals': return userReferrals();
                 case 'Withdrawals': return userWithdrawals();
@@ -1873,206 +2180,84 @@
             }
         }
 
-        function userHome() {
-            const c = document.getElementById('content');
-            c.innerHTML = `
-                <h1 class="page-title"><i class="fas fa-home"></i> WhatsApp Lead Program</h1>
-                
-                <div id="whatsapp-lead-content">
-                    <div class="alert info">
-                        <i class="fas fa-spinner fa-spin"></i> Loading WhatsApp lead program...
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-users"></i> Enrolled Users</h2>
-                    <div id="enrolled-users-count" style="text-align: center; font-size: 2rem; margin: 20px 0;">
-                        <i class="fas fa-spinner fa-spin"></i>
-                    </div>
-                </div>
-            `;
-            
-            // Load WhatsApp lead content from settings
-            db.collection('settings').doc('whatsapp').get().then(doc => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    let html = `
-                        <div class="card">
-                            <h2 class="section-title"><i class="fas fa-whatsapp"></i> ${data.title || 'WhatsApp Lead Program'}</h2>
-                            <p>${data.description || 'Join our WhatsApp lead program to get exclusive benefits.'}</p>
-                            
-                            ${data.fileUrl ? `
-                                <div style="margin: 20px 0;">
-                                    <a href="${data.fileUrl}" class="download-btn" target="_blank">
-                                        <i class="fas fa-download"></i> Download Resource
-                                    </a>
-                                </div>
-                            ` : ''}
-                            
-                            ${data.videoUrl ? `
-                                <div class="video-container">
-                                    <iframe src="${data.videoUrl}" frameborder="0" allowfullscreen></iframe>
-                                </div>
-                            ` : ''}
-                            
-                            ${data.notification ? `
-                                <div class="alert info">
-                                    <i class="fas fa-bell"></i> ${data.notification}
-                                </div>
-                            ` : ''}
-                            
-                            <div class="enrollment-form">
-                                <h3 class="section-title"><i class="fas fa-user-plus"></i> Enroll in Program</h3>
-                                <div id="enrollment-status"></div>
-                                
-                                ${userCache[currentUser.uid]?.whatsappEnrolled ? `
-                                    <div class="alert success">
-                                        <i class="fas fa-check-circle"></i> You are already enrolled with WhatsApp number: 
-                                        ${userCache[currentUser.uid]?.whatsappNumber || 'N/A'}
-                                    </div>
-                                ` : `
-                                    <div class="form-row">
-                                        <div>
-                                            <label>WhatsApp Number</label>
-                                            <input type="tel" id="whatsapp-number" placeholder="Your WhatsApp number with country code">
-                                        </div>
-                                    </div>
-                                    <button onclick="openTokenModal()">Enroll Now</button>
-                                `}
-                            </div>
-                        </div>
-                    `;
-                    
-                    document.getElementById('whatsapp-lead-content').innerHTML = html;
-                }
-            });
-            
-            // Load enrolled users count
-            db.collection('users').where('whatsappEnrolled', '==', true).onSnapshot(snap => {
-                document.getElementById('enrolled-users-count').innerHTML = `
-                    <span style="color: var(--primary);">${snap.size}</span> people have enrolled
-                    <p style="font-size: 1rem; margin-top: 10px;">
-                        Imagine getting ${snap.size} as your customers.
-                    </p>
-                `;
-            });
-        }
-        
-        function openTokenModal() {
-            const whatsappNumber = document.getElementById('whatsapp-number').value.trim();
-            if (!whatsappNumber) {
-                alert('Please enter your WhatsApp number');
-                return;
-            }
-            
-            document.getElementById('tokenMessage').classList.add('hidden');
-            document.getElementById('enrollmentToken').value = '';
-            document.getElementById('tokenModal').style.display = 'block';
-        }
-        
-        function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
-        }
-        
-        function validateEnrollmentToken() {
-            const token = document.getElementById('enrollmentToken').value.trim();
-            const msgEl = document.getElementById('tokenMessage');
-            
-            if (!token) {
-                msgEl.textContent = 'Please enter a token';
-                msgEl.className = 'alert danger';
-                msgEl.classList.remove('hidden');
-                return;
-            }
-            
-            msgEl.textContent = 'Validating token...';
-            msgEl.className = 'alert info';
-            msgEl.classList.remove('hidden');
-            
-            // Check token in Firestore
-            db.collection('tokens').where('token', '==', token).where('status', '==', 'unused').get()
-                .then(snap => {
-                    if (snap.empty) {
-                        throw new Error('Invalid or already used token');
-                    }
-                    
-                    const tokenDoc = snap.docs[0];
-                    const tokenData = tokenDoc.data();
-                    const whatsappNumber = document.getElementById('whatsapp-number').value.trim();
-                    
-                    // Update token status
-                    return db.collection('tokens').doc(tokenDoc.id).update({
-                        status: 'used',
-                        usedBy: currentUser.uid,
-                        usedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    }).then(() => {
-                        // Update user enrollment status
-                        return db.collection('users').doc(currentUser.uid).update({
-                            whatsappEnrolled: true,
-                            whatsappNumber: whatsappNumber,
-                            enrollmentDate: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                    });
-                })
-                .then(() => {
-                    // Update local cache
-                    userCache[currentUser.uid].whatsappEnrolled = true;
-                    userCache[currentUser.uid].whatsappNumber = document.getElementById('whatsapp-number').value.trim();
-                    
-                    msgEl.textContent = 'Enrollment successful! You are now part of the WhatsApp lead program.';
-                    msgEl.className = 'alert success';
-                    
-                    logEvent(currentUser.uid, 'whatsapp_enrollment', {
-                        token: token,
-                        whatsappNumber: document.getElementById('whatsapp-number').value.trim()
-                    });
-                    
-                    setTimeout(() => {
-                        closeModal('tokenModal');
-                        loadTab('Home'); // Refresh the home page
-                    }, 2000);
-                })
-                .catch(err => {
-                    msgEl.textContent = 'Error: ' + err.message;
-                    msgEl.className = 'alert danger';
-                });
-        }
-
         function userDashboard() {
             const c = document.getElementById('content');
+            
+            // Check if user is enrolled
+            if (!enrolledStatus) {
+                c.innerHTML = `
+                    <div class="lead-card card">
+                        <h2>Welcome to WhatsApp LeadConnect</h2>
+                        <p>You need to enroll in the program to access the dashboard</p>
+                        
+                        <div class="lead-form">
+                            <input type="text" id="whatsapp-number" placeholder="Your WhatsApp Number">
+                            <button onclick="enrollUser()">Enroll Now</button>
+                            <div id="enroll-message" class="alert" style="display:none;margin-top:15px;"></div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // User is enrolled - show dashboard
             c.innerHTML = `
                 <h1 class="page-title"><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
                 
-                <div class="grid">
-                    <div class="card">
-                        <h2 class="section-title"><i class="fas fa-wallet"></i> Account Summary</h2>
-                        <div id="user-stats"></div>
-                    </div>
+                <div class="lead-card card">
+                    <h2>WhatsApp Lead Generation Program</h2>
+                    <p>Number of people enrolled in your network:</p>
+                    <div class="lead-count" id="lead-count">0</div>
                     
-                    <div class="card">
-                        <h2 class="section-title"><i class="fas fa-chart-bar"></i> Performance</h2>
-                        <div style="text-align: center; padding: 20px;">
-                            <div style="height:200px;display:flex;align-items:flex-end;justify-content:center;gap:20px;">
-                                <div style="width:40px;background:var(--primary);height:80%;border-radius:5px;"></div>
-                                <div style="width:40px;background:var(--success);height:60%;border-radius:5px;"></div>
-                                <div style="width:40px;background:var(--warning);height:40%;border-radius:5px;"></div>
-                                <div style="width:40px;background:var(--danger);height:30%;border-radius:5px;"></div>
-                            </div>
-                        </div>
+                    <div class="alert info">
+                        <i class="fas fa-info-circle"></i> 
+                        <span id="lead-message">You have enrolled 0 people so far</span>
                     </div>
                 </div>
                 
                 <div class="card">
-                    <h2 class="section-title"><i class="fas fa-history"></i> Recent Activity</h2>
-                    <div id="user-activity"></div>
+                    <h2 class="section-title"><i class="fas fa-wallet"></i> Account Summary</h2>
+                    <div id="user-stats"></div>
+                </div>
+                
+                <div class="download-section">
+                    <h3><i class="fas fa-file-download"></i> Download Resources</h3>
+                    <p>Get our complete guide to WhatsApp marketing</p>
+                    <div id="download-content"></div>
+                </div>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-video"></i> Training Video</h2>
+                    <div id="user-video" class="video-container">
+                        <p>Loading video...</p>
+                    </div>
+                </div>
+                
+                <div class="ad-banner">
+                    <h3><i class="fas fa-bullhorn"></i> Announcements</h3>
+                    <div id="user-ads"></div>
+                </div>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-chart-line"></i> Performance</h2>
+                    <div style="text-align: center; padding: 20px;">
+                        <div style="height:200px;display:flex;align-items:flex-end;justify-content:center;gap:20px;">
+                            <div style="width:40px;background:var(--primary);height:80%;border-radius:5px;"></div>
+                            <div style="width:40px;background:var(--success);height:60%;border-radius:5px;"></div>
+                            <div style="width:40px;background:var(--warning);height:40%;border-radius:5px;"></div>
+                            <div style="width:40px;background:var(--danger);height:30%;border-radius:5px;"></div>
+                        </div>
+                    </div>
                 </div>
             `;
             
+            // Load user stats
             if (currentUser && userCache[currentUser.uid]) {
                 const d = userCache[currentUser.uid];
                 const bal = d.balance || 0;
                 const refs = d.referrals || 0;
                 const commissionRate = d.commissionRate || 0.15;
+                const leadsCount = d.leadsCount || 0;
                 
                 document.getElementById('user-stats').innerHTML = `
                     <div style="margin-bottom: 15px;">
@@ -2080,7 +2265,7 @@
                         <h2 style="color: var(--primary);">$${bal.toFixed(2)}</h2>
                     </div>
                     
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
                         <div>
                             <p><strong>Referrals:</strong></p>
                             <p style="font-size: 1.5rem;">${refs}</p>
@@ -2088,6 +2273,10 @@
                         <div>
                             <p><strong>Commission Rate:</strong></p>
                             <p style="font-size: 1.5rem;">${(commissionRate * 100).toFixed(1)}%</p>
+                        </div>
+                        <div>
+                            <p><strong>Leads:</strong></p>
+                            <p style="font-size: 1.5rem;">${leadsCount}</p>
                         </div>
                     </div>
                     
@@ -2106,37 +2295,83 @@
                         logEvent(currentUser.uid, 'toggle_2fa', { twoFA: on });
                     });
                 };
+                
+                // Update lead count
+                document.getElementById('lead-count').textContent = leadsCount;
+                document.getElementById('lead-message').textContent = `You have enrolled ${leadsCount} people so far`;
             }
             
-            // Load recent activity
-            try {
-                logs.where('uid', '==', currentUser.uid)
-                    .orderBy('timestamp', 'desc')
-                    .limit(5)
-                    .get()
-                    .then(snap => {
-                        let html = '<table class="table"><tr><th>Action</th><th>Time</th></tr>';
-                        
-                        if (snap.empty) {
-                            html = '<p>No recent activity</p>';
-                        } else {
-                            snap.forEach(doc => {
-                                const d = doc.data();
-                                html += `
-                                    <tr>
-                                        <td>${d.action}</td>
-                                        <td>${d.timestamp.toDate().toLocaleString()}</td>
-                                    </tr>
-                                `;
-                            });
-                        }
-                        
-                        document.getElementById('user-activity').innerHTML = html;
+            // Load leads count in real-time
+            leads.where('enrolledBy', '==', currentUser.uid).onSnapshot(snap => {
+                const count = snap.size;
+                document.getElementById('lead-count').textContent = count;
+                document.getElementById('lead-message').textContent = `You have enrolled ${count} people so far`;
+                
+                // Update in user document if count changed
+                if (userCache[currentUser.uid].leadsCount !== count) {
+                    db.collection('users').doc(currentUser.uid).update({
+                        leadsCount: count
                     });
-            } catch (e) {
-                document.getElementById('user-activity').innerHTML = 
-                    '<div class="alert info">Offline mode - recent activity not available</div>';
+                    userCache[currentUser.uid].leadsCount = count;
+                }
+            });
+            
+            // Load content
+            db.collection('content').doc('video').get().then(doc => {
+                if (doc.exists && doc.data().url) {
+                    document.getElementById('user-video').innerHTML = `
+                        <iframe src="${doc.data().url}" frameborder="0" allowfullscreen></iframe>
+                    `;
+                }
+            });
+            
+            db.collection('content').doc('file').get().then(doc => {
+                if (doc.exists && doc.data().url) {
+                    document.getElementById('download-content').innerHTML = `
+                        <a href="${doc.data().url}" class="download-btn" download>
+                            <i class="fas fa-download"></i> ${doc.data().name || 'Download Now'}
+                        </a>
+                    `;
+                }
+            });
+            
+            db.collection('content').doc('ad').get().then(doc => {
+                if (doc.exists && doc.data().text) {
+                    document.getElementById('user-ads').innerHTML = `
+                        <p>${doc.data().text}</p>
+                    `;
+                }
+            });
+        }
+        
+        function enrollUser() {
+            const whatsappNumber = document.getElementById('whatsapp-number').value.trim();
+            const msgEl = document.getElementById('enroll-message');
+            
+            if (!whatsappNumber) {
+                msgEl.innerText = 'Please enter your WhatsApp number';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
             }
+            
+            // Validate WhatsApp number format (simple validation)
+            if (!/^[0-9]{10,15}$/.test(whatsappNumber)) {
+                msgEl.innerText = 'Please enter a valid WhatsApp number';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
+            // Show token modal
+            openModal();
+            
+            // Save WhatsApp number (will be completed after token verification)
+            db.collection('users').doc(currentUser.uid).update({
+                whatsappNumber: whatsappNumber
+            }).then(() => {
+                userCache[currentUser.uid].whatsappNumber = whatsappNumber;
+            });
         }
 
         function userReferrals() {
@@ -2321,6 +2556,13 @@
                 return;
             }
             
+            if (amount > (userCache[currentUser.uid].balance || 0)) {
+                msgEl.innerText = 'Insufficient balance for this withdrawal';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
             setLoading('wd-request-btn', true);
             msgEl.innerText = 'Processing your request...';
             msgEl.className = 'alert info';
@@ -2330,6 +2572,12 @@
             switch(method) {
                 case 'paypal':
                     accountDetails = document.getElementById('wd-account').value;
+                    if (!accountDetails) {
+                        msgEl.innerText = 'Please enter your PayPal email';
+                        msgEl.className = 'alert danger';
+                        setLoading('wd-request-btn', false);
+                        return;
+                    }
                     break;
                 case 'bank':
                     accountDetails = `
@@ -2337,9 +2585,22 @@
                         ${document.getElementById('wd-account-number').value},
                         ${document.getElementById('wd-bank-name').value}
                     `;
+                    if (!document.getElementById('wd-account-name').value || 
+                        !document.getElementById('wd-account-number').value) {
+                        msgEl.innerText = 'Please enter all bank details';
+                        msgEl.className = 'alert danger';
+                        setLoading('wd-request-btn', false);
+                        return;
+                    }
                     break;
                 case 'crypto':
                     accountDetails = document.getElementById('wd-wallet').value;
+                    if (!accountDetails) {
+                        msgEl.innerText = 'Please enter your wallet address';
+                        msgEl.className = 'alert danger';
+                        setLoading('wd-request-btn', false);
+                        return;
+                    }
                     break;
             }
             
@@ -2440,6 +2701,9 @@
                     <label>Email Address</label>
                     <input type="email" id="acc-email" placeholder="Your email" disabled>
                     
+                    <label>WhatsApp Number</label>
+                    <input type="text" id="acc-whatsapp" placeholder="Your WhatsApp number" ${enrolledStatus ? 'disabled' : ''}>
+                    
                     <button onclick="updateProfile()">Update Profile</button>
                     <div id="profile-msg" class="alert" style="display: none; margin-top: 15px;"></div>
                 </div>
@@ -2463,12 +2727,6 @@
                         <div id="pwd-msg" class="alert" style="display: none; margin-top: 15px;"></div>
                     </div>
                 </div>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-wallet"></i> Payment Information</h2>
-                    <p>Set your preferred payment method for withdrawals</p>
-                    <div id="payment-info"></div>
-                </div>
             `;
             
             if (currentUser && userCache[currentUser.uid]) {
@@ -2476,6 +2734,7 @@
                 document.getElementById('acc-name').value = d.name || '';
                 document.getElementById('acc-email').value = d.email || '';
                 document.getElementById('acc-phone').value = d.phone || '';
+                document.getElementById('acc-whatsapp').value = d.whatsappNumber || '';
                 document.getElementById('acc-2fa').checked = d.twoFA || false;
             }
             
@@ -2497,6 +2756,7 @@
         function updateProfile() {
             const name = document.getElementById('acc-name').value.trim();
             const phone = document.getElementById('acc-phone').value.trim();
+            const whatsapp = document.getElementById('acc-whatsapp').value.trim();
             const msgEl = document.getElementById('profile-msg');
             
             if (!name) {
@@ -2510,13 +2770,22 @@
             if (currentUser && userCache[currentUser.uid]) {
                 userCache[currentUser.uid].name = name;
                 userCache[currentUser.uid].phone = phone;
+                if (!enrolledStatus) {
+                    userCache[currentUser.uid].whatsappNumber = whatsapp;
+                }
                 document.getElementById('user-name').innerText = name;
             }
             
-            db.collection('users').doc(currentUser.uid).update({
+            const updateData = {
                 name: name,
                 phone: phone
-            })
+            };
+            
+            if (!enrolledStatus) {
+                updateData.whatsappNumber = whatsapp;
+            }
+            
+            db.collection('users').doc(currentUser.uid).update(updateData)
             .then(() => {
                 document.getElementById('user-name').innerText = name;
                 msgEl.innerText = 'Profile updated successfully!';
