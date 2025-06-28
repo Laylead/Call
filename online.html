@@ -524,6 +524,22 @@
             margin: 0;
         }
 
+        /* Call to action */
+        .cta-banner {
+            background: linear-gradient(135deg, var(--warning), var(--danger));
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 20px 0;
+            box-shadow: var(--shadow);
+        }
+
+        .cta-banner h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+
         /* Responsive adjustments */
         @media (max-width: 768px) {
             .tabs {
@@ -857,6 +873,7 @@
                         role: 'user',
                         status: 'active',
                         balance: 0,
+                        referralBalance: 0,
                         referrals: 0,
                         commissionRate: 0.15,
                         twoFA: false,
@@ -869,6 +886,23 @@
                     return logEvent(user.uid, 'register').then(() => user);
                 })
                 .then(user => {
+                    // If referral code was provided, update referrer's stats
+                    if (ref) {
+                        return db.collection('users').where('refCode', '==', ref).limit(1).get()
+                            .then(snap => {
+                                if (!snap.empty) {
+                                    const referrer = snap.docs[0];
+                                    return db.collection('users').doc(referrer.id).update({
+                                        referrals: firebase.firestore.FieldValue.increment(1),
+                                        referralBalance: firebase.firestore.FieldValue.increment(10) // $10 referral bonus
+                                    });
+                                }
+                            })
+                            .then(() => user);
+                    }
+                    return user;
+                })
+                .then(user => {
                     currentUser = user;
                     userCache[user.uid] = {
                         name,
@@ -878,6 +912,7 @@
                         role: 'user',
                         status: 'active',
                         balance: 0,
+                        referralBalance: 0,
                         referrals: 0,
                         commissionRate: 0.15,
                         twoFA: false,
@@ -935,6 +970,7 @@
                         role: 'admin',
                         status: 'active',
                         balance: 0,
+                        referralBalance: 0,
                         referrals: 0,
                         commissionRate: 0.15,
                         twoFA: false,
@@ -976,6 +1012,7 @@
                                     role: 'user',
                                     status: 'active',
                                     balance: 0,
+                                    referralBalance: 0,
                                     referrals: 0,
                                     commissionRate: 0.15,
                                     twoFA: false,
@@ -1042,6 +1079,7 @@
                         role: 'admin',
                         status: 'active',
                         balance: 0,
+                        referralBalance: 0,
                         referrals: 0,
                         commissionRate: 0.15,
                         twoFA: false,
@@ -1087,6 +1125,7 @@
                             role: 'user',
                             status: 'active',
                             balance: 0,
+                            referralBalance: 0,
                             referrals: 0,
                             commissionRate: 0.15,
                             twoFA: false,
@@ -1112,6 +1151,7 @@
                         role: 'user',
                         status: 'active',
                         balance: 0,
+                        referralBalance: 0,
                         referrals: 0,
                         commissionRate: 0.15,
                         twoFA: false,
@@ -1983,6 +2023,11 @@
                         <p>people have already enrolled</p>
                     </div>
                     
+                    <div class="cta-banner">
+                        <h3>Imagine getting <span id="enrolled-count" style="font-weight:bold;">0</span> as your customers!</h3>
+                        <p>Start generating leads today with our proven WhatsApp system</p>
+                    </div>
+                    
                     <div class="card">
                         <h2 class="section-title"><i class="fab fa-whatsapp"></i> Enroll Now</h2>
                         <p>Enter your WhatsApp number to enroll in our lead generation program</p>
@@ -2008,11 +2053,6 @@
                     <div class="card">
                         <h2 class="section-title"><i class="fas fa-video"></i> Training Video</h2>
                         <div id="video-content"></div>
-                    </div>
-                    
-                    <div class="card">
-                        <h2 class="section-title"><i class="fas fa-lightbulb"></i> Imagine This</h2>
-                        <p>Imagine getting <span id="enrolled-count" style="font-weight:bold;color:var(--primary);">0</span> as your customers.</p>
                     </div>
                 `;
                 
@@ -2107,6 +2147,7 @@
             if (currentUser && userCache[currentUser.uid]) {
                 const d = userCache[currentUser.uid];
                 const bal = d.balance || 0;
+                const refBal = d.referralBalance || 0;
                 const refs = d.referrals || 0;
                 const commissionRate = d.commissionRate || 0.15;
                 
@@ -2122,8 +2163,8 @@
                             <p style="font-size: 1.5rem;">${refs}</p>
                         </div>
                         <div>
-                            <p><strong>Commission Rate:</strong></p>
-                            <p style="font-size: 1.5rem;">${(commissionRate * 100).toFixed(1)}%</p>
+                            <p><strong>Referral Balance:</strong></p>
+                            <p style="font-size: 1.5rem;">$${refBal.toFixed(2)}</p>
                         </div>
                     </div>
                     
@@ -2287,6 +2328,11 @@
                     <h2 class="section-title"><i class="fas fa-users"></i> Your Referrals</h2>
                     <div id="ref-table"></div>
                 </div>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-money-bill-wave"></i> Referral Earnings</h2>
+                    <div id="ref-earnings"></div>
+                </div>
             `;
             
             document.getElementById('referral-link').value = window.location.origin + '?ref=' + currentUser.uid;
@@ -2299,9 +2345,57 @@
                 
                 document.getElementById('ref-progress').style.width = `${pct}%`;
                 document.getElementById('ref-status').innerText = `Referrals: ${have}/${needed} (${Math.round(pct)}%)`;
+                
+                // Show referral earnings
+                document.getElementById('ref-earnings').innerHTML = `
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <p><strong>Total Referrals:</strong></p>
+                            <p style="font-size: 1.5rem;">${d.referrals || 0}</p>
+                        </div>
+                        <div>
+                            <p><strong>Referral Balance:</strong></p>
+                            <p style="font-size: 1.5rem; color: var(--success);">$${(d.referralBalance || 0).toFixed(2)}</p>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <button onclick="transferReferralBalance()">
+                            <i class="fas fa-exchange-alt"></i> Transfer to Main Balance
+                        </button>
+                    </div>
+                `;
             }
             
             reloadReferralsTable();
+        }
+        
+        function transferReferralBalance() {
+            if (!currentUser || !userCache[currentUser.uid]) return;
+            
+            const refBalance = userCache[currentUser.uid].referralBalance || 0;
+            if (refBalance <= 0) {
+                alert('No referral balance to transfer');
+                return;
+            }
+            
+            if (confirm(`Transfer $${refBalance.toFixed(2)} from referral balance to main balance?`)) {
+                db.collection('users').doc(currentUser.uid).update({
+                    balance: firebase.firestore.FieldValue.increment(refBalance),
+                    referralBalance: firebase.firestore.FieldValue.increment(-refBalance)
+                })
+                .then(() => {
+                    // Update local cache
+                    userCache[currentUser.uid].balance = (userCache[currentUser.uid].balance || 0) + refBalance;
+                    userCache[currentUser.uid].referralBalance = 0;
+                    
+                    alert('Balance transferred successfully!');
+                    loadTab('Referrals');
+                    logEvent(currentUser.uid, 'transfer_referral_balance', { amount: refBalance });
+                })
+                .catch(err => {
+                    alert('Error transferring balance: ' + err.message);
+                });
+            }
         }
         
         function copyReferralLink() {
