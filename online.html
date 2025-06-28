@@ -3,15 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LeadConnect - WhatsApp Lead Generation</title>
+    <title>LeadConnect Pro - WhatsApp Lead Generation</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
-    <!-- External configuration file -->
+    
+    <!-- Include your Firebase configuration -->
     <script src="configuration.js"></script>
+    
     <style>
         :root {
             --primary: #4361ee;
@@ -38,7 +40,6 @@
             background: var(--bg);
             color: var(--dark);
             line-height: 1.6;
-            min-height: 100vh;
         }
         
         .hidden {
@@ -497,7 +498,7 @@
 
         .enrollment-section p {
             font-size: 1.2rem;
-            margin-bottom: 10px;
+            margin-bottom: 30px;
         }
 
         .enrollment-count {
@@ -521,6 +522,22 @@
 
         .whatsapp-input button {
             margin: 0;
+        }
+
+        /* Call to action */
+        .cta-section {
+            text-align: center;
+            padding: 30px;
+            background: white;
+            border-radius: 12px;
+            margin: 30px 0;
+            box-shadow: var(--shadow);
+        }
+
+        .cta-section h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: var(--primary);
         }
 
         /* Responsive adjustments */
@@ -583,7 +600,7 @@
     <div id="auth-screen" class="container">
         <div class="card" style="max-width:500px;margin:40px auto;">
             <div style="text-align:center;margin-bottom:20px;">
-                <h1 style="color:var(--primary);margin-bottom:10px;">LeadConnect</h1>
+                <h1 style="color:var(--primary);margin-bottom:10px;">LeadConnect Pro</h1>
                 <p>WhatsApp Lead Generation Platform</p>
             </div>
             
@@ -608,7 +625,7 @@
                             <input type="checkbox" id="remember">
                             <label for="remember">Remember me</label>
                         </div>
-                        <a href="#" style="color:var(--primary);text-decoration:none;">Forgot password?</a>
+                        <a href="#" style="color:var(--primary);text-decoration:none;" onclick="showPasswordReset()">Forgot password?</a>
                     </div>
                     
                     <button id="login-btn" onclick="login()">
@@ -690,29 +707,28 @@
         </div>
     </div>
 
+    <!-- Password Reset Modal -->
+    <div id="passwordResetModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('passwordResetModal')">&times;</span>
+            <h2>Reset Password</h2>
+            <p>Enter your email to reset your password</p>
+            <input type="email" id="reset-email" placeholder="Your email address">
+            <button onclick="sendPasswordReset()">Send Reset Link</button>
+            <div id="reset-message" class="alert hidden" style="margin-top:15px;"></div>
+        </div>
+    </div>
+
     <script>
-        // Initialize Firebase with configuration from external file
-        firebase.initializeApp(firebaseConfig);
-        
-        // Enable offline persistence with error handling
-        firebase.firestore().enablePersistence()
-          .catch((err) => {
-            if (err.code == 'failed-precondition') {
-              console.log("Persistence failed - multiple tabs open");
-            } else if (err.code == 'unimplemented') {
-              console.log("Persistence not available in this browser");
-            }
-          });
-        
+        // Firebase services
         const auth = firebase.auth();
         const db = firebase.firestore();
         const storage = firebase.storage();
-        const logs = db.collection('logs');
         
         let currentUser = null;
         let isAdmin = false;
-        let loadingStates = {};
         let userCache = {};
+        let loadingStates = {};
 
         // Password visibility toggle
         document.getElementById('password-toggle').addEventListener('click', function() {
@@ -744,6 +760,13 @@
         function closeModal(id) {
             document.getElementById(id).style.display = 'none';
         }
+        
+        function showPasswordReset() {
+            document.getElementById('reset-message').className = 'alert hidden';
+            document.getElementById('reset-message').style.display = 'none';
+            document.getElementById('reset-email').value = '';
+            openModal('passwordResetModal');
+        }
 
         // UI toggles
         document.getElementById('to-login').onclick = () => switchForms('login');
@@ -754,25 +777,6 @@
             document.getElementById('to-register').classList.toggle('active', mode === 'register');
             document.getElementById('login-form').classList.toggle('hidden', mode !== 'login');
             document.getElementById('register-form').classList.toggle('hidden', mode !== 'register');
-        }
-
-        // Enhanced activity logger
-        function logEvent(uid, action, meta = {}) {
-            return new Promise((resolve) => {
-                const logData = {
-                    uid,
-                    action,
-                    meta,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                };
-                
-                logs.add(logData)
-                  .then(resolve)
-                  .catch(err => {
-                    console.log("Log event error:", err);
-                    resolve();
-                  });
-            });
         }
 
         // Set loading state for buttons
@@ -834,16 +838,12 @@
                         status: 'active',
                         balance: 0,
                         referrals: 0,
-                        referralEarnings: 0,
                         commissionRate: 0.15,
                         twoFA: false,
                         enrolled: false,
                         whatsappNumber: '',
                         enrollmentDate: null
                     }).then(() => userCredential.user);
-                })
-                .then(user => {
-                    return logEvent(user.uid, 'register').then(() => user);
                 })
                 .then(user => {
                     currentUser = user;
@@ -856,7 +856,6 @@
                         status: 'active',
                         balance: 0,
                         referrals: 0,
-                        referralEarnings: 0,
                         commissionRate: 0.15,
                         twoFA: false,
                         enrolled: false,
@@ -869,9 +868,6 @@
                 .catch(err => {
                     console.error("Registration error:", err);
                     showError('register-error', `Registration failed: ${err.message}`);
-                    if (auth.currentUser) {
-                        auth.currentUser.delete().catch(console.error);
-                    }
                 })
                 .finally(() => {
                     setLoading('register-btn', false);
@@ -884,7 +880,7 @@
             return re.test(String(email).toLowerCase());
         }
 
-        // Login function with security enhancements
+        // Login function
         function login() {
             hideError('login-error');
             const email = document.getElementById('login-email').value.trim();
@@ -895,52 +891,6 @@
             
             setLoading('login-btn', true);
             
-            // Check for admin login
-            if (email === "admin@leadconnect.com") {
-                // Handle admin login directly
-                if (pwd === "admin123") {
-                    // Create admin session
-                    currentUser = {
-                        uid: 'admin-uid',
-                        email: email,
-                        displayName: "Admin User"
-                    };
-                    
-                    // Create admin profile in cache
-                    userCache['admin-uid'] = {
-                        name: "Admin User",
-                        email: email,
-                        role: 'admin',
-                        status: 'active',
-                        balance: 0,
-                        referrals: 0,
-                        referralEarnings: 0,
-                        commissionRate: 0.15,
-                        twoFA: false,
-                        enrolled: true,
-                        whatsappNumber: 'admin',
-                        enrollmentDate: new Date()
-                    };
-                    
-                    isAdmin = true;
-                    
-                    // Store admin session in localStorage
-                    localStorage.setItem('adminSession', JSON.stringify({
-                        email: email,
-                        timestamp: new Date().getTime()
-                    }));
-                    
-                    initApp();
-                    setLoading('login-btn', false);
-                    return;
-                } else {
-                    showError('login-error', 'Invalid admin credentials');
-                    setLoading('login-btn', false);
-                    return;
-                }
-            }
-            
-            // Regular user login
             auth.signInWithEmailAndPassword(email, pwd)
                 .then(res => {
                     return db.collection('users').doc(res.user.uid).get()
@@ -956,7 +906,6 @@
                                     status: 'active',
                                     balance: 0,
                                     referrals: 0,
-                                    referralEarnings: 0,
                                     commissionRate: 0.15,
                                     twoFA: false,
                                     enrolled: false,
@@ -971,9 +920,6 @@
                     currentUser = user;
                     isAdmin = data.role === 'admin';
                     userCache[user.uid] = data;
-                    return logEvent(user.uid, 'login');
-                })
-                .then(() => {
                     initApp();
                 })
                 .catch(err => {
@@ -984,57 +930,45 @@
                     setLoading('login-btn', false);
                 });
         }
-
-        // Check for existing admin session on page load
-        function checkAdminSession() {
-            const session = localStorage.getItem('adminSession');
-            if (session) {
-                const sessionData = JSON.parse(session);
-                // Check if session is still valid (1 hour expiration)
-                const now = new Date().getTime();
-                if ((now - sessionData.timestamp) < 3600000) { // 1 hour
-                    currentUser = {
-                        uid: 'admin-uid',
-                        email: sessionData.email,
-                        displayName: "Admin User"
-                    };
-                    
-                    userCache['admin-uid'] = {
-                        name: "Admin User",
-                        email: sessionData.email,
-                        role: 'admin',
-                        status: 'active',
-                        balance: 0,
-                        referrals: 0,
-                        referralEarnings: 0,
-                        commissionRate: 0.15,
-                        twoFA: false,
-                        enrolled: true,
-                        whatsappNumber: 'admin',
-                        enrollmentDate: new Date()
-                    };
-                    
-                    isAdmin = true;
-                    return true;
-                }
+        
+        function sendPasswordReset() {
+            const email = document.getElementById('reset-email').value.trim();
+            const msgEl = document.getElementById('reset-message');
+            
+            if (!email || !validateEmail(email)) {
+                msgEl.innerText = 'Please enter a valid email address';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
             }
-            return false;
+            
+            auth.sendPasswordResetEmail(email)
+                .then(() => {
+                    msgEl.innerText = 'Password reset email sent! Check your inbox.';
+                    msgEl.className = 'alert success';
+                    msgEl.style.display = 'block';
+                })
+                .catch(err => {
+                    msgEl.innerText = 'Error: ' + err.message;
+                    msgEl.className = 'alert danger';
+                    msgEl.style.display = 'block';
+                });
+        }
+        
+        function logout() {
+            auth.signOut();
+            currentUser = null;
+            isAdmin = false;
+            userCache = {};
+            window.location.reload();
         }
 
         // Auth state handler
         auth.onAuthStateChanged(u => {
-            // Check if we have a valid admin session first
-            if (checkAdminSession()) {
-                document.getElementById('auth-screen').classList.add('hidden');
-                document.getElementById('app').classList.remove('hidden');
-                initApp();
-                return;
-            }
-            
             if (u) {
                 currentUser = u;
                 
-                // If not in cache, try to get from Firestore
+                // Get user data from Firestore
                 db.collection('users').doc(u.uid).get()
                 .then(doc => {
                     if (doc.exists) {
@@ -1051,7 +985,6 @@
                             status: 'active',
                             balance: 0,
                             referrals: 0,
-                            referralEarnings: 0,
                             commissionRate: 0.15,
                             twoFA: false,
                             enrolled: false,
@@ -1063,53 +996,15 @@
                         initApp();
                         
                         // Save to Firestore
-                        db.collection('users').doc(u.uid).set(minimalData)
-                            .catch(err => console.log("User data not saved to Firestore"));
+                        db.collection('users').doc(u.uid).set(minimalData);
                     }
                 })
                 .catch(err => {
                     console.error("Auth state error:", err);
-                    // Use minimal data
-                    const minimalData = {
-                        name: u.email,
-                        email: u.email,
-                        role: 'user',
-                        status: 'active',
-                        balance: 0,
-                        referrals: 0,
-                        referralEarnings: 0,
-                        commissionRate: 0.15,
-                        twoFA: false,
-                        enrolled: false,
-                        whatsappNumber: '',
-                        enrollmentDate: null
-                    };
-                    userCache[u.uid] = minimalData;
-                    isAdmin = false;
-                    initApp();
                 });
-            } else {
-                document.getElementById('auth-screen').classList.remove('hidden');
-                document.getElementById('app').classList.add('hidden');
             }
         });
         
-        function logout() {
-            // Clear admin session if exists
-            localStorage.removeItem('adminSession');
-            
-            // Firebase logout for regular users
-            if (currentUser && currentUser.uid !== 'admin-uid') {
-                auth.signOut();
-            }
-            
-            // Reset state
-            currentUser = null;
-            isAdmin = false;
-            userCache = {};
-            window.location.reload();
-        }
-
         // Initialize app UI
         function initApp() {
             document.getElementById('auth-screen').classList.add('hidden');
@@ -1173,6 +1068,18 @@
         }
 
         // Admin Functions
+        function loadAdminTab(tab) {
+            switch(tab) {
+                case 'Overview': return adminOverview();
+                case 'Tokens': return adminTokens();
+                case 'Users': return adminUsers();
+                case 'Enrollments': return adminEnrollments();
+                case 'Withdrawals': return adminWithdrawals();
+                case 'Settings': return adminSettings();
+                case 'Content': return adminContent();
+            }
+        }
+
         function adminOverview() {
             const c = document.getElementById('content');
             c.innerHTML = `
@@ -1212,13 +1119,28 @@
                 document.getElementById('stat-users').textContent = snap.size;
             });
             
+            // Earnings and pending withdrawals
+            db.collection('transactions').onSnapshot(snap => {
+                let earnings = 0;
+                let pending = 0;
+                
+                snap.forEach(doc => {
+                    const t = doc.data();
+                    if (t.type === 'earn') earnings += t.amount;
+                    if (t.status === 'pending') pending += t.amount;
+                });
+                
+                document.getElementById('stat-earnings').textContent = '$' + earnings.toFixed(2);
+                document.getElementById('stat-pending').textContent = '$' + pending.toFixed(2);
+            });
+            
             // Active enrollments count
             db.collection('users').where('enrolled', '==', true).onSnapshot(snap => {
                 document.getElementById('stat-enrollments').textContent = snap.size;
             });
             
             // Recent activities
-            logs.orderBy('timestamp', 'desc').limit(10).onSnapshot(snap => {
+            db.collection('logs').orderBy('timestamp', 'desc').limit(10).onSnapshot(snap => {
                 let html = '<table class="table"><tr><th>User</th><th>Action</th><th>Time</th></tr>';
                 
                 if (snap.empty) {
@@ -1239,8 +1161,6 @@
                 
                 document.getElementById('recent-activities').innerHTML = html;
             });
-            
-            logEvent(currentUser.uid, 'view_admin_overview');
         }
 
         function adminTokens() {
@@ -1283,7 +1203,13 @@
                 created: firebase.firestore.FieldValue.serverTimestamp(),
                 createdBy: currentUser.uid
             }).then(() => {
-                logEvent(currentUser.uid, 'create_token', { type, token: tok });
+                // Log event
+                db.collection('logs').add({
+                    uid: currentUser.uid,
+                    action: 'create_token',
+                    meta: { type: type, token: tok },
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
             }).catch(err => {
                 alert('Error creating token: ' + err.message);
             });
@@ -1306,7 +1232,13 @@
             }
             
             batch.commit().then(() => {
-                logEvent(currentUser.uid, 'bulk_tokens', { count });
+                // Log event
+                db.collection('logs').add({
+                    uid: currentUser.uid,
+                    action: 'bulk_tokens',
+                    meta: { count: count },
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
             }).catch(err => {
                 alert('Error generating tokens: ' + err.message);
             });
@@ -1364,7 +1296,13 @@
             if (confirm('Are you sure you want to delete this token?')) {
                 db.collection('tokens').doc(id).delete()
                     .then(() => {
-                        logEvent(currentUser.uid, 'delete_token', { id });
+                        // Log event
+                        db.collection('logs').add({
+                            uid: currentUser.uid,
+                            action: 'delete_token',
+                            meta: { id: id },
+                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                        });
                     })
                     .catch(err => {
                         alert('Error deleting token: ' + err.message);
@@ -1372,9 +1310,579 @@
             }
         }
 
-        // ... (other admin functions) ...
+        function adminUsers() {
+            const c = document.getElementById('content');
+            c.innerHTML = `
+                <h1 class="page-title"><i class="fas fa-users"></i> User Management</h1>
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-search"></i> Search Users</h2>
+                    <input id="user-search" placeholder="Search by name or email">
+                </div>
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-list"></i> User List</h2>
+                    <div id="user-table"></div>
+                </div>
+            `;
+            
+            document.getElementById('user-search').addEventListener('input', adminRefreshUsers);
+            adminRefreshUsers();
+        }
+        
+        function adminRefreshUsers() {
+            const searchTerm = document.getElementById('user-search').value.toLowerCase();
+            
+            db.collection('users').orderBy('joined', 'desc').onSnapshot(snap => {
+                let html = `
+                    <table class="table">
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Joined</th>
+                            <th>Status</th>
+                            <th>Enrolled</th>
+                            <th>Actions</th>
+                        </tr>
+                `;
+                
+                if (snap.empty) {
+                    html = '<tr><td colspan="6" style="text-align:center;">No users found</td></tr>';
+                } else {
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        if (searchTerm && !d.name.toLowerCase().includes(searchTerm) && !d.email.toLowerCase().includes(searchTerm)) {
+                            return;
+                        }
+                        
+                        html += `
+                            <tr>
+                                <td>${d.name}</td>
+                                <td>${d.email}</td>
+                                <td>${d.joined?.toDate().toLocaleDateString() || '-'}</td>
+                                <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
+                                <td><span class="badge ${d.enrolled ? 'success' : 'warning'}">${d.enrolled ? 'Yes' : 'No'}</span></td>
+                                <td>
+                                    <button onclick="adminToggleUserStatus('${doc.id}', '${d.status}')">
+                                        ${d.status === 'active' ? 'Suspend' : 'Activate'}
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+                
+                html += '</table>';
+                document.getElementById('user-table').innerHTML = html;
+            });
+        }
+        
+        function adminToggleUserStatus(uid, currentStatus) {
+            const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
+            
+            db.collection('users').doc(uid).update({ status: newStatus })
+                .then(() => {
+                    // Log event
+                    db.collection('logs').add({
+                        uid: currentUser.uid,
+                        action: 'toggle_user_status',
+                        meta: { uid: uid, status: newStatus },
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                })
+                .catch(err => {
+                    alert('Error updating user status: ' + err.message);
+                });
+        }
+
+        function adminEnrollments() {
+            const c = document.getElementById('content');
+            c.innerHTML = `
+                <h1 class="page-title"><i class="fas fa-user-plus"></i> Enrollment Management</h1>
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-filter"></i> Filter Enrollments</h2>
+                    <div style="display: flex; gap: 15px;">
+                        <select id="enrollment-filter" style="flex: 1;">
+                            <option value="all">All Enrollments</option>
+                            <option value="today">Today</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-list"></i> Enrolled Users</h2>
+                    <div id="enrollment-table"></div>
+                </div>
+            `;
+            
+            document.getElementById('enrollment-filter').onchange = adminRefreshEnrollments;
+            adminRefreshEnrollments();
+        }
+        
+        function adminRefreshEnrollments() {
+            const filter = document.getElementById('enrollment-filter').value;
+            let query = db.collection('users').where('enrolled', '==', true).orderBy('enrollmentDate', 'desc');
+            
+            if (filter === 'today') {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                query = query.where('enrollmentDate', '>=', today);
+            } else if (filter === 'week') {
+                const weekAgo = new Date();
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                query = query.where('enrollmentDate', '>=', weekAgo);
+            } else if (filter === 'month') {
+                const monthAgo = new Date();
+                monthAgo.setMonth(monthAgo.getMonth() - 1);
+                query = query.where('enrollmentDate', '>=', monthAgo);
+            }
+            
+            query.onSnapshot(snap => {
+                let html = `
+                    <table class="table">
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>WhatsApp</th>
+                            <th>Enrollment Date</th>
+                            <th>Status</th>
+                        </tr>
+                `;
+                
+                if (snap.empty) {
+                    html = '<tr><td colspan="5" style="text-align:center;">No enrollments found</td></tr>';
+                } else {
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        html += `
+                            <tr>
+                                <td>${d.name}</td>
+                                <td>${d.email}</td>
+                                <td>${d.whatsappNumber || '-'}</td>
+                                <td>${d.enrollmentDate?.toDate().toLocaleString() || '-'}</td>
+                                <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
+                            </tr>
+                        `;
+                    });
+                }
+                
+                html += '</table>';
+                document.getElementById('enrollment-table').innerHTML = html;
+            });
+        }
+
+        function adminWithdrawals() {
+            const c = document.getElementById('content');
+            c.innerHTML = `
+                <h1 class="page-title"><i class="fas fa-money-check-alt"></i> Withdrawal Requests</h1>
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-filter"></i> Filter</h2>
+                    <div style="display: flex; gap: 15px;">
+                        <select id="wd-status" style="flex: 1;">
+                            <option value="all">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                        <input type="date" id="wd-date" style="flex: 1;">
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-list"></i> Requests</h2>
+                    <div id="wd-table"></div>
+                </div>
+            `;
+            
+            document.getElementById('wd-status').onchange = adminRefreshWithdrawals;
+            document.getElementById('wd-date').onchange = adminRefreshWithdrawals;
+            adminRefreshWithdrawals();
+        }
+        
+        function adminRefreshWithdrawals() {
+            const status = document.getElementById('wd-status').value;
+            const date = document.getElementById('wd-date').value;
+            
+            let query = db.collection('withdrawals').orderBy('requestedAt', 'desc');
+            
+            if (status !== 'all') {
+                query = query.where('status', '==', status);
+            }
+            
+            query.onSnapshot(snap => {
+                let html = `
+                    <table class="table">
+                        <tr>
+                            <th>User</th>
+                            <th>Amount</th>
+                            <th>Method</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                `;
+                
+                if (snap.empty) {
+                    html = '<tr><td colspan="6" style="text-align:center;">No withdrawal requests found</td></tr>';
+                } else {
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        const requestDate = d.requestedAt?.toDate();
+                        const dateStr = requestDate?.toLocaleDateString();
+                        
+                        if (date && requestDate?.toISOString().split('T')[0] !== date) {
+                            return;
+                        }
+                        
+                        html += `
+                            <tr>
+                                <td>${d.userName}</td>
+                                <td>$${d.amount.toFixed(2)}</td>
+                                <td>${d.method}</td>
+                                <td>${dateStr || '-'}</td>
+                                <td><span class="badge ${d.status === 'pending' ? 'warning' : d.status === 'approved' ? 'success' : 'danger'}">${d.status}</span></td>
+                                <td>
+                                    ${d.status === 'pending' ? `
+                                        <button class="success" onclick="adminProcessWithdrawal('${doc.id}', 'approved')">Approve</button>
+                                        <button class="danger" onclick="adminProcessWithdrawal('${doc.id}', 'rejected')">Reject</button>
+                                    ` : '-'}
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+                
+                html += '</table>';
+                document.getElementById('wd-table').innerHTML = html;
+            });
+        }
+        
+        function adminProcessWithdrawal(id, action) {
+            if (confirm(`Are you sure you want to ${action} this withdrawal?`)) {
+                db.collection('withdrawals').doc(id).update({ 
+                    status: action,
+                    processedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    processedBy: currentUser.uid
+                })
+                .then(() => {
+                    // Log event
+                    db.collection('logs').add({
+                        uid: currentUser.uid,
+                        action: `withdrawal_${action}`,
+                        meta: { id: id },
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    if (action === 'approved') {
+                        // Update user's balance if approved
+                        db.collection('withdrawals').doc(id).get().then(doc => {
+                            const data = doc.data();
+                            db.collection('users').doc(data.userId).update({
+                                balance: firebase.firestore.FieldValue.increment(-data.amount)
+                            });
+                        });
+                    }
+                })
+                .catch(err => {
+                    alert('Error processing withdrawal: ' + err.message);
+                });
+            }
+        }
+
+        function adminSettings() {
+            const c = document.getElementById('content');
+            c.innerHTML = `
+                <h1 class="page-title"><i class="fas fa-cog"></i> System Settings</h1>
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-sliders-h"></i> General Settings</h2>
+                    <div class="form-row">
+                        <div>
+                            <label>System Currency</label>
+                            <select id="sys-currency">
+                                <option value="USD">US Dollar (USD)</option>
+                                <option value="EUR">Euro (EUR)</option>
+                                <option value="GBP">British Pound (GBP)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Session Timeout (minutes)</label>
+                            <input type="number" id="sys-timeout" min="5" max="120">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div>
+                            <label>Maximum Commission (%)</label>
+                            <input type="number" id="sys-maxcom" min="0" max="50">
+                        </div>
+                        <div>
+                            <label>System Status</label>
+                            <select id="sys-status">
+                                <option value="active">Active</option>
+                                <option value="maintenance">Maintenance</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button onclick="adminSaveSystemSettings()">Save Settings</button>
+                    <div id="sys-settings-message" class="alert" style="display:none;margin-top:15px;"></div>
+                </div>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-shield-alt"></i> Security Settings</h2>
+                    <div>
+                        <label>
+                            <input type="checkbox" id="sys-2fa"> 
+                            Require 2FA for all users
+                        </label>
+                    </div>
+                    <div>
+                        <label>
+                            <input type="checkbox" id="sys-pwd"> 
+                            Require strong passwords
+                        </label>
+                    </div>
+                </div>
+            `;
+            
+            // Load current system settings
+            db.collection('settings').doc('system').get().then(doc => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    document.getElementById('sys-currency').value = data.currency || 'USD';
+                    document.getElementById('sys-timeout').value = data.sessionTimeout || 30;
+                    document.getElementById('sys-maxcom').value = data.maxCommission || 30;
+                    document.getElementById('sys-status').value = data.status || 'active';
+                    document.getElementById('sys-2fa').checked = data.require2FA || false;
+                    document.getElementById('sys-pwd').checked = data.requireStrongPasswords || false;
+                }
+            });
+        }
+        
+        function adminSaveSystemSettings() {
+            const settings = {
+                currency: document.getElementById('sys-currency').value,
+                sessionTimeout: parseInt(document.getElementById('sys-timeout').value),
+                maxCommission: parseFloat(document.getElementById('sys-maxcom').value),
+                status: document.getElementById('sys-status').value,
+                require2FA: document.getElementById('sys-2fa').checked,
+                requireStrongPasswords: document.getElementById('sys-pwd').checked
+            };
+            
+            db.collection('settings').doc('system').set(settings)
+                .then(() => {
+                    const msgEl = document.getElementById('sys-settings-message');
+                    msgEl.textContent = 'System settings saved successfully!';
+                    msgEl.className = 'alert success';
+                    msgEl.style.display = 'block';
+                    
+                    // Log event
+                    db.collection('logs').add({
+                        uid: currentUser.uid,
+                        action: 'save_system_settings',
+                        meta: settings,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    setTimeout(() => {
+                        msgEl.style.display = 'none';
+                    }, 3000);
+                })
+                .catch(err => {
+                    const msgEl = document.getElementById('sys-settings-message');
+                    msgEl.textContent = 'Error saving settings: ' + err.message;
+                    msgEl.className = 'alert danger';
+                    msgEl.style.display = 'block';
+                });
+        }
+
+        function adminContent() {
+            const c = document.getElementById('content');
+            c.innerHTML = `
+                <h1 class="page-title"><i class="fas fa-file-alt"></i> Content Management</h1>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-bullhorn"></i> Announcements</h2>
+                    <textarea id="announcement-text" rows="5" placeholder="Enter announcement text"></textarea>
+                    <button onclick="saveAnnouncement()">Save Announcement</button>
+                    <div id="announcement-message" class="alert" style="display:none;margin-top:15px;"></div>
+                </div>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-video"></i> Video Content</h2>
+                    <input type="text" id="video-url" placeholder="YouTube or video URL">
+                    <button onclick="saveVideoUrl()">Save Video URL</button>
+                    <div id="video-message" class="alert" style="display:none;margin-top:15px;"></div>
+                </div>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-file-download"></i> Downloadable File</h2>
+                    <input type="file" id="file-upload">
+                    <button onclick="uploadFile()">Upload File</button>
+                    <div id="file-message" class="alert" style="display:none;margin-top:15px;"></div>
+                    <div id="current-file" style="margin-top:15px;"></div>
+                </div>
+            `;
+            
+            // Load current content
+            db.collection('content').doc('announcement').get().then(doc => {
+                if (doc.exists) {
+                    document.getElementById('announcement-text').value = doc.data().text || '';
+                }
+            });
+            
+            db.collection('content').doc('video').get().then(doc => {
+                if (doc.exists) {
+                    document.getElementById('video-url').value = doc.data().url || '';
+                }
+            });
+            
+            db.collection('content').doc('file').get().then(doc => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    document.getElementById('current-file').innerHTML = `
+                        <p>Current file: <strong>${data.name}</strong></p>
+                        <a href="${data.url}" class="download-btn" target="_blank">
+                            <i class="fas fa-download"></i> Download Current File
+                        </a>
+                    `;
+                }
+            });
+        }
+        
+        function saveAnnouncement() {
+            const text = document.getElementById('announcement-text').value;
+            const msgEl = document.getElementById('announcement-message');
+            
+            db.collection('content').doc('announcement').set({ text })
+                .then(() => {
+                    msgEl.textContent = 'Announcement saved successfully!';
+                    msgEl.className = 'alert success';
+                    msgEl.style.display = 'block';
+                    
+                    // Log event
+                    db.collection('logs').add({
+                        uid: currentUser.uid,
+                        action: 'save_announcement',
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    setTimeout(() => {
+                        msgEl.style.display = 'none';
+                    }, 3000);
+                })
+                .catch(err => {
+                    msgEl.textContent = 'Error saving announcement: ' + err.message;
+                    msgEl.className = 'alert danger';
+                    msgEl.style.display = 'block';
+                });
+        }
+        
+        function saveVideoUrl() {
+            const url = document.getElementById('video-url').value;
+            const msgEl = document.getElementById('video-message');
+            
+            if (!url) {
+                msgEl.textContent = 'Please enter a video URL';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
+            db.collection('content').doc('video').set({ url })
+                .then(() => {
+                    msgEl.textContent = 'Video URL saved successfully!';
+                    msgEl.className = 'alert success';
+                    msgEl.style.display = 'block';
+                    
+                    // Log event
+                    db.collection('logs').add({
+                        uid: currentUser.uid,
+                        action: 'save_video_url',
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    setTimeout(() => {
+                        msgEl.style.display = 'none';
+                    }, 3000);
+                })
+                .catch(err => {
+                    msgEl.textContent = 'Error saving video URL: ' + err.message;
+                    msgEl.className = 'alert danger';
+                    msgEl.style.display = 'block';
+                });
+        }
+        
+        function uploadFile() {
+            const fileInput = document.getElementById('file-upload');
+            const msgEl = document.getElementById('file-message');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                msgEl.textContent = 'Please select a file to upload';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const storageRef = storage.ref('downloads/' + file.name);
+            const uploadTask = storageRef.put(file);
+            
+            msgEl.textContent = 'Uploading file...';
+            msgEl.className = 'alert info';
+            msgEl.style.display = 'block';
+            
+            uploadTask.on('state_changed', 
+                (snapshot) => {
+                    // Progress monitoring can be added here
+                }, 
+                (error) => {
+                    msgEl.textContent = 'Upload failed: ' + error.message;
+                    msgEl.className = 'alert danger';
+                }, 
+                () => {
+                    uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
+                        db.collection('content').doc('file').set({
+                            name: file.name,
+                            url: downloadURL,
+                            uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        })
+                        .then(() => {
+                            msgEl.textContent = 'File uploaded successfully!';
+                            msgEl.className = 'alert success';
+                            document.getElementById('current-file').innerHTML = `
+                                <p>Current file: <strong>${file.name}</strong></p>
+                                <a href="${downloadURL}" class="download-btn" target="_blank">
+                                    <i class="fas fa-download"></i> Download Current File
+                                </a>
+                            `;
+                            // Log event
+                            db.collection('logs').add({
+                                uid: currentUser.uid,
+                                action: 'upload_file',
+                                meta: { name: file.name },
+                                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                        })
+                        .catch(err => {
+                            msgEl.textContent = 'Error saving file info: ' + err.message;
+                            msgEl.className = 'alert danger';
+                        });
+                    });
+                }
+            );
+        }
 
         // User Functions
+        function loadUserTab(tab) {
+            switch(tab) {
+                case 'Dashboard': return userDashboard();
+                case 'Referrals': return userReferrals();
+                case 'Withdrawals': return userWithdrawals();
+                case 'Account': return userAccount();
+            }
+        }
+
         function userDashboard() {
             const c = document.getElementById('content');
             
@@ -1383,9 +1891,13 @@
                 c.innerHTML = `
                     <div class="enrollment-section">
                         <h2>WhatsApp Lead Generation Program</h2>
-                        <p>Imagine getting <span id="enrolled-count" style="font-weight:bold;color:var(--success);">0</span> as your customers</p>
+                        <p>You need to enroll in the program to access the dashboard</p>
                         <div class="enrollment-count" id="enrollment-count">0</div>
                         <p>people have already enrolled</p>
+                    </div>
+                    
+                    <div class="cta-section">
+                        <h3>Imagine getting <span id="enrolled-count" style="font-weight:bold;color:var(--primary);">0</span> as your customers.</h3>
                     </div>
                     
                     <div class="card">
@@ -1402,17 +1914,17 @@
                     
                     <div class="card">
                         <h2 class="section-title"><i class="fas fa-bullhorn"></i> Announcement</h2>
-                        <div id="announcement-content">No announcements yet.</div>
+                        <div id="announcement-content"></div>
                     </div>
                     
                     <div class="card">
                         <h2 class="section-title"><i class="fas fa-download"></i> Download Resource</h2>
-                        <div id="download-content">No resources available for download.</div>
+                        <div id="download-content"></div>
                     </div>
                     
                     <div class="card">
                         <h2 class="section-title"><i class="fas fa-video"></i> Training Video</h2>
-                        <div id="video-content">No training videos available.</div>
+                        <div id="video-content"></div>
                     </div>
                 `;
                 
@@ -1420,6 +1932,56 @@
                 db.collection('users').where('enrolled', '==', true).onSnapshot(snap => {
                     document.getElementById('enrollment-count').textContent = snap.size;
                     document.getElementById('enrolled-count').textContent = snap.size;
+                });
+                
+                // Load announcement
+                db.collection('content').doc('announcement').onSnapshot(doc => {
+                    if (doc.exists) {
+                        document.getElementById('announcement-content').innerHTML = doc.data().text || '<p>No announcements yet.</p>';
+                    }
+                });
+                
+                // Load video
+                db.collection('content').doc('video').onSnapshot(doc => {
+                    if (doc.exists && doc.data().url) {
+                        const url = doc.data().url;
+                        let embedHtml = '';
+                        
+                        if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                            // YouTube embed
+                            const videoId = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+                            if (videoId && videoId[1]) {
+                                embedHtml = `
+                                    <div class="video-container">
+                                        <iframe src="https://www.youtube.com/embed/${videoId[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                                    </div>
+                                `;
+                            } else {
+                                embedHtml = `<p><a href="${url}" target="_blank">Watch Video</a></p>`;
+                            }
+                        } else {
+                            // Generic video link
+                            embedHtml = `<p><a href="${url}" target="_blank">Watch Video</a></p>`;
+                        }
+                        
+                        document.getElementById('video-content').innerHTML = embedHtml;
+                    } else {
+                        document.getElementById('video-content').innerHTML = '<p>No video available yet.</p>';
+                    }
+                });
+                
+                // Load downloadable file
+                db.collection('content').doc('file').onSnapshot(doc => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        document.getElementById('download-content').innerHTML = `
+                            <a href="${data.url}" class="download-btn" target="_blank">
+                                <i class="fas fa-download"></i> Download ${data.name}
+                            </a>
+                        `;
+                    } else {
+                        document.getElementById('download-content').innerHTML = '<p>No file available for download yet.</p>';
+                    }
                 });
                 
                 return;
@@ -1459,7 +2021,6 @@
                 const bal = d.balance || 0;
                 const refs = d.referrals || 0;
                 const commissionRate = d.commissionRate || 0.15;
-                const refEarnings = d.referralEarnings || 0;
                 
                 document.getElementById('user-stats').innerHTML = `
                     <div style="margin-bottom: 15px;">
@@ -1473,8 +2034,8 @@
                             <p style="font-size: 1.5rem;">${refs}</p>
                         </div>
                         <div>
-                            <p><strong>Referral Earnings:</strong></p>
-                            <p style="font-size: 1.5rem;">$${refEarnings.toFixed(2)}</p>
+                            <p><strong>Commission Rate:</strong></p>
+                            <p style="font-size: 1.5rem;">${(commissionRate * 100).toFixed(1)}%</p>
                         </div>
                     </div>
                     
@@ -1490,17 +2051,22 @@
                     const on = document.getElementById('twofa-toggle').checked;
                     db.collection('users').doc(currentUser.uid).update({ twoFA: on }).then(() => {
                         alert(`Two-Factor Authentication ${on ? 'enabled' : 'disabled'}`);
-                        logEvent(currentUser.uid, 'toggle_2fa', { twoFA: on });
+                        // Log event
+                        db.collection('logs').add({
+                            uid: currentUser.uid,
+                            action: 'toggle_2fa',
+                            meta: { twoFA: on },
+                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                        });
                     });
                 };
             }
             
             // Load recent activity
-            logs.where('uid', '==', currentUser.uid)
+            db.collection('logs').where('uid', '==', currentUser.uid)
                 .orderBy('timestamp', 'desc')
                 .limit(5)
-                .get()
-                .then(snap => {
+                .onSnapshot(snap => {
                     let html = '<table class="table"><tr><th>Action</th><th>Time</th></tr>';
                     
                     if (snap.empty) {
@@ -1515,6 +2081,7 @@
                                 </tr>
                             `;
                         });
+                        html += '</table>';
                     }
                     
                     document.getElementById('user-activity').innerHTML = html;
@@ -1587,7 +2154,13 @@
                     msgEl.innerText = 'Enrollment successful! Welcome to the program.';
                     msgEl.className = 'alert success';
                     
-                    logEvent(currentUser.uid, 'enrollment_success', { token, whatsappNumber });
+                    // Log event
+                    db.collection('logs').add({
+                        uid: currentUser.uid,
+                        action: 'enrollment_success',
+                        meta: { token: token, whatsappNumber: whatsappNumber },
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
                     
                     setTimeout(() => {
                         closeModal('tokenModal');
@@ -1597,7 +2170,13 @@
                 .catch(err => {
                     msgEl.innerText = 'Error: ' + err.message;
                     msgEl.className = 'alert danger';
-                    logEvent(currentUser.uid, 'enrollment_failed', { error: err.message });
+                    // Log event
+                    db.collection('logs').add({
+                        uid: currentUser.uid,
+                        action: 'enrollment_failed',
+                        meta: { error: err.message },
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
                 });
         }
 
@@ -1607,12 +2186,6 @@
                 <h1 class="page-title"><i class="fas fa-user-friends"></i> Referral Program</h1>
                 
                 <div class="card">
-                    <h2 class="section-title"><i class="fas fa-wallet"></i> Referral Earnings</h2>
-                    <div style="text-align: center; margin-bottom: 20px;">
-                        <h3 style="color: var(--primary); font-size: 2rem;">$${(userCache[currentUser.uid].referralEarnings || 0).toFixed(2)}</h3>
-                        <p>Total earned from referrals</p>
-                    </div>
-                    
                     <h2 class="section-title"><i class="fas fa-link"></i> Your Referral Link</h2>
                     <div style="display: flex; gap: 10px; margin-bottom: 20px;">
                         <input type="text" id="referral-link" readonly style="flex: 1;">
@@ -1621,7 +2194,7 @@
                     
                     <div class="alert info">
                         <i class="fas fa-info-circle"></i> 
-                        Earn ${(userCache[currentUser.uid].commissionRate * 100 || 15).toFixed(0)}% commission for each successful referral
+                        Earn ${isAdmin ? '15%' : '10%'} commission for each successful referral
                     </div>
                 </div>
                 
@@ -1665,7 +2238,7 @@
         
         function reloadReferralsTable() {
             const c = document.getElementById('ref-table');
-            db.collection('users').where('ref', '==', currentUser.uid).get().then(q => {
+            db.collection('users').where('ref', '==', currentUser.uid).onSnapshot(q => {
                 let html = '';
                 
                 if (q.empty) {
@@ -1785,13 +2358,6 @@
                 return;
             }
             
-            if (amount > (userCache[currentUser.uid].balance || 0)) {
-                msgEl.innerText = 'Insufficient balance';
-                msgEl.className = 'alert danger';
-                msgEl.style.display = 'block';
-                return;
-            }
-            
             setLoading('wd-request-btn', true);
             msgEl.innerText = 'Processing your request...';
             msgEl.className = 'alert info';
@@ -1814,17 +2380,18 @@
                     break;
             }
             
-            // Update balance in cache
-            userCache[currentUser.uid].balance -= amount;
-            
-            db.collection('withdrawals').add({
-                userId: currentUser.uid,
-                userName: userCache[currentUser.uid].name,
-                amount: amount,
-                method: method,
-                accountDetails: accountDetails,
-                status: 'pending',
-                requestedAt: firebase.firestore.FieldValue.serverTimestamp()
+            db.collection('users').doc(currentUser.uid).get().then(doc => {
+                const userData = doc.data();
+                
+                return db.collection('withdrawals').add({
+                    userId: currentUser.uid,
+                    userName: userData.name,
+                    amount: amount,
+                    method: method,
+                    accountDetails: accountDetails,
+                    status: 'pending',
+                    requestedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
             })
             .then(() => {
                 msgEl.innerText = 'Withdrawal request submitted successfully!';
@@ -1835,7 +2402,13 @@
                 });
             })
             .then(() => {
-                logEvent(currentUser.uid, 'withdrawal_request', { amount, method });
+                // Log event
+                db.collection('logs').add({
+                    uid: currentUser.uid,
+                    action: 'withdrawal_request',
+                    meta: { amount: amount, method: method },
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
                 loadWithdrawalHistory();
             })
             .catch(err => {
@@ -1852,8 +2425,7 @@
             db.collection('withdrawals')
                 .where('userId', '==', currentUser.uid)
                 .orderBy('requestedAt', 'desc')
-                .get()
-                .then(q => {
+                .onSnapshot(q => {
                     let html = '';
                     
                     if (q.empty) {
@@ -1913,6 +2485,22 @@
                             Enable Two-Factor Authentication
                         </label>
                     </div>
+                    
+                    <div style="margin-top: 20px;">
+                        <h3>Change Password</h3>
+                        <input type="password" id="acc-old-pwd" placeholder="Current password">
+                        <input type="password" id="acc-new-pwd" placeholder="New password">
+                        <input type="password" id="acc-confirm-pwd" placeholder="Confirm new password">
+                        
+                        <button onclick="changePassword()">Change Password</button>
+                        <div id="pwd-msg" class="alert" style="display: none; margin-top: 15px;"></div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-wallet"></i> Payment Information</h2>
+                    <p>Set your preferred payment method for withdrawals</p>
+                    <div id="payment-info"></div>
                 </div>
             `;
             
@@ -1935,7 +2523,13 @@
                     document.getElementById('profile-msg').innerText = msg;
                     document.getElementById('profile-msg').className = 'alert success';
                     document.getElementById('profile-msg').style.display = 'block';
-                    logEvent(currentUser.uid, 'update_2fa', { enabled });
+                    // Log event
+                    db.collection('logs').add({
+                        uid: currentUser.uid,
+                        action: 'update_2fa',
+                        meta: { enabled: enabled },
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
                 });
         }
         
@@ -1952,9 +2546,11 @@
             }
             
             // Update in cache
-            userCache[currentUser.uid].name = name;
-            userCache[currentUser.uid].phone = phone;
-            document.getElementById('user-name').innerText = name;
+            if (currentUser && userCache[currentUser.uid]) {
+                userCache[currentUser.uid].name = name;
+                userCache[currentUser.uid].phone = phone;
+                document.getElementById('user-name').innerText = name;
+            }
             
             db.collection('users').doc(currentUser.uid).update({
                 name: name,
@@ -1965,8 +2561,69 @@
                 msgEl.innerText = 'Profile updated successfully!';
                 msgEl.className = 'alert success';
                 msgEl.style.display = 'block';
-                logEvent(currentUser.uid, 'update_profile');
+                // Log event
+                db.collection('logs').add({
+                    uid: currentUser.uid,
+                    action: 'update_profile',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
             });
+        }
+        
+        function changePassword() {
+            const oldPwd = document.getElementById('acc-old-pwd').value;
+            const newPwd = document.getElementById('acc-new-pwd').value;
+            const confirmPwd = document.getElementById('acc-confirm-pwd').value;
+            const msgEl = document.getElementById('pwd-msg');
+            
+            if (!oldPwd || !newPwd || !confirmPwd) {
+                msgEl.innerText = 'Please fill all fields';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
+            if (newPwd !== confirmPwd) {
+                msgEl.innerText = 'New passwords do not match';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
+            if (newPwd.length < 8) {
+                msgEl.innerText = 'Password must be at least 8 characters';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
+            const user = auth.currentUser;
+            const credential = firebase.auth.EmailAuthProvider.credential(
+                user.email, 
+                oldPwd
+            );
+            
+            user.reauthenticateWithCredential(credential)
+                .then(() => {
+                    return user.updatePassword(newPwd);
+                })
+                .then(() => {
+                    msgEl.innerText = 'Password changed successfully!';
+                    msgEl.className = 'alert success';
+                    // Log event
+                    db.collection('logs').add({
+                        uid: currentUser.uid,
+                        action: 'change_password',
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                })
+                .catch(err => {
+                    msgEl.innerText = 'Error: ' + err.message;
+                    msgEl.className = 'alert danger';
+                })
+                .finally(() => {
+                    msgEl.style.display = 'block';
+                });
         }
 
         // Initialize on load
