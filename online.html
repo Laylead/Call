@@ -13,7 +13,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
     <!-- External configuration files -->
     <script src="configuration.js"></script>
-    <script src="script.js"></script>
     <style>
         :root {
             --primary: #4361ee;
@@ -609,7 +608,7 @@
                             <input type="checkbox" id="remember">
                             <label for="remember">Remember me</label>
                         </div>
-                        <a href="#" style="color:var(--primary);text-decoration:none;">Forgot password?</a>
+                        <a href="#" style="color:var(--primary);text-decoration:none;" onclick="showPasswordReset()">Forgot password?</a>
                     </div>
                     
                     <button id="login-btn" onclick="login()">
@@ -691,6 +690,18 @@
         </div>
     </div>
 
+    <!-- Password Reset Modal -->
+    <div id="passwordResetModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('passwordResetModal')">&times;</span>
+            <h2>Reset Password</h2>
+            <p>Enter your email to reset your password</p>
+            <input type="email" id="reset-email" placeholder="Your email address">
+            <button onclick="sendPasswordReset()">Send Reset Link</button>
+            <div id="reset-message" class="alert hidden" style="margin-top:15px;"></div>
+        </div>
+    </div>
+
     <script>
         // Initialize Firebase with configuration from external file
         firebase.initializeApp(firebaseConfig);
@@ -746,6 +757,13 @@
         function closeModal(id) {
             document.getElementById(id).style.display = 'none';
         }
+        
+        function showPasswordReset() {
+            document.getElementById('reset-message').className = 'alert hidden';
+            document.getElementById('reset-message').style.display = 'none';
+            document.getElementById('reset-email').value = '';
+            openModal('passwordResetModal');
+        }
 
         // UI toggles
         document.getElementById('to-login').onclick = () => switchForms('login');
@@ -756,47 +774,6 @@
             document.getElementById('to-register').classList.toggle('active', mode === 'register');
             document.getElementById('login-form').classList.toggle('hidden', mode !== 'login');
             document.getElementById('register-form').classList.toggle('hidden', mode !== 'register');
-        }
-
-        // Enhanced activity logger with offline support
-        function logEvent(uid, action, meta = {}) {
-            return new Promise((resolve) => {
-                const logData = {
-                    uid,
-                    action,
-                    meta,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                };
-                
-                logs.add(logData)
-                  .then(resolve)
-                  .catch(err => {
-                    if (err.code === 'unavailable') {
-                      const offlineLogs = JSON.parse(localStorage.getItem('offlineLogs') || '[]');
-                      offlineLogs.push(logData);
-                      localStorage.setItem('offlineLogs', JSON.stringify(offlineLogs));
-                      resolve();
-                    }
-                  });
-            });
-        }
-
-        // Process any pending offline logs when connection is restored
-        function processOfflineLogs() {
-            const offlineLogs = JSON.parse(localStorage.getItem('offlineLogs') || '[]');
-            if (offlineLogs.length === 0) return;
-            
-            const batch = db.batch();
-            offlineLogs.forEach(log => {
-                const ref = logs.doc();
-                batch.set(ref, log);
-            });
-            
-            batch.commit()
-              .then(() => {
-                localStorage.removeItem('offlineLogs');
-              })
-              .catch(console.error);
         }
 
         // Set loading state for buttons
@@ -866,9 +843,6 @@
                     }).then(() => userCredential.user);
                 })
                 .then(user => {
-                    return logEvent(user.uid, 'register').then(() => user);
-                })
-                .then(user => {
                     currentUser = user;
                     userCache[user.uid] = {
                         name,
@@ -891,9 +865,6 @@
                 .catch(err => {
                     console.error("Registration error:", err);
                     showError('register-error', `Registration failed: ${err.message}`);
-                    if (auth.currentUser) {
-                        auth.currentUser.delete().catch(console.error);
-                    }
                 })
                 .finally(() => {
                     setLoading('register-btn', false);
@@ -906,7 +877,7 @@
             return re.test(String(email).toLowerCase());
         }
 
-        // Login function with security enhancements
+        // Login function
         function login() {
             hideError('login-error');
             const email = document.getElementById('login-email').value.trim();
@@ -917,51 +888,6 @@
             
             setLoading('login-btn', true);
             
-            // Check for admin login
-            if (email === "admin@leadconnect.com") {
-                // Handle admin login directly
-                if (adminCredentials && pwd === adminCredentials.password) {
-                    // Create admin session
-                    currentUser = {
-                        uid: 'admin-uid',
-                        email: email,
-                        displayName: "Admin User"
-                    };
-                    
-                    // Create admin profile in cache
-                    userCache['admin-uid'] = {
-                        name: "Admin User",
-                        email: email,
-                        role: 'admin',
-                        status: 'active',
-                        balance: 0,
-                        referrals: 0,
-                        commissionRate: 0.15,
-                        twoFA: false,
-                        enrolled: true,
-                        whatsappNumber: 'admin',
-                        enrollmentDate: new Date()
-                    };
-                    
-                    isAdmin = true;
-                    
-                    // Store admin session in localStorage
-                    localStorage.setItem('adminSession', JSON.stringify({
-                        email: email,
-                        timestamp: new Date().getTime()
-                    }));
-                    
-                    initApp();
-                    setLoading('login-btn', false);
-                    return;
-                } else {
-                    showError('login-error', 'Invalid admin credentials');
-                    setLoading('login-btn', false);
-                    return;
-                }
-            }
-            
-            // Regular user login
             auth.signInWithEmailAndPassword(email, pwd)
                 .then(res => {
                     return db.collection('users').doc(res.user.uid).get()
@@ -988,160 +914,95 @@
                         });
                 })
                 .then(({ user, data }) => {
-                    if (data.twoFA) {
-                        return auth.sendSignInLinkToEmail(email, {
-                            url: window.location.href,
-                            handleCodeInApp: true
-                        }).then(() => {
-                            alert('2FA verification link sent to your email.');
-                            db.collection('users').doc(user.uid).update({
-                                twoFALinkSent: firebase.firestore.FieldValue.serverTimestamp()
-                            });
-                            throw '2FA pending';
-                        });
-                    }
-                    return { user, data };
-                })
-                .then(({ user, data }) => {
                     currentUser = user;
                     isAdmin = data.role === 'admin';
                     userCache[user.uid] = data;
-                    return logEvent(user.uid, 'login');
-                })
-                .then(() => {
                     initApp();
                 })
                 .catch(err => {
-                    if (typeof err !== 'string') {
-                        console.error("Login error:", err);
-                        showError('login-error', err.message);
-                    }
+                    console.error("Login error:", err);
+                    showError('login-error', err.message);
                 })
                 .finally(() => {
                     setLoading('login-btn', false);
                 });
         }
-
-        // Check for existing admin session on page load
-        function checkAdminSession() {
-            const session = localStorage.getItem('adminSession');
-            if (session) {
-                const sessionData = JSON.parse(session);
-                // Check if session is still valid (1 hour expiration)
-                const now = new Date().getTime();
-                if ((now - sessionData.timestamp) < 3600000) { // 1 hour
-                    currentUser = {
-                        uid: 'admin-uid',
-                        email: sessionData.email,
-                        displayName: "Admin User"
-                    };
-                    
-                    userCache['admin-uid'] = {
-                        name: "Admin User",
-                        email: sessionData.email,
-                        role: 'admin',
-                        status: 'active',
-                        balance: 0,
-                        referrals: 0,
-                        commissionRate: 0.15,
-                        twoFA: false,
-                        enrolled: true,
-                        whatsappNumber: 'admin',
-                        enrollmentDate: new Date()
-                    };
-                    
-                    isAdmin = true;
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        // Auth state handler with offline support
-        auth.onAuthStateChanged(u => {
-            // Check if we have a valid admin session first
-            if (checkAdminSession()) {
-                document.getElementById('auth-screen').classList.add('hidden');
-                document.getElementById('app').classList.remove('hidden');
-                initApp();
+        
+        function sendPasswordReset() {
+            const email = document.getElementById('reset-email').value.trim();
+            const msgEl = document.getElementById('reset-message');
+            
+            if (!email || !validateEmail(email)) {
+                msgEl.innerText = 'Please enter a valid email address';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
                 return;
             }
             
-            if (u) {
-                currentUser = u;
-                
-                // If not in cache, try to get from Firestore
-                db.collection('users').doc(u.uid).get()
-                .then(doc => {
-                    if (doc.exists) {
-                        const data = doc.data();
-                        userCache[u.uid] = data;
-                        isAdmin = data.role === 'admin';
-                        initApp();
-                        processOfflineLogs();
-                    } else {
-                        // Create minimal user data for offline use
-                        const minimalData = {
-                            name: u.email,
-                            email: u.email,
-                            role: 'user',
-                            status: 'active',
-                            balance: 0,
-                            referrals: 0,
-                            commissionRate: 0.15,
-                            twoFA: false,
-                            enrolled: false,
-                            whatsappNumber: '',
-                            enrollmentDate: null
-                        };
-                        userCache[u.uid] = minimalData;
-                        isAdmin = false;
-                        initApp();
-                        
-                        // Try to save to Firestore if online
-                        db.collection('users').doc(u.uid).set(minimalData)
-                            .catch(err => console.log("Offline - user data not saved to Firestore"));
-                    }
+            auth.sendPasswordResetEmail(email)
+                .then(() => {
+                    msgEl.innerText = 'Password reset email sent! Check your inbox.';
+                    msgEl.className = 'alert success';
+                    msgEl.style.display = 'block';
                 })
                 .catch(err => {
-                    console.error("Auth state error:", err);
-                    // Offline - use minimal data
-                    const minimalData = {
-                        name: u.email,
-                        email: u.email,
-                        role: 'user',
-                        status: 'active',
-                        balance: 0,
-                        referrals: 0,
-                        commissionRate: 0.15,
-                        twoFA: false,
-                        enrolled: false,
-                        whatsappNumber: '',
-                        enrollmentDate: null
-                    };
-                    userCache[u.uid] = minimalData;
-                    isAdmin = false;
-                    initApp();
+                    msgEl.innerText = 'Error: ' + err.message;
+                    msgEl.className = 'alert danger';
+                    msgEl.style.display = 'block';
                 });
-            }
-        });
+        }
         
         function logout() {
-            // Clear admin session if exists
-            localStorage.removeItem('adminSession');
-            
-            // Firebase logout for regular users
-            if (currentUser && currentUser.uid !== 'admin-uid') {
-                auth.signOut();
-            }
-            
-            // Reset state
+            auth.signOut();
             currentUser = null;
             isAdmin = false;
             userCache = {};
             window.location.reload();
         }
 
+        function setupAuthStateListener() {
+            auth.onAuthStateChanged(u => {
+                if (u) {
+                    currentUser = u;
+                    
+                    // Get user data from Firestore
+                    db.collection('users').doc(u.uid).get()
+                    .then(doc => {
+                        if (doc.exists) {
+                            const data = doc.data();
+                            userCache[u.uid] = data;
+                            isAdmin = data.role === 'admin';
+                            initApp();
+                        } else {
+                            // Create minimal user data
+                            const minimalData = {
+                                name: u.email,
+                                email: u.email,
+                                role: 'user',
+                                status: 'active',
+                                balance: 0,
+                                referrals: 0,
+                                commissionRate: 0.15,
+                                twoFA: false,
+                                enrolled: false,
+                                whatsappNumber: '',
+                                enrollmentDate: null
+                            };
+                            userCache[u.uid] = minimalData;
+                            isAdmin = false;
+                            initApp();
+                            
+                            // Save to Firestore
+                            db.collection('users').doc(u.uid).set(minimalData);
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Auth state error:", err);
+                    });
+                }
+            });
+        }
+        
         // Initialize app UI
         function initApp() {
             document.getElementById('auth-screen').classList.add('hidden');
@@ -1171,7 +1032,10 @@
                 const div = document.createElement('div');
                 div.innerText = t;
                 div.className = 'tab';
-                div.onclick = () => { setActiveTab(t); loadTab(t); };
+                div.addEventListener('click', () => { 
+                    setActiveTab(t); 
+                    loadTab(t); 
+                });
                 tabsEl.appendChild(div);
             });
         }
@@ -1204,7 +1068,7 @@
             isAdmin ? loadAdminTab(tab) : loadUserTab(tab);
         }
 
-        // Admin Functions - Fully live with Firebase
+        // Admin Functions
         function loadAdminTab(tab) {
             switch(tab) {
                 case 'Overview': return adminOverview();
@@ -1251,58 +1115,49 @@
             `;
             
             // Live stats from Firestore
-            const updateStats = () => {
-                // Users count
-                db.collection('users').onSnapshot(snap => {
-                    document.getElementById('stat-users').textContent = snap.size;
-                });
-                
-                // Earnings and pending withdrawals
-                db.collection('transactions').onSnapshot(snap => {
-                    let earnings = 0;
-                    let pending = 0;
-                    
-                    snap.forEach(doc => {
-                        const t = doc.data();
-                        if (t.type === 'earn') earnings += t.amount;
-                        if (t.status === 'pending') pending += t.amount;
-                    });
-                    
-                    document.getElementById('stat-earnings').textContent = '$' + earnings.toFixed(2);
-                    document.getElementById('stat-pending').textContent = '$' + pending.toFixed(2);
-                });
-                
-                // Active enrollments count
-                db.collection('users').where('enrolled', '==', true).onSnapshot(snap => {
-                    document.getElementById('stat-enrollments').textContent = snap.size;
-                });
-                
-                // Recent activities
-                logs.orderBy('timestamp', 'desc').limit(10).onSnapshot(snap => {
-                    let html = '<table class="table"><tr><th>User</th><th>Action</th><th>Time</th></tr>';
-                    
-                    if (snap.empty) {
-                        html = '<div class="alert info">No recent activities found</div>';
-                    } else {
-                        snap.forEach(doc => {
-                            const d = doc.data();
-                            html += `
-                                <tr>
-                                    <td>${d.uid}</td>
-                                    <td>${d.action}</td>
-                                    <td>${d.timestamp?.toDate().toLocaleString() || '-'}</td>
-                                </tr>
-                            `;
-                        });
-                        html += '</table>';
-                    }
-                    
-                    document.getElementById('recent-activities').innerHTML = html;
-                });
-            };
+            db.collection('users').onSnapshot(snap => {
+                document.getElementById('stat-users').textContent = snap.size;
+            });
             
-            updateStats();
-            logEvent(currentUser.uid, 'view_admin_overview');
+            db.collection('transactions').onSnapshot(snap => {
+                let earnings = 0;
+                let pending = 0;
+                
+                snap.forEach(doc => {
+                    const t = doc.data();
+                    if (t.type === 'earn') earnings += t.amount;
+                    if (t.status === 'pending') pending += t.amount;
+                });
+                
+                document.getElementById('stat-earnings').textContent = '$' + earnings.toFixed(2);
+                document.getElementById('stat-pending').textContent = '$' + pending.toFixed(2);
+            });
+            
+            db.collection('users').where('enrolled', '==', true).onSnapshot(snap => {
+                document.getElementById('stat-enrollments').textContent = snap.size;
+            });
+            
+            logs.orderBy('timestamp', 'desc').limit(10).onSnapshot(snap => {
+                let html = '<table class="table"><tr><th>User</th><th>Action</th><th>Time</th></tr>';
+                
+                if (snap.empty) {
+                    html = '<div class="alert info">No recent activities found</div>';
+                } else {
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        html += `
+                            <tr>
+                                <td>${d.uid}</td>
+                                <td>${d.action}</td>
+                                <td>${d.timestamp?.toDate().toLocaleString() || '-'}</td>
+                            </tr>
+                        `;
+                    });
+                    html += '</table>';
+                }
+                
+                document.getElementById('recent-activities').innerHTML = html;
+            });
         }
 
         function adminTokens() {
@@ -1345,7 +1200,7 @@
                 created: firebase.firestore.FieldValue.serverTimestamp(),
                 createdBy: currentUser.uid
             }).then(() => {
-                logEvent(currentUser.uid, 'create_token', { type, token: tok });
+                console.log("Token created:", tok);
             }).catch(err => {
                 alert('Error creating token: ' + err.message);
             });
@@ -1367,9 +1222,7 @@
                 });
             }
             
-            batch.commit().then(() => {
-                logEvent(currentUser.uid, 'bulk_tokens', { count });
-            }).catch(err => {
+            batch.commit().catch(err => {
                 alert('Error generating tokens: ' + err.message);
             });
         }
@@ -1424,13 +1277,9 @@
         
         function adminDeleteToken(id) {
             if (confirm('Are you sure you want to delete this token?')) {
-                db.collection('tokens').doc(id).delete()
-                    .then(() => {
-                        logEvent(currentUser.uid, 'delete_token', { id });
-                    })
-                    .catch(err => {
-                        alert('Error deleting token: ' + err.message);
-                    });
+                db.collection('tokens').doc(id).delete().catch(err => {
+                    alert('Error deleting token: ' + err.message);
+                });
             }
         }
 
@@ -1503,9 +1352,6 @@
             const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
             
             db.collection('users').doc(uid).update({ status: newStatus })
-                .then(() => {
-                    logEvent(currentUser.uid, 'toggle_user_status', { uid, status: newStatus });
-                })
                 .catch(err => {
                     alert('Error updating user status: ' + err.message);
                 });
@@ -1683,8 +1529,6 @@
                     processedBy: currentUser.uid
                 })
                 .then(() => {
-                    logEvent(currentUser.uid, `withdrawal_${action}`, { id });
-                    
                     if (action === 'approved') {
                         // Update user's balance if approved
                         db.collection('withdrawals').doc(id).get().then(doc => {
@@ -1787,7 +1631,6 @@
                     msgEl.textContent = 'System settings saved successfully!';
                     msgEl.className = 'alert success';
                     msgEl.style.display = 'block';
-                    logEvent(currentUser.uid, 'save_system_settings', settings);
                     
                     setTimeout(() => {
                         msgEl.style.display = 'none';
@@ -1864,7 +1707,6 @@
                     msgEl.textContent = 'Announcement saved successfully!';
                     msgEl.className = 'alert success';
                     msgEl.style.display = 'block';
-                    logEvent(currentUser.uid, 'save_announcement');
                     
                     setTimeout(() => {
                         msgEl.style.display = 'none';
@@ -1893,7 +1735,6 @@
                     msgEl.textContent = 'Video URL saved successfully!';
                     msgEl.className = 'alert success';
                     msgEl.style.display = 'block';
-                    logEvent(currentUser.uid, 'save_video_url');
                     
                     setTimeout(() => {
                         msgEl.style.display = 'none';
@@ -1949,7 +1790,6 @@
                                     <i class="fas fa-download"></i> Download Current File
                                 </a>
                             `;
-                            logEvent(currentUser.uid, 'upload_file', { name: file.name });
                         })
                         .catch(err => {
                             msgEl.textContent = 'Error saving file info: ' + err.message;
@@ -2139,7 +1979,6 @@
                     const on = document.getElementById('twofa-toggle').checked;
                     db.collection('users').doc(currentUser.uid).update({ twoFA: on }).then(() => {
                         alert(`Two-Factor Authentication ${on ? 'enabled' : 'disabled'}`);
-                        logEvent(currentUser.uid, 'toggle_2fa', { twoFA: on });
                     });
                 };
             }
@@ -2241,8 +2080,6 @@
                     msgEl.innerText = 'Enrollment successful! Welcome to the program.';
                     msgEl.className = 'alert success';
                     
-                    logEvent(currentUser.uid, 'enrollment_success', { token, whatsappNumber });
-                    
                     setTimeout(() => {
                         closeModal('tokenModal');
                         loadTab('Dashboard');
@@ -2251,7 +2088,6 @@
                 .catch(err => {
                     msgEl.innerText = 'Error: ' + err.message;
                     msgEl.className = 'alert danger';
-                    logEvent(currentUser.uid, 'enrollment_failed', { error: err.message });
                 });
         }
 
@@ -2486,7 +2322,6 @@
                 });
             })
             .then(() => {
-                logEvent(currentUser.uid, 'withdrawal_request', { amount, method });
                 loadWithdrawalHistory();
             })
             .catch(err => {
@@ -2606,7 +2441,6 @@
                     document.getElementById('profile-msg').innerText = msg;
                     document.getElementById('profile-msg').className = 'alert success';
                     document.getElementById('profile-msg').style.display = 'block';
-                    logEvent(currentUser.uid, 'update_2fa', { enabled });
                 });
         }
         
@@ -2638,7 +2472,6 @@
                 msgEl.innerText = 'Profile updated successfully!';
                 msgEl.className = 'alert success';
                 msgEl.style.display = 'block';
-                logEvent(currentUser.uid, 'update_profile');
             });
         }
         
@@ -2682,7 +2515,6 @@
                 .then(() => {
                     msgEl.innerText = 'Password changed successfully!';
                     msgEl.className = 'alert success';
-                    logEvent(currentUser.uid, 'change_password');
                 })
                 .catch(err => {
                     msgEl.innerText = 'Error: ' + err.message;
@@ -2694,15 +2526,16 @@
         }
 
         // Initialize on load
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize event listeners
+            setupAuthStateListener();
+            
+            // Initialize offline logs processing
             const urlParams = new URLSearchParams(window.location.search);
             const refCode = urlParams.get('ref');
             if (refCode) {
                 localStorage.setItem('referralCode', refCode);
             }
-            
-            // Initialize offline logs processing
-            processOfflineLogs();
         });
     </script>
 </body>
