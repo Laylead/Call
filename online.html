@@ -736,56 +736,19 @@
     </div>
 
     <script>
-        // Check if Firebase configuration is loaded
-        if (typeof firebaseConfig === 'undefined') {
-            console.error("Firebase configuration is not defined. Check configuration.js");
-            document.getElementById('auth-screen').innerHTML = `
-                <div class="alert danger">
-                    <i class="fas fa-exclamation-circle"></i>
-                    Firebase configuration error. Please check the configuration file.
-                </div>
-            `;
-        } else {
-            console.log("Firebase configuration loaded successfully:", firebaseConfig);
-        }
-
-        // Initialize Firebase only if configuration is available
-        if (firebaseConfig && firebaseConfig.apiKey) {
-            try {
-                // Initialize Firebase
-                firebase.initializeApp(firebaseConfig);
-                console.log("Firebase initialized successfully");
-                
-                // Enable Firestore offline persistence with error handling
-                firebase.firestore().enablePersistence()
-                    .catch(err => {
-                        console.log("Firestore offline persistence error:", err);
-                        if (err.code === 'failed-precondition') {
-                            console.log("Multiple tabs open, persistence can only be enabled in one tab at a time.");
-                        } else if (err.code === 'unimplemented') {
-                            console.log("The current browser does not support all of the features required to enable persistence");
-                        }
-                    });
-            } catch (e) {
-                console.error("Firebase initialization error:", e);
-                document.getElementById('auth-screen').innerHTML = `
-                    <div class="alert danger">
-                        <i class="fas fa-exclamation-circle"></i>
-                        Firebase initialization failed. Please check your configuration.
-                    </div>
-                `;
+        // Initialize Firebase with configuration from external file
+        firebase.initializeApp(firebaseConfig);
+        
+        // Enable offline persistence with error handling
+        firebase.firestore().enablePersistence()
+          .catch((err) => {
+            if (err.code == 'failed-precondition') {
+              console.log("Persistence failed - multiple tabs open");
+            } else if (err.code == 'unimplemented') {
+              console.log("Persistence not available in this browser");
             }
-        } else {
-            console.error("Invalid Firebase configuration");
-            document.getElementById('auth-screen').innerHTML = `
-                <div class="alert danger">
-                    <i class="fas fa-exclamation-circle"></i>
-                    Invalid Firebase configuration. Please check configuration.js.
-                </div>
-            `;
-        }
-
-        // Get Firebase services
+          });
+        
         const auth = firebase.auth();
         const db = firebase.firestore();
         const storage = firebase.storage();
@@ -829,8 +792,11 @@
             document.getElementById('to-register').addEventListener('click', () => switchForms('register'));
             
             // Modal controls
-            document.getElementById('close-token-modal')?.addEventListener('click', () => closeModal('tokenModal'));
-            document.getElementById('close-reset-modal')?.addEventListener('click', () => closeModal('passwordResetModal'));
+            document.getElementById('close-token-modal').addEventListener('click', () => closeModal('tokenModal'));
+            document.getElementById('close-reset-modal').addEventListener('click', () => closeModal('passwordResetModal'));
+            
+            // Logout button
+            document.getElementById('logout-btn')?.addEventListener('click', logout);
         }
         
         function togglePasswordVisibility(inputId, toggleElement) {
@@ -1268,6 +1234,29 @@
         function loadTab(tab) {
             document.getElementById('content').innerHTML = '';
             isAdmin ? loadAdminTab(tab) : loadUserTab(tab);
+        }
+
+        // Admin Functions
+        function loadAdminTab(tab) {
+            switch(tab) {
+                case 'Overview': return adminOverview();
+                case 'Tokens': return adminTokens();
+                case 'Users': return adminUsers();
+                case 'Enrollments': return adminEnrollments();
+                case 'Withdrawals': return adminWithdrawals();
+                case 'Settings': return adminSettings();
+                case 'Content': return adminContent();
+            }
+        }
+
+        // User Functions
+        function loadUserTab(tab) {
+            switch(tab) {
+                case 'Dashboard': return userDashboard();
+                case 'Referrals': return userReferrals();
+                case 'Withdrawals': return userWithdrawals();
+                case 'Account': return userAccount();
+            }
         }
 
         function userDashboard() {
@@ -1717,6 +1706,9 @@
                     console.error("Error processing pending updates:", err);
                 });
         }
+
+        // Other functions remain mostly the same, but should implement similar offline handling
+        // where needed (userReferrals, userWithdrawals, etc.)
 
         // Initialize on load
         document.addEventListener('DOMContentLoaded', () => {
