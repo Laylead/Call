@@ -736,9 +736,56 @@
     </div>
 
     <script>
-        // Initialize Firebase with configuration from external file
-        firebase.initializeApp(firebaseConfig);
-        
+        // Check if Firebase configuration is loaded
+        if (typeof firebaseConfig === 'undefined') {
+            console.error("Firebase configuration is not defined. Check configuration.js");
+            document.getElementById('auth-screen').innerHTML = `
+                <div class="alert danger">
+                    <i class="fas fa-exclamation-circle"></i>
+                    Firebase configuration error. Please check the configuration file.
+                </div>
+            `;
+        } else {
+            console.log("Firebase configuration loaded successfully:", firebaseConfig);
+        }
+
+        // Initialize Firebase only if configuration is available
+        if (firebaseConfig && firebaseConfig.apiKey) {
+            try {
+                // Initialize Firebase
+                firebase.initializeApp(firebaseConfig);
+                console.log("Firebase initialized successfully");
+                
+                // Enable Firestore offline persistence with error handling
+                firebase.firestore().enablePersistence()
+                    .catch(err => {
+                        console.log("Firestore offline persistence error:", err);
+                        if (err.code === 'failed-precondition') {
+                            console.log("Multiple tabs open, persistence can only be enabled in one tab at a time.");
+                        } else if (err.code === 'unimplemented') {
+                            console.log("The current browser does not support all of the features required to enable persistence");
+                        }
+                    });
+            } catch (e) {
+                console.error("Firebase initialization error:", e);
+                document.getElementById('auth-screen').innerHTML = `
+                    <div class="alert danger">
+                        <i class="fas fa-exclamation-circle"></i>
+                        Firebase initialization failed. Please check your configuration.
+                    </div>
+                `;
+            }
+        } else {
+            console.error("Invalid Firebase configuration");
+            document.getElementById('auth-screen').innerHTML = `
+                <div class="alert danger">
+                    <i class="fas fa-exclamation-circle"></i>
+                    Invalid Firebase configuration. Please check configuration.js.
+                </div>
+            `;
+        }
+
+        // Get Firebase services
         const auth = firebase.auth();
         const db = firebase.firestore();
         const storage = firebase.storage();
@@ -749,6 +796,7 @@
         let userCache = {};
         let offlineMode = false;
         let connectionStatusElement = document.getElementById('connection-status');
+        let connectionStatusListener = null;
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
@@ -779,6 +827,10 @@
             // Form switching
             document.getElementById('to-login').addEventListener('click', () => switchForms('login'));
             document.getElementById('to-register').addEventListener('click', () => switchForms('register'));
+            
+            // Modal controls
+            document.getElementById('close-token-modal')?.addEventListener('click', () => closeModal('tokenModal'));
+            document.getElementById('close-reset-modal')?.addEventListener('click', () => closeModal('passwordResetModal'));
         }
         
         function togglePasswordVisibility(inputId, toggleElement) {
@@ -812,6 +864,21 @@
             // Listen for online/offline events
             window.addEventListener('online', updateConnectionStatus);
             window.addEventListener('offline', updateConnectionStatus);
+            
+            // Set up Firestore connection listener
+            db.enableNetwork()
+                .then(() => {
+                    connectionStatusListener = db.onSnapshot(
+                        () => {}, // Empty snapshot handler
+                        (err) => {
+                            if (err.code === 'unavailable') {
+                                offlineMode = true;
+                                connectionStatusElement.className = 'connection-status offline';
+                                connectionStatusElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Offline';
+                            }
+                        }
+                    );
+                });
         }
         
         function updateConnectionStatus() {
@@ -935,7 +1002,7 @@
             return re.test(String(email).toLowerCase());
         }
 
-        // Login function
+        // Login function with offline support
         function login() {
             hideError('login-error');
             const email = document.getElementById('login-email').value.trim();
@@ -946,6 +1013,33 @@
             
             setLoading('login-btn', true);
             
+            // Check if we're offline
+            if (offlineMode) {
+                // Try to log in using cached credentials
+                const cachedUser = localStorage.getItem('cachedUser');
+                if (cachedUser) {
+                    const user = JSON.parse(cachedUser);
+                    currentUser = {
+                        uid: user.uid,
+                        email: user.email,
+                        displayName: user.name
+                    };
+                    userCache[user.uid] = user;
+                    isAdmin = user.role === 'admin';
+                    
+                    setTimeout(() => {
+                        initApp();
+                        setLoading('login-btn', false);
+                    }, 500);
+                    return;
+                } else {
+                    showError('login-error', 'Cannot log in offline without cached credentials');
+                    setLoading('login-btn', false);
+                    return;
+                }
+            }
+            
+            // Regular login when online
             auth.signInWithEmailAndPassword(email, pwd)
                 .then(res => {
                     return db.collection('users').doc(res.user.uid).get()
@@ -975,6 +1069,13 @@
                     currentUser = user;
                     isAdmin = data.role === 'admin';
                     userCache[user.uid] = data;
+                    
+                    // Cache user data for offline access
+                    localStorage.setItem('cachedUser', JSON.stringify({
+                        uid: user.uid,
+                        ...data
+                    }));
+                    
                     initApp();
                 })
                 .catch(err => {
@@ -1015,6 +1116,7 @@
             currentUser = null;
             isAdmin = false;
             userCache = {};
+            localStorage.removeItem('cachedUser');
             window.location.reload();
         }
 
@@ -1023,20 +1125,81 @@
                 if (u) {
                     currentUser = u;
                     
-                    // Get user data from Firestore
+                    // Get user data from Firestore with offline support
                     const userRef = db.collection('users').doc(u.uid);
                     
-                    userRef.get()
+                    // First try to get from network
+                    userRef.get({ source: 'server' })
                         .then(doc => {
                             if (doc.exists) {
                                 const data = doc.data();
                                 userCache[u.uid] = data;
                                 isAdmin = data.role === 'admin';
+                                
+                                // Cache user data for offline access
+                                localStorage.setItem('cachedUser', JSON.stringify({
+                                    uid: u.uid,
+                                    ...data
+                                }));
+                                
                                 initApp();
                             }
                         })
                         .catch(err => {
-                            console.error("Error loading user data:", err);
+                            // If network fails, try cache
+                            userRef.get({ source: 'cache' })
+                                .then(doc => {
+                                    if (doc.exists) {
+                                        const data = doc.data();
+                                        userCache[u.uid] = data;
+                                        isAdmin = data.role === 'admin';
+                                        
+                                        // Show offline mode notification
+                                        document.getElementById('content').innerHTML = `
+                                            <div class="alert info">
+                                                <i class="fas fa-info-circle"></i> 
+                                                You are in offline mode. Some features may be limited.
+                                            </div>
+                                        `;
+                                        
+                                        initApp();
+                                    } else {
+                                        // Create minimal user data for offline use
+                                        const minimalData = {
+                                            name: u.email,
+                                            email: u.email,
+                                            role: 'user',
+                                            status: 'active',
+                                            balance: 0,
+                                            referrals: 0,
+                                            commissionRate: 0.15,
+                                            twoFA: false,
+                                            enrolled: false,
+                                            whatsappNumber: '',
+                                            enrollmentDate: null
+                                        };
+                                        userCache[u.uid] = minimalData;
+                                        isAdmin = false;
+                                        
+                                        // Cache user data for offline access
+                                        localStorage.setItem('cachedUser', JSON.stringify({
+                                            uid: u.uid,
+                                            ...minimalData
+                                        }));
+                                        
+                                        initApp();
+                                    }
+                                })
+                                .catch(err => {
+                                    console.error("Auth state error:", err);
+                                    // Show error message
+                                    document.getElementById('content').innerHTML = `
+                                        <div class="alert danger">
+                                            <i class="fas fa-exclamation-circle"></i> 
+                                            Error loading user data: ${err.message}
+                                        </div>
+                                    `;
+                                });
                         });
                 }
             });
@@ -1107,29 +1270,6 @@
             isAdmin ? loadAdminTab(tab) : loadUserTab(tab);
         }
 
-        // Admin Functions
-        function loadAdminTab(tab) {
-            switch(tab) {
-                case 'Overview': return adminOverview();
-                case 'Tokens': return adminTokens();
-                case 'Users': return adminUsers();
-                case 'Enrollments': return adminEnrollments();
-                case 'Withdrawals': return adminWithdrawals();
-                case 'Settings': return adminSettings();
-                case 'Content': return adminContent();
-            }
-        }
-
-        // User Functions
-        function loadUserTab(tab) {
-            switch(tab) {
-                case 'Dashboard': return userDashboard();
-                case 'Referrals': return userReferrals();
-                case 'Withdrawals': return userWithdrawals();
-                case 'Account': return userAccount();
-            }
-        }
-
         function userDashboard() {
             const c = document.getElementById('content');
             
@@ -1176,57 +1316,72 @@
                     </div>
                 `;
                 
-                // Load enrollment count
-                if (!offlineMode) {
-                    const enrollmentsQuery = db.collection('users').where('enrolled', '==', true);
-                    enrollmentsQuery.get()
-                        .then(snap => {
-                            document.getElementById('enrollment-count').textContent = snap.size;
-                            document.getElementById('enrolled-count').textContent = snap.size;
-                        })
-                        .catch(err => {
-                            console.error("Error loading enrollment count:", err);
-                            document.getElementById('enrollment-count').textContent = "Error";
-                            document.getElementById('enrolled-count').textContent = "Error";
-                        });
-                } else {
-                    document.getElementById('enrollment-count').textContent = "Offline";
-                    document.getElementById('enrolled-count').textContent = "Offline";
-                }
+                // Load enrollment count with offline support
+                const enrollmentsQuery = db.collection('users').where('enrolled', '==', true);
                 
-                // Load announcement
-                if (!offlineMode) {
-                    const announcementRef = db.collection('content').doc('announcement');
-                    announcementRef.get()
-                        .then(doc => {
-                            if (doc.exists) {
-                                document.getElementById('announcement-content').innerHTML = doc.data().text || '<p>No announcements yet.</p>';
-                            }
-                        })
-                        .catch(err => {
-                            console.error("Error loading announcement:", err);
-                            document.getElementById('announcement-content').innerHTML = '<p>Error loading announcement</p>';
-                        });
-                } else {
-                    document.getElementById('announcement-content').innerHTML = '<div class="alert info">Offline mode - content unavailable</div>';
-                }
+                // First try to get from network
+                enrollmentsQuery.get({ source: 'server' })
+                    .then(snap => {
+                        document.getElementById('enrollment-count').textContent = snap.size;
+                        document.getElementById('enrolled-count').textContent = snap.size;
+                    })
+                    .catch(err => {
+                        // If network fails, try cache
+                        enrollmentsQuery.get({ source: 'cache' })
+                            .then(snap => {
+                                document.getElementById('enrollment-count').textContent = snap.size;
+                                document.getElementById('enrolled-count').textContent = snap.size;
+                            })
+                            .catch(err => {
+                                console.error("Error loading enrollment count:", err);
+                                document.getElementById('enrollment-count').textContent = "N/A";
+                                document.getElementById('enrolled-count').textContent = "N/A";
+                            });
+                    });
                 
-                // Load video
-                if (!offlineMode) {
-                    const videoRef = db.collection('content').doc('video');
-                    videoRef.get()
-                        .then(doc => {
-                            if (doc.exists && doc.data().url) {
-                                renderVideo(doc.data().url);
-                            }
-                        })
-                        .catch(err => {
-                            console.error("Error loading video:", err);
-                            document.getElementById('video-content').innerHTML = '<p>Error loading video</p>';
-                        });
-                } else {
-                    document.getElementById('video-content').innerHTML = '<div class="alert info">Offline mode - video unavailable</div>';
-                }
+                // Load announcement with offline support
+                const announcementRef = db.collection('content').doc('announcement');
+                
+                announcementRef.get({ source: 'server' })
+                    .then(doc => {
+                        if (doc.exists) {
+                            document.getElementById('announcement-content').innerHTML = doc.data().text || '<p>No announcements yet.</p>';
+                        }
+                    })
+                    .catch(err => {
+                        announcementRef.get({ source: 'cache' })
+                            .then(doc => {
+                                if (doc.exists) {
+                                    document.getElementById('announcement-content').innerHTML = doc.data().text || '<p>No announcements yet.</p>';
+                                }
+                            })
+                            .catch(err => {
+                                console.error("Error loading announcement:", err);
+                                document.getElementById('announcement-content').innerHTML = '<p>Error loading announcement</p>';
+                            });
+                    });
+                
+                // Load video with offline support
+                const videoRef = db.collection('content').doc('video');
+                
+                videoRef.get({ source: 'server' })
+                    .then(doc => {
+                        if (doc.exists && doc.data().url) {
+                            renderVideo(doc.data().url);
+                        }
+                    })
+                    .catch(err => {
+                        videoRef.get({ source: 'cache' })
+                            .then(doc => {
+                                if (doc.exists && doc.data().url) {
+                                    renderVideo(doc.data().url);
+                                }
+                            })
+                            .catch(err => {
+                                console.error("Error loading video:", err);
+                                document.getElementById('video-content').innerHTML = '<p>Error loading video</p>';
+                            });
+                    });
                 
                 function renderVideo(url) {
                     let embedHtml = '';
@@ -1251,27 +1406,37 @@
                     document.getElementById('video-content').innerHTML = embedHtml;
                 }
                 
-                // Load downloadable file
-                if (!offlineMode) {
-                    const fileRef = db.collection('content').doc('file');
-                    fileRef.get()
-                        .then(doc => {
-                            if (doc.exists) {
-                                const data = doc.data();
-                                document.getElementById('download-content').innerHTML = `
-                                    <a href="${data.url}" class="download-btn" target="_blank">
-                                        <i class="fas fa-download"></i> Download ${data.name}
-                                    </a>
-                                `;
-                            }
-                        })
-                        .catch(err => {
-                            console.error("Error loading file:", err);
-                            document.getElementById('download-content').innerHTML = '<p>Error loading file</p>';
-                        });
-                } else {
-                    document.getElementById('download-content').innerHTML = '<div class="alert info">Offline mode - file unavailable</div>';
-                }
+                // Load downloadable file with offline support
+                const fileRef = db.collection('content').doc('file');
+                
+                fileRef.get({ source: 'server' })
+                    .then(doc => {
+                        if (doc.exists) {
+                            const data = doc.data();
+                            document.getElementById('download-content').innerHTML = `
+                                <a href="${data.url}" class="download-btn" target="_blank">
+                                    <i class="fas fa-download"></i> Download ${data.name}
+                                </a>
+                            `;
+                        }
+                    })
+                    .catch(err => {
+                        fileRef.get({ source: 'cache' })
+                            .then(doc => {
+                                if (doc.exists) {
+                                    const data = doc.data();
+                                    document.getElementById('download-content').innerHTML = `
+                                        <a href="${data.url}" class="download-btn" target="_blank">
+                                            <i class="fas fa-download"></i> Download ${data.name}
+                                        </a>
+                                    `;
+                                }
+                            })
+                            .catch(err => {
+                                console.error("Error loading file:", err);
+                                document.getElementById('download-content').innerHTML = '<p>Error loading file</p>';
+                            });
+                    });
                 
                 return;
             }
@@ -1338,37 +1503,36 @@
                 
                 document.getElementById('twofa-toggle').onchange = () => {
                     const on = document.getElementById('twofa-toggle').checked;
-                    if (!offlineMode) {
-                        db.collection('users').doc(currentUser.uid).update({ twoFA: on }).then(() => {
-                            alert(`Two-Factor Authentication ${on ? 'enabled' : 'disabled'}`);
-                        });
-                    } else {
-                        alert('You are offline. Changes will sync when online.');
-                    }
+                    db.collection('users').doc(currentUser.uid).update({ twoFA: on }).then(() => {
+                        alert(`Two-Factor Authentication ${on ? 'enabled' : 'disabled'}`);
+                    });
                 };
             }
             
-            // Load recent activity
+            // Load recent activity with offline support
             try {
-                if (!offlineMode) {
-                    const logsRef = db.collection('logs')
-                        .where('uid', '==', currentUser.uid)
-                        .orderBy('timestamp', 'desc')
-                        .limit(5);
-                    
-                    logsRef.get()
-                        .then(snap => {
-                            buildActivityTable(snap);
-                        })
-                        .catch(err => {
-                            console.error("Error loading recent activity:", err);
-                            document.getElementById('user-activity').innerHTML = 
-                                '<div class="alert info">Error loading recent activity</div>';
-                        });
-                } else {
-                    document.getElementById('user-activity').innerHTML = 
-                        '<div class="alert info">Offline mode - recent activity unavailable</div>';
-                }
+                const logsRef = db.collection('logs')
+                    .where('uid', '==', currentUser.uid)
+                    .orderBy('timestamp', 'desc')
+                    .limit(5);
+                
+                // First try to get from network
+                logsRef.get({ source: 'server' })
+                    .then(snap => {
+                        buildActivityTable(snap);
+                    })
+                    .catch(err => {
+                        // If network fails, try cache
+                        logsRef.get({ source: 'cache' })
+                            .then(snap => {
+                                buildActivityTable(snap);
+                            })
+                            .catch(err => {
+                                console.error("Error loading recent activity:", err);
+                                document.getElementById('user-activity').innerHTML = 
+                                    '<div class="alert info">Offline mode - recent activity not available</div>';
+                            });
+                    });
             } catch (e) {
                 document.getElementById('user-activity').innerHTML = 
                     '<div class="alert info">Error loading recent activity</div>';
@@ -1424,24 +1588,18 @@
                 return;
             }
             
-            if (offlineMode) {
-                msgEl.innerText = 'You are offline. Cannot verify token.';
-                msgEl.className = 'alert danger';
-                msgEl.style.display = 'block';
-                return;
-            }
-            
             msgEl.innerText = 'Verifying token...';
             msgEl.className = 'alert info';
             msgEl.style.display = 'block';
             
-            // Check token in Firestore
+            // Check token in Firestore with offline support
             const tokensRef = db.collection('tokens')
                 .where('token', '==', token)
                 .where('status', '==', 'unused')
                 .limit(1);
             
-            tokensRef.get()
+            // First try to get from network
+            tokensRef.get({ source: 'server' })
                 .then(snap => {
                     if (snap.empty) {
                         throw new Error('Invalid or already used token');
@@ -1479,8 +1637,84 @@
                     }, 2000);
                 })
                 .catch(err => {
-                    msgEl.innerText = 'Error: ' + err.message;
-                    msgEl.className = 'alert danger';
+                    // If network fails, try cache
+                    tokensRef.get({ source: 'cache' })
+                        .then(snap => {
+                            if (snap.empty) {
+                                throw new Error('Invalid or already used token');
+                            }
+                            
+                            const tokenDoc = snap.docs[0];
+                            
+                            // For offline, we can't update documents, so show message
+                            msgEl.innerText = 'Enrollment will complete when online. You can use the app in offline mode.';
+                            msgEl.className = 'alert info';
+                            
+                            // Update local cache immediately
+                            userCache[currentUser.uid].enrolled = true;
+                            userCache[currentUser.uid].whatsappNumber = whatsappNumber;
+                            userCache[currentUser.uid].enrollmentDate = new Date();
+                            
+                            // Queue the update for when online
+                            const updates = {
+                                token: {
+                                    id: tokenDoc.id,
+                                    data: {
+                                        status: 'used',
+                                        usedBy: currentUser.uid,
+                                        usedAt: firebase.firestore.FieldValue.serverTimestamp()
+                                    }
+                                },
+                                user: {
+                                    id: currentUser.uid,
+                                    data: {
+                                        enrolled: true,
+                                        whatsappNumber: whatsappNumber,
+                                        enrollmentDate: firebase.firestore.FieldValue.serverTimestamp()
+                                    }
+                                }
+                            };
+                            
+                            // Save to local storage for later processing
+                            const pendingUpdates = JSON.parse(localStorage.getItem('pendingUpdates') || '[]');
+                            pendingUpdates.push(updates);
+                            localStorage.setItem('pendingUpdates', JSON.stringify(pendingUpdates));
+                            
+                            // Process when online
+                            window.addEventListener('online', () => {
+                                processPendingUpdates();
+                            });
+                        })
+                        .catch(err => {
+                            msgEl.innerText = 'Error: ' + err.message;
+                            msgEl.className = 'alert danger';
+                        });
+                });
+        }
+        
+        function processPendingUpdates() {
+            const pendingUpdates = JSON.parse(localStorage.getItem('pendingUpdates') || '[]');
+            if (pendingUpdates.length === 0) return;
+            
+            const batch = db.batch();
+            
+            pendingUpdates.forEach(update => {
+                if (update.token) {
+                    const tokenRef = db.collection('tokens').doc(update.token.id);
+                    batch.update(tokenRef, update.token.data);
+                }
+                if (update.user) {
+                    const userRef = db.collection('users').doc(update.user.id);
+                    batch.update(userRef, update.user.data);
+                }
+            });
+            
+            batch.commit()
+                .then(() => {
+                    localStorage.removeItem('pendingUpdates');
+                })
+                .catch(err => {
+                    console.error("Error processing pending updates:", err);
                 });
         }
 
@@ -1491,6 +1725,9 @@
             if (refCode) {
                 localStorage.setItem('referralCode', refCode);
             }
+            
+            // Process any pending updates when online
+            window.addEventListener('online', processPendingUpdates);
         });
     </script>
 </body>
