@@ -9,9 +9,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-functions.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
-    <!-- External configuration files -->
+    <!-- External configuration file -->
     <script src="configuration.js"></script>
     <style>
         :root {
@@ -523,6 +522,35 @@
             margin: 0;
         }
 
+        /* Connection status indicator */
+        .connection-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .connection-status.online {
+            background: var(--success);
+            color: white;
+        }
+        
+        .connection-status.offline {
+            background: var(--danger);
+            color: white;
+        }
+        
+        .connection-status i {
+            margin-right: 8px;
+        }
+
         /* Responsive adjustments */
         @media (max-width: 768px) {
             .tabs {
@@ -579,6 +607,11 @@
     </style>
 </head>
 <body>
+    <!-- Connection Status Indicator -->
+    <div id="connection-status" class="connection-status online">
+        <i class="fas fa-wifi"></i> Online
+    </div>
+    
     <!-- Auth Screen -->
     <div id="auth-screen" class="container">
         <div class="card" style="max-width:500px;margin:40px auto;">
@@ -706,48 +739,54 @@
         // Initialize Firebase with configuration from external file
         firebase.initializeApp(firebaseConfig);
         
-        // Enable offline persistence with error handling
-        firebase.firestore().enablePersistence()
-          .catch((err) => {
-            if (err.code == 'failed-precondition') {
-              console.log("Persistence failed - multiple tabs open");
-            } else if (err.code == 'unimplemented') {
-              console.log("Persistence not available in this browser");
-            }
-          });
-        
         const auth = firebase.auth();
         const db = firebase.firestore();
         const storage = firebase.storage();
-        const functions = firebase.functions();
-        const logs = db.collection('logs');
         
         let currentUser = null;
         let isAdmin = false;
         let loadingStates = {};
         let userCache = {};
+        let offlineMode = false;
+        let connectionStatusElement = document.getElementById('connection-status');
 
-        // Password visibility toggle
-        document.getElementById('password-toggle').addEventListener('click', function() {
-            const passwordInput = document.getElementById('login-password');
-            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-            passwordInput.setAttribute('type', type);
-            this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize event listeners
+            initEventListeners();
+            
+            // Set up auth state listener
+            setupAuthStateListener();
+            
+            // Set up connection status listener
+            setupConnectionStatusListener();
         });
+
+        function initEventListeners() {
+            // Password visibility toggle
+            document.getElementById('password-toggle').addEventListener('click', function() {
+                togglePasswordVisibility('login-password', this);
+            });
+            
+            document.getElementById('reg-password-toggle').addEventListener('click', function() {
+                togglePasswordVisibility('reg-password', this);
+            });
+            
+            document.getElementById('reg-confirm-password-toggle').addEventListener('click', function() {
+                togglePasswordVisibility('reg-confirm-password', this);
+            });
+
+            // Form switching
+            document.getElementById('to-login').addEventListener('click', () => switchForms('login'));
+            document.getElementById('to-register').addEventListener('click', () => switchForms('register'));
+        }
         
-        document.getElementById('reg-password-toggle').addEventListener('click', function() {
-            const passwordInput = document.getElementById('reg-password');
+        function togglePasswordVisibility(inputId, toggleElement) {
+            const passwordInput = document.getElementById(inputId);
             const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
             passwordInput.setAttribute('type', type);
-            this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
-        });
-        
-        document.getElementById('reg-confirm-password-toggle').addEventListener('click', function() {
-            const passwordInput = document.getElementById('reg-confirm-password');
-            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-            passwordInput.setAttribute('type', type);
-            this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
-        });
+            toggleElement.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+        }
 
         // Modal functions
         function openModal(id) {
@@ -764,11 +803,30 @@
             document.getElementById('reset-email').value = '';
             openModal('passwordResetModal');
         }
+        
+        // Connection status monitoring
+        function setupConnectionStatusListener() {
+            // Check initial status
+            updateConnectionStatus();
+            
+            // Listen for online/offline events
+            window.addEventListener('online', updateConnectionStatus);
+            window.addEventListener('offline', updateConnectionStatus);
+        }
+        
+        function updateConnectionStatus() {
+            if (navigator.onLine) {
+                offlineMode = false;
+                connectionStatusElement.className = 'connection-status online';
+                connectionStatusElement.innerHTML = '<i class="fas fa-wifi"></i> Online';
+            } else {
+                offlineMode = true;
+                connectionStatusElement.className = 'connection-status offline';
+                connectionStatusElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Offline';
+            }
+        }
 
         // UI toggles
-        document.getElementById('to-login').onclick = () => switchForms('login');
-        document.getElementById('to-register').onclick = () => switchForms('register');
-        
         function switchForms(mode) {
             document.getElementById('to-login').classList.toggle('active', mode === 'login');
             document.getElementById('to-register').classList.toggle('active', mode === 'register');
@@ -966,39 +1024,20 @@
                     currentUser = u;
                     
                     // Get user data from Firestore
-                    db.collection('users').doc(u.uid).get()
-                    .then(doc => {
-                        if (doc.exists) {
-                            const data = doc.data();
-                            userCache[u.uid] = data;
-                            isAdmin = data.role === 'admin';
-                            initApp();
-                        } else {
-                            // Create minimal user data
-                            const minimalData = {
-                                name: u.email,
-                                email: u.email,
-                                role: 'user',
-                                status: 'active',
-                                balance: 0,
-                                referrals: 0,
-                                commissionRate: 0.15,
-                                twoFA: false,
-                                enrolled: false,
-                                whatsappNumber: '',
-                                enrollmentDate: null
-                            };
-                            userCache[u.uid] = minimalData;
-                            isAdmin = false;
-                            initApp();
-                            
-                            // Save to Firestore
-                            db.collection('users').doc(u.uid).set(minimalData);
-                        }
-                    })
-                    .catch(err => {
-                        console.error("Auth state error:", err);
-                    });
+                    const userRef = db.collection('users').doc(u.uid);
+                    
+                    userRef.get()
+                        .then(doc => {
+                            if (doc.exists) {
+                                const data = doc.data();
+                                userCache[u.uid] = data;
+                                isAdmin = data.role === 'admin';
+                                initApp();
+                            }
+                        })
+                        .catch(err => {
+                            console.error("Error loading user data:", err);
+                        });
                 }
             });
         }
@@ -1081,725 +1120,6 @@
             }
         }
 
-        function adminOverview() {
-            const c = document.getElementById('content');
-            c.innerHTML = `
-                <h1 class="page-title"><i class="fas fa-tachometer-alt"></i> System Overview</h1>
-                <div class="grid">
-                    <div class="stat-card">
-                        <div class="icon users"><i class="fas fa-users"></i></div>
-                        <h3 id="stat-users">0</h3>
-                        <p>Total Users</p>
-                    </div>
-                    <div class="stat-card">
-                        <div class="icon earnings"><i class="fas fa-chart-line"></i></div>
-                        <h3 id="stat-earnings">$0</h3>
-                        <p>Total Earnings</p>
-                    </div>
-                    <div class="stat-card">
-                        <div class="icon pending"><i class="fas fa-clock"></i></div>
-                        <h3 id="stat-pending">$0</h3>
-                        <p>Pending Withdrawals</p>
-                    </div>
-                    <div class="stat-card">
-                        <div class="icon tokens"><i class="fas fa-key"></i></div>
-                        <h3 id="stat-enrollments">0</h3>
-                        <p>Active Enrollments</p>
-                    </div>
-                </div>
-                
-                <div class="section">
-                    <h2 class="section-title"><i class="fas fa-exclamation-circle"></i> Recent Activities</h2>
-                    <div id="recent-activities"></div>
-                </div>
-            `;
-            
-            // Live stats from Firestore
-            db.collection('users').onSnapshot(snap => {
-                document.getElementById('stat-users').textContent = snap.size;
-            });
-            
-            db.collection('transactions').onSnapshot(snap => {
-                let earnings = 0;
-                let pending = 0;
-                
-                snap.forEach(doc => {
-                    const t = doc.data();
-                    if (t.type === 'earn') earnings += t.amount;
-                    if (t.status === 'pending') pending += t.amount;
-                });
-                
-                document.getElementById('stat-earnings').textContent = '$' + earnings.toFixed(2);
-                document.getElementById('stat-pending').textContent = '$' + pending.toFixed(2);
-            });
-            
-            db.collection('users').where('enrolled', '==', true).onSnapshot(snap => {
-                document.getElementById('stat-enrollments').textContent = snap.size;
-            });
-            
-            logs.orderBy('timestamp', 'desc').limit(10).onSnapshot(snap => {
-                let html = '<table class="table"><tr><th>User</th><th>Action</th><th>Time</th></tr>';
-                
-                if (snap.empty) {
-                    html = '<div class="alert info">No recent activities found</div>';
-                } else {
-                    snap.forEach(doc => {
-                        const d = doc.data();
-                        html += `
-                            <tr>
-                                <td>${d.uid}</td>
-                                <td>${d.action}</td>
-                                <td>${d.timestamp?.toDate().toLocaleString() || '-'}</td>
-                            </tr>
-                        `;
-                    });
-                    html += '</table>';
-                }
-                
-                document.getElementById('recent-activities').innerHTML = html;
-            });
-        }
-
-        function adminTokens() {
-            const c = document.getElementById('content');
-            c.innerHTML = `
-                <h1 class="page-title"><i class="fas fa-key"></i> Enrollment Tokens</h1>
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-plus-circle"></i> Generate Tokens</h2>
-                    <div style="display: flex; gap: 15px; margin-bottom: 20px;">
-                        <button onclick="adminCreateToken('one-time')"><i class="fas fa-key"></i> One-Time Token</button>
-                        <button onclick="adminCreateToken('reusable')"><i class="fas fa-redo"></i> Reusable Token</button>
-                        <button onclick="adminBulkGenerate()"><i class="fas fa-bolt"></i> Bulk Generate</button>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-list"></i> Token List</h2>
-                    <div style="margin-bottom: 15px;">
-                        <label>Filter: </label>
-                        <select id="token-filter" style="width: auto; display: inline-block; margin-left: 10px;">
-                            <option value="all">All Tokens</option>
-                            <option value="unused">Unused Only</option>
-                            <option value="used">Used Only</option>
-                        </select>
-                    </div>
-                    <div id="tok-table"></div>
-                </div>
-            `;
-            
-            document.getElementById('token-filter').onchange = adminRefreshTokens;
-            adminRefreshTokens();
-        }
-        
-        function adminCreateToken(type) {
-            const tok = Math.random().toString(36).substring(2, 14).toUpperCase();
-            db.collection('tokens').add({
-                token: tok,
-                type: type,
-                status: 'unused',
-                created: firebase.firestore.FieldValue.serverTimestamp(),
-                createdBy: currentUser.uid
-            }).then(() => {
-                console.log("Token created:", tok);
-            }).catch(err => {
-                alert('Error creating token: ' + err.message);
-            });
-        }
-        
-        function adminBulkGenerate() {
-            const count = parseInt(prompt('How many tokens to generate? (1-100)', '5'), 10);
-            if (isNaN(count) || count < 1 || count > 100) return;
-            
-            const batch = db.batch();
-            for (let i = 0; i < count; i++) {
-                const ref = db.collection('tokens').doc();
-                batch.set(ref, {
-                    token: Math.random().toString(36).substring(2, 14).toUpperCase(),
-                    type: 'one-time',
-                    status: 'unused',
-                    created: firebase.firestore.FieldValue.serverTimestamp(),
-                    createdBy: currentUser.uid
-                });
-            }
-            
-            batch.commit().catch(err => {
-                alert('Error generating tokens: ' + err.message);
-            });
-        }
-        
-        function adminRefreshTokens() {
-            const filter = document.getElementById('token-filter').value;
-            let query = db.collection('tokens').orderBy('created', 'desc');
-            
-            if (filter !== 'all') {
-                query = query.where('status', '==', filter);
-            }
-            
-            query.onSnapshot(snap => {
-                let html = `
-                    <table class="table">
-                        <tr>
-                            <th>Token</th>
-                            <th>Type</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th>Used By</th>
-                            <th>Actions</th>
-                        </tr>
-                `;
-                
-                if (snap.empty) {
-                    html = '<tr><td colspan="6" style="text-align:center;">No tokens found</td></tr>';
-                } else {
-                    snap.forEach(doc => {
-                        const d = doc.data();
-                        html += `
-                            <tr>
-                                <td><code>${d.token}</code></td>
-                                <td>${d.type}</td>
-                                <td><span class="badge ${d.status === 'used' ? 'success' : 'info'}">${d.status}</span></td>
-                                <td>${d.created?.toDate().toLocaleString() || '-'}</td>
-                                <td>${d.usedBy || '-'}</td>
-                                <td>
-                                    <button class="danger" onclick="adminDeleteToken('${doc.id}')">
-                                        <i class="fas fa-trash"></i> Delete
-                                    </button>
-                                </td>
-                            </tr>
-                        `;
-                    });
-                }
-                
-                html += '</table>';
-                document.getElementById('tok-table').innerHTML = html;
-            });
-        }
-        
-        function adminDeleteToken(id) {
-            if (confirm('Are you sure you want to delete this token?')) {
-                db.collection('tokens').doc(id).delete().catch(err => {
-                    alert('Error deleting token: ' + err.message);
-                });
-            }
-        }
-
-        function adminUsers() {
-            const c = document.getElementById('content');
-            c.innerHTML = `
-                <h1 class="page-title"><i class="fas fa-users"></i> User Management</h1>
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-search"></i> Search Users</h2>
-                    <input id="user-search" placeholder="Search by name or email">
-                </div>
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-list"></i> User List</h2>
-                    <div id="user-table"></div>
-                </div>
-            `;
-            
-            document.getElementById('user-search').addEventListener('input', adminRefreshUsers);
-            adminRefreshUsers();
-        }
-        
-        function adminRefreshUsers() {
-            const searchTerm = document.getElementById('user-search').value.toLowerCase();
-            
-            db.collection('users').orderBy('joined', 'desc').onSnapshot(snap => {
-                let html = `
-                    <table class="table">
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Joined</th>
-                            <th>Status</th>
-                            <th>Enrolled</th>
-                            <th>Actions</th>
-                        </tr>
-                `;
-                
-                if (snap.empty) {
-                    html = '<tr><td colspan="6" style="text-align:center;">No users found</td></tr>';
-                } else {
-                    snap.forEach(doc => {
-                        const d = doc.data();
-                        if (searchTerm && !d.name.toLowerCase().includes(searchTerm) && !d.email.toLowerCase().includes(searchTerm)) {
-                            return;
-                        }
-                        
-                        html += `
-                            <tr>
-                                <td>${d.name}</td>
-                                <td>${d.email}</td>
-                                <td>${d.joined?.toDate().toLocaleDateString() || '-'}</td>
-                                <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
-                                <td><span class="badge ${d.enrolled ? 'success' : 'warning'}">${d.enrolled ? 'Yes' : 'No'}</span></td>
-                                <td>
-                                    <button onclick="adminToggleUserStatus('${doc.id}', '${d.status}')">
-                                        ${d.status === 'active' ? 'Suspend' : 'Activate'}
-                                    </button>
-                                </td>
-                            </tr>
-                        `;
-                    });
-                }
-                
-                html += '</table>';
-                document.getElementById('user-table').innerHTML = html;
-            });
-        }
-        
-        function adminToggleUserStatus(uid, currentStatus) {
-            const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
-            
-            db.collection('users').doc(uid).update({ status: newStatus })
-                .catch(err => {
-                    alert('Error updating user status: ' + err.message);
-                });
-        }
-
-        function adminEnrollments() {
-            const c = document.getElementById('content');
-            c.innerHTML = `
-                <h1 class="page-title"><i class="fas fa-user-plus"></i> Enrollment Management</h1>
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-filter"></i> Filter Enrollments</h2>
-                    <div style="display: flex; gap: 15px;">
-                        <select id="enrollment-filter" style="flex: 1;">
-                            <option value="all">All Enrollments</option>
-                            <option value="today">Today</option>
-                            <option value="week">This Week</option>
-                            <option value="month">This Month</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-list"></i> Enrolled Users</h2>
-                    <div id="enrollment-table"></div>
-                </div>
-            `;
-            
-            document.getElementById('enrollment-filter').onchange = adminRefreshEnrollments;
-            adminRefreshEnrollments();
-        }
-        
-        function adminRefreshEnrollments() {
-            const filter = document.getElementById('enrollment-filter').value;
-            let query = db.collection('users').where('enrolled', '==', true).orderBy('enrollmentDate', 'desc');
-            
-            if (filter === 'today') {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                query = query.where('enrollmentDate', '>=', today);
-            } else if (filter === 'week') {
-                const weekAgo = new Date();
-                weekAgo.setDate(weekAgo.getDate() - 7);
-                query = query.where('enrollmentDate', '>=', weekAgo);
-            } else if (filter === 'month') {
-                const monthAgo = new Date();
-                monthAgo.setMonth(monthAgo.getMonth() - 1);
-                query = query.where('enrollmentDate', '>=', monthAgo);
-            }
-            
-            query.onSnapshot(snap => {
-                let html = `
-                    <table class="table">
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>WhatsApp</th>
-                            <th>Enrollment Date</th>
-                            <th>Status</th>
-                        </tr>
-                `;
-                
-                if (snap.empty) {
-                    html = '<tr><td colspan="5" style="text-align:center;">No enrollments found</td></tr>';
-                } else {
-                    snap.forEach(doc => {
-                        const d = doc.data();
-                        html += `
-                            <tr>
-                                <td>${d.name}</td>
-                                <td>${d.email}</td>
-                                <td>${d.whatsappNumber || '-'}</td>
-                                <td>${d.enrollmentDate?.toDate().toLocaleString() || '-'}</td>
-                                <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
-                            </tr>
-                        `;
-                    });
-                }
-                
-                html += '</table>';
-                document.getElementById('enrollment-table').innerHTML = html;
-            });
-        }
-
-        function adminWithdrawals() {
-            const c = document.getElementById('content');
-            c.innerHTML = `
-                <h1 class="page-title"><i class="fas fa-money-check-alt"></i> Withdrawal Requests</h1>
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-filter"></i> Filter</h2>
-                    <div style="display: flex; gap: 15px;">
-                        <select id="wd-status" style="flex: 1;">
-                            <option value="all">All Statuses</option>
-                            <option value="pending">Pending</option>
-                            <option value="approved">Approved</option>
-                            <option value="rejected">Rejected</option>
-                        </select>
-                        <input type="date" id="wd-date" style="flex: 1;">
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-list"></i> Requests</h2>
-                    <div id="wd-table"></div>
-                </div>
-            `;
-            
-            document.getElementById('wd-status').onchange = adminRefreshWithdrawals;
-            document.getElementById('wd-date').onchange = adminRefreshWithdrawals;
-            adminRefreshWithdrawals();
-        }
-        
-        function adminRefreshWithdrawals() {
-            const status = document.getElementById('wd-status').value;
-            const date = document.getElementById('wd-date').value;
-            
-            let query = db.collection('withdrawals').orderBy('requestedAt', 'desc');
-            
-            if (status !== 'all') {
-                query = query.where('status', '==', status);
-            }
-            
-            query.onSnapshot(snap => {
-                let html = `
-                    <table class="table">
-                        <tr>
-                            <th>User</th>
-                            <th>Amount</th>
-                            <th>Method</th>
-                            <th>Date</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                `;
-                
-                if (snap.empty) {
-                    html = '<tr><td colspan="6" style="text-align:center;">No withdrawal requests found</td></tr>';
-                } else {
-                    snap.forEach(doc => {
-                        const d = doc.data();
-                        const requestDate = d.requestedAt?.toDate();
-                        const dateStr = requestDate?.toLocaleDateString();
-                        
-                        if (date && requestDate?.toISOString().split('T')[0] !== date) {
-                            return;
-                        }
-                        
-                        html += `
-                            <tr>
-                                <td>${d.userName}</td>
-                                <td>$${d.amount.toFixed(2)}</td>
-                                <td>${d.method}</td>
-                                <td>${dateStr || '-'}</td>
-                                <td><span class="badge ${d.status === 'pending' ? 'warning' : d.status === 'approved' ? 'success' : 'danger'}">${d.status}</span></td>
-                                <td>
-                                    ${d.status === 'pending' ? `
-                                        <button class="success" onclick="adminProcessWithdrawal('${doc.id}', 'approved')">Approve</button>
-                                        <button class="danger" onclick="adminProcessWithdrawal('${doc.id}', 'rejected')">Reject</button>
-                                    ` : '-'}
-                                </td>
-                            </tr>
-                        `;
-                    });
-                }
-                
-                html += '</table>';
-                document.getElementById('wd-table').innerHTML = html;
-            });
-        }
-        
-        function adminProcessWithdrawal(id, action) {
-            if (confirm(`Are you sure you want to ${action} this withdrawal?`)) {
-                db.collection('withdrawals').doc(id).update({ 
-                    status: action,
-                    processedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    processedBy: currentUser.uid
-                })
-                .then(() => {
-                    if (action === 'approved') {
-                        // Update user's balance if approved
-                        db.collection('withdrawals').doc(id).get().then(doc => {
-                            const data = doc.data();
-                            db.collection('users').doc(data.userId).update({
-                                balance: firebase.firestore.FieldValue.increment(-data.amount)
-                            });
-                        });
-                    }
-                })
-                .catch(err => {
-                    alert('Error processing withdrawal: ' + err.message);
-                });
-            }
-        }
-
-        function adminSettings() {
-            const c = document.getElementById('content');
-            c.innerHTML = `
-                <h1 class="page-title"><i class="fas fa-cog"></i> System Settings</h1>
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-sliders-h"></i> General Settings</h2>
-                    <div class="form-row">
-                        <div>
-                            <label>System Currency</label>
-                            <select id="sys-currency">
-                                <option value="USD">US Dollar (USD)</option>
-                                <option value="EUR">Euro (EUR)</option>
-                                <option value="GBP">British Pound (GBP)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label>Session Timeout (minutes)</label>
-                            <input type="number" id="sys-timeout" min="5" max="120">
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div>
-                            <label>Maximum Commission (%)</label>
-                            <input type="number" id="sys-maxcom" min="0" max="50">
-                        </div>
-                        <div>
-                            <label>System Status</label>
-                            <select id="sys-status">
-                                <option value="active">Active</option>
-                                <option value="maintenance">Maintenance</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <button onclick="adminSaveSystemSettings()">Save Settings</button>
-                    <div id="sys-settings-message" class="alert" style="display:none;margin-top:15px;"></div>
-                </div>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-shield-alt"></i> Security Settings</h2>
-                    <div>
-                        <label>
-                            <input type="checkbox" id="sys-2fa"> 
-                            Require 2FA for all users
-                        </label>
-                    </div>
-                    <div>
-                        <label>
-                            <input type="checkbox" id="sys-pwd"> 
-                            Require strong passwords
-                        </label>
-                    </div>
-                </div>
-            `;
-            
-            // Load current system settings
-            db.collection('settings').doc('system').get().then(doc => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    document.getElementById('sys-currency').value = data.currency || 'USD';
-                    document.getElementById('sys-timeout').value = data.sessionTimeout || 30;
-                    document.getElementById('sys-maxcom').value = data.maxCommission || 30;
-                    document.getElementById('sys-status').value = data.status || 'active';
-                    document.getElementById('sys-2fa').checked = data.require2FA || false;
-                    document.getElementById('sys-pwd').checked = data.requireStrongPasswords || false;
-                }
-            });
-        }
-        
-        function adminSaveSystemSettings() {
-            const settings = {
-                currency: document.getElementById('sys-currency').value,
-                sessionTimeout: parseInt(document.getElementById('sys-timeout').value),
-                maxCommission: parseFloat(document.getElementById('sys-maxcom').value),
-                status: document.getElementById('sys-status').value,
-                require2FA: document.getElementById('sys-2fa').checked,
-                requireStrongPasswords: document.getElementById('sys-pwd').checked
-            };
-            
-            db.collection('settings').doc('system').set(settings)
-                .then(() => {
-                    const msgEl = document.getElementById('sys-settings-message');
-                    msgEl.textContent = 'System settings saved successfully!';
-                    msgEl.className = 'alert success';
-                    msgEl.style.display = 'block';
-                    
-                    setTimeout(() => {
-                        msgEl.style.display = 'none';
-                    }, 3000);
-                })
-                .catch(err => {
-                    const msgEl = document.getElementById('sys-settings-message');
-                    msgEl.textContent = 'Error saving settings: ' + err.message;
-                    msgEl.className = 'alert danger';
-                    msgEl.style.display = 'block';
-                });
-        }
-
-        function adminContent() {
-            const c = document.getElementById('content');
-            c.innerHTML = `
-                <h1 class="page-title"><i class="fas fa-file-alt"></i> Content Management</h1>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-bullhorn"></i> Announcements</h2>
-                    <textarea id="announcement-text" rows="5" placeholder="Enter announcement text"></textarea>
-                    <button onclick="saveAnnouncement()">Save Announcement</button>
-                    <div id="announcement-message" class="alert" style="display:none;margin-top:15px;"></div>
-                </div>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-video"></i> Video Content</h2>
-                    <input type="text" id="video-url" placeholder="YouTube or video URL">
-                    <button onclick="saveVideoUrl()">Save Video URL</button>
-                    <div id="video-message" class="alert" style="display:none;margin-top:15px;"></div>
-                </div>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-file-download"></i> Downloadable File</h2>
-                    <input type="file" id="file-upload">
-                    <button onclick="uploadFile()">Upload File</button>
-                    <div id="file-message" class="alert" style="display:none;margin-top:15px;"></div>
-                    <div id="current-file" style="margin-top:15px;"></div>
-                </div>
-            `;
-            
-            // Load current content
-            db.collection('content').doc('announcement').get().then(doc => {
-                if (doc.exists) {
-                    document.getElementById('announcement-text').value = doc.data().text || '';
-                }
-            });
-            
-            db.collection('content').doc('video').get().then(doc => {
-                if (doc.exists) {
-                    document.getElementById('video-url').value = doc.data().url || '';
-                }
-            });
-            
-            db.collection('content').doc('file').get().then(doc => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    document.getElementById('current-file').innerHTML = `
-                        <p>Current file: <strong>${data.name}</strong></p>
-                        <a href="${data.url}" class="download-btn" target="_blank">
-                            <i class="fas fa-download"></i> Download Current File
-                        </a>
-                    `;
-                }
-            });
-        }
-        
-        function saveAnnouncement() {
-            const text = document.getElementById('announcement-text').value;
-            const msgEl = document.getElementById('announcement-message');
-            
-            db.collection('content').doc('announcement').set({ text })
-                .then(() => {
-                    msgEl.textContent = 'Announcement saved successfully!';
-                    msgEl.className = 'alert success';
-                    msgEl.style.display = 'block';
-                    
-                    setTimeout(() => {
-                        msgEl.style.display = 'none';
-                    }, 3000);
-                })
-                .catch(err => {
-                    msgEl.textContent = 'Error saving announcement: ' + err.message;
-                    msgEl.className = 'alert danger';
-                    msgEl.style.display = 'block';
-                });
-        }
-        
-        function saveVideoUrl() {
-            const url = document.getElementById('video-url').value;
-            const msgEl = document.getElementById('video-message');
-            
-            if (!url) {
-                msgEl.textContent = 'Please enter a video URL';
-                msgEl.className = 'alert danger';
-                msgEl.style.display = 'block';
-                return;
-            }
-            
-            db.collection('content').doc('video').set({ url })
-                .then(() => {
-                    msgEl.textContent = 'Video URL saved successfully!';
-                    msgEl.className = 'alert success';
-                    msgEl.style.display = 'block';
-                    
-                    setTimeout(() => {
-                        msgEl.style.display = 'none';
-                    }, 3000);
-                })
-                .catch(err => {
-                    msgEl.textContent = 'Error saving video URL: ' + err.message;
-                    msgEl.className = 'alert danger';
-                    msgEl.style.display = 'block';
-                });
-        }
-        
-        function uploadFile() {
-            const fileInput = document.getElementById('file-upload');
-            const msgEl = document.getElementById('file-message');
-            
-            if (!fileInput.files || fileInput.files.length === 0) {
-                msgEl.textContent = 'Please select a file to upload';
-                msgEl.className = 'alert danger';
-                msgEl.style.display = 'block';
-                return;
-            }
-            
-            const file = fileInput.files[0];
-            const storageRef = storage.ref('downloads/' + file.name);
-            const uploadTask = storageRef.put(file);
-            
-            msgEl.textContent = 'Uploading file...';
-            msgEl.className = 'alert info';
-            msgEl.style.display = 'block';
-            
-            uploadTask.on('state_changed', 
-                (snapshot) => {
-                    // Progress monitoring can be added here
-                }, 
-                (error) => {
-                    msgEl.textContent = 'Upload failed: ' + error.message;
-                    msgEl.className = 'alert danger';
-                }, 
-                () => {
-                    uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
-                        db.collection('content').doc('file').set({
-                            name: file.name,
-                            url: downloadURL,
-                            uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
-                        })
-                        .then(() => {
-                            msgEl.textContent = 'File uploaded successfully!';
-                            msgEl.className = 'alert success';
-                            document.getElementById('current-file').innerHTML = `
-                                <p>Current file: <strong>${file.name}</strong></p>
-                                <a href="${downloadURL}" class="download-btn" target="_blank">
-                                    <i class="fas fa-download"></i> Download Current File
-                                </a>
-                            `;
-                        })
-                        .catch(err => {
-                            msgEl.textContent = 'Error saving file info: ' + err.message;
-                            msgEl.className = 'alert danger';
-                        });
-                    });
-                }
-            );
-        }
-
         // User Functions
         function loadUserTab(tab) {
             switch(tab) {
@@ -1857,60 +1177,84 @@
                 `;
                 
                 // Load enrollment count
-                db.collection('users').where('enrolled', '==', true).onSnapshot(snap => {
-                    document.getElementById('enrollment-count').textContent = snap.size;
-                    document.getElementById('enrolled-count').textContent = snap.size;
-                });
+                const enrollmentsQuery = db.collection('users').where('enrolled', '==', true);
+                enrollmentsQuery.get()
+                    .then(snap => {
+                        document.getElementById('enrollment-count').textContent = snap.size;
+                        document.getElementById('enrolled-count').textContent = snap.size;
+                    })
+                    .catch(err => {
+                        console.error("Error loading enrollment count:", err);
+                        document.getElementById('enrollment-count').textContent = "N/A";
+                        document.getElementById('enrolled-count').textContent = "N/A";
+                    });
                 
                 // Load announcement
-                db.collection('content').doc('announcement').onSnapshot(doc => {
-                    if (doc.exists) {
-                        document.getElementById('announcement-content').innerHTML = doc.data().text || '<p>No announcements yet.</p>';
-                    }
-                });
+                const announcementRef = db.collection('content').doc('announcement');
+                announcementRef.get()
+                    .then(doc => {
+                        if (doc.exists) {
+                            document.getElementById('announcement-content').innerHTML = doc.data().text || '<p>No announcements yet.</p>';
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Error loading announcement:", err);
+                        document.getElementById('announcement-content').innerHTML = '<p>Error loading announcement</p>';
+                    });
                 
                 // Load video
-                db.collection('content').doc('video').onSnapshot(doc => {
-                    if (doc.exists && doc.data().url) {
-                        const url = doc.data().url;
-                        let embedHtml = '';
-                        
-                        if (url.includes('youtube.com') || url.includes('youtu.be')) {
-                            // YouTube embed
-                            const videoId = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
-                            if (videoId && videoId[1]) {
-                                embedHtml = `
-                                    <div class="video-container">
-                                        <iframe src="https://www.youtube.com/embed/${videoId[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-                                    </div>
-                                `;
-                            } else {
-                                embedHtml = `<p><a href="${url}" target="_blank">Watch Video</a></p>`;
-                            }
+                const videoRef = db.collection('content').doc('video');
+                videoRef.get()
+                    .then(doc => {
+                        if (doc.exists && doc.data().url) {
+                            renderVideo(doc.data().url);
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Error loading video:", err);
+                        document.getElementById('video-content').innerHTML = '<p>Error loading video</p>';
+                    });
+                
+                function renderVideo(url) {
+                    let embedHtml = '';
+                    
+                    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                        // YouTube embed
+                        const videoId = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+                        if (videoId && videoId[1]) {
+                            embedHtml = `
+                                <div class="video-container">
+                                    <iframe src="https://www.youtube.com/embed/${videoId[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                                </div>
+                            `;
                         } else {
-                            // Generic video link
                             embedHtml = `<p><a href="${url}" target="_blank">Watch Video</a></p>`;
                         }
-                        
-                        document.getElementById('video-content').innerHTML = embedHtml;
                     } else {
-                        document.getElementById('video-content').innerHTML = '<p>No video available yet.</p>';
+                        // Generic video link
+                        embedHtml = `<p><a href="${url}" target="_blank">Watch Video</a></p>`;
                     }
-                });
+                    
+                    document.getElementById('video-content').innerHTML = embedHtml;
+                }
                 
                 // Load downloadable file
-                db.collection('content').doc('file').onSnapshot(doc => {
-                    if (doc.exists) {
-                        const data = doc.data();
-                        document.getElementById('download-content').innerHTML = `
-                            <a href="${data.url}" class="download-btn" target="_blank">
-                                <i class="fas fa-download"></i> Download ${data.name}
-                            </a>
-                        `;
-                    } else {
-                        document.getElementById('download-content').innerHTML = '<p>No file available for download yet.</p>';
-                    }
-                });
+                const fileRef = db.collection('content').doc('file');
+                fileRef.get()
+                    .then(doc => {
+                        if (doc.exists) {
+                            const data = doc.data();
+                            document.getElementById('download-content').innerHTML = `
+                                <a href="${data.url}" class="download-btn" target="_blank">
+                                    <i class="fas fa-download"></i> Download ${data.name}
+                                </a>
+                            `;
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Error loading file:", err);
+                        document.getElementById('download-content').innerHTML = '<p>Error loading file</p>';
+                    });
                 
                 return;
             }
@@ -1985,32 +1329,43 @@
             
             // Load recent activity
             try {
-                logs.where('uid', '==', currentUser.uid)
+                const logsRef = db.collection('logs')
+                    .where('uid', '==', currentUser.uid)
                     .orderBy('timestamp', 'desc')
-                    .limit(5)
-                    .get()
+                    .limit(5);
+                
+                logsRef.get()
                     .then(snap => {
-                        let html = '<table class="table"><tr><th>Action</th><th>Time</th></tr>';
-                        
-                        if (snap.empty) {
-                            html = '<p>No recent activity</p>';
-                        } else {
-                            snap.forEach(doc => {
-                                const d = doc.data();
-                                html += `
-                                    <tr>
-                                        <td>${d.action}</td>
-                                        <td>${d.timestamp.toDate().toLocaleString()}</td>
-                                    </tr>
-                                `;
-                            });
-                        }
-                        
-                        document.getElementById('user-activity').innerHTML = html;
+                        buildActivityTable(snap);
+                    })
+                    .catch(err => {
+                        console.error("Error loading recent activity:", err);
+                        document.getElementById('user-activity').innerHTML = 
+                            '<div class="alert info">Error loading recent activity</div>';
                     });
             } catch (e) {
                 document.getElementById('user-activity').innerHTML = 
-                    '<div class="alert info">Offline mode - recent activity not available</div>';
+                    '<div class="alert info">Error loading recent activity</div>';
+            }
+            
+            function buildActivityTable(snap) {
+                let html = '<table class="table"><tr><th>Action</th><th>Time</th></tr>';
+                
+                if (snap.empty) {
+                    html = '<p>No recent activity</p>';
+                } else {
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        html += `
+                            <tr>
+                                <td>${d.action}</td>
+                                <td>${d.timestamp.toDate().toLocaleString()}</td>
+                            </tr>
+                        `;
+                    });
+                }
+                
+                document.getElementById('user-activity').innerHTML = html;
             }
         }
 
@@ -2048,7 +1403,12 @@
             msgEl.style.display = 'block';
             
             // Check token in Firestore
-            db.collection('tokens').where('token', '==', token).where('status', '==', 'unused').limit(1).get()
+            const tokensRef = db.collection('tokens')
+                .where('token', '==', token)
+                .where('status', '==', 'unused')
+                .limit(1);
+            
+            tokensRef.get()
                 .then(snap => {
                     if (snap.empty) {
                         throw new Error('Invalid or already used token');
@@ -2091,446 +1451,8 @@
                 });
         }
 
-        function userReferrals() {
-            const c = document.getElementById('content');
-            c.innerHTML = `
-                <h1 class="page-title"><i class="fas fa-user-friends"></i> Referral Program</h1>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-link"></i> Your Referral Link</h2>
-                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                        <input type="text" id="referral-link" readonly style="flex: 1;">
-                        <button onclick="copyReferralLink()"><i class="fas fa-copy"></i> Copy</button>
-                    </div>
-                    
-                    <div class="alert info">
-                        <i class="fas fa-info-circle"></i> 
-                        Earn ${isAdmin ? '15%' : '10%'} commission for each successful referral
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-chart-line"></i> Referral Progress</h2>
-                    <p>Complete your referral goals to unlock higher commission rates</p>
-                    
-                    <div class="progress">
-                        <div id="ref-progress" class="progress-bar"></div>
-                    </div>
-                    <p id="ref-status" style="text-align: center; font-weight: 500;"></p>
-                </div>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-users"></i> Your Referrals</h2>
-                    <div id="ref-table"></div>
-                </div>
-            `;
-            
-            document.getElementById('referral-link').value = window.location.origin + '?ref=' + currentUser.uid;
-            
-            if (currentUser && userCache[currentUser.uid]) {
-                const d = userCache[currentUser.uid];
-                const have = d.referrals || 0;
-                const needed = 6;
-                const pct = Math.min((have / needed) * 100, 100);
-                
-                document.getElementById('ref-progress').style.width = `${pct}%`;
-                document.getElementById('ref-status').innerText = `Referrals: ${have}/${needed} (${Math.round(pct)}%)`;
-            }
-            
-            reloadReferralsTable();
-        }
-        
-        function copyReferralLink() {
-            const url = document.getElementById('referral-link').value;
-            navigator.clipboard.writeText(url).then(() => {
-                alert('Referral link copied to clipboard!');
-            });
-        }
-        
-        function reloadReferralsTable() {
-            const c = document.getElementById('ref-table');
-            try {
-                db.collection('users').where('ref', '==', currentUser.uid).get().then(q => {
-                    let html = '';
-                    
-                    if (q.empty) {
-                        html = '<div class="alert info"><i class="fas fa-info-circle"></i> You have no referrals yet</div>';
-                    } else {
-                        html = '<table class="table"><tr><th>Name</th><th>Email</th><th>Joined</th><th>Status</th></tr>';
-                        
-                        q.forEach(doc => {
-                            const d = doc.data();
-                            html += `
-                                <tr>
-                                    <td>${d.name}</td>
-                                    <td>${d.email}</td>
-                                    <td>${d.joined?.toDate().toLocaleDateString() || '-'}</td>
-                                    <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
-                                </tr>
-                            `;
-                        });
-                        
-                        html += '</table>';
-                    }
-                    
-                    c.innerHTML = html;
-                });
-            } catch (e) {
-                c.innerHTML = '<div class="alert info">Offline mode - referral data not available</div>';
-            }
-        }
-
-        function userWithdrawals() {
-            const c = document.getElementById('content');
-            c.innerHTML = `
-                <h1 class="page-title"><i class="fas fa-money-check-alt"></i> Withdraw Funds</h1>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-hand-holding-usd"></i> Request Withdrawal</h2>
-                    <p>Minimum withdrawal amount: $20</p>
-                    
-                    <div class="form-row">
-                        <div>
-                            <label>Amount ($)</label>
-                            <input type="number" id="wd-amount" min="20" step="0.01">
-                        </div>
-                        <div>
-                            <label>Payment Method</label>
-                            <select id="wd-method">
-                                <option value="paypal">PayPal</option>
-                                <option value="bank">Bank Transfer</option>
-                                <option value="crypto">Cryptocurrency</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div id="wd-details"></div>
-                    
-                    <button id="wd-request-btn" onclick="requestWithdrawal()">Request Withdrawal</button>
-                    <div id="wd-msg" class="alert" style="display: none; margin-top: 15px;"></div>
-                </div>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-history"></i> Withdrawal History</h2>
-                    <div id="wd-history"></div>
-                </div>
-            `;
-            
-            document.getElementById('wd-method').onchange = updatePaymentDetails;
-            updatePaymentDetails();
-            loadWithdrawalHistory();
-        }
-        
-        function updatePaymentDetails() {
-            const method = document.getElementById('wd-method').value;
-            let html = '';
-            
-            switch(method) {
-                case 'paypal':
-                    html = '<label>PayPal Email</label><input type="email" id="wd-account" placeholder="your@paypal.com">';
-                    break;
-                case 'bank':
-                    html = `
-                        <div class="form-row">
-                            <div>
-                                <label>Account Holder Name</label>
-                                <input type="text" id="wd-account-name" placeholder="Full name">
-                            </div>
-                            <div>
-                                <label>Account Number</label>
-                                <input type="text" id="wd-account-number" placeholder="Account number">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div>
-                                <label>Bank Name</label>
-                                <input type="text" id="wd-bank-name" placeholder="Bank name">
-                            </div>
-                            <div>
-                                <label>Routing Number</label>
-                                <input type="text" id="wd-routing" placeholder="Routing number">
-                            </div>
-                        </div>
-                    `;
-                    break;
-                case 'crypto':
-                    html = '<label>Wallet Address</label><input type="text" id="wd-wallet" placeholder="Your wallet address">';
-                    break;
-            }
-            
-            document.getElementById('wd-details').innerHTML = html;
-        }
-        
-        function requestWithdrawal() {
-            const amount = parseFloat(document.getElementById('wd-amount').value);
-            const method = document.getElementById('wd-method').value;
-            const msgEl = document.getElementById('wd-msg');
-            
-            if (!amount || amount < 20) {
-                msgEl.innerText = 'Minimum withdrawal amount is $20';
-                msgEl.className = 'alert danger';
-                msgEl.style.display = 'block';
-                return;
-            }
-            
-            setLoading('wd-request-btn', true);
-            msgEl.innerText = 'Processing your request...';
-            msgEl.className = 'alert info';
-            msgEl.style.display = 'block';
-            
-            let accountDetails = '';
-            switch(method) {
-                case 'paypal':
-                    accountDetails = document.getElementById('wd-account').value;
-                    break;
-                case 'bank':
-                    accountDetails = `
-                        ${document.getElementById('wd-account-name').value},
-                        ${document.getElementById('wd-account-number').value},
-                        ${document.getElementById('wd-bank-name').value}
-                    `;
-                    break;
-                case 'crypto':
-                    accountDetails = document.getElementById('wd-wallet').value;
-                    break;
-            }
-            
-            // Update balance in cache
-            if (currentUser && userCache[currentUser.uid]) {
-                userCache[currentUser.uid].balance = (userCache[currentUser.uid].balance || 0) - amount;
-            }
-            
-            db.collection('users').doc(currentUser.uid).get().then(doc => {
-                const userData = doc.data();
-                
-                return db.collection('withdrawals').add({
-                    userId: currentUser.uid,
-                    userName: userData.name,
-                    amount: amount,
-                    method: method,
-                    accountDetails: accountDetails,
-                    status: 'pending',
-                    requestedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-            })
-            .then(() => {
-                msgEl.innerText = 'Withdrawal request submitted successfully!';
-                msgEl.className = 'alert success';
-                
-                return db.collection('users').doc(currentUser.uid).update({
-                    balance: firebase.firestore.FieldValue.increment(-amount)
-                });
-            })
-            .then(() => {
-                loadWithdrawalHistory();
-            })
-            .catch(err => {
-                msgEl.innerText = 'Error: ' + err.message;
-                msgEl.className = 'alert danger';
-            })
-            .finally(() => {
-                setLoading('wd-request-btn', false);
-            });
-        }
-        
-        function loadWithdrawalHistory() {
-            const c = document.getElementById('wd-history');
-            try {
-                db.collection('withdrawals')
-                    .where('userId', '==', currentUser.uid)
-                    .orderBy('requestedAt', 'desc')
-                    .get()
-                    .then(q => {
-                        let html = '';
-                        
-                        if (q.empty) {
-                            html = '<p>No withdrawal history</p>';
-                        } else {
-                            html = '<table class="table"><tr><th>Amount</th><th>Method</th><th>Date</th><th>Status</th></tr>';
-                            
-                            q.forEach(doc => {
-                                const d = doc.data();
-                                html += `
-                                    <tr>
-                                        <td>$${d.amount.toFixed(2)}</td>
-                                        <td>${d.method}</td>
-                                        <td>${d.requestedAt.toDate().toLocaleDateString()}</td>
-                                        <td><span class="badge ${d.status === 'pending' ? 'warning' : d.status === 'approved' ? 'success' : 'danger'}">${d.status}</span></td>
-                                    </tr>
-                                `;
-                            });
-                            
-                            html += '</table>';
-                        }
-                        
-                        c.innerHTML = html;
-                    });
-            } catch (e) {
-                c.innerHTML = '<div class="alert info">Offline mode - withdrawal history not available</div>';
-            }
-        }
-
-        function userAccount() {
-            const c = document.getElementById('content');
-            c.innerHTML = `
-                <h1 class="page-title"><i class="fas fa-user-cog"></i> Account Settings</h1>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-user"></i> Profile Information</h2>
-                    <div class="form-row">
-                        <div>
-                            <label>Full Name</label>
-                            <input type="text" id="acc-name" placeholder="Your full name">
-                        </div>
-                        <div>
-                            <label>Phone Number</label>
-                            <input type="tel" id="acc-phone" placeholder="Your phone number">
-                        </div>
-                    </div>
-                    
-                    <label>Email Address</label>
-                    <input type="email" id="acc-email" placeholder="Your email" disabled>
-                    
-                    <button onclick="updateProfile()">Update Profile</button>
-                    <div id="profile-msg" class="alert" style="display: none; margin-top: 15px;"></div>
-                </div>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-lock"></i> Security</h2>
-                    <div>
-                        <label>
-                            <input type="checkbox" id="acc-2fa"> 
-                            Enable Two-Factor Authentication
-                        </label>
-                    </div>
-                    
-                    <div style="margin-top: 20px;">
-                        <h3>Change Password</h3>
-                        <input type="password" id="acc-old-pwd" placeholder="Current password">
-                        <input type="password" id="acc-new-pwd" placeholder="New password">
-                        <input type="password" id="acc-confirm-pwd" placeholder="Confirm new password">
-                        
-                        <button onclick="changePassword()">Change Password</button>
-                        <div id="pwd-msg" class="alert" style="display: none; margin-top: 15px;"></div>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <h2 class="section-title"><i class="fas fa-wallet"></i> Payment Information</h2>
-                    <p>Set your preferred payment method for withdrawals</p>
-                    <div id="payment-info"></div>
-                </div>
-            `;
-            
-            if (currentUser && userCache[currentUser.uid]) {
-                const d = userCache[currentUser.uid];
-                document.getElementById('acc-name').value = d.name || '';
-                document.getElementById('acc-email').value = d.email || '';
-                document.getElementById('acc-phone').value = d.phone || '';
-                document.getElementById('acc-2fa').checked = d.twoFA || false;
-            }
-            
-            document.getElementById('acc-2fa').onchange = update2FA;
-        }
-        
-        function update2FA() {
-            const enabled = document.getElementById('acc-2fa').checked;
-            db.collection('users').doc(currentUser.uid).update({ twoFA: enabled })
-                .then(() => {
-                    const msg = `Two-Factor Authentication ${enabled ? 'enabled' : 'disabled'}`;
-                    document.getElementById('profile-msg').innerText = msg;
-                    document.getElementById('profile-msg').className = 'alert success';
-                    document.getElementById('profile-msg').style.display = 'block';
-                });
-        }
-        
-        function updateProfile() {
-            const name = document.getElementById('acc-name').value.trim();
-            const phone = document.getElementById('acc-phone').value.trim();
-            const msgEl = document.getElementById('profile-msg');
-            
-            if (!name) {
-                msgEl.innerText = 'Please enter your name';
-                msgEl.className = 'alert danger';
-                msgEl.style.display = 'block';
-                return;
-            }
-            
-            // Update in cache
-            if (currentUser && userCache[currentUser.uid]) {
-                userCache[currentUser.uid].name = name;
-                userCache[currentUser.uid].phone = phone;
-                document.getElementById('user-name').innerText = name;
-            }
-            
-            db.collection('users').doc(currentUser.uid).update({
-                name: name,
-                phone: phone
-            })
-            .then(() => {
-                document.getElementById('user-name').innerText = name;
-                msgEl.innerText = 'Profile updated successfully!';
-                msgEl.className = 'alert success';
-                msgEl.style.display = 'block';
-            });
-        }
-        
-        function changePassword() {
-            const oldPwd = document.getElementById('acc-old-pwd').value;
-            const newPwd = document.getElementById('acc-new-pwd').value;
-            const confirmPwd = document.getElementById('acc-confirm-pwd').value;
-            const msgEl = document.getElementById('pwd-msg');
-            
-            if (!oldPwd || !newPwd || !confirmPwd) {
-                msgEl.innerText = 'Please fill all fields';
-                msgEl.className = 'alert danger';
-                msgEl.style.display = 'block';
-                return;
-            }
-            
-            if (newPwd !== confirmPwd) {
-                msgEl.innerText = 'New passwords do not match';
-                msgEl.className = 'alert danger';
-                msgEl.style.display = 'block';
-                return;
-            }
-            
-            if (newPwd.length < 8) {
-                msgEl.innerText = 'Password must be at least 8 characters';
-                msgEl.className = 'alert danger';
-                msgEl.style.display = 'block';
-                return;
-            }
-            
-            const user = auth.currentUser;
-            const credential = firebase.auth.EmailAuthProvider.credential(
-                user.email, 
-                oldPwd
-            );
-            
-            user.reauthenticateWithCredential(credential)
-                .then(() => {
-                    return user.updatePassword(newPwd);
-                })
-                .then(() => {
-                    msgEl.innerText = 'Password changed successfully!';
-                    msgEl.className = 'alert success';
-                })
-                .catch(err => {
-                    msgEl.innerText = 'Error: ' + err.message;
-                    msgEl.className = 'alert danger';
-                })
-                .finally(() => {
-                    msgEl.style.display = 'block';
-                });
-        }
-
         // Initialize on load
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize event listeners
-            setupAuthStateListener();
-            
-            // Initialize offline logs processing
+        document.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const refCode = urlParams.get('ref');
             if (refCode) {
