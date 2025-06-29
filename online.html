@@ -1177,43 +1177,56 @@
                 `;
                 
                 // Load enrollment count
-                const enrollmentsQuery = db.collection('users').where('enrolled', '==', true);
-                enrollmentsQuery.get()
-                    .then(snap => {
-                        document.getElementById('enrollment-count').textContent = snap.size;
-                        document.getElementById('enrolled-count').textContent = snap.size;
-                    })
-                    .catch(err => {
-                        console.error("Error loading enrollment count:", err);
-                        document.getElementById('enrollment-count').textContent = "N/A";
-                        document.getElementById('enrolled-count').textContent = "N/A";
-                    });
+                if (!offlineMode) {
+                    const enrollmentsQuery = db.collection('users').where('enrolled', '==', true);
+                    enrollmentsQuery.get()
+                        .then(snap => {
+                            document.getElementById('enrollment-count').textContent = snap.size;
+                            document.getElementById('enrolled-count').textContent = snap.size;
+                        })
+                        .catch(err => {
+                            console.error("Error loading enrollment count:", err);
+                            document.getElementById('enrollment-count').textContent = "Error";
+                            document.getElementById('enrolled-count').textContent = "Error";
+                        });
+                } else {
+                    document.getElementById('enrollment-count').textContent = "Offline";
+                    document.getElementById('enrolled-count').textContent = "Offline";
+                }
                 
                 // Load announcement
-                const announcementRef = db.collection('content').doc('announcement');
-                announcementRef.get()
-                    .then(doc => {
-                        if (doc.exists) {
-                            document.getElementById('announcement-content').innerHTML = doc.data().text || '<p>No announcements yet.</p>';
-                        }
-                    })
-                    .catch(err => {
-                        console.error("Error loading announcement:", err);
-                        document.getElementById('announcement-content').innerHTML = '<p>Error loading announcement</p>';
-                    });
+                if (!offlineMode) {
+                    const announcementRef = db.collection('content').doc('announcement');
+                    announcementRef.get()
+                        .then(doc => {
+                            if (doc.exists) {
+                                document.getElementById('announcement-content').innerHTML = doc.data().text || '<p>No announcements yet.</p>';
+                            }
+                        })
+                        .catch(err => {
+                            console.error("Error loading announcement:", err);
+                            document.getElementById('announcement-content').innerHTML = '<p>Error loading announcement</p>';
+                        });
+                } else {
+                    document.getElementById('announcement-content').innerHTML = '<div class="alert info">Offline mode - content unavailable</div>';
+                }
                 
                 // Load video
-                const videoRef = db.collection('content').doc('video');
-                videoRef.get()
-                    .then(doc => {
-                        if (doc.exists && doc.data().url) {
-                            renderVideo(doc.data().url);
-                        }
-                    })
-                    .catch(err => {
-                        console.error("Error loading video:", err);
-                        document.getElementById('video-content').innerHTML = '<p>Error loading video</p>';
-                    });
+                if (!offlineMode) {
+                    const videoRef = db.collection('content').doc('video');
+                    videoRef.get()
+                        .then(doc => {
+                            if (doc.exists && doc.data().url) {
+                                renderVideo(doc.data().url);
+                            }
+                        })
+                        .catch(err => {
+                            console.error("Error loading video:", err);
+                            document.getElementById('video-content').innerHTML = '<p>Error loading video</p>';
+                        });
+                } else {
+                    document.getElementById('video-content').innerHTML = '<div class="alert info">Offline mode - video unavailable</div>';
+                }
                 
                 function renderVideo(url) {
                     let embedHtml = '';
@@ -1239,22 +1252,26 @@
                 }
                 
                 // Load downloadable file
-                const fileRef = db.collection('content').doc('file');
-                fileRef.get()
-                    .then(doc => {
-                        if (doc.exists) {
-                            const data = doc.data();
-                            document.getElementById('download-content').innerHTML = `
-                                <a href="${data.url}" class="download-btn" target="_blank">
-                                    <i class="fas fa-download"></i> Download ${data.name}
-                                </a>
-                            `;
-                        }
-                    })
-                    .catch(err => {
-                        console.error("Error loading file:", err);
-                        document.getElementById('download-content').innerHTML = '<p>Error loading file</p>';
-                    });
+                if (!offlineMode) {
+                    const fileRef = db.collection('content').doc('file');
+                    fileRef.get()
+                        .then(doc => {
+                            if (doc.exists) {
+                                const data = doc.data();
+                                document.getElementById('download-content').innerHTML = `
+                                    <a href="${data.url}" class="download-btn" target="_blank">
+                                        <i class="fas fa-download"></i> Download ${data.name}
+                                    </a>
+                                `;
+                            }
+                        })
+                        .catch(err => {
+                            console.error("Error loading file:", err);
+                            document.getElementById('download-content').innerHTML = '<p>Error loading file</p>';
+                        });
+                } else {
+                    document.getElementById('download-content').innerHTML = '<div class="alert info">Offline mode - file unavailable</div>';
+                }
                 
                 return;
             }
@@ -1321,28 +1338,37 @@
                 
                 document.getElementById('twofa-toggle').onchange = () => {
                     const on = document.getElementById('twofa-toggle').checked;
-                    db.collection('users').doc(currentUser.uid).update({ twoFA: on }).then(() => {
-                        alert(`Two-Factor Authentication ${on ? 'enabled' : 'disabled'}`);
-                    });
+                    if (!offlineMode) {
+                        db.collection('users').doc(currentUser.uid).update({ twoFA: on }).then(() => {
+                            alert(`Two-Factor Authentication ${on ? 'enabled' : 'disabled'}`);
+                        });
+                    } else {
+                        alert('You are offline. Changes will sync when online.');
+                    }
                 };
             }
             
             // Load recent activity
             try {
-                const logsRef = db.collection('logs')
-                    .where('uid', '==', currentUser.uid)
-                    .orderBy('timestamp', 'desc')
-                    .limit(5);
-                
-                logsRef.get()
-                    .then(snap => {
-                        buildActivityTable(snap);
-                    })
-                    .catch(err => {
-                        console.error("Error loading recent activity:", err);
-                        document.getElementById('user-activity').innerHTML = 
-                            '<div class="alert info">Error loading recent activity</div>';
-                    });
+                if (!offlineMode) {
+                    const logsRef = db.collection('logs')
+                        .where('uid', '==', currentUser.uid)
+                        .orderBy('timestamp', 'desc')
+                        .limit(5);
+                    
+                    logsRef.get()
+                        .then(snap => {
+                            buildActivityTable(snap);
+                        })
+                        .catch(err => {
+                            console.error("Error loading recent activity:", err);
+                            document.getElementById('user-activity').innerHTML = 
+                                '<div class="alert info">Error loading recent activity</div>';
+                        });
+                } else {
+                    document.getElementById('user-activity').innerHTML = 
+                        '<div class="alert info">Offline mode - recent activity unavailable</div>';
+                }
             } catch (e) {
                 document.getElementById('user-activity').innerHTML = 
                     '<div class="alert info">Error loading recent activity</div>';
@@ -1393,6 +1419,13 @@
             
             if (!token) {
                 msgEl.innerText = 'Please enter a token';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
+            if (offlineMode) {
+                msgEl.innerText = 'You are offline. Cannot verify token.';
                 msgEl.className = 'alert danger';
                 msgEl.style.display = 'block';
                 return;
