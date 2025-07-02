@@ -2,95 +2,144 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>Signup/Login</title>
+  <title>Login & Signup</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="configuration.js"></script>
   <style>
-    body { font-family: Arial; background: #f0f0f0; padding:20px; }
-    .container { max-width:400px; margin:auto; background:#fff; padding:20px; border-radius:8px; }
-    input, select { width:100%; padding:10px; margin:8px 0; }
-    button { width:100%; padding:10px; }
-    #loginBtn.loading { opacity:0.6; pointer-events:none; }
-    #loginBtn.loading::after {
-      content: " ...Loading";
-    }
+    body { font-family: Arial; background:#f7f7f7; padding:20px; }
+    .container { max-width:400px; margin:auto; background:#fff; padding:20px; border-radius:5px; box-shadow:0 0 5px rgba(0,0,0,0.2); }
+    input, select, button { width:100%; padding:8px; margin:5px 0; }
+    .toggle { text-align:center; margin-top:10px; cursor:pointer; color:#007BFF; }
+    .loading { display:none; text-align:center; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>Signup / Login</h2>
-    <input type="text" id="name" placeholder="Name" required>
-    <input type="email" id="email" placeholder="Email" required>
-    <input type="text" id="phone" placeholder="Phone Number" required>
-    <select id="gender">
-      <option value="">Select Gender</option>
-      <option>Male</option>
-      <option>Female</option>
-      <option>Other</option>
-    </select>
-    <input type="text" id="referral" placeholder="Referral Code (optional)">
-    <input type="password" id="password" placeholder="Password" required>
-    <button id="signupBtn">Sign Up</button>
-    <hr>
-    <input type="email" id="loginEmail" placeholder="Email" required>
-    <input type="password" id="loginPassword" placeholder="Password" required>
+  <div class="container" id="loginForm">
+    <h3>Login</h3>
+    <input type="email" id="loginEmail" placeholder="Email">
+    <input type="password" id="loginPassword" placeholder="Password">
     <button id="loginBtn">Login</button>
-    <p id="message"></p>
+    <div class="loading" id="loginLoading">Loading...</div>
+    <div class="toggle" id="showSignup">Don't have an account? Sign up</div>
+    <div class="toggle" id="showReset">Forgot Password?</div>
+  </div>
+
+  <div class="container" id="signupForm" style="display:none;">
+    <h3>Sign Up</h3>
+    <input type="text" id="signupName" placeholder="Name">
+    <input type="email" id="signupEmail" placeholder="Email">
+    <input type="text" id="signupPhone" placeholder="Phone">
+    <select id="signupGender">
+      <option value="">Gender</option>
+      <option value="male">Male</option>
+      <option value="female">Female</option>
+    </select>
+    <input type="text" id="signupReferral" placeholder="Referral Code (optional)">
+    <input type="password" id="signupPassword" placeholder="Password">
+    <button id="signupBtn">Sign Up</button>
+    <div class="loading" id="signupLoading">Creating account...</div>
+    <div class="toggle" id="showLogin">Already have an account? Login</div>
+  </div>
+
+  <div class="container" id="resetForm" style="display:none;">
+    <h3>Reset Password</h3>
+    <input type="email" id="resetEmail" placeholder="Email">
+    <button id="resetBtn">Send Reset Link</button>
+    <div class="toggle" id="backToLogin">Back to Login</div>
   </div>
 
   <script>
     const app = firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
+    // Toggle forms
+    document.getElementById("showSignup").onclick=()=>{
+      document.getElementById("loginForm").style.display="none";
+      document.getElementById("signupForm").style.display="block";
+    };
+    document.getElementById("showLogin").onclick=()=>{
+      document.getElementById("signupForm").style.display="none";
+      document.getElementById("loginForm").style.display="block";
+    };
+    document.getElementById("showReset").onclick=()=>{
+      document.getElementById("loginForm").style.display="none";
+      document.getElementById("resetForm").style.display="block";
+    };
+    document.getElementById("backToLogin").onclick=()=>{
+      document.getElementById("resetForm").style.display="none";
+      document.getElementById("loginForm").style.display="block";
+    };
 
-    const signupBtn = document.getElementById('signupBtn');
-    const loginBtn = document.getElementById('loginBtn');
-    const message = document.getElementById('message');
+    // Login
+    document.getElementById("loginBtn").onclick=async()=>{
+      const email=document.getElementById("loginEmail").value;
+      const password=document.getElementById("loginPassword").value;
+      document.getElementById("loginLoading").style.display="block";
+      try{
+        const cred=await auth.signInWithEmailAndPassword(email,password);
+        const doc=await db.collection("users").doc(cred.user.uid).get();
+        if(doc.exists && doc.data().role==="admin"){
+          window.location.href="admin.html";
+        }else{
+          window.location.href="user.html";
+        }
+      }catch(e){
+        alert(e.message);
+      }
+      document.getElementById("loginLoading").style.display="none";
+    };
 
-    signupBtn.addEventListener('click', async () => {
-      const name = document.getElementById('name').value.trim();
-      const email = document.getElementById('email').value.trim();
-      const phone = document.getElementById('phone').value.trim();
-      const gender = document.getElementById('gender').value;
-      const referral = document.getElementById('referral').value.trim();
-      const password = document.getElementById('password').value;
-
-      if (!name || !email || !phone || !gender || !password) {
-        message.textContent = "Please fill all fields.";
+    // Signup
+    document.getElementById("signupBtn").onclick=async()=>{
+      const name=document.getElementById("signupName").value.trim();
+      const email=document.getElementById("signupEmail").value.trim();
+      const phone=document.getElementById("signupPhone").value.trim();
+      const gender=document.getElementById("signupGender").value;
+      const referral=document.getElementById("signupReferral").value.trim();
+      const password=document.getElementById("signupPassword").value;
+      if(!name||!email||!phone||!gender||!password){
+        alert("Please fill all fields.");
         return;
       }
-      message.textContent = "";
-
-      try {
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        const uid = userCredential.user.uid;
-        await db.collection('users').doc(uid).set({
-          name, email, phone, gender, referral, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      document.getElementById("signupLoading").style.display="block";
+      try{
+        const cred=await auth.createUserWithEmailAndPassword(email,password);
+        await db.collection("users").doc(cred.user.uid).set({
+          name,email,phone,gender,referral,createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+          earnings:0,enrolled:false,status:"active",require2FA:"no",referrals:[]
         });
-        window.location.href = "dashboard.html";
-      } catch (error) {
-        message.textContent = error.message;
+        alert("Account created. You can login now.");
+        document.getElementById("signupForm").style.display="none";
+        document.getElementById("loginForm").style.display="block";
+      }catch(e){
+        alert(e.message);
       }
-    });
+      document.getElementById("signupLoading").style.display="none";
+    };
 
-    loginBtn.addEventListener('click', async () => {
-      const email = document.getElementById('loginEmail').value.trim();
-      const password = document.getElementById('loginPassword').value;
-      if (!email || !password) {
-        message.textContent = "Enter email and password.";
-        return;
+    // Reset password
+    document.getElementById("resetBtn").onclick=()=>{
+      const email=document.getElementById("resetEmail").value;
+      if(!email){alert("Enter email.");return;}
+      auth.sendPasswordResetEmail(email).then(()=>{
+        alert("Reset email sent.");
+        document.getElementById("resetForm").style.display="none";
+        document.getElementById("loginForm").style.display="block";
+      }).catch(e=>alert(e.message));
+    };
+
+    // Auto redirect
+    auth.onAuthStateChanged(async user=>{
+      if(user){
+        const doc=await db.collection("users").doc(user.uid).get();
+        if(doc.exists && doc.data().role==="admin"){
+          window.location.href="admin.html";
+        }else{
+          window.location.href="user.html";
+        }
       }
-      message.textContent = "";
-      loginBtn.classList.add('loading');
-      try {
-        await auth.signInWithEmailAndPassword(email, password);
-        window.location.href = "dashboard.html";
-      } catch (error) {
-        message.textContent = error.message;
-      }
-      loginBtn.classList.remove('loading');
     });
   </script>
 </body>
