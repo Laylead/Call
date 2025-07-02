@@ -54,6 +54,7 @@
     const app = firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
+
     // Toggle forms
     document.getElementById("showSignup").onclick=()=>{
       document.getElementById("loginForm").style.display="none";
@@ -79,16 +80,18 @@
       document.getElementById("loginLoading").style.display="block";
       try{
         const cred=await auth.signInWithEmailAndPassword(email,password);
-        const doc=await db.collection("users").doc(cred.user.uid).get();
-        if(doc.exists && doc.data().role==="admin"){
-          window.location.href="admin.html";
-        }else{
-          window.location.href="user.html";
-        }
+        setTimeout(async()=>{
+          const doc=await db.collection("users").doc(cred.user.uid).get();
+          if(doc.exists && doc.data().role==="admin"){
+            window.location.href="admin.html";
+          }else{
+            window.location.href="user.html";
+          }
+        },1000); // 1 second delay to avoid client offline
       }catch(e){
         alert(e.message);
+        document.getElementById("loginLoading").style.display="none";
       }
-      document.getElementById("loginLoading").style.display="none";
     };
 
     // Signup
@@ -131,14 +134,16 @@
     };
 
     // Auto redirect
-    auth.onAuthStateChanged(async user=>{
+    auth.onAuthStateChanged(user=>{
       if(user){
-        const doc=await db.collection("users").doc(user.uid).get();
-        if(doc.exists && doc.data().role==="admin"){
-          window.location.href="admin.html";
-        }else{
-          window.location.href="user.html";
-        }
+        setTimeout(async()=>{
+          const doc=await db.collection("users").doc(user.uid).get();
+          if(doc.exists && doc.data().role==="admin"){
+            window.location.href="admin.html";
+          }else{
+            window.location.href="user.html";
+          }
+        },1000); // Delay to allow Firestore to connect
       }
     });
   </script>
