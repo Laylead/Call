@@ -56,94 +56,146 @@
     const db = firebase.firestore();
 
     // Toggle forms
-    document.getElementById("showSignup").onclick=()=>{
-      document.getElementById("loginForm").style.display="none";
-      document.getElementById("signupForm").style.display="block";
+    document.getElementById("showSignup").onclick = () => {
+      document.getElementById("loginForm").style.display = "none";
+      document.getElementById("signupForm").style.display = "block";
     };
-    document.getElementById("showLogin").onclick=()=>{
-      document.getElementById("signupForm").style.display="none";
-      document.getElementById("loginForm").style.display="block";
+    document.getElementById("showLogin").onclick = () => {
+      document.getElementById("signupForm").style.display = "none";
+      document.getElementById("loginForm").style.display = "block";
     };
-    document.getElementById("showReset").onclick=()=>{
-      document.getElementById("loginForm").style.display="none";
-      document.getElementById("resetForm").style.display="block";
+    document.getElementById("showReset").onclick = () => {
+      document.getElementById("loginForm").style.display = "none";
+      document.getElementById("resetForm").style.display = "block";
     };
-    document.getElementById("backToLogin").onclick=()=>{
-      document.getElementById("resetForm").style.display="none";
-      document.getElementById("loginForm").style.display="block";
+    document.getElementById("backToLogin").onclick = () => {
+      document.getElementById("resetForm").style.display = "none";
+      document.getElementById("loginForm").style.display = "block";
     };
 
     // Login
-    document.getElementById("loginBtn").onclick=async()=>{
-      const email=document.getElementById("loginEmail").value;
-      const password=document.getElementById("loginPassword").value;
-      document.getElementById("loginLoading").style.display="block";
-      try{
-        const cred=await auth.signInWithEmailAndPassword(email,password);
-        setTimeout(async()=>{
-          const doc=await db.collection("users").doc(cred.user.uid).get();
-          if(doc.exists && doc.data().role==="admin"){
-            window.location.href="admin.html";
-          }else{
-            window.location.href="user.html";
+    document.getElementById("loginBtn").onclick = async () => {
+      const email = document.getElementById("loginEmail").value;
+      const password = document.getElementById("loginPassword").value;
+      document.getElementById("loginLoading").style.display = "block";
+      try {
+        const cred = await auth.signInWithEmailAndPassword(email, password);
+        setTimeout(async () => {
+          try {
+            const docRef = db.collection("users").doc(cred.user.uid);
+            const doc = await docRef.get();
+            if (!doc.exists) {
+              // Auto-create profile for legacy accounts
+              await docRef.set({
+                name: "New User",
+                email: cred.user.email,
+                phone: "",
+                gender: "",
+                referral: "",
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                earnings: 0,
+                enrolled: false,
+                status: "active",
+                require2FA: "no",
+                referrals: [],
+                role: "user"
+              });
+              window.location.href = "user.html";
+            } else {
+              const role = doc.data().role || "user";
+              if (role === "admin") {
+                window.location.href = "admin.html";
+              } else {
+                window.location.href = "user.html";
+              }
+            }
+          } catch (e) {
+            alert("Error loading user data: " + e.message);
           }
-        },1000); // 1 second delay to avoid client offline
-      }catch(e){
+          document.getElementById("loginLoading").style.display = "none";
+        }, 1000);
+      } catch (e) {
         alert(e.message);
-        document.getElementById("loginLoading").style.display="none";
+        document.getElementById("loginLoading").style.display = "none";
       }
     };
 
     // Signup
-    document.getElementById("signupBtn").onclick=async()=>{
-      const name=document.getElementById("signupName").value.trim();
-      const email=document.getElementById("signupEmail").value.trim();
-      const phone=document.getElementById("signupPhone").value.trim();
-      const gender=document.getElementById("signupGender").value;
-      const referral=document.getElementById("signupReferral").value.trim();
-      const password=document.getElementById("signupPassword").value;
-      if(!name||!email||!phone||!gender||!password){
+    document.getElementById("signupBtn").onclick = async () => {
+      const name = document.getElementById("signupName").value.trim();
+      const email = document.getElementById("signupEmail").value.trim();
+      const phone = document.getElementById("signupPhone").value.trim();
+      const gender = document.getElementById("signupGender").value;
+      const referral = document.getElementById("signupReferral").value.trim();
+      const password = document.getElementById("signupPassword").value;
+      if (!name || !email || !phone || !gender || !password) {
         alert("Please fill all fields.");
         return;
       }
-      document.getElementById("signupLoading").style.display="block";
-      try{
-        const cred=await auth.createUserWithEmailAndPassword(email,password);
+      document.getElementById("signupLoading").style.display = "block";
+      try {
+        const cred = await auth.createUserWithEmailAndPassword(email, password);
         await db.collection("users").doc(cred.user.uid).set({
-          name,email,phone,gender,referral,createdAt:firebase.firestore.FieldValue.serverTimestamp(),
-          earnings:0,enrolled:false,status:"active",require2FA:"no",referrals:[]
+          name, email, phone, gender, referral,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          earnings: 0, enrolled: false, status: "active", require2FA: "no", referrals: [],
+          role: "user"
         });
         alert("Account created. You can login now.");
-        document.getElementById("signupForm").style.display="none";
-        document.getElementById("loginForm").style.display="block";
-      }catch(e){
+        document.getElementById("signupForm").style.display = "none";
+        document.getElementById("loginForm").style.display = "block";
+      } catch (e) {
         alert(e.message);
       }
-      document.getElementById("signupLoading").style.display="none";
+      document.getElementById("signupLoading").style.display = "none";
     };
 
     // Reset password
-    document.getElementById("resetBtn").onclick=()=>{
-      const email=document.getElementById("resetEmail").value;
-      if(!email){alert("Enter email.");return;}
-      auth.sendPasswordResetEmail(email).then(()=>{
+    document.getElementById("resetBtn").onclick = () => {
+      const email = document.getElementById("resetEmail").value;
+      if (!email) { alert("Enter email."); return; }
+      auth.sendPasswordResetEmail(email).then(() => {
         alert("Reset email sent.");
-        document.getElementById("resetForm").style.display="none";
-        document.getElementById("loginForm").style.display="block";
-      }).catch(e=>alert(e.message));
+        document.getElementById("resetForm").style.display = "none";
+        document.getElementById("loginForm").style.display = "block";
+      }).catch(e => alert(e.message));
     };
 
-    // Auto redirect
-    auth.onAuthStateChanged(user=>{
-      if(user){
-        setTimeout(async()=>{
-          const doc=await db.collection("users").doc(user.uid).get();
-          if(doc.exists && doc.data().role==="admin"){
-            window.location.href="admin.html";
-          }else{
-            window.location.href="user.html";
+    // Auto redirect if already logged in
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        setTimeout(async () => {
+          try {
+            const docRef = db.collection("users").doc(user.uid);
+            const doc = await docRef.get();
+            if (!doc.exists) {
+              await docRef.set({
+                name: "New User",
+                email: user.email,
+                phone: "",
+                gender: "",
+                referral: "",
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                earnings: 0,
+                enrolled: false,
+                status: "active",
+                require2FA: "no",
+                referrals: [],
+                role: "user"
+              });
+              window.location.href = "user.html";
+            } else {
+              const role = doc.data().role || "user";
+              if (role === "admin") {
+                window.location.href = "admin.html";
+              } else {
+                window.location.href = "user.html";
+              }
+            }
+          } catch (e) {
+            console.error("Auto login failed: ", e.message);
           }
-        },1000); // Delay to allow Firestore to connect
+        }, 1000);
       }
     });
   </script>
