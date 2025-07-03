@@ -720,6 +720,25 @@
         </div>
     </div>
 
+    <!-- Edit Balance Modal -->
+    <div id="editBalanceModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('editBalanceModal')">&times;</span>
+            <h2>Edit User Balance</h2>
+            <p>User: <span id="edit-balance-user"></span></p>
+            <div>
+                <label>Current Balance:</label>
+                <span id="current-balance"></span>
+            </div>
+            <div>
+                <label>New Balance:</label>
+                <input type="number" id="new-balance" step="0.01">
+            </div>
+            <button onclick="saveUserBalance()">Save</button>
+            <div id="edit-balance-message" class="alert hidden" style="margin-top:15px;"></div>
+        </div>
+    </div>
+
     <script>
         // Initialize Firebase from external configuration.js
         firebase.initializeApp(firebaseConfig);
@@ -731,6 +750,7 @@
         let isAdmin = false;
         let userCache = {};
         let loadingStates = {};
+        let currentEditUserId = null;
 
         // Password visibility toggle
         document.getElementById('password-toggle').addEventListener('click', function() {
@@ -1094,12 +1114,12 @@
                     </div>
                     <div class="stat-card">
                         <div class="icon earnings"><i class="fas fa-chart-line"></i></div>
-                        <h3 id="stat-earnings">$0</h3>
+                        <h3 id="stat-earnings">₦0</h3>
                         <p>Total Earnings</p>
                     </div>
                     <div class="stat-card">
                         <div class="icon pending"><i class="fas fa-clock"></i></div>
-                        <h3 id="stat-pending">$0</h3>
+                        <h3 id="stat-pending">₦0</h3>
                         <p>Pending Withdrawals</p>
                     </div>
                     <div class="stat-card">
@@ -1132,8 +1152,8 @@
                     if (t.status === 'pending') pending += t.amount;
                 });
                 
-                document.getElementById('stat-earnings').textContent = '$' + earnings.toFixed(2);
-                document.getElementById('stat-pending').textContent = '$' + pending.toFixed(2);
+                document.getElementById('stat-earnings').textContent = '₦' + earnings.toFixed(2);
+                document.getElementById('stat-pending').textContent = '₦' + pending.toFixed(2);
             });
             
             // Active enrollments count
@@ -1342,12 +1362,13 @@
                             <th>Joined</th>
                             <th>Status</th>
                             <th>Enrolled</th>
+                            <th>Balance</th>
                             <th>Actions</th>
                         </tr>
                 `;
                 
                 if (snap.empty) {
-                    html = '<tr><td colspan="6" style="text-align:center;">No users found</td></tr>';
+                    html = '<tr><td colspan="7" style="text-align:center;">No users found</td></tr>';
                 } else {
                     snap.forEach(doc => {
                         const d = doc.data();
@@ -1362,9 +1383,13 @@
                                 <td>${d.joined?.toDate().toLocaleDateString() || '-'}</td>
                                 <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
                                 <td><span class="badge ${d.enrolled ? 'success' : 'warning'}">${d.enrolled ? 'Yes' : 'No'}</span></td>
+                                <td>₦${(d.balance || 0).toFixed(2)}</td>
                                 <td>
                                     <button onclick="adminToggleUserStatus('${doc.id}', '${d.status}')">
                                         ${d.status === 'active' ? 'Suspend' : 'Activate'}
+                                    </button>
+                                    <button onclick="openEditBalanceModal('${doc.id}', '${d.name}', ${d.balance || 0})">
+                                        Edit Balance
                                     </button>
                                 </td>
                             </tr>
@@ -1393,6 +1418,56 @@
                 .catch(err => {
                     alert('Error updating user status: ' + err.message);
                 });
+        }
+        
+        function openEditBalanceModal(userId, userName, currentBalance) {
+            currentEditUserId = userId;
+            document.getElementById('edit-balance-user').textContent = userName;
+            document.getElementById('current-balance').textContent = '₦' + currentBalance.toFixed(2);
+            document.getElementById('new-balance').value = currentBalance;
+            document.getElementById('edit-balance-message').className = 'alert hidden';
+            openModal('editBalanceModal');
+        }
+        
+        function saveUserBalance() {
+            const newBalance = parseFloat(document.getElementById('new-balance').value);
+            const msgEl = document.getElementById('edit-balance-message');
+            
+            if (isNaN(newBalance)) {
+                msgEl.textContent = 'Please enter a valid number';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
+            db.collection('users').doc(currentEditUserId).update({
+                balance: newBalance
+            })
+            .then(() => {
+                msgEl.textContent = 'Balance updated successfully!';
+                msgEl.className = 'alert success';
+                msgEl.style.display = 'block';
+                
+                // Log event
+                db.collection('logs').add({
+                    uid: currentUser.uid,
+                    action: 'edit_user_balance',
+                    meta: { userId: currentEditUserId, balance: newBalance },
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // Refresh user table
+                adminRefreshUsers();
+                
+                setTimeout(() => {
+                    closeModal('editBalanceModal');
+                }, 2000);
+            })
+            .catch(err => {
+                msgEl.textContent = 'Error: ' + err.message;
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+            });
         }
 
         function adminEnrollments() {
@@ -1448,11 +1523,12 @@
                             <th>WhatsApp</th>
                             <th>Enrollment Date</th>
                             <th>Status</th>
+                            <th>Balance</th>
                         </tr>
                 `;
                 
                 if (snap.empty) {
-                    html = '<tr><td colspan="5" style="text-align:center;">No enrollments found</td></tr>';
+                    html = '<tr><td colspan="6" style="text-align:center;">No enrollments found</td></tr>';
                 } else {
                     snap.forEach(doc => {
                         const d = doc.data();
@@ -1463,6 +1539,7 @@
                                 <td>${d.whatsappNumber || '-'}</td>
                                 <td>${d.enrollmentDate?.toDate().toLocaleString() || '-'}</td>
                                 <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
+                                <td>₦${(d.balance || 0).toFixed(2)}</td>
                             </tr>
                         `;
                     });
@@ -1529,7 +1606,7 @@
                         html += `
                             <tr>
                                 <td>${d.userName}</td>
-                                <td>$${d.amount.toFixed(2)}</td>
+                                <td>₦${d.amount.toFixed(2)}</td>
                                 <td>${d.method}</td>
                                 <td>${dateStr || '-'}</td>
                                 <td><span class="badge ${d.status === 'pending' ? 'warning' : d.status === 'approved' ? 'success' : 'danger'}">${d.status}</span></td>
@@ -1591,6 +1668,7 @@
                         <div>
                             <label>System Currency</label>
                             <select id="sys-currency">
+                                <option value="NGN">Naira (NGN)</option>
                                 <option value="USD">US Dollar (USD)</option>
                                 <option value="EUR">Euro (EUR)</option>
                                 <option value="GBP">British Pound (GBP)</option>
@@ -1641,7 +1719,7 @@
             db.collection('settings').doc('system').get().then(doc => {
                 if (doc.exists) {
                     const data = doc.data();
-                    document.getElementById('sys-currency').value = data.currency || 'USD';
+                    document.getElementById('sys-currency').value = data.currency || 'NGN';
                     document.getElementById('sys-timeout').value = data.sessionTimeout || 30;
                     document.getElementById('sys-maxcom').value = data.maxCommission || 30;
                     document.getElementById('sys-status').value = data.status || 'active';
@@ -2000,13 +2078,39 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <div class="stat-card">
+                        <div class="icon tokens"><i class="fas fa-users"></i></div>
+                        <h3 id="total-enrollments">0</h3>
+                        <p>Total Enrollments</p>
+                    </div>
                 </div>
                 
                 <div class="card">
                     <h2 class="section-title"><i class="fas fa-history"></i> Recent Activity</h2>
                     <div id="user-activity"></div>
                 </div>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-bullhorn"></i> Announcement</h2>
+                    <div id="announcement-content"></div>
+                </div>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-download"></i> Download Resource</h2>
+                    <div id="download-content"></div>
+                </div>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-video"></i> Training Video</h2>
+                    <div id="video-content"></div>
+                </div>
             `;
+            
+            // Load total enrollments
+            db.collection('users').where('enrolled', '==', true).onSnapshot(snap => {
+                document.getElementById('total-enrollments').textContent = snap.size;
+            });
             
             if (currentUser && userCache[currentUser.uid]) {
                 const d = userCache[currentUser.uid];
@@ -2017,7 +2121,7 @@
                 document.getElementById('user-stats').innerHTML = `
                     <div style="margin-bottom: 15px;">
                         <p><strong>Account Balance:</strong></p>
-                        <h2 style="color: var(--primary);">$${bal.toFixed(2)}</h2>
+                        <h2 style="color: var(--primary);">₦${bal.toFixed(2)}</h2>
                     </div>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
@@ -2053,6 +2157,56 @@
                     });
                 };
             }
+            
+            // Load announcement
+            db.collection('content').doc('announcement').onSnapshot(doc => {
+                if (doc.exists) {
+                    document.getElementById('announcement-content').innerHTML = doc.data().text || '<p>No announcements yet.</p>';
+                }
+            });
+            
+            // Load video
+            db.collection('content').doc('video').onSnapshot(doc => {
+                if (doc.exists && doc.data().url) {
+                    const url = doc.data().url;
+                    let embedHtml = '';
+                    
+                    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                        // YouTube embed
+                        const videoId = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+                        if (videoId && videoId[1]) {
+                            embedHtml = `
+                                <div class="video-container">
+                                    <iframe src="https://www.youtube.com/embed/${videoId[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                                </div>
+                            `;
+                        } else {
+                            embedHtml = `<p><a href="${url}" target="_blank">Watch Video</a></p>`;
+                        }
+                    } else {
+                        // Generic video link
+                        embedHtml = `<p><a href="${url}" target="_blank">Watch Video</a></p>`;
+                    }
+                    
+                    document.getElementById('video-content').innerHTML = embedHtml;
+                } else {
+                    document.getElementById('video-content').innerHTML = '<p>No video available yet.</p>';
+                }
+            });
+            
+            // Load downloadable file
+            db.collection('content').doc('file').onSnapshot(doc => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    document.getElementById('download-content').innerHTML = `
+                        <a href="${data.url}" class="download-btn" target="_blank">
+                            <i class="fas fa-download"></i> Download ${data.name}
+                        </a>
+                    `;
+                } else {
+                    document.getElementById('download-content').innerHTML = '<p>No file available for download yet.</p>';
+                }
+            });
             
             // Load recent activity
             db.collection('logs').where('uid', '==', currentUser.uid)
@@ -2264,18 +2418,18 @@
                 
                 <div class="card">
                     <h2 class="section-title"><i class="fas fa-hand-holding-usd"></i> Request Withdrawal</h2>
-                    <p>Minimum withdrawal amount: $20</p>
+                    <p>Minimum withdrawal amount: ₦5,000</p>
                     
                     <div class="form-row">
                         <div>
-                            <label>Amount ($)</label>
-                            <input type="number" id="wd-amount" min="20" step="0.01">
+                            <label>Amount (₦)</label>
+                            <input type="number" id="wd-amount" min="5000" step="0.01">
                         </div>
                         <div>
                             <label>Payment Method</label>
                             <select id="wd-method">
-                                <option value="paypal">PayPal</option>
                                 <option value="bank">Bank Transfer</option>
+                                <option value="paypal">PayPal</option>
                                 <option value="crypto">Cryptocurrency</option>
                             </select>
                         </div>
@@ -2324,8 +2478,8 @@
                                 <input type="text" id="wd-bank-name" placeholder="Bank name">
                             </div>
                             <div>
-                                <label>Routing Number</label>
-                                <input type="text" id="wd-routing" placeholder="Routing number">
+                                <label>Bank Code</label>
+                                <input type="text" id="wd-routing" placeholder="Bank code">
                             </div>
                         </div>
                     `;
@@ -2343,8 +2497,8 @@
             const method = document.getElementById('wd-method').value;
             const msgEl = document.getElementById('wd-msg');
             
-            if (!amount || amount < 20) {
-                msgEl.innerText = 'Minimum withdrawal amount is $20';
+            if (!amount || amount < 5000) {
+                msgEl.innerText = 'Minimum withdrawal amount is ₦5,000';
                 msgEl.className = 'alert danger';
                 msgEl.style.display = 'block';
                 return;
@@ -2429,7 +2583,7 @@
                             const d = doc.data();
                             html += `
                                 <tr>
-                                    <td>$${d.amount.toFixed(2)}</td>
+                                    <td>₦${d.amount.toFixed(2)}</td>
                                     <td>${d.method}</td>
                                     <td>${d.requestedAt.toDate().toLocaleDateString()}</td>
                                     <td><span class="badge ${d.status === 'pending' ? 'warning' : d.status === 'approved' ? 'success' : 'danger'}">${d.status}</span></td>
