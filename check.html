@@ -41,6 +41,7 @@
             color: var(--dark);
             line-height: 1.6;
             min-height: 100vh;
+            position: relative;
         }
         
         .hidden {
@@ -235,6 +236,15 @@
         
         button.admin:hover {
             background: #d21e6f;
+        }
+        
+        .buy-token-btn {
+            background: var(--warning);
+        }
+        
+        .buy-token-btn:hover {
+            background: #d21e6f;
+            box-shadow: 0 4px 8px rgba(247, 37, 133, 0.25);
         }
         
         .progress {
@@ -541,6 +551,43 @@
             color: var(--primary);
         }
 
+        /* Token Purchase Card */
+        .token-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+
+        /* Floating Contact Widget */
+        .floating-widget {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .floating-widget:hover {
+            transform: scale(1.1);
+            background: var(--secondary);
+        }
+
+        .floating-widget i {
+            font-size: 1.5rem;
+        }
+
         /* Responsive adjustments */
         @media (max-width: 768px) {
             .tabs {
@@ -739,6 +786,11 @@
         </div>
     </div>
 
+    <!-- Floating Contact Widget -->
+    <div class="floating-widget" id="contact-widget">
+        <i class="fas fa-headset"></i>
+    </div>
+
     <script>
         // Initialize Firebase from external configuration.js
         firebase.initializeApp(firebaseConfig);
@@ -830,6 +882,16 @@
             document.getElementById(elementId).classList.add('hidden');
         }
 
+        // Generate unique referral code
+        function generateReferralCode() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < 6; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
         // Registration with validation and proper error handling
         function register() {
             hideError('register-error');
@@ -848,6 +910,9 @@
             
             setLoading('register-btn', true);
             
+            // Generate unique referral code for the new user
+            const referralCode = generateReferralCode();
+            
             auth.createUserWithEmailAndPassword(email, pwd)
                 .then(userCredential => {
                     return db.collection('users').doc(userCredential.user.uid).set({
@@ -855,6 +920,7 @@
                         email,
                         phone,
                         ref,
+                        referralCode, // Store the referral code
                         joined: firebase.firestore.FieldValue.serverTimestamp(),
                         role: 'user',
                         status: 'active',
@@ -874,6 +940,7 @@
                         email,
                         phone,
                         ref,
+                        referralCode,
                         role: 'user',
                         status: 'active',
                         balance: 0,
@@ -1041,6 +1108,9 @@
             const first = isAdmin ? 'Overview' : 'Dashboard';
             setActiveTab(first);
             loadTab(first);
+            
+            // Initialize contact widget
+            initContactWidget();
         }
 
         // Tabs setup
@@ -1713,6 +1783,15 @@
                         </label>
                     </div>
                 </div>
+                
+                <!-- Contact Widget Setting -->
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-headset"></i> Contact Widget</h2>
+                    <label>Contact URL</label>
+                    <input type="text" id="contact-url" placeholder="Contact URL">
+                    <button onclick="saveContactUrl()">Save URL</button>
+                    <div id="contact-url-message" class="alert" style="display:none;margin-top:15px;"></div>
+                </div>
             `;
             
             // Load current system settings
@@ -1725,6 +1804,13 @@
                     document.getElementById('sys-status').value = data.status || 'active';
                     document.getElementById('sys-2fa').checked = data.require2FA || false;
                     document.getElementById('sys-pwd').checked = data.requireStrongPasswords || false;
+                }
+            });
+            
+            // Load current contact URL
+            db.collection('settings').doc('contact').get().then(doc => {
+                if (doc.exists) {
+                    document.getElementById('contact-url').value = doc.data().url || '';
                 }
             });
         }
@@ -1761,6 +1847,39 @@
                 .catch(err => {
                     const msgEl = document.getElementById('sys-settings-message');
                     msgEl.textContent = 'Error saving settings: ' + err.message;
+                    msgEl.className = 'alert danger';
+                    msgEl.style.display = 'block';
+                });
+        }
+        
+        function saveContactUrl() {
+            const url = document.getElementById('contact-url').value.trim();
+            const msgEl = document.getElementById('contact-url-message');
+            
+            if (!url) {
+                msgEl.textContent = 'Please enter a contact URL';
+                msgEl.className = 'alert danger';
+                msgEl.style.display = 'block';
+                return;
+            }
+            
+            db.collection('settings').doc('contact').set({ url })
+                .then(() => {
+                    msgEl.textContent = 'Contact URL saved successfully!';
+                    msgEl.className = 'alert success';
+                    msgEl.style.display = 'block';
+                    
+                    // Update widget immediately
+                    document.getElementById('contact-widget').onclick = () => {
+                        window.open(url, '_blank');
+                    };
+                    
+                    setTimeout(() => {
+                        msgEl.style.display = 'none';
+                    }, 3000);
+                })
+                .catch(err => {
+                    msgEl.textContent = 'Error saving contact URL: ' + err.message;
                     msgEl.className = 'alert danger';
                     msgEl.style.display = 'block';
                 });
@@ -1977,6 +2096,7 @@
                         <div class="whatsapp-input">
                             <input type="tel" id="whatsapp-number" placeholder="Your WhatsApp number with country code">
                             <button onclick="openTokenModal()">Enroll</button>
+                            <button class="buy-token-btn" onclick="buyTokens()">Buy Token</button>
                         </div>
                         
                         <div id="enrollment-message" class="alert hidden" style="margin-top:15px;"></div>
@@ -2060,6 +2180,14 @@
             // Regular dashboard for enrolled users
             c.innerHTML = `
                 <h1 class="page-title"><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
+                
+                <div class="token-card">
+                    <h2 class="section-title"><i class="fas fa-shopping-cart"></i> Purchase Tokens</h2>
+                    <p>Buy additional tokens to enroll more users in the program</p>
+                    <button class="buy-token-btn" onclick="buyTokens()">
+                        <i class="fas fa-shopping-cart"></i> Buy Tokens Now
+                    </button>
+                </div>
                 
                 <div class="grid">
                     <div class="card">
@@ -2769,6 +2897,37 @@
                 })
                 .finally(() => {
                     msgEl.style.display = 'block';
+                });
+        }
+
+        // Token purchase function
+        function buyTokens() {
+            window.open('http://www.buytoken13.com', '_blank');
+        }
+
+        // Floating contact widget
+        function initContactWidget() {
+            // Get contact URL from Firestore (admin configurable)
+            db.collection('settings').doc('contact').get()
+                .then(doc => {
+                    if (doc.exists) {
+                        const contactUrl = doc.data().url || 'http://www.cobtactus.com/27272772';
+                        document.getElementById('contact-widget').onclick = () => {
+                            window.open(contactUrl, '_blank');
+                        };
+                    } else {
+                        // Set default
+                        document.getElementById('contact-widget').onclick = () => {
+                            window.open('http://www.cobtactus.com/27272772', '_blank');
+                        };
+                    }
+                })
+                .catch(err => {
+                    console.error("Error loading contact URL:", err);
+                    // Fallback to default
+                    document.getElementById('contact-widget').onclick = () => {
+                        window.open('http://www.cobtactus.com/27272772', '_blank');
+                    };
                 });
         }
 
