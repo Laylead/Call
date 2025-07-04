@@ -588,6 +588,41 @@
             font-size: 1.5rem;
         }
 
+        /* Referral Code Styles */
+        .referral-code-container {
+            background: rgba(67, 97, 238, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+        }
+        
+        .referral-code {
+            font-size: 1.2rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            flex: 1;
+        }
+        
+        .copy-btn {
+            padding: 8px 15px;
+            background: var(--primary);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .copy-btn:hover {
+            background: var(--secondary);
+        }
+        
+        .commission-input {
+            width: 150px !important;
+            display: inline-block;
+            margin-left: 10px;
+        }
+
         /* Responsive adjustments */
         @media (max-width: 768px) {
             .tabs {
@@ -615,6 +650,12 @@
 
             .whatsapp-input {
                 flex-direction: column;
+            }
+            
+            .commission-input {
+                width: 100% !important;
+                margin-left: 0;
+                margin-top: 10px;
             }
         }
         
@@ -925,8 +966,8 @@
                         role: 'user',
                         status: 'active',
                         balance: 0,
-                        referrals: 0,
-                        commissionRate: 0.15,
+                        referrals: [],
+                        commissionAmount: 0,
                         twoFA: false,
                         enrolled: false,
                         whatsappNumber: '',
@@ -944,14 +985,20 @@
                         role: 'user',
                         status: 'active',
                         balance: 0,
-                        referrals: 0,
-                        commissionRate: 0.15,
+                        referrals: [],
+                        commissionAmount: 0,
                         twoFA: false,
                         enrolled: false,
                         whatsappNumber: '',
                         enrollmentDate: null
                     };
                     isAdmin = false;
+                    
+                    // Track referral if code exists
+                    if (ref) {
+                        trackReferral(ref, user.uid);
+                    }
+                    
                     initApp();
                 })
                 .catch(err => {
@@ -960,6 +1007,46 @@
                 })
                 .finally(() => {
                     setLoading('register-btn', false);
+                });
+        }
+        
+        // Track referral when user registers
+        function trackReferral(referralCode, newUserId) {
+            db.collection('users').where('referralCode', '==', referralCode).get()
+                .then(snap => {
+                    if (!snap.empty) {
+                        const referrerDoc = snap.docs[0];
+                        const referrerId = referrerDoc.id;
+                        const referrerData = referrerDoc.data();
+                        
+                        // Get fixed commission amount from admin settings
+                        db.collection('settings').doc('system').get().then(settingsDoc => {
+                            if (settingsDoc.exists) {
+                                const settings = settingsDoc.data();
+                                const fixedCommission = settings.fixedReferralCommission || 1000; // Default 1000
+                                
+                                // Update referrer
+                                db.collection('users').doc(referrerId).update({
+                                    referrals: firebase.firestore.FieldValue.arrayUnion(newUserId),
+                                    balance: firebase.firestore.FieldValue.increment(fixedCommission)
+                                });
+                                
+                                // Update new user
+                                db.collection('users').doc(newUserId).update({
+                                    referredBy: referrerId
+                                });
+                                
+                                // Log transaction
+                                db.collection('transactions').add({
+                                    userId: referrerId,
+                                    type: 'referral',
+                                    amount: fixedCommission,
+                                    details: `Referral from ${newUserId}`,
+                                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                                });
+                            }
+                        });
+                    }
                 });
         }
 
@@ -994,8 +1081,8 @@
                                     role: 'user',
                                     status: 'active',
                                     balance: 0,
-                                    referrals: 0,
-                                    commissionRate: 0.15,
+                                    referrals: [],
+                                    commissionAmount: 0,
                                     twoFA: false,
                                     enrolled: false,
                                     whatsappNumber: '',
@@ -1073,8 +1160,8 @@
                             role: 'user',
                             status: 'active',
                             balance: 0,
-                            referrals: 0,
-                            commissionRate: 0.15,
+                            referrals: [],
+                            commissionAmount: 0,
                             twoFA: false,
                             enrolled: false,
                             whatsappNumber: '',
@@ -1408,7 +1495,19 @@
                 <h1 class="page-title"><i class="fas fa-users"></i> User Management</h1>
                 <div class="card">
                     <h2 class="section-title"><i class="fas fa-search"></i> Search Users</h2>
-                    <input id="user-search" placeholder="Search by name or email">
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <input id="user-search" placeholder="Search by name or email" style="flex: 1; min-width: 200px;">
+                        <select id="user-status-filter" style="width: auto;">
+                            <option value="all">All Statuses</option>
+                            <option value="active">Active</option>
+                            <option value="suspended">Suspended</option>
+                        </select>
+                        <select id="user-enrollment-filter" style="width: auto;">
+                            <option value="all">All Enrollment</option>
+                            <option value="enrolled">Enrolled</option>
+                            <option value="not-enrolled">Not Enrolled</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="card">
                     <h2 class="section-title"><i class="fas fa-list"></i> User List</h2>
@@ -1416,19 +1515,37 @@
                 </div>
             `;
             
+            // Setup event listeners
             document.getElementById('user-search').addEventListener('input', adminRefreshUsers);
+            document.getElementById('user-status-filter').addEventListener('change', adminRefreshUsers);
+            document.getElementById('user-enrollment-filter').addEventListener('change', adminRefreshUsers);
+            
             adminRefreshUsers();
         }
         
         function adminRefreshUsers() {
             const searchTerm = document.getElementById('user-search').value.toLowerCase();
+            const statusFilter = document.getElementById('user-status-filter').value;
+            const enrollmentFilter = document.getElementById('user-enrollment-filter').value;
             
-            db.collection('users').orderBy('joined', 'desc').onSnapshot(snap => {
+            let query = db.collection('users');
+            
+            if (statusFilter !== 'all') {
+                query = query.where('status', '==', statusFilter);
+            }
+            
+            if (enrollmentFilter !== 'all') {
+                const enrolledValue = enrollmentFilter === 'enrolled';
+                query = query.where('enrolled', '==', enrolledValue);
+            }
+            
+            query.orderBy('joined', 'desc').onSnapshot(snap => {
                 let html = `
                     <table class="table">
                         <tr>
                             <th>Name</th>
                             <th>Email</th>
+                            <th>Referral Code</th>
                             <th>Joined</th>
                             <th>Status</th>
                             <th>Enrolled</th>
@@ -1438,11 +1555,13 @@
                 `;
                 
                 if (snap.empty) {
-                    html = '<tr><td colspan="7" style="text-align:center;">No users found</td></tr>';
+                    html = '<tr><td colspan="8" style="text-align:center;">No users found</td></tr>';
                 } else {
                     snap.forEach(doc => {
                         const d = doc.data();
-                        if (searchTerm && !d.name.toLowerCase().includes(searchTerm) && !d.email.toLowerCase().includes(searchTerm)) {
+                        if (searchTerm && 
+                            !d.name.toLowerCase().includes(searchTerm) && 
+                            !d.email.toLowerCase().includes(searchTerm)) {
                             return;
                         }
                         
@@ -1450,6 +1569,7 @@
                             <tr>
                                 <td>${d.name}</td>
                                 <td>${d.email}</td>
+                                <td>${d.referralCode || '-'}</td>
                                 <td>${d.joined?.toDate().toLocaleDateString() || '-'}</td>
                                 <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
                                 <td><span class="badge ${d.enrolled ? 'success' : 'warning'}">${d.enrolled ? 'Yes' : 'No'}</span></td>
@@ -1752,10 +1872,6 @@
                     
                     <div class="form-row">
                         <div>
-                            <label>Maximum Commission (%)</label>
-                            <input type="number" id="sys-maxcom" min="0" max="50">
-                        </div>
-                        <div>
                             <label>System Status</label>
                             <select id="sys-status">
                                 <option value="active">Active</option>
@@ -1766,6 +1882,17 @@
                     
                     <button onclick="adminSaveSystemSettings()">Save Settings</button>
                     <div id="sys-settings-message" class="alert" style="display:none;margin-top:15px;"></div>
+                </div>
+                
+                <div class="card">
+                    <h2 class="section-title"><i class="fas fa-user-friends"></i> Referral Settings</h2>
+                    <div class="form-row">
+                        <div>
+                            <label>Fixed Referral Commission (₦)</label>
+                            <input type="number" id="fixed-referral-commission" min="0" step="100" placeholder="e.g., 1000">
+                        </div>
+                    </div>
+                    <button onclick="saveReferralSettings()">Save Settings</button>
                 </div>
                 
                 <div class="card">
@@ -1800,10 +1927,10 @@
                     const data = doc.data();
                     document.getElementById('sys-currency').value = data.currency || 'NGN';
                     document.getElementById('sys-timeout').value = data.sessionTimeout || 30;
-                    document.getElementById('sys-maxcom').value = data.maxCommission || 30;
                     document.getElementById('sys-status').value = data.status || 'active';
                     document.getElementById('sys-2fa').checked = data.require2FA || false;
                     document.getElementById('sys-pwd').checked = data.requireStrongPasswords || false;
+                    document.getElementById('fixed-referral-commission').value = data.fixedReferralCommission || '';
                 }
             });
             
@@ -1819,7 +1946,6 @@
             const settings = {
                 currency: document.getElementById('sys-currency').value,
                 sessionTimeout: parseInt(document.getElementById('sys-timeout').value),
-                maxCommission: parseFloat(document.getElementById('sys-maxcom').value),
                 status: document.getElementById('sys-status').value,
                 require2FA: document.getElementById('sys-2fa').checked,
                 requireStrongPasswords: document.getElementById('sys-pwd').checked
@@ -1852,6 +1978,37 @@
                 });
         }
         
+        function saveReferralSettings() {
+            const fixedCommission = parseFloat(document.getElementById('fixed-referral-commission').value) || 0;
+            const msgEl = document.getElementById('sys-settings-message');
+            
+            db.collection('settings').doc('system').set({
+                fixedReferralCommission: fixedCommission
+            }, { merge: true })
+                .then(() => {
+                    msgEl.textContent = 'Referral settings saved successfully!';
+                    msgEl.className = 'alert success';
+                    msgEl.style.display = 'block';
+                    
+                    // Log event
+                    db.collection('logs').add({
+                        uid: currentUser.uid,
+                        action: 'save_referral_settings',
+                        meta: { fixedCommission: fixedCommission },
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    setTimeout(() => {
+                        msgEl.style.display = 'none';
+                    }, 3000);
+                })
+                .catch(err => {
+                    msgEl.textContent = 'Error saving referral settings: ' + err.message;
+                    msgEl.className = 'alert danger';
+                    msgEl.style.display = 'block';
+                });
+        }
+        
         function saveContactUrl() {
             const url = document.getElementById('contact-url').value.trim();
             const msgEl = document.getElementById('contact-url-message');
@@ -1870,9 +2027,7 @@
                     msgEl.style.display = 'block';
                     
                     // Update widget immediately
-                    document.getElementById('contact-widget').onclick = () => {
-                        window.open(url, '_blank');
-                    };
+                    initContactWidget();
                     
                     setTimeout(() => {
                         msgEl.style.display = 'none';
@@ -2243,8 +2398,7 @@
             if (currentUser && userCache[currentUser.uid]) {
                 const d = userCache[currentUser.uid];
                 const bal = d.balance || 0;
-                const refs = d.referrals || 0;
-                const commissionRate = d.commissionRate || 0.15;
+                const refs = d.referrals ? d.referrals.length : 0;
                 
                 document.getElementById('user-stats').innerHTML = `
                     <div style="margin-bottom: 15px;">
@@ -2256,10 +2410,6 @@
                         <div>
                             <p><strong>Referrals:</strong></p>
                             <p style="font-size: 1.5rem;">${refs}</p>
-                        </div>
-                        <div>
-                            <p><strong>Commission Rate:</strong></p>
-                            <p style="font-size: 1.5rem;">${(commissionRate * 100).toFixed(1)}%</p>
                         </div>
                     </div>
                     
@@ -2466,9 +2616,19 @@
                         <button onclick="copyReferralLink()"><i class="fas fa-copy"></i> Copy</button>
                     </div>
                     
+                    <div class="card">
+                        <h2 class="section-title"><i class="fas fa-tag"></i> Your Referral Code</h2>
+                        <div class="referral-code-container">
+                            <div class="referral-code" id="user-referral-code">Loading...</div>
+                            <div class="copy-btn" onclick="copyReferralCode()">
+                                <i class="fas fa-copy"></i> Copy
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="alert info">
                         <i class="fas fa-info-circle"></i> 
-                        Earn ${isAdmin ? '15%' : '10%'} commission for each successful referral
+                        <span id="referral-commission-text">Earn ₦0.00 for each successful referral</span>
                     </div>
                 </div>
                 
@@ -2488,11 +2648,28 @@
                 </div>
             `;
             
+            // Set referral link
             document.getElementById('referral-link').value = window.location.origin + '?ref=' + currentUser.uid;
+            
+            // Set referral code
+            if (currentUser && userCache[currentUser.uid]) {
+                const referralCode = userCache[currentUser.uid].referralCode;
+                document.getElementById('user-referral-code').textContent = referralCode;
+            }
+            
+            // Load referral commission info
+            db.collection('settings').doc('system').get().then(settingsDoc => {
+                if (settingsDoc.exists) {
+                    const settings = settingsDoc.data();
+                    const fixedCommission = settings.fixedReferralCommission || 1000;
+                    document.getElementById('referral-commission-text').innerText = 
+                        `Earn ₦${fixedCommission.toFixed(2)} for each successful referral`;
+                }
+            });
             
             if (currentUser && userCache[currentUser.uid]) {
                 const d = userCache[currentUser.uid];
-                const have = d.referrals || 0;
+                const have = d.referrals ? d.referrals.length : 0;
                 const needed = 6;
                 const pct = Math.min((have / needed) * 100, 100);
                 
@@ -2510,17 +2687,34 @@
             });
         }
         
+        function copyReferralCode() {
+            const code = document.getElementById('user-referral-code').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                alert('Referral code copied to clipboard!');
+            });
+        }
+        
         function reloadReferralsTable() {
             const c = document.getElementById('ref-table');
-            db.collection('users').where('ref', '==', currentUser.uid).onSnapshot(q => {
-                let html = '';
-                
-                if (q.empty) {
-                    html = '<div class="alert info"><i class="fas fa-info-circle"></i> You have no referrals yet</div>';
-                } else {
-                    html = '<table class="table"><tr><th>Name</th><th>Email</th><th>Joined</th><th>Status</th></tr>';
-                    
-                    q.forEach(doc => {
+            
+            if (!currentUser || !userCache[currentUser.uid] || !userCache[currentUser.uid].referrals) {
+                c.innerHTML = '<div class="alert info"><i class="fas fa-info-circle"></i> You have no referrals yet</div>';
+                return;
+            }
+            
+            const referralIds = userCache[currentUser.uid].referrals;
+            
+            if (referralIds.length === 0) {
+                c.innerHTML = '<div class="alert info"><i class="fas fa-info-circle"></i> You have no referrals yet</div>';
+                return;
+            }
+            
+            // Get user details for each referral
+            let html = '<table class="table"><tr><th>Name</th><th>Email</th><th>Joined</th><th>Status</th></tr>';
+            
+            referralIds.forEach(id => {
+                db.collection('users').doc(id).get().then(doc => {
+                    if (doc.exists) {
                         const d = doc.data();
                         html += `
                             <tr>
@@ -2530,12 +2724,9 @@
                                 <td><span class="badge ${d.status === 'active' ? 'success' : 'warning'}">${d.status}</span></td>
                             </tr>
                         `;
-                    });
-                    
-                    html += '</table>';
-                }
-                
-                c.innerHTML = html;
+                        c.innerHTML = html + '</table>';
+                    }
+                });
             });
         }
 
@@ -2910,17 +3101,15 @@
             // Get contact URL from Firestore (admin configurable)
             db.collection('settings').doc('contact').get()
                 .then(doc => {
-                    if (doc.exists) {
-                        const contactUrl = doc.data().url || 'http://www.cobtactus.com/27272772';
-                        document.getElementById('contact-widget').onclick = () => {
-                            window.open(contactUrl, '_blank');
-                        };
-                    } else {
-                        // Set default
-                        document.getElementById('contact-widget').onclick = () => {
-                            window.open('http://www.cobtactus.com/27272772', '_blank');
-                        };
+                    let contactUrl = 'http://www.cobtactus.com/27272772'; // Default
+                    
+                    if (doc.exists && doc.data().url) {
+                        contactUrl = doc.data().url;
                     }
+                    
+                    document.getElementById('contact-widget').onclick = () => {
+                        window.open(contactUrl, '_blank');
+                    };
                 })
                 .catch(err => {
                     console.error("Error loading contact URL:", err);
@@ -2937,6 +3126,7 @@
             const refCode = urlParams.get('ref');
             if (refCode) {
                 localStorage.setItem('referralCode', refCode);
+                document.getElementById('reg-ref').value = refCode;
             }
         });
     </script>
