@@ -1524,6 +1524,68 @@
             display: none;
         }
         
+        /* Add to cart animation */
+        .cart-animation {
+            position: fixed;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+            z-index: 9999;
+            pointer-events: none;
+            animation: flyToCart 1s cubic-bezier(0.5, -0.5, 0.5, 1.5) forwards;
+        }
+        
+        @keyframes flyToCart {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--endX), var(--endY)) scale(0.1);
+                opacity: 0;
+            }
+        }
+        
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.success {
+            background: var(--success);
+        }
+        
+        .notification.error {
+            background: var(--danger);
+        }
+        
+        .notification i {
+            font-size: 1.2rem;
+        }
+        
         /* Responsive */
         @media (max-width: 992px) {
             .sidebar.open + .main-content {
@@ -2766,6 +2828,16 @@
                                 if (userRoleType === 'affiliate' || userRoleType === 'shop_owner') {
                                     renderAffiliateProducts();
                                 }
+                            } else {
+                                // Create new user document if doesn't exist
+                                db.collection('users').doc(user.uid).set({
+                                    name: user.displayName || user.email.split('@')[0],
+                                    email: user.email,
+                                    role: 'customer',
+                                    wallet: 0,
+                                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                    referralCode: generateReferralCode()
+                                });
                             }
                         });
                 } else {
@@ -2840,6 +2912,14 @@
                 if (e.target === loginModal) {
                     loginModal.style.display = 'none';
                 }
+            });
+            
+            // Sidebar menu items
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const tab = item.getAttribute('data-tab');
+                    showTab(tab);
+                });
             });
         }
         
@@ -2945,6 +3025,7 @@
         
         // Render shop products for shop owners
         function renderShopProducts() {
+            const shopProducts = document.getElementById('shopProducts');
             shopProducts.innerHTML = '';
             
             mockProducts.forEach(product => {
@@ -2981,13 +3062,14 @@
                         loginModal.style.display = 'block';
                         return;
                     }
-                    addToCart(product);
+                    addToCart(product, e.currentTarget);
                 });
             });
         }
         
         // Render affiliate products
         function renderAffiliateProducts() {
+            const affiliateProducts = document.getElementById('affiliateProducts');
             affiliateProducts.innerHTML = '';
             
             mockProducts.forEach(product => {
@@ -3047,7 +3129,7 @@
                     loginModal.style.display = 'block';
                     return;
                 }
-                addToCart(product);
+                addToCart(product, e.currentTarget);
             });
         }
         
@@ -3066,8 +3148,8 @@
             return stars;
         }
         
-        // Add to cart
-        function addToCart(product) {
+        // Add to cart with animation
+        function addToCart(product, button) {
             const existingItem = cart.find(item => item.id === product.id);
             
             if (existingItem) {
@@ -3085,6 +3167,44 @@
             saveCartToStorage();
             updateCartBadge();
             showNotification(`${product.name} added to cart!`);
+            
+            // Add to cart animation
+            animateAddToCart(button);
+        }
+        
+        // Add to cart animation
+        function animateAddToCart(button) {
+            // Create animation element
+            const animElement = document.createElement('div');
+            animElement.className = 'cart-animation';
+            animElement.innerHTML = '<i class="fas fa-shopping-cart"></i>';
+            
+            // Get button position
+            const buttonRect = button.getBoundingClientRect();
+            const startX = buttonRect.left + buttonRect.width/2 - 20;
+            const startY = buttonRect.top + buttonRect.height/2 - 20;
+            
+            // Set initial position
+            animElement.style.left = `${startX}px`;
+            animElement.style.top = `${startY}px`;
+            
+            // Add to body
+            document.body.appendChild(animElement);
+            
+            // Get cart icon position
+            const cartIcon = document.getElementById('cartBtn');
+            const cartRect = cartIcon.getBoundingClientRect();
+            const endX = cartRect.left + cartRect.width/2 - 20;
+            const endY = cartRect.top + cartRect.height/2 - 20;
+            
+            // Set animation properties
+            animElement.style.setProperty('--endX', `${endX - startX}px`);
+            animElement.style.setProperty('--endY', `${endY - startY}px`);
+            
+            // Remove element after animation
+            setTimeout(() => {
+                document.body.removeChild(animElement);
+            }, 1000);
         }
         
         // Update cart badge
@@ -3134,6 +3254,7 @@
         
         // Render shop profile products
         function renderShopProfileProducts() {
+            const shopProfileProducts = document.getElementById('shopProfileProducts');
             shopProfileProducts.innerHTML = '';
             
             mockProducts.filter(p => p.shopId === "shop1").forEach(product => {
@@ -3667,9 +3788,19 @@
             // Add to body
             document.body.appendChild(notification);
             
+            // Show notification
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+            
             // Remove after 3 seconds
             setTimeout(() => {
-                notification.remove();
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
             }, 3000);
         }
         
