@@ -56,6 +56,11 @@
             position: sticky;
             top: 0;
             z-index: 100;
+            transition: var(--transition);
+        }
+
+        .header-hidden {
+            transform: translateY(-100%);
         }
 
         .header-container {
@@ -653,6 +658,104 @@
             flex: 1;
         }
 
+        /* Checkout Modal */
+        .checkout-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .checkout-content {
+            background-color: white;
+            border-radius: var(--radius);
+            width: 100%;
+            max-width: 500px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .checkout-header {
+            margin-bottom: 20px;
+        }
+
+        .checkout-header h2 {
+            color: var(--primary);
+        }
+
+        .checkout-summary {
+            background-color: var(--light-gray);
+            padding: 20px;
+            border-radius: var(--radius);
+            margin-bottom: 20px;
+        }
+
+        .checkout-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .checkout-total {
+            font-weight: bold;
+            border-top: 1px solid var(--gray);
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+
+        /* Floating Contact Widget */
+        .contact-widget {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background-color: var(--accent);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            z-index: 999;
+            transition: var(--transition);
+        }
+
+        .contact-widget:hover {
+            transform: scale(1.1);
+        }
+
+        /* Fund Wallet Button */
+        .fund-wallet-btn {
+            position: fixed;
+            bottom: 90px;
+            right: 30px;
+            background-color: var(--primary);
+            color: white;
+            padding: 10px 15px;
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            z-index: 999;
+            transition: var(--transition);
+            text-decoration: none;
+        }
+
+        .fund-wallet-btn:hover {
+            background-color: var(--secondary);
+        }
+
         /* Responsive Design */
         @media (max-width: 768px) {
             .header-container {
@@ -680,6 +783,15 @@
             
             .products-grid {
                 grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            }
+
+            .contact-widget, .fund-wallet-btn {
+                bottom: 20px;
+                right: 20px;
+            }
+
+            .fund-wallet-btn {
+                bottom: 80px;
             }
         }
 
@@ -712,12 +824,25 @@
             .wallet-actions button {
                 width: 100%;
             }
+
+            .checkout-content {
+                max-width: 90%;
+            }
+
+            .contact-widget, .fund-wallet-btn {
+                bottom: 15px;
+                right: 15px;
+            }
+
+            .fund-wallet-btn {
+                bottom: 75px;
+            }
         }
     </style>
 </head>
 <body>
     <!-- Header -->
-    <header>
+    <header id="main-header">
         <div class="container header-container">
             <div class="logo">
                 <i class="fas fa-fire"></i>
@@ -794,6 +919,53 @@
             </div>
         </div>
     </div>
+
+    <!-- Checkout Modal -->
+    <div id="checkout-modal" class="checkout-modal">
+        <div class="checkout-content">
+            <div class="checkout-header">
+                <h2>Complete Your Purchase</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="checkout-summary">
+                <h3>Order Summary</h3>
+                <div class="checkout-item">
+                    <span id="checkout-product-name">Product Name</span>
+                    <span id="checkout-product-price">$0.00</span>
+                </div>
+                <div class="checkout-item">
+                    <span>Commission</span>
+                    <span id="checkout-commission">$0.00</span>
+                </div>
+                <div class="checkout-item checkout-total">
+                    <span>Total</span>
+                    <span id="checkout-total">$0.00</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="checkout-referral">Referral Code (optional)</label>
+                <input type="text" id="checkout-referral" placeholder="Enter referral code">
+            </div>
+            <div class="form-group">
+                <label for="checkout-email">Email</label>
+                <input type="email" id="checkout-email" required>
+            </div>
+            <div class="form-actions">
+                <button id="proceed-payment" class="btn btn-primary">Proceed to Payment</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Contact Widget -->
+    <div class="contact-widget" id="contact-widget">
+        <i class="fas fa-headset"></i>
+    </div>
+
+    <!-- Fund Wallet Button -->
+    <a href="#" class="fund-wallet-btn" id="fund-wallet-btn">
+        <i class="fas fa-wallet"></i>
+        <span>Fund Wallet</span>
+    </a>
 
     <!-- Main Content -->
     <main>
@@ -910,6 +1082,46 @@
                             <div class="form-actions">
                                 <button type="button" id="cancel-product" class="btn btn-outline">Cancel</button>
                                 <button type="submit" class="btn btn-primary">Add Product</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Edit Product Form (for sellers) -->
+                <div id="edit-product-form" style="display:none;">
+                    <h2 class="section-title">Edit Product</h2>
+                    <div class="form-container">
+                        <form id="product-edit-form">
+                            <input type="hidden" id="edit-product-id">
+                            <div class="form-group">
+                                <label for="edit-product-name">Product Name</label>
+                                <input type="text" id="edit-product-name" required>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="edit-product-price">Price ($)</label>
+                                    <input type="number" id="edit-product-price" step="0.01" min="0.01" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="edit-product-commission">Commission (%)</label>
+                                    <input type="number" id="edit-product-commission" min="1" max="50" required>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="edit-product-description">Description</label>
+                                <textarea id="edit-product-description" class="form-control" required></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="edit-product-image">Product Image (URL)</label>
+                                <input type="text" id="edit-product-image" placeholder="https://example.com/image.jpg">
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="button" id="cancel-edit" class="btn btn-outline">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Save Changes</button>
                             </div>
                         </form>
                     </div>
@@ -1055,6 +1267,14 @@
                                 <option value="GBP">British Pound (£)</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label for="contact-url">Contact Widget URL</label>
+                            <input type="text" id="contact-url" placeholder="https://www.contact.me.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="fund-url">Fund Wallet URL</label>
+                            <input type="text" id="fund-url" placeholder="https://www.fundme.wakka.com">
+                        </div>
                         <button id="save-settings" class="btn btn-primary">Save Settings</button>
                     </div>
                     
@@ -1122,8 +1342,11 @@
         const addProductBtn = document.getElementById('add-product-btn');
         const addProductForm = document.getElementById('add-product-form');
         const productForm = document.getElementById('product-form');
+        const editProductForm = document.getElementById('edit-product-form');
+        const productEditForm = document.getElementById('product-edit-form');
         const authModal = document.getElementById('auth-modal');
-        const closeModal = document.querySelector('.close-modal');
+        const checkoutModal = document.getElementById('checkout-modal');
+        const closeModal = document.querySelectorAll('.close-modal');
         const loginTab = document.getElementById('login-tab');
         const registerTab = document.getElementById('register-tab');
         const loginForm = document.getElementById('login-form');
@@ -1135,6 +1358,10 @@
         const sellerApprovalBlock = document.getElementById('seller-approval-block');
         const regularDashboard = document.getElementById('regular-dashboard');
         const notificationContainer = document.getElementById('notification-container');
+        const proceedPaymentBtn = document.getElementById('proceed-payment');
+        const contactWidget = document.getElementById('contact-widget');
+        const fundWalletBtn = document.getElementById('fund-wallet-btn');
+        const mainHeader = document.getElementById('main-header');
         
         // Admin elements
         const userSearchInput = document.getElementById('user-search');
@@ -1152,12 +1379,18 @@
         const discountExpiryInput = document.getElementById('discount-expiry');
         const createDiscountBtn = document.getElementById('create-discount');
         const currencySelect = document.getElementById('currency-select');
+        const contactUrlInput = document.getElementById('contact-url');
+        const fundUrlInput = document.getElementById('fund-url');
         const saveSettingsBtn = document.getElementById('save-settings');
 
         // App State
         let currentUser = null;
         let userData = null;
         let userRole = 'buyer';
+        let currentProduct = null;
+        let lastScrollPosition = 0;
+        let contactUrl = 'https://www.contact.me.com';
+        let fundUrl = 'https://www.fundme.wakka.com';
 
         // Initialize the app
         function initApp() {
@@ -1178,7 +1411,14 @@
             loginBtn.addEventListener('click', () => showAuthModal('login'));
             registerBtn.addEventListener('click', () => showAuthModal('register'));
             logoutBtn.addEventListener('click', signOut);
-            closeModal.addEventListener('click', () => authModal.style.display = 'none');
+            
+            closeModal.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    if (this.closest('.modal')) {
+                        this.closest('.modal').style.display = 'none';
+                    }
+                });
+            });
             
             loginTab.addEventListener('click', () => {
                 loginTab.classList.add('active');
@@ -1208,6 +1448,7 @@
             addProductBtn.addEventListener('click', () => {
                 addProductForm.style.display = 'block';
                 document.getElementById('products-grid').style.display = 'none';
+                editProductForm.style.display = 'none';
             });
             
             document.getElementById('cancel-product').addEventListener('click', () => {
@@ -1216,10 +1457,17 @@
                 productForm.reset();
             });
             
+            document.getElementById('cancel-edit').addEventListener('click', () => {
+                editProductForm.style.display = 'none';
+                document.getElementById('products-grid').style.display = 'grid';
+                productEditForm.reset();
+            });
+            
             productForm.addEventListener('submit', addProduct);
+            productEditForm.addEventListener('submit', updateProduct);
             withdrawBtn.addEventListener('click', requestWithdrawal);
             contactSupportBtn.addEventListener('click', () => {
-                window.location.href = 'https://www.contactg.jk.com';
+                window.location.href = contactUrl;
             });
             
             // Copy referral code
@@ -1234,6 +1482,9 @@
                 showNotification('Success', 'Referral link copied to clipboard!', 'success');
             });
             
+            // Checkout
+            proceedPaymentBtn.addEventListener('click', processPayment);
+            
             // Admin event listeners
             generateTokensBtn.addEventListener('click', generateTokens);
             copyTokensBtn.addEventListener('click', copyGeneratedTokens);
@@ -1241,8 +1492,37 @@
             createDiscountBtn.addEventListener('click', createDiscountCode);
             saveSettingsBtn.addEventListener('click', saveSystemSettings);
             
+            // Floating widgets
+            contactWidget.addEventListener('click', () => {
+                window.location.href = contactUrl;
+            });
+            
+            fundWalletBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.location.href = fundUrl;
+            });
+            
+            // Scroll handler for header
+            window.addEventListener('scroll', handleScroll);
+            
             // Initialize UI
             updateAuthUI();
+            loadSystemSettings();
+        }
+
+        // Handle scroll to show/hide header
+        function handleScroll() {
+            const currentScrollPosition = window.pageYOffset;
+            
+            if (currentScrollPosition > lastScrollPosition && currentScrollPosition > 100) {
+                // Scrolling down
+                mainHeader.classList.add('header-hidden');
+            } else {
+                // Scrolling up
+                mainHeader.classList.remove('header-hidden');
+            }
+            
+            lastScrollPosition = currentScrollPosition;
         }
 
         // Show auth modal
@@ -1253,6 +1533,87 @@
             } else {
                 loginTab.click();
             }
+        }
+
+        // Show checkout modal
+        function showCheckoutModal(product) {
+            currentProduct = product;
+            document.getElementById('checkout-product-name').textContent = product.name;
+            document.getElementById('checkout-product-price').textContent = formatCurrency(product.price);
+            
+            // Calculate commission (10% for demo)
+            const commission = product.price * (product.commission / 100);
+            document.getElementById('checkout-commission').textContent = formatCurrency(commission);
+            
+            const total = product.price;
+            document.getElementById('checkout-total').textContent = formatCurrency(total);
+            
+            if (currentUser) {
+                document.getElementById('checkout-email').value = currentUser.email;
+            }
+            
+            checkoutModal.style.display = 'flex';
+        }
+
+        // Process payment
+        function processPayment() {
+            const email = document.getElementById('checkout-email').value;
+            const referralCode = document.getElementById('checkout-referral').value;
+            
+            if (!email) {
+                showNotification('Error', 'Please enter your email', 'error');
+                return;
+            }
+            
+            showNotification('Processing', 'Redirecting to payment gateway...', 'info');
+            
+            // In a real implementation, this would redirect to Paystack
+            setTimeout(() => {
+                checkoutModal.style.display = 'none';
+                showNotification('Success', 'Payment processed successfully!', 'success');
+                
+                // Record transaction
+                const commission = referralCode ? (currentProduct.price * (currentProduct.commission / 100)) : 0;
+                
+                if (commission > 0 && currentUser) {
+                    // Update referrer's wallet
+                    db.collection('users').where('referralCode', '==', referralCode).get()
+                        .then(snapshot => {
+                            if (!snapshot.empty) {
+                                const referrer = snapshot.docs[0];
+                                const newBalance = (referrer.data().wallet || 0) + commission;
+                                
+                                db.collection('users').doc(referrer.id).update({
+                                    wallet: newBalance
+                                }).then(() => {
+                                    // Record referral transaction
+                                    db.collection('transactions').add({
+                                        userId: referrer.id,
+                                        type: 'referral',
+                                        amount: commission,
+                                        productId: currentProduct.id,
+                                        productName: currentProduct.name,
+                                        referredEmail: email,
+                                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                                    });
+                                });
+                            }
+                        });
+                }
+                
+                // Record purchase
+                if (currentUser) {
+                    db.collection('transactions').add({
+                        userId: currentUser.uid,
+                        type: 'purchase',
+                        amount: -currentProduct.price,
+                        productId: currentProduct.id,
+                        productName: currentProduct.name,
+                        referralCode: referralCode || null,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+            }, 2000);
         }
 
         // Sign in with email/password
@@ -1327,8 +1688,7 @@
                         // Show admin link if admin
                         if (userRole === 'admin') {
                             adminLink.style.display = 'block';
-                            loadSystemSettings();
-                            updateWithdrawalList();
+                            loadAdminData();
                         } else {
                             adminLink.style.display = 'none';
                         }
@@ -1686,9 +2046,21 @@
         // Save system settings
         function saveSystemSettings() {
             const currency = currencySelect.value;
+            const newContactUrl = contactUrlInput.value.trim() || 'https://www.contact.me.com';
+            const newFundUrl = fundUrlInput.value.trim() || 'https://www.fundme.wakka.com';
             
-            db.collection('settings').doc('currency').set({ value: currency })
+            const settings = {
+                currency: currency,
+                contactUrl: newContactUrl,
+                fundUrl: newFundUrl
+            };
+            
+            db.collection('settings').doc('system').set(settings)
                 .then(() => {
+                    contactUrl = newContactUrl;
+                    fundUrl = newFundUrl;
+                    fundWalletBtn.href = fundUrl;
+                    
                     showNotification('Success', 'System settings saved', 'success');
                     updateCurrencyDisplays();
                 })
@@ -1699,10 +2071,18 @@
 
         // Load system settings
         function loadSystemSettings() {
-            db.collection('settings').doc('currency').get()
+            db.collection('settings').doc('system').get()
                 .then(doc => {
                     if (doc.exists) {
-                        currencySelect.value = doc.data().value;
+                        const settings = doc.data();
+                        currencySelect.value = settings.currency || 'USD';
+                        contactUrlInput.value = settings.contactUrl || 'https://www.contact.me.com';
+                        fundUrlInput.value = settings.fundUrl || 'https://www.fundme.wakka.com';
+                        
+                        contactUrl = settings.contactUrl || 'https://www.contact.me.com';
+                        fundUrl = settings.fundUrl || 'https://www.fundme.wakka.com';
+                        fundWalletBtn.href = fundUrl;
+                        
                         updateCurrencyDisplays();
                     }
                 });
@@ -1731,11 +2111,11 @@
                 owner: currentUser.uid,
                 ownerName: userData.name,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                referralCode: '' // Will be generated after creation
+                referralCode: generateProductReferralCode(
+                    document.getElementById('product-name').value,
+                    userData.name
+                )
             };
-            
-            // Generate product referral code
-            product.referralCode = generateProductReferralCode(product.name, userData.name);
             
             db.collection('products').add(product)
                 .then(() => {
@@ -1747,6 +2127,33 @@
                 })
                 .catch(error => {
                     showNotification('Error', `Error adding product: ${error.message}`, 'error');
+                });
+        }
+
+        // Update product (for sellers)
+        function updateProduct(e) {
+            e.preventDefault();
+            
+            const productId = document.getElementById('edit-product-id').value;
+            const updates = {
+                name: document.getElementById('edit-product-name').value,
+                price: parseFloat(document.getElementById('edit-product-price').value),
+                commission: parseInt(document.getElementById('edit-product-commission').value),
+                description: document.getElementById('edit-product-description').value,
+                image: document.getElementById('edit-product-image').value || 'https://via.placeholder.com/300',
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            db.collection('products').doc(productId).update(updates)
+                .then(() => {
+                    showNotification('Success', 'Product updated successfully!', 'success');
+                    productEditForm.reset();
+                    editProductForm.style.display = 'none';
+                    document.getElementById('products-grid').style.display = 'grid';
+                    loadProducts();
+                })
+                .catch(error => {
+                    showNotification('Error', `Error updating product: ${error.message}`, 'error');
                 });
         }
 
@@ -1864,8 +2271,8 @@
                     <div class="product-price">${formatCurrency(product.price)}</div>
                     <div class="product-actions">
                         ${isOwner ? `
-                            <button class="btn btn-outline btn-sm">Edit</button>
-                            <button class="btn btn-primary btn-sm promote-btn">Promote</button>
+                            <button class="btn btn-outline btn-sm edit-btn">Edit</button>
+                            <button class="btn btn-danger btn-sm delete-btn">Delete</button>
                         ` : `
                             <button class="btn btn-outline btn-sm details-btn">Details</button>
                             <button class="btn btn-primary btn-sm buy-btn">Buy Now</button>
@@ -1876,15 +2283,43 @@
             
             if (!isOwner) {
                 card.querySelector('.buy-btn').addEventListener('click', () => {
-                    initiatePurchase(product);
+                    showCheckoutModal(product);
                 });
             } else {
-                card.querySelector('.promote-btn').addEventListener('click', () => {
-                    showPromotionOptions(product);
+                // Seller actions
+                card.querySelector('.edit-btn').addEventListener('click', () => {
+                    editProduct(product);
+                });
+                
+                card.querySelector('.delete-btn').addEventListener('click', () => {
+                    if (confirm('Are you sure you want to delete this product?')) {
+                        db.collection('products').doc(product.id).delete()
+                            .then(() => {
+                                card.remove();
+                                showNotification('Success', 'Product deleted successfully', 'success');
+                            })
+                            .catch(error => {
+                                showNotification('Error', `Failed to delete product: ${error.message}`, 'error');
+                            });
+                    }
                 });
             }
             
             return card;
+        }
+
+        // Edit product
+        function editProduct(product) {
+            document.getElementById('edit-product-id').value = product.id;
+            document.getElementById('edit-product-name').value = product.name;
+            document.getElementById('edit-product-price').value = product.price;
+            document.getElementById('edit-product-commission').value = product.commission;
+            document.getElementById('edit-product-description').value = product.description;
+            document.getElementById('edit-product-image').value = product.image;
+            
+            addProductForm.style.display = 'none';
+            document.getElementById('products-grid').style.display = 'none';
+            editProductForm.style.display = 'block';
         }
 
         // Create admin product card
@@ -2015,25 +2450,29 @@
             const referralsList = document.getElementById('referrals-list');
             referralsList.innerHTML = '<p>Loading referrals...</p>';
             
-            // Simulated data - in real app, query Firestore for referral data
-            setTimeout(() => {
-                referralsList.innerHTML = `
-                    <div class="referral-content">
-                        <div class="referral-info">
-                            <h3>John Smith</h3>
-                            <p>Signed up using your referral link</p>
-                            <p><strong>Commission:</strong> ${formatCurrency(12.50)}</p>
-                            <p><strong>Date:</strong> Oct 12, 2023</p>
-                        </div>
-                        <div class="referral-info">
-                            <h3>Sarah Johnson</h3>
-                            <p>Purchased Camera using your code</p>
-                            <p><strong>Commission:</strong> ${formatCurrency(48.00)}</p>
-                            <p><strong>Date:</strong> Oct 10, 2023</p>
-                        </div>
-                    </div>
-                `;
-            }, 1000);
+            db.collection('transactions')
+                .where('referralCode', '==', userData.referralCode)
+                .get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        referralsList.innerHTML = '<p>No referrals yet</p>';
+                        return;
+                    }
+                    
+                    referralsList.innerHTML = '';
+                    snapshot.forEach(doc => {
+                        const referral = doc.data();
+                        const li = document.createElement('div');
+                        li.className = 'referral-info';
+                        li.innerHTML = `
+                            <h3>${referral.referredEmail || 'Anonymous'}</h3>
+                            <p>Purchased: ${referral.productName}</p>
+                            <p><strong>Commission:</strong> ${formatCurrency(referral.amount)}</p>
+                            <p><strong>Date:</strong> ${referral.createdAt.toDate().toLocaleDateString()}</p>
+                        `;
+                        referralsList.appendChild(li);
+                    });
+                });
         }
 
         // Load wallet data
@@ -2042,48 +2481,103 @@
             
             document.getElementById('wallet-balance-display').textContent = 
                 formatCurrency(userData.wallet);
-            document.getElementById('total-earnings').textContent = 
-                `Total Earnings: ${formatCurrency(userData.wallet + 500)}`; // Simulated total
+            
+            // Calculate total earnings
+            db.collection('transactions')
+                .where('userId', '==', currentUser.uid)
+                .where('type', '==', 'referral')
+                .get()
+                .then(snapshot => {
+                    let totalEarnings = 0;
+                    snapshot.forEach(doc => {
+                        totalEarnings += doc.data().amount;
+                    });
+                    
+                    document.getElementById('total-earnings').textContent = 
+                        `Total Earnings: ${formatCurrency(totalEarnings)}`;
+                });
             
             // Load transactions
             const transactionsList = document.getElementById('transactions-list');
             transactionsList.innerHTML = '<p>Loading transactions...</p>';
             
-            // Simulated data - in real app, query Firestore
-            setTimeout(() => {
-                transactionsList.innerHTML = `
-                    <div class="transaction-item">
-                        <div class="transaction-info">
-                            <h4>Commission: Camera Sale</h4>
-                            <p>Oct 12, 2023 · Referral: John Smith</p>
-                        </div>
-                        <div class="transaction-amount positive">+${formatCurrency(48.00)}</div>
-                    </div>
-                    <div class="transaction-item">
-                        <div class="transaction-info">
-                            <h4>Withdrawal</h4>
-                            <p>Oct 10, 2023 · Processing</p>
-                        </div>
-                        <div class="transaction-amount negative">-${formatCurrency(200.00)}</div>
-                    </div>
-                    <div class="transaction-item">
-                        <div class="transaction-info">
-                            <h4>Commission: Laptop Sale</h4>
-                            <p>Oct 8, 2023 · Referral: Sarah Johnson</p>
-                        </div>
-                        <div class="transaction-amount positive">+${formatCurrency(103.99)}</div>
-                    </div>
-                `;
-            }, 1000);
+            db.collection('transactions')
+                .where('userId', '==', currentUser.uid)
+                .orderBy('createdAt', 'desc')
+                .limit(10)
+                .get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        transactionsList.innerHTML = '<p>No transactions yet</p>';
+                        return;
+                    }
+                    
+                    transactionsList.innerHTML = '';
+                    snapshot.forEach(doc => {
+                        const txn = doc.data();
+                        const item = document.createElement('div');
+                        item.className = 'transaction-item';
+                        
+                        let description = '';
+                        if (txn.type === 'purchase') {
+                            description = `Purchase: ${txn.productName}`;
+                        } else if (txn.type === 'referral') {
+                            description = `Referral: ${txn.productName}`;
+                        } else if (txn.type === 'withdrawal') {
+                            description = 'Withdrawal';
+                        }
+                        
+                        item.innerHTML = `
+                            <div class="transaction-info">
+                                <h4>${description}</h4>
+                                <p>${txn.createdAt.toDate().toLocaleDateString()}</p>
+                            </div>
+                            <div class="transaction-amount ${txn.amount > 0 ? 'positive' : 'negative'}">
+                                ${txn.amount > 0 ? '+' : ''}${formatCurrency(txn.amount)}
+                            </div>
+                        `;
+                        transactionsList.appendChild(item);
+                    });
+                });
         }
 
         // Load admin data
         function loadAdminData() {
             // Update stats
-            document.getElementById('total-users').textContent = '1,245';
-            document.getElementById('active-sellers').textContent = '84';
-            document.getElementById('new-users').textContent = '145';
-            document.getElementById('affiliates').textContent = '320';
+            db.collection('users').get().then(snapshot => {
+                document.getElementById('total-users').textContent = snapshot.size;
+                
+                let sellers = 0;
+                snapshot.forEach(doc => {
+                    if (doc.data().role === 'seller' && doc.data().status === 'approved') {
+                        sellers++;
+                    }
+                });
+                document.getElementById('active-sellers').textContent = sellers;
+            });
+            
+            // Recent registrations (last 30 days)
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            
+            db.collection('users')
+                .where('createdAt', '>=', thirtyDaysAgo)
+                .get()
+                .then(snapshot => {
+                    document.getElementById('new-users').textContent = snapshot.size;
+                });
+            
+            // Affiliates (users with referrals)
+            db.collection('transactions')
+                .where('type', '==', 'referral')
+                .get()
+                .then(snapshot => {
+                    const referrers = new Set();
+                    snapshot.forEach(doc => {
+                        referrers.add(doc.data().userId);
+                    });
+                    document.getElementById('affiliates').textContent = referrers.size;
+                });
             
             // Load pending sellers
             const pendingSellersList = document.getElementById('pending-sellers');
@@ -2161,59 +2655,36 @@
             const adminTransactions = document.getElementById('admin-transactions');
             adminTransactions.innerHTML = '';
             
-            // Simulated data
-            const transactions = [
-                { type: 'Purchase', user: 'John Smith', amount: 120, date: '2023-10-15' },
-                { type: 'Commission', user: 'Sarah Johnson', amount: 24.50, date: '2023-10-14' },
-                { type: 'Withdrawal', user: 'Mike Davis', amount: -200, date: '2023-10-13' }
-            ];
-            
-            transactions.forEach(txn => {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <div>
-                        <strong>${txn.type}</strong>
-                        <p>${txn.user} · ${txn.date}</p>
-                    </div>
-                    <div class="${txn.amount > 0 ? 'transaction-amount positive' : 'transaction-amount negative'}">
-                        ${txn.amount > 0 ? '+' : ''}${formatCurrency(txn.amount)}
-                    </div>
-                `;
-                adminTransactions.appendChild(li);
-            });
-        }
-
-        // Initiate purchase
-        function initiatePurchase(product) {
-            if (!currentUser) {
-                showNotification('Login Required', 'Please login to make a purchase', 'error');
-                return;
-            }
-            
-            // In a real implementation, this would use Paystack API
-            const refCode = prompt('Enter referral code (optional):');
-            
-            // Simulate payment processing
-            showNotification('Payment Processing', `Initiating payment for ${product.name} via Paystack...`, 'info');
-            
-            // After successful payment
-            setTimeout(() => {
-                // Record transaction
-                const commission = refCode ? (product.price * (product.commission / 100)) : 0;
-                
-                showNotification('Success', `Payment successful! ${formatCurrency(commission)} commission earned.`, 'success');
-                
-                // Update wallet if commission earned
-                if (commission > 0) {
-                    const newBalance = userData.wallet + commission;
-                    db.collection('users').doc(currentUser.uid).update({
-                        wallet: newBalance
-                    }).then(() => {
-                        userData.wallet = newBalance;
-                        loadWallet();
+            db.collection('transactions')
+                .orderBy('createdAt', 'desc')
+                .limit(5)
+                .get()
+                .then(snapshot => {
+                    snapshot.forEach(doc => {
+                        const txn = doc.data();
+                        const li = document.createElement('li');
+                        
+                        let description = '';
+                        if (txn.type === 'purchase') {
+                            description = `Purchase: ${txn.productName}`;
+                        } else if (txn.type === 'referral') {
+                            description = `Referral: ${txn.productName}`;
+                        } else if (txn.type === 'withdrawal') {
+                            description = 'Withdrawal';
+                        }
+                        
+                        li.innerHTML = `
+                            <div>
+                                <strong>${description}</strong>
+                                <p>${txn.userName || txn.referredEmail} · ${txn.createdAt.toDate().toLocaleDateString()}</p>
+                            </div>
+                            <div class="${txn.amount > 0 ? 'transaction-amount positive' : 'transaction-amount negative'}">
+                                ${txn.amount > 0 ? '+' : ''}${formatCurrency(txn.amount)}
+                            </div>
+                        `;
+                        adminTransactions.appendChild(li);
                     });
-                }
-            }, 2000);
+                });
         }
 
         // Show promotion options
