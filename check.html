@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FireCommerce | E-Commerce + Affiliate Platform</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="https://js.paystack.co/v1/inline.js"></script>
+    <!-- External Firebase configuration -->
     <script src="configuration.js"></script>
     <style>
         :root {
@@ -39,6 +39,7 @@
             background-color: #f0f4f8;
             color: var(--dark);
             line-height: 1.6;
+            min-height: 100vh;
         }
 
         .container {
@@ -67,8 +68,7 @@
         .logo {
             display: flex;
             align-items: center;
-            font-family: 'Montserrat', sans-serif;
-            font-weight: 800;
+            font-weight: 700;
             font-size: 1.8rem;
             color: var(--primary);
         }
@@ -105,16 +105,17 @@
         .user-actions {
             display: flex;
             align-items: center;
+            gap: 15px;
         }
 
-        .user-actions button {
-            margin-left: 15px;
+        .btn {
             padding: 8px 15px;
             border: none;
             border-radius: var(--radius);
             font-weight: 500;
             cursor: pointer;
             transition: var(--transition);
+            font-family: 'Poppins', sans-serif;
         }
 
         .btn-primary {
@@ -141,6 +142,22 @@
         .btn-sm {
             padding: 5px 10px;
             font-size: 0.85rem;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: var(--danger);
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: bold;
         }
 
         /* Auth Modal */
@@ -325,6 +342,7 @@
             overflow: hidden;
             box-shadow: var(--shadow);
             transition: var(--transition);
+            position: relative;
         }
 
         .product-card:hover {
@@ -537,6 +555,63 @@
             color: var(--success);
         }
 
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            max-width: 350px;
+        }
+
+        .notification {
+            background: white;
+            border-radius: var(--radius);
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            border-left: 4px solid var(--accent);
+        }
+
+        .notification-icon {
+            font-size: 1.5rem;
+            margin-right: 15px;
+            color: var(--accent);
+        }
+
+        .notification-content h4 {
+            margin-bottom: 5px;
+            font-size: 1rem;
+        }
+
+        .notification-content p {
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+
+        .notification-close {
+            margin-left: 15px;
+            cursor: pointer;
+            color: var(--gray);
+        }
+
+        /* Seller Approval Block */
+        .approval-block {
+            background: white;
+            border-radius: var(--radius);
+            padding: 40px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            margin: 40px 0;
+        }
+
+        .approval-icon {
+            font-size: 3rem;
+            color: var(--warning);
+            margin-bottom: 20px;
+        }
+
         /* Responsive Design */
         @media (max-width: 768px) {
             .header-container {
@@ -550,6 +625,12 @@
             
             nav ul li {
                 margin: 5px;
+            }
+            
+            .user-actions {
+                margin-top: 15px;
+                width: 100%;
+                justify-content: center;
             }
             
             .section-title {
@@ -569,12 +650,6 @@
             
             nav ul {
                 margin-top: 15px;
-            }
-            
-            .user-actions {
-                margin-top: 15px;
-                width: 100%;
-                justify-content: space-between;
             }
             
             .section-title {
@@ -618,12 +693,15 @@
             </nav>
             <div class="user-actions">
                 <span id="user-email">guest@example.com</span>
-                <button id="login-btn" class="btn-primary">Login</button>
-                <button id="register-btn" class="btn-outline">Register</button>
-                <button id="logout-btn" class="btn-secondary" style="display:none;">Logout</button>
+                <button id="login-btn" class="btn btn-primary">Login</button>
+                <button id="register-btn" class="btn btn-outline">Register</button>
+                <button id="logout-btn" class="btn btn-secondary" style="display:none;">Logout</button>
             </div>
         </div>
     </header>
+
+    <!-- Notification Area -->
+    <div class="notification-container" id="notification-container"></div>
 
     <!-- Auth Modals -->
     <div id="auth-modal" class="modal">
@@ -646,7 +724,7 @@
                     <input type="password" id="login-password" required>
                 </div>
                 <div class="form-actions">
-                    <button id="do-login" class="btn-primary">Login</button>
+                    <button id="do-login" class="btn btn-primary">Login</button>
                 </div>
             </div>
             <div id="register-form" style="display:none;">
@@ -664,13 +742,13 @@
                 </div>
                 <div class="form-group">
                     <label for="register-role">Account Type</label>
-                    <select id="register-role">
+                    <select id="register-role" class="form-control">
                         <option value="buyer">Buyer</option>
                         <option value="seller">Seller</option>
                     </select>
                 </div>
                 <div class="form-actions">
-                    <button id="do-register" class="btn-primary">Create Account</button>
+                    <button id="do-register" class="btn btn-primary">Create Account</button>
                 </div>
             </div>
         </div>
@@ -683,48 +761,64 @@
             <div id="dashboard-page" class="page active">
                 <h1 class="section-title">Dashboard</h1>
                 
-                <div class="dashboard-stats">
-                    <div class="stat-card">
-                        <div class="stat-icon primary">
-                            <i class="fas fa-shopping-cart"></i>
-                        </div>
-                        <div class="stat-content">
-                            <h3 id="total-orders">0</h3>
-                            <p>Total Orders</p>
-                        </div>
+                <!-- Seller Approval Block (shown only for pending sellers) -->
+                <div id="seller-approval-block" class="approval-block" style="display: none;">
+                    <div class="approval-icon">
+                        <i class="fas fa-clock"></i>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon accent">
-                            <i class="fas fa-wallet"></i>
-                        </div>
-                        <div class="stat-content">
-                            <h3 id="wallet-balance">$0.00</h3>
-                            <p>Wallet Balance</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon success">
-                            <i class="fas fa-user-friends"></i>
-                        </div>
-                        <div class="stat-content">
-                            <h3 id="referral-count">0</h3>
-                            <p>Referrals</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon primary">
-                            <i class="fas fa-chart-line"></i>
-                        </div>
-                        <div class="stat-content">
-                            <h3 id="month-earnings">$0.00</h3>
-                            <p>Earned This Month</p>
-                        </div>
-                    </div>
+                    <h2>Waiting for Seller Account Approval</h2>
+                    <p>Your seller account is currently under review. Our team will verify your information and approve your account shortly.</p>
+                    <p>If you have any questions, please contact our support team.</p>
+                    <button id="contact-support" class="btn btn-accent" style="margin-top: 20px;">
+                        Contact Support
+                    </button>
                 </div>
                 
-                <h2 class="section-title" id="product-section-title">Products</h2>
-                <div class="products-grid" id="dashboard-products">
-                    <!-- Products will be loaded dynamically -->
+                <!-- Regular Dashboard (hidden for pending sellers) -->
+                <div id="regular-dashboard">
+                    <div class="dashboard-stats">
+                        <div class="stat-card">
+                            <div class="stat-icon primary">
+                                <i class="fas fa-shopping-cart"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="total-orders">0</h3>
+                                <p>Total Orders</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon accent">
+                                <i class="fas fa-wallet"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="wallet-balance">$0.00</h3>
+                                <p>Wallet Balance</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon success">
+                                <i class="fas fa-user-friends"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="referral-count">0</h3>
+                                <p>Referrals</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon primary">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="month-earnings">$0.00</h3>
+                                <p>Earned This Month</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h2 class="section-title" id="product-section-title">Products</h2>
+                    <div class="products-grid" id="dashboard-products">
+                        <!-- Products will be loaded dynamically -->
+                    </div>
                 </div>
             </div>
             
@@ -732,7 +826,7 @@
             <div id="products-page" class="page">
                 <div class="section-header">
                     <h1 class="section-title">Products Marketplace</h1>
-                    <button id="add-product-btn" class="btn-primary" style="display:none;">
+                    <button id="add-product-btn" class="btn btn-primary" style="display:none;">
                         <i class="fas fa-plus"></i> Add Product
                     </button>
                 </div>
@@ -764,7 +858,7 @@
                             
                             <div class="form-group">
                                 <label for="product-description">Description</label>
-                                <textarea id="product-description" required></textarea>
+                                <textarea id="product-description" class="form-control" required></textarea>
                             </div>
                             
                             <div class="form-group">
@@ -773,8 +867,8 @@
                             </div>
                             
                             <div class="form-actions">
-                                <button type="button" id="cancel-product" class="btn-outline">Cancel</button>
-                                <button type="submit" class="btn-primary">Add Product</button>
+                                <button type="button" id="cancel-product" class="btn btn-outline">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Add Product</button>
                             </div>
                         </form>
                     </div>
@@ -791,18 +885,18 @@
                             <h3>Your Referral Code</h3>
                             <div class="referral-code-box">
                                 <span id="referral-code">FIRE-12345</span>
-                                <button class="btn-accent btn-sm" id="copy-code">Copy</button>
+                                <button class="btn btn-accent btn-sm" id="copy-code">Copy</button>
                             </div>
                             
                             <h3>Your Referral Link</h3>
                             <div class="referral-link" id="referral-link">https://firecommerce.com/?ref=FIRE-12345</div>
-                            <button class="btn-outline btn-sm" id="copy-link">Copy Link</button>
+                            <button class="btn btn-outline btn-sm" id="copy-link">Copy Link</button>
                             
                             <h3 style="margin-top: 20px;">Share On Social Media</h3>
                             <div style="display: flex; gap: 10px; margin-top: 10px;">
-                                <button class="btn-outline btn-sm"><i class="fab fa-facebook"></i> Facebook</button>
-                                <button class="btn-outline btn-sm"><i class="fab fa-twitter"></i> Twitter</button>
-                                <button class="btn-outline btn-sm"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+                                <button class="btn btn-outline btn-sm"><i class="fab fa-facebook"></i> Facebook</button>
+                                <button class="btn btn-outline btn-sm"><i class="fab fa-twitter"></i> Twitter</button>
+                                <button class="btn btn-outline btn-sm"><i class="fab fa-whatsapp"></i> WhatsApp</button>
                             </div>
                         </div>
                     </div>
@@ -826,8 +920,8 @@
                     <p id="total-earnings">Total Earnings: $0.00</p>
                     
                     <div class="wallet-actions">
-                        <button class="btn-accent" id="withdraw-btn">Withdraw Funds</button>
-                        <button class="btn-outline" style="background-color: rgba(255,255,255,0.1); color: white; border-color: rgba(255,255,255,0.3);">View Statements</button>
+                        <button class="btn btn-accent" id="withdraw-btn">Withdraw Funds</button>
+                        <button class="btn btn-outline" style="background-color: rgba(255,255,255,0.1); color: white; border-color: rgba(255,255,255,0.3);">View Statements</button>
                     </div>
                 </div>
                 
@@ -843,6 +937,13 @@
                 
                 <div class="admin-grid">
                     <div class="admin-card">
+                        <h3>Pending Seller Approvals</h3>
+                        <ul class="admin-list" id="pending-sellers">
+                            <!-- Pending sellers will be loaded dynamically -->
+                        </ul>
+                    </div>
+                    
+                    <div class="admin-card">
                         <h3>Pending Withdrawals</h3>
                         <ul class="admin-list" id="withdrawals-list">
                             <!-- Withdrawals will be loaded dynamically -->
@@ -857,8 +958,8 @@
                     </div>
                     
                     <div class="admin-card">
-                        <h3>User Management</h3>
-                        <ul class="admin-list" id="user-stats">
+                        <h3>System Overview</h3>
+                        <ul class="admin-list" id="system-stats">
                             <li>
                                 <span>Total Users</span>
                                 <span id="total-users">0</span>
@@ -877,27 +978,13 @@
                             </li>
                         </ul>
                     </div>
-                    
-                    <div class="admin-card">
-                        <h3>System Overview</h3>
-                        <ul class="admin-list" id="system-stats">
-                            <li>
-                                <span>Platform Earnings</span>
-                                <span id="platform-earnings">$0.00</span>
-                            </li>
-                            <li>
-                                <span>Total Commissions Paid</span>
-                                <span id="total-commissions">$0.00</span>
-                            </li>
-                            <li>
-                                <span>Avg. Commission Rate</span>
-                                <span id="avg-commission">0%</span>
-                            </li>
-                            <li>
-                                <span>Conversion Rate</span>
-                                <span id="conversion-rate">0%</span>
-                            </li>
-                        </ul>
+                </div>
+                
+                <h2 class="section-title">Manage Products</h2>
+                <div class="admin-card">
+                    <h3>All Products</h3>
+                    <div id="admin-products-list" class="products-grid">
+                        <!-- Products for admin will be loaded dynamically -->
                     </div>
                 </div>
             </div>
@@ -905,8 +992,7 @@
     </main>
 
     <script>
-        // Initialize Firebase using configuration.js
-        firebase.initializeApp(firebaseConfig);
+        // Firebase is initialized from external configuration.js
         const auth = firebase.auth();
         const db = firebase.firestore();
 
@@ -937,6 +1023,10 @@
         const doLogin = document.getElementById('do-login');
         const doRegister = document.getElementById('do-register');
         const withdrawBtn = document.getElementById('withdraw-btn');
+        const contactSupportBtn = document.getElementById('contact-support');
+        const sellerApprovalBlock = document.getElementById('seller-approval-block');
+        const regularDashboard = document.getElementById('regular-dashboard');
+        const notificationContainer = document.getElementById('notification-container');
 
         // App State
         let currentUser = null;
@@ -1002,16 +1092,20 @@
             
             productForm.addEventListener('submit', addProduct);
             withdrawBtn.addEventListener('click', requestWithdrawal);
-            
-            // Copy referral code/link buttons
-            document.getElementById('copy-code').addEventListener('click', () => {
-                navigator.clipboard.writeText(document.getElementById('referral-code').textContent);
-                alert('Referral code copied to clipboard!');
+            contactSupportBtn.addEventListener('click', () => {
+                window.location.href = 'https://www.contactg.jk.com';
             });
             
+            // Copy referral code
+            document.getElementById('copy-code').addEventListener('click', () => {
+                copyToClipboard(document.getElementById('referral-code').textContent);
+                showNotification('Success', 'Referral code copied to clipboard!', 'success');
+            });
+            
+            // Copy referral link
             document.getElementById('copy-link').addEventListener('click', () => {
-                navigator.clipboard.writeText(document.getElementById('referral-link').textContent);
-                alert('Referral link copied to clipboard!');
+                copyToClipboard(document.getElementById('referral-link').textContent);
+                showNotification('Success', 'Referral link copied to clipboard!', 'success');
             });
             
             // Initialize UI
@@ -1038,7 +1132,7 @@
                     authModal.style.display = 'none';
                 })
                 .catch(error => {
-                    alert(`Login error: ${error.message}`);
+                    showNotification('Login Error', error.message, 'error');
                 });
         }
 
@@ -1052,20 +1146,24 @@
             auth.createUserWithEmailAndPassword(email, password)
                 .then((userCredential) => {
                     // Save user data to Firestore
-                    return db.collection('users').doc(userCredential.user.uid).set({
+                    const userData = {
                         name: name,
                         email: email,
                         role: role,
                         wallet: 0,
-                        referralCode: generateReferralCode(),
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
+                        referralCode: generateReferralCode(name),
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        status: role === 'seller' ? 'pending' : 'approved'
+                    };
+                    
+                    return db.collection('users').doc(userCredential.user.uid).set(userData);
                 })
                 .then(() => {
                     authModal.style.display = 'none';
+                    showNotification('Welcome!', 'Your account has been created successfully', 'success');
                 })
                 .catch(error => {
-                    alert(`Registration error: ${error.message}`);
+                    showNotification('Registration Error', error.message, 'error');
                 });
         }
 
@@ -1076,6 +1174,7 @@
                 userData = null;
                 updateAuthUI();
                 navigateTo('dashboard');
+                showNotification('Signed Out', 'You have been successfully signed out', 'info');
             });
         }
 
@@ -1087,6 +1186,7 @@
                         userData = doc.data();
                         userRole = userData.role;
                         updateAuthUI();
+                        checkSellerStatus();
                         loadDashboardData();
                         
                         // Show admin link if admin
@@ -1096,8 +1196,8 @@
                             adminLink.style.display = 'none';
                         }
                         
-                        // Show add product button if seller
-                        if (userRole === 'seller') {
+                        // Show add product button if seller and approved
+                        if (userRole === 'seller' && userData.status === 'approved') {
                             addProductBtn.style.display = 'block';
                         } else {
                             addProductBtn.style.display = 'none';
@@ -1105,8 +1205,19 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Error fetching user data:', error);
+                    showNotification('Error', `Error fetching user data: ${error.message}`, 'error');
                 });
+        }
+
+        // Check seller approval status
+        function checkSellerStatus() {
+            if (userRole === 'seller' && userData.status === 'pending') {
+                sellerApprovalBlock.style.display = 'block';
+                regularDashboard.style.display = 'none';
+            } else {
+                sellerApprovalBlock.style.display = 'none';
+                regularDashboard.style.display = 'block';
+            }
         }
 
         // Update UI based on auth state
@@ -1123,6 +1234,8 @@
                 logoutBtn.style.display = 'none';
                 adminLink.style.display = 'none';
                 addProductBtn.style.display = 'none';
+                sellerApprovalBlock.style.display = 'none';
+                regularDashboard.style.display = 'block';
             }
         }
 
@@ -1164,9 +1277,24 @@
             }
         }
 
-        // Generate unique referral code
-        function generateReferralCode() {
-            return 'FIRE-' + Math.random().toString(36).substr(2, 5).toUpperCase();
+        // Generate unique referral code based on username
+        function generateReferralCode(name) {
+            // Convert name to uppercase and remove spaces
+            const cleanName = name.toUpperCase().replace(/\s+/g, '');
+            // Generate a random 4-digit number
+            const randomNum = Math.floor(1000 + Math.random() * 9000);
+            return `${cleanName}-${randomNum}`;
+        }
+
+        // Generate unique product referral code
+        function generateProductReferralCode(productName, userName) {
+            // Get first 3 letters of product name
+            const productCode = productName.substring(0, 3).toUpperCase();
+            // Get first 3 letters of username
+            const userCode = userName.substring(0, 3).toUpperCase();
+            // Generate a random 3-digit number
+            const randomNum = Math.floor(100 + Math.random() * 900);
+            return `${productCode}-${userCode}-${randomNum}`;
         }
 
         // Add new product (for sellers)
@@ -1174,7 +1302,12 @@
             e.preventDefault();
             
             if (userRole !== 'seller') {
-                alert('Only sellers can add products');
+                showNotification('Error', 'Only sellers can add products', 'error');
+                return;
+            }
+            
+            if (userData.status !== 'approved') {
+                showNotification('Error', 'Your seller account is not yet approved', 'error');
                 return;
             }
             
@@ -1185,43 +1318,48 @@
                 description: document.getElementById('product-description').value,
                 image: document.getElementById('product-image').value || 'https://via.placeholder.com/300',
                 owner: currentUser.uid,
+                ownerName: userData.name,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                referralCode: generateReferralCode()
+                referralCode: '' // Will be generated after creation
             };
+            
+            // Generate product referral code
+            product.referralCode = generateProductReferralCode(product.name, userData.name);
             
             db.collection('products').add(product)
                 .then(() => {
-                    alert('Product added successfully!');
+                    showNotification('Success', 'Product added successfully!', 'success');
                     productForm.reset();
                     addProductForm.style.display = 'none';
                     document.getElementById('products-grid').style.display = 'grid';
                     loadProducts();
                 })
                 .catch(error => {
-                    alert(`Error adding product: ${error.message}`);
+                    showNotification('Error', `Error adding product: ${error.message}`, 'error');
                 });
         }
 
         // Request withdrawal
         function requestWithdrawal() {
             if (!currentUser || !userData) {
-                alert('Please login to request withdrawal');
+                showNotification('Error', 'Please login to request withdrawal', 'error');
                 return;
             }
             
             const amount = parseFloat(prompt('Enter withdrawal amount:'));
             if (isNaN(amount) || amount <= 0) {
-                alert('Invalid amount');
+                showNotification('Error', 'Invalid amount', 'error');
                 return;
             }
             
             if (amount > userData.wallet) {
-                alert('Insufficient funds');
+                showNotification('Error', 'Insufficient funds', 'error');
                 return;
             }
             
             db.collection('withdrawals').add({
                 userId: currentUser.uid,
+                userName: userData.name,
                 amount: amount,
                 status: 'pending',
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -1233,12 +1371,12 @@
                     wallet: newBalance
                 })
                 .then(() => {
-                    alert('Withdrawal request submitted. Admin will process it soon.');
+                    showNotification('Success', 'Withdrawal request submitted. Admin will process it soon.', 'success');
                     loadWallet();
                 });
             })
             .catch(error => {
-                alert(`Withdrawal error: ${error.message}`);
+                showNotification('Error', `Withdrawal error: ${error.message}`, 'error');
             });
         }
 
@@ -1249,8 +1387,8 @@
             // Update wallet balance
             document.getElementById('wallet-balance').textContent = `$${userData.wallet.toFixed(2)}`;
             
-            // Load user's products (if seller)
-            if (userRole === 'seller') {
+            // Load user's products (if seller and approved)
+            if (userRole === 'seller' && userData.status === 'approved') {
                 document.getElementById('product-section-title').textContent = 'My Products';
                 db.collection('products').where('owner', '==', currentUser.uid).get()
                     .then(snapshot => {
@@ -1258,6 +1396,7 @@
                         productsGrid.innerHTML = '';
                         snapshot.forEach(doc => {
                             const product = doc.data();
+                            product.id = doc.id;
                             productsGrid.appendChild(createProductCard(product, true));
                         });
                     });
@@ -1270,6 +1409,7 @@
                         productsGrid.innerHTML = '';
                         snapshot.forEach(doc => {
                             const product = doc.data();
+                            product.id = doc.id;
                             productsGrid.appendChild(createProductCard(product));
                         });
                     });
@@ -1279,12 +1419,19 @@
         // Load all products
         function loadProducts() {
             const productsGrid = document.getElementById('products-grid');
-            productsGrid.innerHTML = '';
+            productsGrid.innerHTML = '<p>Loading products...</p>';
             
             db.collection('products').get()
                 .then(snapshot => {
+                    if (snapshot.empty) {
+                        productsGrid.innerHTML = '<p>No products found</p>';
+                        return;
+                    }
+                    
+                    productsGrid.innerHTML = '';
                     snapshot.forEach(doc => {
                         const product = doc.data();
+                        product.id = doc.id;
                         productsGrid.appendChild(createProductCard(product));
                     });
                 });
@@ -1306,11 +1453,11 @@
                     <div class="product-price">$${product.price.toFixed(2)}</div>
                     <div class="product-actions">
                         ${isOwner ? `
-                            <button class="btn-outline btn-sm">Edit</button>
-                            <button class="btn-primary btn-sm promote-btn">Promote</button>
+                            <button class="btn btn-outline btn-sm">Edit</button>
+                            <button class="btn btn-primary btn-sm promote-btn">Promote</button>
                         ` : `
-                            <button class="btn-outline btn-sm details-btn">Details</button>
-                            <button class="btn-primary btn-sm buy-btn">Buy Now</button>
+                            <button class="btn btn-outline btn-sm details-btn">Details</button>
+                            <button class="btn btn-primary btn-sm buy-btn">Buy Now</button>
                         `}
                     </div>
                 </div>
@@ -1342,7 +1489,7 @@
             const referralsList = document.getElementById('referrals-list');
             referralsList.innerHTML = '<p>Loading referrals...</p>';
             
-            // In a real app, we would query Firestore for referral data
+            // Simulated data - in real app, query Firestore for referral data
             setTimeout(() => {
                 referralsList.innerHTML = `
                     <div class="referral-content">
@@ -1350,13 +1497,13 @@
                             <h3>John Smith</h3>
                             <p>Signed up using your referral link</p>
                             <p><strong>Commission:</strong> $12.50</p>
-                            <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+                            <p><strong>Date:</strong> Oct 12, 2023</p>
                         </div>
                         <div class="referral-info">
                             <h3>Sarah Johnson</h3>
                             <p>Purchased Camera using your code</p>
                             <p><strong>Commission:</strong> $48.00</p>
-                            <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+                            <p><strong>Date:</strong> Oct 10, 2023</p>
                         </div>
                     </div>
                 `;
@@ -1382,21 +1529,21 @@
                     <div class="transaction-item">
                         <div class="transaction-info">
                             <h4>Commission: Camera Sale</h4>
-                            <p>${new Date().toLocaleDateString()} · Referral: John Smith</p>
+                            <p>Oct 12, 2023 · Referral: John Smith</p>
                         </div>
                         <div class="transaction-amount positive">+$48.00</div>
                     </div>
                     <div class="transaction-item">
                         <div class="transaction-info">
                             <h4>Withdrawal</h4>
-                            <p>${new Date().toLocaleDateString()} · Processing</p>
+                            <p>Oct 10, 2023 · Processing</p>
                         </div>
                         <div class="transaction-amount negative">-$200.00</div>
                     </div>
                     <div class="transaction-item">
                         <div class="transaction-info">
                             <h4>Commission: Laptop Sale</h4>
-                            <p>${new Date().toLocaleDateString()} · Referral: Sarah Johnson</p>
+                            <p>Oct 8, 2023 · Referral: Sarah Johnson</p>
                         </div>
                         <div class="transaction-amount positive">+$103.99</div>
                     </div>
@@ -1411,10 +1558,34 @@
             document.getElementById('active-sellers').textContent = '84';
             document.getElementById('new-users').textContent = '145';
             document.getElementById('affiliates').textContent = '320';
-            document.getElementById('platform-earnings').textContent = '$12,450.75';
-            document.getElementById('total-commissions').textContent = '$8,450.25';
-            document.getElementById('avg-commission').textContent = '8.5%';
-            document.getElementById('conversion-rate').textContent = '4.2%';
+            
+            // Load pending sellers
+            const pendingSellersList = document.getElementById('pending-sellers');
+            pendingSellersList.innerHTML = '';
+            
+            // Simulated data - in real app, query Firestore for pending sellers
+            setTimeout(() => {
+                const sellers = [
+                    { name: 'John Electronics', email: 'john@example.com', joined: '2023-10-15' },
+                    { name: 'Sarah Fashion', email: 'sarah@example.com', joined: '2023-10-12' },
+                    { name: 'Mike Gadgets', email: 'mike@example.com', joined: '2023-10-10' }
+                ];
+                
+                sellers.forEach(seller => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div>
+                            <strong>${seller.name}</strong>
+                            <p>${seller.email}</p>
+                        </div>
+                        <div>
+                            <button class="btn btn-sm btn-primary approve-btn">Approve</button>
+                            <button class="btn btn-sm btn-outline reject-btn">Reject</button>
+                        </div>
+                    `;
+                    pendingSellersList.appendChild(li);
+                });
+            }, 1000);
             
             // Load withdrawals
             const withdrawalsList = document.getElementById('withdrawals-list');
@@ -1440,12 +1611,55 @@
                 `;
                 withdrawalsList.appendChild(li);
             });
+            
+            // Load products for admin
+            const productsList = document.getElementById('admin-products-list');
+            productsList.innerHTML = '<p>Loading products...</p>';
+            
+            db.collection('products').get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        productsList.innerHTML = '<p>No products found</p>';
+                        return;
+                    }
+                    
+                    productsList.innerHTML = '';
+                    snapshot.forEach(doc => {
+                        const product = doc.data();
+                        product.id = doc.id;
+                        productsList.appendChild(createAdminProductCard(product));
+                    });
+                });
         }
 
-        // Initiate purchase with Paystack
+        // Create admin product card
+        function createAdminProductCard(product) {
+            const card = document.createElement('div');
+            card.className = 'product-card';
+            
+            card.innerHTML = `
+                <div class="product-image">
+                    ${product.image ? `<img src="${product.image}" alt="${product.name}">` : 
+                     `<i class="fas fa-box fa-3x"></i>`}
+                </div>
+                <div class="product-content">
+                    <h3 class="product-title">${product.name}</h3>
+                    <p>Seller: ${product.ownerName}</p>
+                    <div class="product-price">$${product.price.toFixed(2)}</div>
+                    <div class="product-actions">
+                        <button class="btn btn-outline btn-sm">Edit</button>
+                        <button class="btn btn-danger btn-sm">Delete</button>
+                    </div>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        // Initiate purchase
         function initiatePurchase(product) {
             if (!currentUser) {
-                alert('Please login to make a purchase');
+                showNotification('Login Required', 'Please login to make a purchase', 'error');
                 return;
             }
             
@@ -1453,14 +1667,14 @@
             const refCode = prompt('Enter referral code (optional):');
             
             // Simulate payment processing
-            alert(`Initiating payment for ${product.name} via Paystack...`);
+            showNotification('Payment Processing', `Initiating payment for ${product.name} via Paystack...`, 'info');
             
             // After successful payment
             setTimeout(() => {
                 // Record transaction
                 const commission = refCode ? (product.price * (product.commission / 100)) : 0;
                 
-                alert(`Payment successful! $${commission.toFixed(2)} commission earned.`);
+                showNotification('Success', `Payment successful! $${commission.toFixed(2)} commission earned.`, 'success');
                 
                 // Update wallet if commission earned
                 if (commission > 0) {
@@ -1477,10 +1691,57 @@
 
         // Show promotion options
         function showPromotionOptions(product) {
-            const link = `https://firecommerce.com/product/${product.id}?ref=${userData.referralCode}`;
+            const link = `https://firecommerce.com/product/${product.id}?ref=${product.referralCode}`;
             const message = `Check out this product: ${product.name} - Get ${product.commission}% commission! ${link}`;
             
-            alert(`Share this link to promote the product:\n\n${link}\n\nOr this message:\n\n${message}`);
+            showNotification('Promotion Link', `Share this link to promote the product: ${link}`, 'info');
+        }
+
+        // Show notification
+        function showNotification(title, message, type) {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            
+            let icon = 'fa-info-circle';
+            if (type === 'error') icon = 'fa-exclamation-circle';
+            if (type === 'success') icon = 'fa-check-circle';
+            if (type === 'info') icon = 'fa-info-circle';
+            
+            notification.innerHTML = `
+                <div class="notification-icon">
+                    <i class="fas ${icon}"></i>
+                </div>
+                <div class="notification-content">
+                    <h4>${title}</h4>
+                    <p>${message}</p>
+                </div>
+                <div class="notification-close">
+                    <i class="fas fa-times"></i>
+                </div>
+            `;
+            
+            notification.querySelector('.notification-close').addEventListener('click', () => {
+                notification.remove();
+            });
+            
+            notificationContainer.appendChild(notification);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+
+        // Copy text to clipboard
+        function copyToClipboard(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
         }
 
         // Initialize the app when DOM is loaded
