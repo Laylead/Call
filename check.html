@@ -612,6 +612,47 @@
             margin-bottom: 20px;
         }
 
+        /* Admin Specific Styles */
+        .user-card {
+            background-color: white;
+            border-radius: var(--radius);
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .user-edit-form {
+            background-color: var(--light-gray);
+            padding: 15px;
+            border-radius: var(--radius);
+        }
+
+        .admin-list button {
+            margin-left: 5px;
+        }
+
+        #token-list {
+            background-color: var(--light-gray);
+            padding: 10px;
+            border-radius: var(--radius);
+            margin-bottom: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        #user-search-results .btn {
+            margin-top: 5px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
         /* Responsive Design */
         @media (max-width: 768px) {
             .header-container {
@@ -937,6 +978,35 @@
                 
                 <div class="admin-grid">
                     <div class="admin-card">
+                        <h3>User Management</h3>
+                        <div class="form-group">
+                            <input type="text" id="user-search" placeholder="Search users by name, email, etc.">
+                            <button id="search-users" class="btn btn-primary btn-sm">Search</button>
+                        </div>
+                        <div id="user-search-results" style="max-height: 300px; overflow-y: auto;">
+                            <!-- Search results will appear here -->
+                        </div>
+                    </div>
+                    
+                    <div class="admin-card">
+                        <h3>Generate Tokens</h3>
+                        <div class="form-group">
+                            <label for="token-count">Number of Tokens</label>
+                            <input type="number" id="token-count" min="1" max="100" value="1">
+                        </div>
+                        <div class="form-group">
+                            <label for="token-value">Token Value (USD)</label>
+                            <input type="number" id="token-value" min="1" step="1" value="10">
+                        </div>
+                        <button id="generate-tokens" class="btn btn-primary">Generate Tokens</button>
+                        <div id="generated-tokens" style="margin-top: 15px; display: none;">
+                            <h4>Generated Tokens</h4>
+                            <div id="token-list" style="font-family: monospace;"></div>
+                            <button id="copy-tokens" class="btn btn-outline btn-sm">Copy All</button>
+                        </div>
+                    </div>
+                    
+                    <div class="admin-card">
                         <h3>Pending Seller Approvals</h3>
                         <ul class="admin-list" id="pending-sellers">
                             <!-- Pending sellers will be loaded dynamically -->
@@ -948,6 +1018,44 @@
                         <ul class="admin-list" id="withdrawals-list">
                             <!-- Withdrawals will be loaded dynamically -->
                         </ul>
+                    </div>
+                    
+                    <div class="admin-card">
+                        <h3>Create Discount Code</h3>
+                        <div class="form-group">
+                            <label for="discount-code">Code</label>
+                            <input type="text" id="discount-code" placeholder="e.g. SUMMER20">
+                        </div>
+                        <div class="form-group">
+                            <label for="discount-type">Type</label>
+                            <select id="discount-type" class="form-control">
+                                <option value="percentage">Percentage</option>
+                                <option value="fixed">Fixed Amount</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="discount-value">Value</label>
+                            <input type="number" id="discount-value" min="1" step="1" value="10">
+                        </div>
+                        <div class="form-group">
+                            <label for="discount-expiry">Expiry Date</label>
+                            <input type="date" id="discount-expiry">
+                        </div>
+                        <button id="create-discount" class="btn btn-primary">Create Discount</button>
+                    </div>
+                    
+                    <div class="admin-card">
+                        <h3>System Settings</h3>
+                        <div class="form-group">
+                            <label for="currency-select">Default Currency</label>
+                            <select id="currency-select" class="form-control">
+                                <option value="USD">US Dollar ($)</option>
+                                <option value="NGN">Nigerian Naira (₦)</option>
+                                <option value="EUR">Euro (€)</option>
+                                <option value="GBP">British Pound (£)</option>
+                            </select>
+                        </div>
+                        <button id="save-settings" class="btn btn-primary">Save Settings</button>
                     </div>
                     
                     <div class="admin-card">
@@ -1027,6 +1135,24 @@
         const sellerApprovalBlock = document.getElementById('seller-approval-block');
         const regularDashboard = document.getElementById('regular-dashboard');
         const notificationContainer = document.getElementById('notification-container');
+        
+        // Admin elements
+        const userSearchInput = document.getElementById('user-search');
+        const searchUsersBtn = document.getElementById('search-users');
+        const userSearchResults = document.getElementById('user-search-results');
+        const tokenCountInput = document.getElementById('token-count');
+        const tokenValueInput = document.getElementById('token-value');
+        const generateTokensBtn = document.getElementById('generate-tokens');
+        const generatedTokensDiv = document.getElementById('generated-tokens');
+        const tokenList = document.getElementById('token-list');
+        const copyTokensBtn = document.getElementById('copy-tokens');
+        const discountCodeInput = document.getElementById('discount-code');
+        const discountTypeSelect = document.getElementById('discount-type');
+        const discountValueInput = document.getElementById('discount-value');
+        const discountExpiryInput = document.getElementById('discount-expiry');
+        const createDiscountBtn = document.getElementById('create-discount');
+        const currencySelect = document.getElementById('currency-select');
+        const saveSettingsBtn = document.getElementById('save-settings');
 
         // App State
         let currentUser = null;
@@ -1108,6 +1234,13 @@
                 showNotification('Success', 'Referral link copied to clipboard!', 'success');
             });
             
+            // Admin event listeners
+            generateTokensBtn.addEventListener('click', generateTokens);
+            copyTokensBtn.addEventListener('click', copyGeneratedTokens);
+            searchUsersBtn.addEventListener('click', searchUsers);
+            createDiscountBtn.addEventListener('click', createDiscountCode);
+            saveSettingsBtn.addEventListener('click', saveSystemSettings);
+            
             // Initialize UI
             updateAuthUI();
         }
@@ -1153,7 +1286,9 @@
                         wallet: 0,
                         referralCode: generateReferralCode(name),
                         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                        status: role === 'seller' ? 'pending' : 'approved'
+                        status: role === 'seller' ? 'pending' : 'approved',
+                        verified: false,
+                        banned: false
                     };
                     
                     return db.collection('users').doc(userCredential.user.uid).set(userData);
@@ -1192,6 +1327,8 @@
                         // Show admin link if admin
                         if (userRole === 'admin') {
                             adminLink.style.display = 'block';
+                            loadSystemSettings();
+                            updateWithdrawalList();
                         } else {
                             adminLink.style.display = 'none';
                         }
@@ -1277,6 +1414,152 @@
             }
         }
 
+        // Currency formatting function
+        function formatCurrency(amount) {
+            const currency = currencySelect.value;
+            switch(currency) {
+                case 'NGN':
+                    return `₦${amount.toLocaleString()}`;
+                case 'EUR':
+                    return `€${amount.toFixed(2)}`;
+                case 'GBP':
+                    return `£${amount.toFixed(2)}`;
+                case 'USD':
+                default:
+                    return `$${amount.toFixed(2)}`;
+            }
+        }
+
+        // Update all currency displays
+        function updateCurrencyDisplays() {
+            document.querySelectorAll('.balance-amount, .product-price, .transaction-amount').forEach(el => {
+                if (el.textContent.includes('$') || el.textContent.includes('₦') || 
+                    el.textContent.includes('€') || el.textContent.includes('£')) {
+                    const amount = parseFloat(el.textContent.replace(/[^0-9.-]+/g,""));
+                    if (!isNaN(amount)) {
+                        el.textContent = formatCurrency(amount);
+                    }
+                }
+            });
+        }
+
+        // Search users function
+        function searchUsers() {
+            const query = userSearchInput.value.trim();
+            if (!query) {
+                showNotification('Error', 'Please enter a search term', 'error');
+                return;
+            }
+            
+            userSearchResults.innerHTML = '<p>Searching users...</p>';
+            
+            // Search by name or email
+            db.collection('users')
+                .where('name', '>=', query)
+                .where('name', '<=', query + '\uf8ff')
+                .get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        userSearchResults.innerHTML = '<p>No users found</p>';
+                        return;
+                    }
+                    
+                    userSearchResults.innerHTML = '';
+                    snapshot.forEach(doc => {
+                        const user = doc.data();
+                        user.id = doc.id;
+                        const userElement = createUserCard(user);
+                        userSearchResults.appendChild(userElement);
+                    });
+                })
+                .catch(error => {
+                    showNotification('Error', `Search failed: ${error.message}`, 'error');
+                });
+        }
+
+        // Create user card for search results
+        function createUserCard(user) {
+            const card = document.createElement('div');
+            card.className = 'user-card';
+            card.style.padding = '10px';
+            card.style.borderBottom = '1px solid var(--light-gray)';
+            
+            card.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong>${user.name}</strong>
+                        <p>${user.email}</p>
+                        <p>Role: ${user.role} ${user.verified ? '<i class="fas fa-check-circle" style="color: #1a73e8;"></i>' : ''}</p>
+                        <p>Balance: ${formatCurrency(user.wallet || 0)}</p>
+                        <p>Status: ${user.banned ? '<span style="color: var(--danger);">Banned</span>' : 'Active'}</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-sm btn-primary edit-user-btn">Edit</button>
+                    </div>
+                </div>
+                <div class="user-edit-form" style="display: none; margin-top: 10px;">
+                    <div class="form-group">
+                        <label>Balance</label>
+                        <input type="number" class="user-balance" value="${user.wallet || 0}" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" class="user-verified" ${user.verified ? 'checked' : ''}>
+                            Verified Seller
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" class="user-banned" ${user.banned ? 'checked' : ''}>
+                            Banned
+                        </label>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn btn-sm btn-outline cancel-edit">Cancel</button>
+                        <button class="btn btn-sm btn-primary save-user">Save</button>
+                    </div>
+                </div>
+            `;
+            
+            const editBtn = card.querySelector('.edit-user-btn');
+            const editForm = card.querySelector('.user-edit-form');
+            const cancelBtn = card.querySelector('.cancel-edit');
+            const saveBtn = card.querySelector('.save-user');
+            
+            editBtn.addEventListener('click', () => {
+                editForm.style.display = 'block';
+            });
+            
+            cancelBtn.addEventListener('click', () => {
+                editForm.style.display = 'none';
+            });
+            
+            saveBtn.addEventListener('click', () => {
+                const updates = {
+                    wallet: parseFloat(card.querySelector('.user-balance').value),
+                    verified: card.querySelector('.user-verified').checked,
+                    banned: card.querySelector('.user-banned').checked
+                };
+                
+                db.collection('users').doc(user.id).update(updates)
+                    .then(() => {
+                        showNotification('Success', 'User updated successfully', 'success');
+                        editForm.style.display = 'none';
+                        // Refresh the card
+                        user.wallet = updates.wallet;
+                        user.verified = updates.verified;
+                        user.banned = updates.banned;
+                        const newCard = createUserCard(user);
+                        card.parentNode.replaceChild(newCard, card);
+                    })
+                    .catch(error => {
+                        showNotification('Error', `Failed to update user: ${error.message}`, 'error');
+                    });
+            });
+            
+            return card;
+        }
+
         // Generate unique referral code based on username
         function generateReferralCode(name) {
             // Convert name to uppercase and remove spaces
@@ -1295,6 +1578,134 @@
             // Generate a random 3-digit number
             const randomNum = Math.floor(100 + Math.random() * 900);
             return `${productCode}-${userCode}-${randomNum}`;
+        }
+
+        // Generate one-time use tokens
+        function generateTokens() {
+            const count = parseInt(tokenCountInput.value);
+            const value = parseInt(tokenValueInput.value);
+            
+            if (isNaN(count) || count < 1 || count > 100) {
+                showNotification('Error', 'Please enter a valid number of tokens (1-100)', 'error');
+                return;
+            }
+            
+            if (isNaN(value) || value < 1) {
+                showNotification('Error', 'Please enter a valid token value', 'error');
+                return;
+            }
+            
+            const tokens = [];
+            for (let i = 0; i < count; i++) {
+                const token = generateRandomToken();
+                tokens.push({
+                    code: token,
+                    value: value,
+                    used: false,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+            
+            // Save tokens to Firestore
+            const batch = db.batch();
+            tokens.forEach(token => {
+                const ref = db.collection('tokens').doc();
+                batch.set(ref, token);
+            });
+            
+            batch.commit()
+                .then(() => {
+                    // Display generated tokens
+                    tokenList.innerHTML = tokens.map(t => t.code).join('<br>');
+                    generatedTokensDiv.style.display = 'block';
+                    showNotification('Success', `${count} tokens generated successfully`, 'success');
+                })
+                .catch(error => {
+                    showNotification('Error', `Failed to generate tokens: ${error.message}`, 'error');
+                });
+        }
+
+        // Generate random token string
+        function generateRandomToken() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < 12; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result.match(/.{1,4}/g).join('-');
+        }
+
+        // Copy generated tokens to clipboard
+        function copyGeneratedTokens() {
+            const tokens = tokenList.textContent;
+            copyToClipboard(tokens);
+            showNotification('Success', 'All tokens copied to clipboard', 'success');
+        }
+
+        // Create discount code
+        function createDiscountCode() {
+            const code = discountCodeInput.value.trim();
+            const type = discountTypeSelect.value;
+            const value = parseFloat(discountValueInput.value);
+            const expiry = discountExpiryInput.value;
+            
+            if (!code) {
+                showNotification('Error', 'Please enter a discount code', 'error');
+                return;
+            }
+            
+            if (isNaN(value) || value <= 0) {
+                showNotification('Error', 'Please enter a valid discount value', 'error');
+                return;
+            }
+            
+            const discount = {
+                code: code.toUpperCase(),
+                type: type,
+                value: value,
+                active: true,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            if (expiry) {
+                discount.expiry = new Date(expiry);
+            }
+            
+            db.collection('discounts').doc(code).set(discount)
+                .then(() => {
+                    showNotification('Success', `Discount code "${code}" created successfully`, 'success');
+                    discountCodeInput.value = '';
+                    discountValueInput.value = '10';
+                    discountExpiryInput.value = '';
+                })
+                .catch(error => {
+                    showNotification('Error', `Failed to create discount: ${error.message}`, 'error');
+                });
+        }
+
+        // Save system settings
+        function saveSystemSettings() {
+            const currency = currencySelect.value;
+            
+            db.collection('settings').doc('currency').set({ value: currency })
+                .then(() => {
+                    showNotification('Success', 'System settings saved', 'success');
+                    updateCurrencyDisplays();
+                })
+                .catch(error => {
+                    showNotification('Error', `Failed to save settings: ${error.message}`, 'error');
+                });
+        }
+
+        // Load system settings
+        function loadSystemSettings() {
+            db.collection('settings').doc('currency').get()
+                .then(doc => {
+                    if (doc.exists) {
+                        currencySelect.value = doc.data().value;
+                        updateCurrencyDisplays();
+                    }
+                });
         }
 
         // Add new product (for sellers)
@@ -1385,7 +1796,7 @@
             if (!currentUser) return;
             
             // Update wallet balance
-            document.getElementById('wallet-balance').textContent = `$${userData.wallet.toFixed(2)}`;
+            document.getElementById('wallet-balance').textContent = formatCurrency(userData.wallet);
             
             // Load user's products (if seller and approved)
             if (userRole === 'seller' && userData.status === 'approved') {
@@ -1450,7 +1861,7 @@
                 </div>
                 <div class="product-content">
                     <h3 class="product-title">${product.name}</h3>
-                    <div class="product-price">$${product.price.toFixed(2)}</div>
+                    <div class="product-price">${formatCurrency(product.price)}</div>
                     <div class="product-actions">
                         ${isOwner ? `
                             <button class="btn btn-outline btn-sm">Edit</button>
@@ -1476,6 +1887,121 @@
             return card;
         }
 
+        // Create admin product card
+        function createAdminProductCard(product) {
+            const card = document.createElement('div');
+            card.className = 'product-card';
+            
+            card.innerHTML = `
+                <div class="product-image">
+                    ${product.image ? `<img src="${product.image}" alt="${product.name}">` : 
+                     `<i class="fas fa-box fa-3x"></i>`}
+                </div>
+                <div class="product-content">
+                    <h3 class="product-title">${product.name}</h3>
+                    <p>Seller: ${product.ownerName}</p>
+                    <div class="product-price">${formatCurrency(product.price)}</div>
+                    <div class="form-group">
+                        <label>Commission (%)</label>
+                        <input type="number" class="product-commission" value="${product.commission}" min="1" max="50">
+                    </div>
+                    <div class="product-actions">
+                        <button class="btn btn-outline btn-sm save-product">Save</button>
+                        <button class="btn btn-danger btn-sm delete-product">Delete</button>
+                    </div>
+                </div>
+            `;
+            
+            const saveBtn = card.querySelector('.save-product');
+            const deleteBtn = card.querySelector('.delete-product');
+            const commissionInput = card.querySelector('.product-commission');
+            
+            saveBtn.addEventListener('click', () => {
+                const updates = {
+                    commission: parseInt(commissionInput.value)
+                };
+                
+                db.collection('products').doc(product.id).update(updates)
+                    .then(() => {
+                        showNotification('Success', 'Product updated successfully', 'success');
+                    })
+                    .catch(error => {
+                        showNotification('Error', `Failed to update product: ${error.message}`, 'error');
+                    });
+            });
+            
+            deleteBtn.addEventListener('click', () => {
+                if (confirm('Are you sure you want to delete this product?')) {
+                    db.collection('products').doc(product.id).delete()
+                        .then(() => {
+                            card.remove();
+                            showNotification('Success', 'Product deleted successfully', 'success');
+                        })
+                        .catch(error => {
+                            showNotification('Error', `Failed to delete product: ${error.message}`, 'error');
+                        });
+                }
+            });
+            
+            return card;
+        }
+
+        // Update withdrawal list to include approve/reject functionality
+        function updateWithdrawalList() {
+            const withdrawalsList = document.getElementById('withdrawals-list');
+            withdrawalsList.innerHTML = '';
+            
+            db.collection('withdrawals').where('status', '==', 'pending').get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        withdrawalsList.innerHTML = '<p>No pending withdrawals</p>';
+                        return;
+                    }
+                    
+                    snapshot.forEach(doc => {
+                        const withdrawal = doc.data();
+                        withdrawal.id = doc.id;
+                        
+                        const li = document.createElement('li');
+                        li.innerHTML = `
+                            <div>
+                                <strong>${withdrawal.userName}</strong>
+                                <p>${formatCurrency(withdrawal.amount)} · ${withdrawal.createdAt.toDate().toLocaleDateString()}</p>
+                            </div>
+                            <div>
+                                <button class="btn btn-sm btn-primary approve-withdrawal">Approve</button>
+                                <button class="btn btn-sm btn-outline reject-withdrawal">Reject</button>
+                            </div>
+                        `;
+                        
+                        const approveBtn = li.querySelector('.approve-withdrawal');
+                        const rejectBtn = li.querySelector('.reject-withdrawal');
+                        
+                        approveBtn.addEventListener('click', () => {
+                            processWithdrawal(withdrawal.id, 'approved');
+                        });
+                        
+                        rejectBtn.addEventListener('click', () => {
+                            processWithdrawal(withdrawal.id, 'rejected');
+                        });
+                        
+                        withdrawalsList.appendChild(li);
+                    });
+                });
+        }
+
+        // Process withdrawal (approve or reject)
+        function processWithdrawal(withdrawalId, action) {
+            db.collection('withdrawals').doc(withdrawalId).update({ status: action })
+                .then(() => {
+                    showNotification('Success', `Withdrawal ${action} successfully`, 'success');
+                    updateWithdrawalList();
+                })
+                .catch(error => {
+                    showNotification('Error', `Failed to process withdrawal: ${error.message}`, 'error');
+                });
+        }
+
         // Load referrals data
         function loadReferrals() {
             if (!currentUser) return;
@@ -1496,13 +2022,13 @@
                         <div class="referral-info">
                             <h3>John Smith</h3>
                             <p>Signed up using your referral link</p>
-                            <p><strong>Commission:</strong> $12.50</p>
+                            <p><strong>Commission:</strong> ${formatCurrency(12.50)}</p>
                             <p><strong>Date:</strong> Oct 12, 2023</p>
                         </div>
                         <div class="referral-info">
                             <h3>Sarah Johnson</h3>
                             <p>Purchased Camera using your code</p>
-                            <p><strong>Commission:</strong> $48.00</p>
+                            <p><strong>Commission:</strong> ${formatCurrency(48.00)}</p>
                             <p><strong>Date:</strong> Oct 10, 2023</p>
                         </div>
                     </div>
@@ -1515,9 +2041,9 @@
             if (!currentUser) return;
             
             document.getElementById('wallet-balance-display').textContent = 
-                `$${userData.wallet.toFixed(2)}`;
+                formatCurrency(userData.wallet);
             document.getElementById('total-earnings').textContent = 
-                `Total Earnings: $${(userData.wallet + 500).toFixed(2)}`; // Simulated total
+                `Total Earnings: ${formatCurrency(userData.wallet + 500)}`; // Simulated total
             
             // Load transactions
             const transactionsList = document.getElementById('transactions-list');
@@ -1531,21 +2057,21 @@
                             <h4>Commission: Camera Sale</h4>
                             <p>Oct 12, 2023 · Referral: John Smith</p>
                         </div>
-                        <div class="transaction-amount positive">+$48.00</div>
+                        <div class="transaction-amount positive">+${formatCurrency(48.00)}</div>
                     </div>
                     <div class="transaction-item">
                         <div class="transaction-info">
                             <h4>Withdrawal</h4>
                             <p>Oct 10, 2023 · Processing</p>
                         </div>
-                        <div class="transaction-amount negative">-$200.00</div>
+                        <div class="transaction-amount negative">-${formatCurrency(200.00)}</div>
                     </div>
                     <div class="transaction-item">
                         <div class="transaction-info">
                             <h4>Commission: Laptop Sale</h4>
                             <p>Oct 8, 2023 · Referral: Sarah Johnson</p>
                         </div>
-                        <div class="transaction-amount positive">+$103.99</div>
+                        <div class="transaction-amount positive">+${formatCurrency(103.99)}</div>
                     </div>
                 `;
             }, 1000);
@@ -1563,54 +2089,54 @@
             const pendingSellersList = document.getElementById('pending-sellers');
             pendingSellersList.innerHTML = '';
             
-            // Simulated data - in real app, query Firestore for pending sellers
-            setTimeout(() => {
-                const sellers = [
-                    { name: 'John Electronics', email: 'john@example.com', joined: '2023-10-15' },
-                    { name: 'Sarah Fashion', email: 'sarah@example.com', joined: '2023-10-12' },
-                    { name: 'Mike Gadgets', email: 'mike@example.com', joined: '2023-10-10' }
-                ];
-                
-                sellers.forEach(seller => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `
-                        <div>
-                            <strong>${seller.name}</strong>
-                            <p>${seller.email}</p>
-                        </div>
-                        <div>
-                            <button class="btn btn-sm btn-primary approve-btn">Approve</button>
-                            <button class="btn btn-sm btn-outline reject-btn">Reject</button>
-                        </div>
-                    `;
-                    pendingSellersList.appendChild(li);
+            db.collection('users').where('role', '==', 'seller').where('status', '==', 'pending').get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        pendingSellersList.innerHTML = '<p>No pending seller approvals</p>';
+                        return;
+                    }
+                    
+                    snapshot.forEach(doc => {
+                        const seller = doc.data();
+                        seller.id = doc.id;
+                        
+                        const li = document.createElement('li');
+                        li.innerHTML = `
+                            <div>
+                                <strong>${seller.name}</strong>
+                                <p>${seller.email}</p>
+                            </div>
+                            <div>
+                                <button class="btn btn-sm btn-primary approve-seller">Approve</button>
+                                <button class="btn btn-sm btn-outline reject-seller">Reject</button>
+                            </div>
+                        `;
+                        
+                        const approveBtn = li.querySelector('.approve-seller');
+                        const rejectBtn = li.querySelector('.reject-seller');
+                        
+                        approveBtn.addEventListener('click', () => {
+                            db.collection('users').doc(seller.id).update({ status: 'approved' })
+                                .then(() => {
+                                    li.remove();
+                                    showNotification('Success', 'Seller approved successfully', 'success');
+                                });
+                        });
+                        
+                        rejectBtn.addEventListener('click', () => {
+                            db.collection('users').doc(seller.id).update({ status: 'rejected' })
+                                .then(() => {
+                                    li.remove();
+                                    showNotification('Success', 'Seller rejected', 'success');
+                                });
+                        });
+                        
+                        pendingSellersList.appendChild(li);
+                    });
                 });
-            }, 1000);
             
             // Load withdrawals
-            const withdrawalsList = document.getElementById('withdrawals-list');
-            withdrawalsList.innerHTML = '';
-            
-            // Simulated data
-            const withdrawals = [
-                { name: 'John Smith', amount: 250, status: 'pending' },
-                { name: 'Sarah Johnson', amount: 150, status: 'pending' },
-                { name: 'Mike Davis', amount: 300, status: 'approved' }
-            ];
-            
-            withdrawals.forEach(withdrawal => {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <div>
-                        <strong>${withdrawal.name}</strong>
-                        <p>$${withdrawal.amount.toFixed(2)}</p>
-                    </div>
-                    <span class="status-badge status-${withdrawal.status}">
-                        ${withdrawal.status.charAt(0).toUpperCase() + withdrawal.status.slice(1)}
-                    </span>
-                `;
-                withdrawalsList.appendChild(li);
-            });
+            updateWithdrawalList();
             
             // Load products for admin
             const productsList = document.getElementById('admin-products-list');
@@ -1630,30 +2156,31 @@
                         productsList.appendChild(createAdminProductCard(product));
                     });
                 });
-        }
-
-        // Create admin product card
-        function createAdminProductCard(product) {
-            const card = document.createElement('div');
-            card.className = 'product-card';
             
-            card.innerHTML = `
-                <div class="product-image">
-                    ${product.image ? `<img src="${product.image}" alt="${product.name}">` : 
-                     `<i class="fas fa-box fa-3x"></i>`}
-                </div>
-                <div class="product-content">
-                    <h3 class="product-title">${product.name}</h3>
-                    <p>Seller: ${product.ownerName}</p>
-                    <div class="product-price">$${product.price.toFixed(2)}</div>
-                    <div class="product-actions">
-                        <button class="btn btn-outline btn-sm">Edit</button>
-                        <button class="btn btn-danger btn-sm">Delete</button>
+            // Load recent transactions
+            const adminTransactions = document.getElementById('admin-transactions');
+            adminTransactions.innerHTML = '';
+            
+            // Simulated data
+            const transactions = [
+                { type: 'Purchase', user: 'John Smith', amount: 120, date: '2023-10-15' },
+                { type: 'Commission', user: 'Sarah Johnson', amount: 24.50, date: '2023-10-14' },
+                { type: 'Withdrawal', user: 'Mike Davis', amount: -200, date: '2023-10-13' }
+            ];
+            
+            transactions.forEach(txn => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <div>
+                        <strong>${txn.type}</strong>
+                        <p>${txn.user} · ${txn.date}</p>
                     </div>
-                </div>
-            `;
-            
-            return card;
+                    <div class="${txn.amount > 0 ? 'transaction-amount positive' : 'transaction-amount negative'}">
+                        ${txn.amount > 0 ? '+' : ''}${formatCurrency(txn.amount)}
+                    </div>
+                `;
+                adminTransactions.appendChild(li);
+            });
         }
 
         // Initiate purchase
@@ -1674,7 +2201,7 @@
                 // Record transaction
                 const commission = refCode ? (product.price * (product.commission / 100)) : 0;
                 
-                showNotification('Success', `Payment successful! $${commission.toFixed(2)} commission earned.`, 'success');
+                showNotification('Success', `Payment successful! ${formatCurrency(commission)} commission earned.`, 'success');
                 
                 // Update wallet if commission earned
                 if (commission > 0) {
