@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FireCommerce | Professional E-Commerce Platform</title>
+    <title>FireCommerce | E-Commerce + Affiliate Platform</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- External Firebase configuration -->
+    <script src="configuration.js"></script>
     <style>
         :root {
             --primary: #1a3a6c;
@@ -21,10 +23,10 @@
             --danger: #dc3545;
             --gray: #6c757d;
             --light-gray: #e9ecef;
-            --sidebar-width: 280px;
             --shadow: 0 4px 12px rgba(0,0,0,0.1);
             --radius: 8px;
             --transition: all 0.3s ease;
+            --sidebar-width: 250px;
         }
 
         * {
@@ -39,7 +41,6 @@
             color: var(--dark);
             line-height: 1.6;
             min-height: 100vh;
-            padding-left: var(--sidebar-width);
             transition: var(--transition);
         }
 
@@ -50,96 +51,6 @@
             padding: 0 20px;
         }
 
-        /* Sidebar Styles */
-        .sidebar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: var(--sidebar-width);
-            height: 100%;
-            background-color: white;
-            box-shadow: var(--shadow);
-            z-index: 1000;
-            padding: 20px 0;
-            overflow-y: auto;
-            transition: var(--transition);
-        }
-
-        .sidebar-hidden {
-            transform: translateX(-100%);
-        }
-
-        .sidebar-header {
-            padding: 0 20px 20px;
-            border-bottom: 1px solid var(--light-gray);
-            margin-bottom: 15px;
-        }
-
-        .logo {
-            display: flex;
-            align-items: center;
-            font-weight: 700;
-            font-size: 1.8rem;
-            color: var(--primary);
-            margin-bottom: 30px;
-        }
-
-        .logo i {
-            margin-right: 10px;
-            color: var(--accent);
-        }
-
-        .sidebar-menu {
-            list-style: none;
-            padding: 0;
-        }
-
-        .sidebar-menu li {
-            margin-bottom: 5px;
-        }
-
-        .sidebar-menu li a {
-            display: flex;
-            align-items: center;
-            text-decoration: none;
-            color: var(--dark);
-            font-weight: 500;
-            padding: 12px 20px;
-            border-radius: var(--radius);
-            transition: var(--transition);
-        }
-
-        .sidebar-menu li a:hover,
-        .sidebar-menu li a.active {
-            background-color: var(--primary);
-            color: white;
-        }
-
-        .sidebar-menu li a i {
-            margin-right: 12px;
-            width: 20px;
-            text-align: center;
-        }
-
-        .user-info {
-            padding: 20px;
-            margin-top: 20px;
-            border-top: 1px solid var(--light-gray);
-        }
-
-        .user-email {
-            font-weight: 500;
-            margin-bottom: 15px;
-        }
-
-        .sidebar-footer {
-            padding: 20px;
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            background-color: white;
-        }
-
         /* Header Styles */
         header {
             background-color: white;
@@ -148,22 +59,37 @@
             top: 0;
             z-index: 100;
             transition: var(--transition);
-            padding: 15px 0;
+        }
+
+        .header-hidden {
+            transform: translateY(-100%);
         }
 
         .header-container {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            padding: 15px 0;
         }
 
-        .hamburger {
-            display: none;
-            background: none;
-            border: none;
-            font-size: 1.5rem;
+        .hamburger-menu {
             cursor: pointer;
+            font-size: 1.5rem;
             color: var(--primary);
+            margin-right: 15px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            font-weight: 700;
+            font-size: 1.8rem;
+            color: var(--primary);
+        }
+
+        .logo i {
+            margin-right: 10px;
+            color: var(--accent);
         }
 
         .user-actions {
@@ -206,6 +132,88 @@
         .btn-sm {
             padding: 5px 10px;
             font-size: 0.85rem;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: var(--danger);
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -100%;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background-color: white;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.1);
+            z-index: 1000;
+            transition: var(--transition);
+            overflow-y: auto;
+        }
+
+        .sidebar-open {
+            left: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--light-gray);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .close-sidebar {
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: var(--gray);
+        }
+
+        .sidebar-nav {
+            padding: 20px 0;
+        }
+
+        .sidebar-nav ul {
+            list-style: none;
+        }
+
+        .sidebar-nav ul li {
+            margin-bottom: 5px;
+        }
+
+        .sidebar-nav ul li a {
+            display: block;
+            padding: 12px 20px;
+            text-decoration: none;
+            color: var(--dark);
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .sidebar-nav ul li a:hover,
+        .sidebar-nav ul li a.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .sidebar-footer {
+            padding: 20px;
+            border-top: 1px solid var(--light-gray);
+            font-size: 0.85rem;
+            color: var(--gray);
         }
 
         /* Auth Modal */
@@ -283,7 +291,7 @@
             font-weight: 500;
         }
 
-        .form-group input, .form-group select, .form-group textarea {
+        .form-group input {
             width: 100%;
             padding: 10px 15px;
             border: 1px solid var(--light-gray);
@@ -299,6 +307,11 @@
         main {
             min-height: calc(100vh - 150px);
             padding: 40px 0;
+            transition: var(--transition);
+        }
+
+        .sidebar-open + main {
+            margin-left: var(--sidebar-width);
         }
 
         .page {
@@ -756,57 +769,51 @@
             margin: 20px 0;
         }
 
-        .payment-method {
+        .payment-option {
             display: flex;
             align-items: center;
             margin-bottom: 15px;
-            padding: 15px;
+            padding: 10px;
             border: 1px solid var(--light-gray);
             border-radius: var(--radius);
             cursor: pointer;
             transition: var(--transition);
         }
 
-        .payment-method.selected {
+        .payment-option:hover {
+            border-color: var(--primary);
+        }
+
+        .payment-option.selected {
             border-color: var(--primary);
             background-color: rgba(26, 58, 108, 0.05);
         }
 
-        .payment-method i {
-            margin-right: 15px;
-            font-size: 1.5rem;
-            color: var(--primary);
+        .payment-option input {
+            margin-right: 10px;
         }
 
-        .payment-method .method-info {
+        .payment-option-label {
             flex: 1;
         }
 
-        .payment-method .method-info h4 {
-            margin-bottom: 5px;
+        .payment-option-details {
+            padding: 10px;
+            background-color: var(--light);
+            border-radius: var(--radius);
+            margin-top: 10px;
+            display: none;
         }
 
-        .payment-method .method-info p {
-            color: var(--gray);
-            font-size: 0.9rem;
+        .payment-option.selected .payment-option-details {
+            display: block;
         }
 
-        .payment-method input[type="radio"] {
-            margin-left: 10px;
-        }
-
-        /* Floating Widgets */
-        .widget-container {
+        /* Floating Contact Widget */
+        .contact-widget {
             position: fixed;
             bottom: 30px;
             right: 30px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            z-index: 999;
-        }
-
-        .contact-widget {
             background-color: var(--accent);
             color: white;
             width: 50px;
@@ -818,100 +825,124 @@
             font-size: 1.5rem;
             cursor: pointer;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            z-index: 999;
             transition: var(--transition);
         }
 
-        .fund-widget {
+        .contact-widget:hover {
+            transform: scale(1.1);
+        }
+
+        /* Fund Wallet Button */
+        .fund-wallet-widget {
+            position: fixed;
+            bottom: 90px;
+            right: 30px;
             background-color: var(--primary);
             color: white;
-            width: 50px;
-            height: 50px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
             cursor: pointer;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            z-index: 999;
             transition: var(--transition);
         }
 
-        .contact-widget:hover, .fund-widget:hover {
+        .fund-wallet-widget:hover {
+            background-color: var(--secondary);
             transform: scale(1.1);
         }
 
-        /* Admin User Table */
-        .user-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            background-color: white;
+        /* Admin Users Table */
+        .users-table-container {
+            margin-top: 30px;
+            background: white;
             border-radius: var(--radius);
-            overflow: hidden;
+            padding: 20px;
             box-shadow: var(--shadow);
+            overflow-x: auto;
         }
 
-        .user-table th, .user-table td {
+        .users-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .users-table th, 
+        .users-table td {
             padding: 12px 15px;
             text-align: left;
             border-bottom: 1px solid var(--light-gray);
         }
 
-        .user-table th {
-            background-color: var(--light);
+        .users-table th {
+            background-color: var(--primary);
+            color: white;
             font-weight: 600;
         }
 
-        .user-table tr:hover {
+        .users-table tr:nth-child(even) {
             background-color: rgba(0,0,0,0.02);
         }
 
-        .user-table .btn-sm {
-            padding: 3px 8px;
-            font-size: 0.8rem;
+        .users-table tr:hover {
+            background-color: rgba(0,0,0,0.05);
         }
 
         /* Responsive Design */
-        @media (max-width: 992px) {
-            body {
-                padding-left: 0;
-            }
-            
-            .sidebar {
-                transform: translateX(-100%);
-            }
-            
-            .sidebar.sidebar-visible {
-                transform: translateX(0);
-            }
-            
-            .hamburger {
-                display: block;
-            }
-        }
-
         @media (max-width: 768px) {
-            .dashboard-stats {
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            .header-container {
+                flex-wrap: wrap;
+            }
+            
+            .user-actions {
+                margin-top: 15px;
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .section-title {
+                font-size: 1.5rem;
             }
             
             .products-grid {
                 grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
             }
 
-            .widget-container {
+            .contact-widget, .fund-wallet-widget {
                 bottom: 20px;
                 right: 20px;
+            }
+
+            .fund-wallet-widget {
+                bottom: 80px;
+            }
+
+            .sidebar-open + main {
+                margin-left: 0;
             }
         }
 
         @media (max-width: 480px) {
+            .header-container {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
             .section-title {
                 font-size: 1.3rem;
             }
             
             .products-grid {
                 grid-template-columns: 1fr;
+            }
+            
+            .referral-content {
+                flex-direction: column;
             }
             
             .wallet-actions {
@@ -925,10 +956,14 @@
             .checkout-content {
                 max-width: 90%;
             }
-            
-            .widget-container {
+
+            .contact-widget, .fund-wallet-widget {
                 bottom: 15px;
                 right: 15px;
+            }
+
+            .fund-wallet-widget {
+                bottom: 75px;
             }
         }
     </style>
@@ -941,35 +976,34 @@
                 <i class="fas fa-fire"></i>
                 <span>FireCommerce</span>
             </div>
-            <ul class="sidebar-menu">
-                <li><a href="#dashboard" class="nav-link active"><i class="fas fa-home"></i> Dashboard</a></li>
-                <li><a href="#products" class="nav-link"><i class="fas fa-shopping-bag"></i> Products</a></li>
-                <li><a href="#referrals" class="nav-link"><i class="fas fa-user-friends"></i> Referrals</a></li>
-                <li><a href="#wallet" class="nav-link"><i class="fas fa-wallet"></i> Wallet</a></li>
-                <li id="admin-menu-item" style="display:none;"><a href="#admin" class="nav-link"><i class="fas fa-cog"></i> Admin</a></li>
+            <span class="close-sidebar" id="close-sidebar">&times;</span>
+        </div>
+        <nav class="sidebar-nav">
+            <ul>
+                <li><a href="#dashboard" class="nav-link active">Dashboard</a></li>
+                <li><a href="#products" class="nav-link">Products</a></li>
+                <li><a href="#referrals" class="nav-link">Referrals</a></li>
+                <li><a href="#wallet" class="nav-link">Wallet</a></li>
+                <li><a href="#admin" class="nav-link" id="admin-link" style="display:none;">Admin</a></li>
             </ul>
-        </div>
-        
-        <div class="user-info">
-            <div class="user-email" id="sidebar-user-email">guest@example.com</div>
-            <div id="sidebar-user-role" style="color: var(--gray); font-size: 0.9rem;">Guest Account</div>
-        </div>
-        
+        </nav>
         <div class="sidebar-footer">
-            <button id="sidebar-logout-btn" class="btn btn-secondary" style="display:none; width: 100%;">Logout</button>
-            <div class="user-actions" id="sidebar-auth-buttons">
-                <button id="sidebar-login-btn" class="btn btn-primary" style="width: 48%;">Login</button>
-                <button id="sidebar-register-btn" class="btn btn-outline" style="width: 48%;">Register</button>
-            </div>
+            &copy; 2023 FireCommerce. All rights reserved.
         </div>
     </div>
 
     <!-- Header -->
     <header id="main-header">
         <div class="container header-container">
-            <button class="hamburger" id="hamburger">
-                <i class="fas fa-bars"></i>
-            </button>
+            <div style="display: flex; align-items: center;">
+                <div class="hamburger-menu" id="hamburger-menu">
+                    <i class="fas fa-bars"></i>
+                </div>
+                <div class="logo">
+                    <i class="fas fa-fire"></i>
+                    <span>FireCommerce</span>
+                </div>
+            </div>
             <div class="user-actions">
                 <span id="user-email">guest@example.com</span>
                 <button id="login-btn" class="btn btn-primary">Login</button>
@@ -1059,45 +1093,50 @@
                 <label for="checkout-referral">Referral Code (optional)</label>
                 <input type="text" id="checkout-referral" placeholder="Enter referral code">
             </div>
-            
-            <div class="payment-methods" id="payment-methods">
-                <h3>Payment Method</h3>
-                <div class="payment-method" id="wallet-payment">
-                    <i class="fas fa-wallet"></i>
-                    <div class="method-info">
-                        <h4>Pay from Wallet</h4>
-                        <p>Current balance: <span id="wallet-balance-display">$0.00</span></p>
-                    </div>
-                    <input type="radio" name="payment-method" value="wallet" checked>
-                </div>
-                <div class="payment-method" id="direct-payment" style="display:none;">
-                    <i class="fas fa-external-link-alt"></i>
-                    <div class="method-info">
-                        <h4>Direct Payment</h4>
-                        <p>Pay via external payment link</p>
-                    </div>
-                    <input type="radio" name="payment-method" value="direct">
-                </div>
-            </div>
-            
             <div class="form-group">
                 <label for="checkout-email">Email</label>
                 <input type="email" id="checkout-email" required>
             </div>
+            
+            <!-- Payment Method Selection -->
+            <div class="payment-methods">
+                <h3>Payment Method</h3>
+                <div class="payment-option" id="balance-payment">
+                    <input type="radio" name="payment-method" id="balance-method" value="balance">
+                    <div class="payment-option-label">
+                        <label for="balance-method">Pay with Account Balance</label>
+                        <div class="payment-option-details">
+                            <p>Current Balance: <span id="current-balance-display">$0.00</span></p>
+                            <p id="balance-status">Sufficient funds available</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="payment-option" id="direct-payment">
+                    <input type="radio" name="payment-method" id="direct-method" value="direct">
+                    <div class="payment-option-label">
+                        <label for="direct-method">Pay Directly</label>
+                        <div class="payment-option-details">
+                            <p>You will be redirected to the payment gateway</p>
+                            <p id="payment-link-status">Payment link available</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <div class="form-actions">
                 <button id="proceed-payment" class="btn btn-primary">Proceed to Payment</button>
             </div>
         </div>
     </div>
 
-    <!-- Floating Widgets -->
-    <div class="widget-container">
-        <div class="fund-widget" id="fund-widget">
-            <i class="fas fa-wallet"></i>
-        </div>
-        <div class="contact-widget" id="contact-widget">
-            <i class="fas fa-headset"></i>
-        </div>
+    <!-- Floating Contact Widget -->
+    <div class="contact-widget" id="contact-widget">
+        <i class="fas fa-headset"></i>
+    </div>
+
+    <!-- Fund Wallet Widget -->
+    <div class="fund-wallet-widget" id="fund-wallet-widget">
+        <i class="fas fa-wallet"></i>
     </div>
 
     <!-- Main Content -->
@@ -1203,11 +1242,6 @@
                             </div>
                             
                             <div class="form-group">
-                                <label for="product-payment-link">Payment Link (optional)</label>
-                                <input type="url" id="product-payment-link" placeholder="https://payment.example.com">
-                            </div>
-                            
-                            <div class="form-group">
                                 <label for="product-description">Description</label>
                                 <textarea id="product-description" class="form-control" required></textarea>
                             </div>
@@ -1215,6 +1249,11 @@
                             <div class="form-group">
                                 <label for="product-image">Product Image (URL)</label>
                                 <input type="text" id="product-image" placeholder="https://example.com/image.jpg">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="product-payment-link">Payment Link (Optional)</label>
+                                <input type="text" id="product-payment-link" placeholder="https://payment.example.com">
                             </div>
                             
                             <div class="form-actions">
@@ -1248,11 +1287,6 @@
                             </div>
                             
                             <div class="form-group">
-                                <label for="edit-product-payment-link">Payment Link (optional)</label>
-                                <input type="url" id="edit-product-payment-link" placeholder="https://payment.example.com">
-                            </div>
-                            
-                            <div class="form-group">
                                 <label for="edit-product-description">Description</label>
                                 <textarea id="edit-product-description" class="form-control" required></textarea>
                             </div>
@@ -1260,6 +1294,11 @@
                             <div class="form-group">
                                 <label for="edit-product-image">Product Image (URL)</label>
                                 <input type="text" id="edit-product-image" placeholder="https://example.com/image.jpg">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="edit-product-payment-link">Payment Link (Optional)</label>
+                                <input type="text" id="edit-product-payment-link" placeholder="https://payment.example.com">
                             </div>
                             
                             <div class="form-actions">
@@ -1451,33 +1490,30 @@
                     </div>
                 </div>
                 
+                <h2 class="section-title">All Users</h2>
+                <div class="users-table-container">
+                    <table class="users-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Balance</th>
+                                <th>Joined</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body">
+                            <!-- Users will be loaded dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                
                 <h2 class="section-title">Manage Products</h2>
                 <div class="admin-card">
                     <h3>All Products</h3>
                     <div id="admin-products-list" class="products-grid">
                         <!-- Products for admin will be loaded dynamically -->
-                    </div>
-                </div>
-                
-                <h2 class="section-title">User Management</h2>
-                <div class="admin-card">
-                    <h3>All Users</h3>
-                    <div id="admin-users-table">
-                        <table class="user-table">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Status</th>
-                                    <th>Balance</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="users-table-body">
-                                <!-- Users will be loaded dynamically -->
-                            </tbody>
-                        </table>
                     </div>
                 </div>
             </div>
@@ -1525,19 +1561,18 @@
         const notificationContainer = document.getElementById('notification-container');
         const proceedPaymentBtn = document.getElementById('proceed-payment');
         const contactWidget = document.getElementById('contact-widget');
-        const fundWidget = document.getElementById('fund-widget');
+        const fundWalletWidget = document.getElementById('fund-wallet-widget');
         const mainHeader = document.getElementById('main-header');
+        const hamburgerMenu = document.getElementById('hamburger-menu');
         const sidebar = document.getElementById('sidebar');
-        const hamburger = document.getElementById('hamburger');
-        const sidebarLogoutBtn = document.getElementById('sidebar-logout-btn');
-        const sidebarLoginBtn = document.getElementById('sidebar-login-btn');
-        const sidebarRegisterBtn = document.getElementById('sidebar-register-btn');
-        const sidebarUserEmail = document.getElementById('sidebar-user-email');
-        const sidebarUserRole = document.getElementById('sidebar-user-role');
-        const adminMenuItem = document.getElementById('admin-menu-item');
+        const closeSidebar = document.getElementById('close-sidebar');
+        const balancePaymentOption = document.getElementById('balance-payment');
         const directPaymentOption = document.getElementById('direct-payment');
-        const walletPaymentOption = document.getElementById('wallet-payment');
-        const usersTableBody = document.getElementById('users-table-body');
+        const balanceMethod = document.getElementById('balance-method');
+        const directMethod = document.getElementById('direct-method');
+        const currentBalanceDisplay = document.getElementById('current-balance-display');
+        const balanceStatus = document.getElementById('balance-status');
+        const paymentLinkStatus = document.getElementById('payment-link-status');
         
         // Admin elements
         const userSearchInput = document.getElementById('user-search');
@@ -1558,6 +1593,7 @@
         const contactUrlInput = document.getElementById('contact-url');
         const fundUrlInput = document.getElementById('fund-url');
         const saveSettingsBtn = document.getElementById('save-settings');
+        const usersTableBody = document.getElementById('users-table-body');
 
         // App State
         let currentUser = null;
@@ -1587,16 +1623,6 @@
             loginBtn.addEventListener('click', () => showAuthModal('login'));
             registerBtn.addEventListener('click', () => showAuthModal('register'));
             logoutBtn.addEventListener('click', signOut);
-            sidebarLoginBtn.addEventListener('click', () => showAuthModal('login'));
-            sidebarRegisterBtn.addEventListener('click', () => showAuthModal('register'));
-            sidebarLogoutBtn.addEventListener('click', signOut);
-            hamburger.addEventListener('click', toggleSidebar);
-            fundWidget.addEventListener('click', () => {
-                window.location.href = fundUrl;
-            });
-            contactWidget.addEventListener('click', () => {
-                window.location.href = contactUrl;
-            });
             
             closeModal.forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -1628,7 +1654,7 @@
                     e.preventDefault();
                     const pageId = link.getAttribute('href').substring(1);
                     navigateTo(pageId);
-                    sidebar.classList.remove('sidebar-visible');
+                    sidebar.classList.remove('sidebar-open');
                 });
             });
             
@@ -1679,17 +1705,76 @@
             createDiscountBtn.addEventListener('click', createDiscountCode);
             saveSettingsBtn.addEventListener('click', saveSystemSettings);
             
+            // Floating widgets
+            contactWidget.addEventListener('click', () => {
+                window.location.href = contactUrl;
+            });
+            
+            fundWalletWidget.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.location.href = fundUrl;
+            });
+            
             // Scroll handler for header
             window.addEventListener('scroll', handleScroll);
+            
+            // Sidebar handlers
+            hamburgerMenu.addEventListener('click', () => {
+                sidebar.classList.add('sidebar-open');
+            });
+            
+            closeSidebar.addEventListener('click', () => {
+                sidebar.classList.remove('sidebar-open');
+            });
+            
+            // Payment method selection
+            balancePaymentOption.addEventListener('click', () => {
+                balanceMethod.checked = true;
+                balancePaymentOption.classList.add('selected');
+                directPaymentOption.classList.remove('selected');
+                updatePaymentMethodUI();
+            });
+            
+            directPaymentOption.addEventListener('click', () => {
+                directMethod.checked = true;
+                directPaymentOption.classList.add('selected');
+                balancePaymentOption.classList.remove('selected');
+                updatePaymentMethodUI();
+            });
             
             // Initialize UI
             updateAuthUI();
             loadSystemSettings();
         }
 
-        // Toggle sidebar visibility
-        function toggleSidebar() {
-            sidebar.classList.toggle('sidebar-visible');
+        // Update payment method UI
+        function updatePaymentMethodUI() {
+            if (currentProduct && currentUser && userData) {
+                // Update balance display
+                currentBalanceDisplay.textContent = formatCurrency(userData.wallet);
+                
+                if (balanceMethod.checked) {
+                    // Check if balance is sufficient
+                    if (userData.wallet >= currentProduct.price) {
+                        balanceStatus.textContent = "Sufficient funds available";
+                        balanceStatus.style.color = "var(--success)";
+                    } else {
+                        balanceStatus.textContent = "Insufficient funds. Please add money to your wallet.";
+                        balanceStatus.style.color = "var(--danger)";
+                    }
+                }
+                
+                if (directMethod.checked) {
+                    // Check if payment link is available
+                    if (currentProduct.paymentLink) {
+                        paymentLinkStatus.textContent = "Payment link available";
+                        paymentLinkStatus.style.color = "var(--success)";
+                    } else {
+                        paymentLinkStatus.textContent = "No payment link available for this product";
+                        paymentLinkStatus.style.color = "var(--danger)";
+                    }
+                }
+            }
         }
 
         // Handle scroll to show/hide header
@@ -1732,111 +1817,82 @@
             
             if (currentUser) {
                 document.getElementById('checkout-email').value = currentUser.email;
-                document.getElementById('wallet-balance-display').textContent = formatCurrency(userData.wallet);
             }
             
-            // Show direct payment option if available
-            if (product.paymentLink) {
-                directPaymentOption.style.display = 'flex';
-            } else {
-                directPaymentOption.style.display = 'none';
-            }
+            // Reset payment options
+            balanceMethod.checked = false;
+            directMethod.checked = false;
+            balancePaymentOption.classList.remove('selected');
+            directPaymentOption.classList.remove('selected');
             
             checkoutModal.style.display = 'flex';
+            
+            // Update payment UI if user is logged in
+            if (currentUser && userData) {
+                updatePaymentMethodUI();
+            }
         }
 
         // Process payment
         function processPayment() {
             const email = document.getElementById('checkout-email').value;
             const referralCode = document.getElementById('checkout-referral').value;
-            const paymentMethod = document.querySelector('input[name="payment-method"]:checked').value;
+            const paymentMethod = document.querySelector('input[name="payment-method"]:checked');
             
             if (!email) {
                 showNotification('Error', 'Please enter your email', 'error');
                 return;
             }
             
-            if (paymentMethod === 'wallet') {
-                // Check wallet balance
-                if (userData.wallet < currentProduct.price) {
-                    showNotification('Insufficient Funds', 'Your wallet balance is too low. Please fund your wallet or choose direct payment.', 'error');
+            if (!paymentMethod) {
+                showNotification('Error', 'Please select a payment method', 'error');
+                return;
+            }
+            
+            if (paymentMethod.value === 'balance') {
+                // Pay with account balance
+                if (!currentUser || !userData) {
+                    showNotification('Error', 'Please login to use account balance', 'error');
                     return;
                 }
                 
-                // Process wallet payment
-                showNotification('Processing', 'Processing payment from wallet...', 'info');
+                if (userData.wallet < currentProduct.price) {
+                    showNotification('Error', 'Insufficient funds. Please add money to your wallet.', 'error');
+                    return;
+                }
                 
-                setTimeout(() => {
-                    // Deduct from wallet
-                    const newBalance = userData.wallet - currentProduct.price;
-                    
-                    db.collection('users').doc(currentUser.uid).update({
-                        wallet: newBalance
+                showNotification('Processing', 'Processing payment from your account balance...', 'info');
+                
+                // Deduct from wallet
+                const newBalance = userData.wallet - currentProduct.price;
+                
+                db.collection('users').doc(currentUser.uid).update({
+                    wallet: newBalance
+                }).then(() => {
+                    // Record purchase
+                    db.collection('transactions').add({
+                        userId: currentUser.uid,
+                        type: 'purchase',
+                        amount: -currentProduct.price,
+                        productId: currentProduct.id,
+                        productName: currentProduct.name,
+                        referralCode: referralCode || null,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     }).then(() => {
                         checkoutModal.style.display = 'none';
-                        showNotification('Success', 'Payment processed successfully from your wallet!', 'success');
-                        
-                        // Record purchase
-                        recordTransaction();
+                        showNotification('Success', 'Payment processed successfully from your account balance!', 'success');
                     });
-                }, 1500);
-            } else if (paymentMethod === 'direct') {
-                // Direct payment
-                if (!currentProduct.paymentLink) {
-                    showNotification('Error', 'No payment link available for this product', 'error');
-                    return;
-                }
-                
-                showNotification('Redirecting', 'Redirecting to payment gateway...', 'info');
-                
-                setTimeout(() => {
-                    window.location.href = currentProduct.paymentLink;
-                }, 1000);
-            }
-        }
-
-        // Record transaction
-        function recordTransaction() {
-            const referralCode = document.getElementById('checkout-referral').value;
-            const commission = referralCode ? (currentProduct.price * (currentProduct.commission / 100)) : 0;
-            
-            if (commission > 0 && currentUser) {
-                // Update referrer's wallet
-                db.collection('users').where('referralCode', '==', referralCode).get()
-                    .then(snapshot => {
-                        if (!snapshot.empty) {
-                            const referrer = snapshot.docs[0];
-                            const newBalance = (referrer.data().wallet || 0) + commission;
-                            
-                            db.collection('users').doc(referrer.id).update({
-                                wallet: newBalance
-                            }).then(() => {
-                                // Record referral transaction
-                                db.collection('transactions').add({
-                                    userId: referrer.id,
-                                    type: 'referral',
-                                    amount: commission,
-                                    productId: currentProduct.id,
-                                    productName: currentProduct.name,
-                                    referredEmail: email,
-                                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                                });
-                            });
-                        }
-                    });
-            }
-            
-            // Record purchase
-            if (currentUser) {
-                db.collection('transactions').add({
-                    userId: currentUser.uid,
-                    type: 'purchase',
-                    amount: -currentProduct.price,
-                    productId: currentProduct.id,
-                    productName: currentProduct.name,
-                    referralCode: referralCode || null,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
+            } else if (paymentMethod.value === 'direct') {
+                // Pay directly via payment link
+                if (currentProduct.paymentLink) {
+                    showNotification('Redirecting', 'Redirecting to payment gateway...', 'info');
+                    setTimeout(() => {
+                        window.location.href = currentProduct.paymentLink;
+                    }, 1000);
+                } else {
+                    showNotification('Error', 'No payment link available for this product', 'error');
+                }
             }
         }
 
@@ -1912,11 +1968,9 @@
                         // Show admin link if admin
                         if (userRole === 'admin') {
                             adminLink.style.display = 'block';
-                            adminMenuItem.style.display = 'block';
                             loadAdminData();
                         } else {
                             adminLink.style.display = 'none';
-                            adminMenuItem.style.display = 'none';
                         }
                         
                         // Show add product button if seller and approved
@@ -1947,29 +2001,18 @@
         function updateAuthUI() {
             if (currentUser) {
                 userEmail.textContent = currentUser.email;
-                sidebarUserEmail.textContent = currentUser.email;
                 loginBtn.style.display = 'none';
                 registerBtn.style.display = 'none';
                 logoutBtn.style.display = 'block';
-                sidebarLogoutBtn.style.display = 'block';
-                document.getElementById('sidebar-auth-buttons').style.display = 'none';
-                
-                // Update user role in sidebar
-                sidebarUserRole.textContent = userData ? `${userData.role.charAt(0).toUpperCase() + userData.role.slice(1)} Account` : 'User Account';
             } else {
                 userEmail.textContent = 'guest@example.com';
-                sidebarUserEmail.textContent = 'guest@example.com';
-                sidebarUserRole.textContent = 'Guest Account';
                 loginBtn.style.display = 'block';
                 registerBtn.style.display = 'block';
                 logoutBtn.style.display = 'none';
-                sidebarLogoutBtn.style.display = 'none';
-                document.getElementById('sidebar-auth-buttons').style.display = 'flex';
                 adminLink.style.display = 'none';
                 addProductBtn.style.display = 'none';
                 sellerApprovalBlock.style.display = 'none';
                 regularDashboard.style.display = 'block';
-                adminMenuItem.style.display = 'none';
             }
         }
 
@@ -2166,6 +2209,163 @@
             return `${cleanName}-${randomNum}`;
         }
 
+        // Generate unique product referral code
+        function generateProductReferralCode(productName, userName) {
+            // Get first 3 letters of product name
+            const productCode = productName.substring(0, 3).toUpperCase();
+            // Get first 3 letters of username
+            const userCode = userName.substring(0, 3).toUpperCase();
+            // Generate a random 3-digit number
+            const randomNum = Math.floor(100 + Math.random() * 900);
+            return `${productCode}-${userCode}-${randomNum}`;
+        }
+
+        // Generate one-time use tokens
+        function generateTokens() {
+            const count = parseInt(tokenCountInput.value);
+            const value = parseInt(tokenValueInput.value);
+            
+            if (isNaN(count) || count < 1 || count > 100) {
+                showNotification('Error', 'Please enter a valid number of tokens (1-100)', 'error');
+                return;
+            }
+            
+            if (isNaN(value) || value < 1) {
+                showNotification('Error', 'Please enter a valid token value', 'error');
+                return;
+            }
+            
+            const tokens = [];
+            for (let i = 0; i < count; i++) {
+                const token = generateRandomToken();
+                tokens.push({
+                    code: token,
+                    value: value,
+                    used: false,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+            
+            // Save tokens to Firestore
+            const batch = db.batch();
+            tokens.forEach(token => {
+                const ref = db.collection('tokens').doc();
+                batch.set(ref, token);
+            });
+            
+            batch.commit()
+                .then(() => {
+                    // Display generated tokens
+                    tokenList.innerHTML = tokens.map(t => t.code).join('<br>');
+                    generatedTokensDiv.style.display = 'block';
+                    showNotification('Success', `${count} tokens generated successfully`, 'success');
+                })
+                .catch(error => {
+                    showNotification('Error', `Failed to generate tokens: ${error.message}`, 'error');
+                });
+        }
+
+        // Generate random token string
+        function generateRandomToken() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < 12; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result.match(/.{1,4}/g).join('-');
+        }
+
+        // Copy generated tokens to clipboard
+        function copyGeneratedTokens() {
+            const tokens = tokenList.textContent;
+            copyToClipboard(tokens);
+            showNotification('Success', 'All tokens copied to clipboard', 'success');
+        }
+
+        // Create discount code
+        function createDiscountCode() {
+            const code = discountCodeInput.value.trim();
+            const type = discountTypeSelect.value;
+            const value = parseFloat(discountValueInput.value);
+            const expiry = discountExpiryInput.value;
+            
+            if (!code) {
+                showNotification('Error', 'Please enter a discount code', 'error');
+                return;
+            }
+            
+            if (isNaN(value) || value <= 0) {
+                showNotification('Error', 'Please enter a valid discount value', 'error');
+                return;
+            }
+            
+            const discount = {
+                code: code.toUpperCase(),
+                type: type,
+                value: value,
+                active: true,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            if (expiry) {
+                discount.expiry = new Date(expiry);
+            }
+            
+            db.collection('discounts').doc(code).set(discount)
+                .then(() => {
+                    showNotification('Success', `Discount code "${code}" created successfully`, 'success');
+                    discountCodeInput.value = '';
+                    discountValueInput.value = '10';
+                    discountExpiryInput.value = '';
+                })
+                .catch(error => {
+                    showNotification('Error', `Failed to create discount: ${error.message}`, 'error');
+                });
+        }
+
+        // Save system settings
+        function saveSystemSettings() {
+            const currency = currencySelect.value;
+            const newContactUrl = contactUrlInput.value.trim() || 'https://www.contact.me.com';
+            const newFundUrl = fundUrlInput.value.trim() || 'https://www.fundme.wakka.com';
+            
+            const settings = {
+                currency: currency,
+                contactUrl: newContactUrl,
+                fundUrl: newFundUrl
+            };
+            
+            db.collection('settings').doc('system').set(settings)
+                .then(() => {
+                    contactUrl = newContactUrl;
+                    fundUrl = newFundUrl;
+                    
+                    showNotification('Success', 'System settings saved', 'success');
+                    updateCurrencyDisplays();
+                })
+                .catch(error => {
+                    showNotification('Error', `Failed to save settings: ${error.message}`, 'error');
+                });
+        }
+
+        // Load system settings
+        function loadSystemSettings() {
+            db.collection('settings').doc('system').get()
+                .then(doc => {
+                    if (doc.exists) {
+                        const settings = doc.data();
+                        currencySelect.value = settings.currency || 'USD';
+                        contactUrlInput.value = settings.contactUrl || 'https://www.contact.me.com';
+                        fundUrlInput.value = settings.fundUrl || 'https://www.fundme.wakka.com';
+                        
+                        contactUrl = settings.contactUrl || 'https://www.contact.me.com';
+                        fundUrl = settings.fundUrl || 'https://www.fundme.wakka.com';
+                        
+                        updateCurrencyDisplays();
+                    }
+                });
+        }
+
         // Add new product (for sellers)
         function addProduct(e) {
             e.preventDefault();
@@ -2184,13 +2384,16 @@
                 name: document.getElementById('product-name').value,
                 price: parseFloat(document.getElementById('product-price').value),
                 commission: parseInt(document.getElementById('product-commission').value),
-                paymentLink: document.getElementById('product-payment-link').value || null,
                 description: document.getElementById('product-description').value,
                 image: document.getElementById('product-image').value || 'https://via.placeholder.com/300',
+                paymentLink: document.getElementById('product-payment-link').value || '',
                 owner: currentUser.uid,
                 ownerName: userData.name,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                referralCode: generateReferralCode(document.getElementById('product-name').value)
+                referralCode: generateProductReferralCode(
+                    document.getElementById('product-name').value,
+                    userData.name
+                )
             };
             
             db.collection('products').add(product)
@@ -2215,9 +2418,9 @@
                 name: document.getElementById('edit-product-name').value,
                 price: parseFloat(document.getElementById('edit-product-price').value),
                 commission: parseInt(document.getElementById('edit-product-commission').value),
-                paymentLink: document.getElementById('edit-product-payment-link').value || null,
                 description: document.getElementById('edit-product-description').value,
                 image: document.getElementById('edit-product-image').value || 'https://via.placeholder.com/300',
+                paymentLink: document.getElementById('edit-product-payment-link').value || '',
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
             
@@ -2391,13 +2594,128 @@
             document.getElementById('edit-product-name').value = product.name;
             document.getElementById('edit-product-price').value = product.price;
             document.getElementById('edit-product-commission').value = product.commission;
-            document.getElementById('edit-product-payment-link').value = product.paymentLink || '';
             document.getElementById('edit-product-description').value = product.description;
             document.getElementById('edit-product-image').value = product.image;
+            document.getElementById('edit-product-payment-link').value = product.paymentLink || '';
             
             addProductForm.style.display = 'none';
             document.getElementById('products-grid').style.display = 'none';
             editProductForm.style.display = 'block';
+        }
+
+        // Create admin product card
+        function createAdminProductCard(product) {
+            const card = document.createElement('div');
+            card.className = 'product-card';
+            
+            card.innerHTML = `
+                <div class="product-image">
+                    ${product.image ? `<img src="${product.image}" alt="${product.name}">` : 
+                     `<i class="fas fa-box fa-3x"></i>`}
+                </div>
+                <div class="product-content">
+                    <h3 class="product-title">${product.name}</h3>
+                    <p>Seller: ${product.ownerName}</p>
+                    <div class="product-price">${formatCurrency(product.price)}</div>
+                    <div class="form-group">
+                        <label>Commission (%)</label>
+                        <input type="number" class="product-commission" value="${product.commission}" min="1" max="50">
+                    </div>
+                    <div class="product-actions">
+                        <button class="btn btn-outline btn-sm save-product">Save</button>
+                        <button class="btn btn-danger btn-sm delete-product">Delete</button>
+                    </div>
+                </div>
+            `;
+            
+            const saveBtn = card.querySelector('.save-product');
+            const deleteBtn = card.querySelector('.delete-product');
+            const commissionInput = card.querySelector('.product-commission');
+            
+            saveBtn.addEventListener('click', () => {
+                const updates = {
+                    commission: parseInt(commissionInput.value)
+                };
+                
+                db.collection('products').doc(product.id).update(updates)
+                    .then(() => {
+                        showNotification('Success', 'Product updated successfully', 'success');
+                    })
+                    .catch(error => {
+                        showNotification('Error', `Failed to update product: ${error.message}`, 'error');
+                    });
+            });
+            
+            deleteBtn.addEventListener('click', () => {
+                if (confirm('Are you sure you want to delete this product?')) {
+                    db.collection('products').doc(product.id).delete()
+                        .then(() => {
+                            card.remove();
+                            showNotification('Success', 'Product deleted successfully', 'success');
+                        })
+                        .catch(error => {
+                            showNotification('Error', `Failed to delete product: ${error.message}`, 'error');
+                        });
+                }
+            });
+            
+            return card;
+        }
+
+        // Update withdrawal list to include approve/reject functionality
+        function updateWithdrawalList() {
+            const withdrawalsList = document.getElementById('withdrawals-list');
+            withdrawalsList.innerHTML = '';
+            
+            db.collection('withdrawals').where('status', '==', 'pending').get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        withdrawalsList.innerHTML = '<p>No pending withdrawals</p>';
+                        return;
+                    }
+                    
+                    snapshot.forEach(doc => {
+                        const withdrawal = doc.data();
+                        withdrawal.id = doc.id;
+                        
+                        const li = document.createElement('li');
+                        li.innerHTML = `
+                            <div>
+                                <strong>${withdrawal.userName}</strong>
+                                <p>${formatCurrency(withdrawal.amount)} · ${withdrawal.createdAt.toDate().toLocaleDateString()}</p>
+                            </div>
+                            <div>
+                                <button class="btn btn-sm btn-primary approve-withdrawal">Approve</button>
+                                <button class="btn btn-sm btn-outline reject-withdrawal">Reject</button>
+                            </div>
+                        `;
+                        
+                        const approveBtn = li.querySelector('.approve-withdrawal');
+                        const rejectBtn = li.querySelector('.reject-withdrawal');
+                        
+                        approveBtn.addEventListener('click', () => {
+                            processWithdrawal(withdrawal.id, 'approved');
+                        });
+                        
+                        rejectBtn.addEventListener('click', () => {
+                            processWithdrawal(withdrawal.id, 'rejected');
+                        });
+                        
+                        withdrawalsList.appendChild(li);
+                    });
+                });
+        }
+
+        // Process withdrawal (approve or reject)
+        function processWithdrawal(withdrawalId, action) {
+            db.collection('withdrawals').doc(withdrawalId).update({ status: action })
+                .then(() => {
+                    showNotification('Success', `Withdrawal ${action} successfully`, 'success');
+                    updateWithdrawalList();
+                })
+                .catch(error => {
+                    showNotification('Error', `Failed to process withdrawal: ${error.message}`, 'error');
+                });
         }
 
         // Load referrals data
@@ -2653,95 +2971,41 @@
             loadAllUsers();
         }
 
-        // Load all users for admin table
+        // Load all users for admin
         function loadAllUsers() {
-            usersTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Loading users...</td></tr>';
+            usersTableBody.innerHTML = '<tr><td colspan="6">Loading users...</td></tr>';
             
             db.collection('users').get()
                 .then(snapshot => {
                     if (snapshot.empty) {
-                        usersTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No users found</td></tr>';
+                        usersTableBody.innerHTML = '<tr><td colspan="6">No users found</td></tr>';
                         return;
                     }
                     
                     usersTableBody.innerHTML = '';
                     snapshot.forEach(doc => {
                         const user = doc.data();
-                        const row = document.createElement('tr');
+                        const tr = document.createElement('tr');
                         
-                        row.innerHTML = `
+                        tr.innerHTML = `
                             <td>${user.name}</td>
                             <td>${user.email}</td>
                             <td>${user.role}</td>
                             <td>
-                                <span class="status-badge ${user.status === 'approved' ? 'status-approved' : 'status-pending'}">
-                                    ${user.status}
-                                </span>
+                                ${user.status === 'approved' ? 
+                                    '<span class="status-badge status-approved">Approved</span>' : 
+                                  user.status === 'pending' ? 
+                                    '<span class="status-badge status-pending">Pending</span>' : 
+                                  user.banned ? 
+                                    '<span class="status-badge status-pending">Banned</span>' : 
+                                    '<span class="status-badge status-approved">Active</span>'}
                             </td>
                             <td>${formatCurrency(user.wallet || 0)}</td>
-                            <td>
-                                <button class="btn btn-sm btn-primary edit-user">Edit</button>
-                            </td>
+                            <td>${user.createdAt.toDate().toLocaleDateString()}</td>
                         `;
                         
-                        usersTableBody.appendChild(row);
+                        usersTableBody.appendChild(tr);
                     });
-                });
-        }
-
-        // Update withdrawal list to include approve/reject functionality
-        function updateWithdrawalList() {
-            const withdrawalsList = document.getElementById('withdrawals-list');
-            withdrawalsList.innerHTML = '';
-            
-            db.collection('withdrawals').where('status', '==', 'pending').get()
-                .then(snapshot => {
-                    if (snapshot.empty) {
-                        withdrawalsList.innerHTML = '<p>No pending withdrawals</p>';
-                        return;
-                    }
-                    
-                    snapshot.forEach(doc => {
-                        const withdrawal = doc.data();
-                        withdrawal.id = doc.id;
-                        
-                        const li = document.createElement('li');
-                        li.innerHTML = `
-                            <div>
-                                <strong>${withdrawal.userName}</strong>
-                                <p>${formatCurrency(withdrawal.amount)} · ${withdrawal.createdAt.toDate().toLocaleDateString()}</p>
-                            </div>
-                            <div>
-                                <button class="btn btn-sm btn-primary approve-withdrawal">Approve</button>
-                                <button class="btn btn-sm btn-outline reject-withdrawal">Reject</button>
-                            </div>
-                        `;
-                        
-                        const approveBtn = li.querySelector('.approve-withdrawal');
-                        const rejectBtn = li.querySelector('.reject-withdrawal');
-                        
-                        approveBtn.addEventListener('click', () => {
-                            processWithdrawal(withdrawal.id, 'approved');
-                        });
-                        
-                        rejectBtn.addEventListener('click', () => {
-                            processWithdrawal(withdrawal.id, 'rejected');
-                        });
-                        
-                        withdrawalsList.appendChild(li);
-                    });
-                });
-        }
-
-        // Process withdrawal (approve or reject)
-        function processWithdrawal(withdrawalId, action) {
-            db.collection('withdrawals').doc(withdrawalId).update({ status: action })
-                .then(() => {
-                    showNotification('Success', `Withdrawal ${action} successfully`, 'success');
-                    updateWithdrawalList();
-                })
-                .catch(error => {
-                    showNotification('Error', `Failed to process withdrawal: ${error.message}`, 'error');
                 });
         }
 
