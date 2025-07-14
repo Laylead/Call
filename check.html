@@ -9,6 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="configuration.js"></script>
     <style>
         :root {
             --primary: #1a3a6c;
@@ -1396,6 +1397,13 @@
                     </div>
                     
                     <div class="admin-card">
+                        <h3>Pending Product Approvals</h3>
+                        <ul class="admin-list" id="pending-products">
+                            <!-- Pending products will be loaded dynamically -->
+                        </ul>
+                    </div>
+                    
+                    <div class="admin-card">
                         <h3>Pending Withdrawals</h3>
                         <ul class="admin-list" id="withdrawals-list">
                             <!-- Withdrawals will be loaded dynamically -->
@@ -1582,6 +1590,7 @@
         const fundUrlInput = document.getElementById('fund-url');
         const saveSettingsBtn = document.getElementById('save-settings');
         const usersTableBody = document.getElementById('users-table-body');
+        const pendingProductsList = document.getElementById('pending-products');
 
         // App State
         let currentUser = null;
@@ -2366,6 +2375,7 @@
                 owner: currentUser.uid,
                 ownerName: userData.name,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                status: 'pending', // Products are pending until admin approval
                 referralCode: generateReferralCode(
                     document.getElementById('product-name').value
                 )
@@ -2373,7 +2383,7 @@
             
             db.collection('products').add(product)
                 .then(() => {
-                    showNotification('Success', 'Product added successfully!', 'success');
+                    showNotification('Success', 'Product submitted for admin approval!', 'success');
                     productForm.reset();
                     addProductForm.style.display = 'none';
                     document.getElementById('products-grid').style.display = 'grid';
@@ -2395,12 +2405,13 @@
                 commission: parseInt(document.getElementById('edit-product-commission').value),
                 description: document.getElementById('edit-product-description').value,
                 image: document.getElementById('edit-product-image').value || 'https://via.placeholder.com/300',
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                status: 'pending' // Products go back to pending after edit
             };
             
             db.collection('products').doc(productId).update(updates)
                 .then(() => {
-                    showNotification('Success', 'Product updated successfully!', 'success');
+                    showNotification('Success', 'Product updated and submitted for admin approval!', 'success');
                     productEditForm.reset();
                     editProductForm.style.display = 'none';
                     document.getElementById('products-grid').style.display = 'grid';
@@ -2462,7 +2473,10 @@
             // Load user's products (if seller and approved)
             if (userRole === 'seller' && userData.status === 'approved') {
                 document.getElementById('product-section-title').textContent = 'My Products';
-                db.collection('products').where('owner', '==', currentUser.uid).get()
+                db.collection('products')
+                    .where('owner', '==', currentUser.uid)
+                    .where('status', '==', 'approved')
+                    .get()
                     .then(snapshot => {
                         const productsGrid = document.getElementById('dashboard-products');
                         productsGrid.innerHTML = '';
@@ -2474,8 +2488,11 @@
                     });
             } else {
                 document.getElementById('product-section-title').textContent = 'Recommended Products';
-                // Load recommended products for buyers
-                db.collection('products').limit(4).get()
+                // Load approved products for buyers
+                db.collection('products')
+                    .where('status', '==', 'approved')
+                    .limit(4)
+                    .get()
                     .then(snapshot => {
                         const productsGrid = document.getElementById('dashboard-products');
                         productsGrid.innerHTML = '';
@@ -2493,7 +2510,17 @@
             const productsGrid = document.getElementById('products-grid');
             productsGrid.innerHTML = '<p>Loading products...</p>';
             
-            db.collection('products').get()
+            let query = db.collection('products');
+            
+            // If seller, show only their products
+            if (userRole === 'seller' && userData.status === 'approved') {
+                query = query.where('owner', '==', currentUser.uid);
+            } else {
+                // For buyers and guests, show only approved products
+                query = query.where('status', '==', 'approved');
+            }
+            
+            query.get()
                 .then(snapshot => {
                     if (snapshot.empty) {
                         productsGrid.innerHTML = '<p>No products found</p>';
@@ -2519,6 +2546,7 @@
                     ${product.image ? `<img src="${product.image}" alt="${product.name}">` : 
                      `<i class="fas fa-box fa-3x"></i>`}
                     <div class="referral-badge">${product.commission}% Commission</div>
+                    ${product.status === 'pending' ? '<div class="referral-badge" style="top: 40px; background-color: var(--warning);">Pending Approval</div>' : ''}
                 </div>
                 <div class="product-content">
                     <h3 class="product-title">${product.name}</h3>
@@ -2529,17 +2557,17 @@
                             <button class="btn btn-danger btn-sm delete-btn">Delete</button>
                         ` : `
                             <button class="btn btn-outline btn-sm details-btn">Details</button>
-                            <button class="btn btn-primary btn-sm buy-btn">Buy Now</button>
+                            ${product.status === 'approved' ? `<button class="btn btn-primary btn-sm buy-btn">Buy Now</button>` : ''}
                         `}
                     </div>
                 </div>
             `;
             
-            if (!isOwner) {
+            if (!isOwner && product.status === 'approved') {
                 card.querySelector('.buy-btn').addEventListener('click', () => {
                     showCheckoutModal(product);
                 });
-            } else {
+            } else if (isOwner) {
                 // Seller actions
                 card.querySelector('.edit-btn').addEventListener('click', () => {
                     editProduct(product);
@@ -2585,6 +2613,7 @@
                 <div class="product-image">
                     ${product.image ? `<img src="${product.image}" alt="${product.name}">` : 
                      `<i class="fas fa-box fa-3x"></i>`}
+                    ${product.status === 'pending' ? '<div class="referral-badge" style="background-color: var(--warning);">Pending</div>' : ''}
                 </div>
                 <div class="product-content">
                     <h3 class="product-title">${product.name}</h3>
@@ -2599,6 +2628,10 @@
                         <input type="text" class="product-payment-link" value="${product.paymentLink || ''}" placeholder="https://payment.example.com">
                     </div>
                     <div class="product-actions">
+                        ${product.status === 'pending' ? `
+                            <button class="btn btn-sm btn-primary approve-product">Approve</button>
+                            <button class="btn btn-sm btn-outline reject-product">Reject</button>
+                        ` : ''}
                         <button class="btn btn-outline btn-sm save-product">Save</button>
                         <button class="btn btn-danger btn-sm delete-product">Delete</button>
                     </div>
@@ -2638,7 +2671,88 @@
                 }
             });
             
+            // Add approve/reject buttons if pending
+            if (product.status === 'pending') {
+                const approveBtn = card.querySelector('.approve-product');
+                const rejectBtn = card.querySelector('.reject-product');
+                
+                approveBtn.addEventListener('click', () => {
+                    db.collection('products').doc(product.id).update({
+                        status: 'approved'
+                    })
+                    .then(() => {
+                        card.remove();
+                        showNotification('Success', 'Product approved', 'success');
+                    });
+                });
+                
+                rejectBtn.addEventListener('click', () => {
+                    db.collection('products').doc(product.id).update({
+                        status: 'rejected'
+                    })
+                    .then(() => {
+                        card.remove();
+                        showNotification('Success', 'Product rejected', 'success');
+                    });
+                });
+            }
+            
             return card;
+        }
+
+        // Load pending products for admin approval
+        function loadPendingProducts() {
+            pendingProductsList.innerHTML = '';
+            
+            db.collection('products').where('status', '==', 'pending').get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        pendingProductsList.innerHTML = '<p>No pending products for approval</p>';
+                        return;
+                    }
+                    
+                    snapshot.forEach(doc => {
+                        const product = doc.data();
+                        product.id = doc.id;
+                        
+                        const li = document.createElement('li');
+                        li.innerHTML = `
+                            <div>
+                                <strong>${product.name}</strong>
+                                <p>${product.ownerName} · ${formatCurrency(product.price)}</p>
+                            </div>
+                            <div>
+                                <button class="btn btn-sm btn-primary approve-product">Approve</button>
+                                <button class="btn btn-sm btn-outline reject-product">Reject</button>
+                            </div>
+                        `;
+                        
+                        const approveBtn = li.querySelector('.approve-product');
+                        const rejectBtn = li.querySelector('.reject-product');
+                        
+                        approveBtn.addEventListener('click', () => {
+                            db.collection('products').doc(product.id).update({
+                                status: 'approved'
+                            })
+                            .then(() => {
+                                li.remove();
+                                showNotification('Success', 'Product approved', 'success');
+                            });
+                        });
+                        
+                        rejectBtn.addEventListener('click', () => {
+                            db.collection('products').doc(product.id).update({
+                                status: 'rejected'
+                            })
+                            .then(() => {
+                                li.remove();
+                                showNotification('Success', 'Product rejected', 'success');
+                            });
+                        });
+                        
+                        pendingProductsList.appendChild(li);
+                    });
+                });
         }
 
         // Update withdrawal list to include approve/reject functionality
@@ -2888,6 +3002,9 @@
                         pendingSellersList.appendChild(li);
                     });
                 });
+            
+            // Load pending products
+            loadPendingProducts();
             
             // Load withdrawals
             updateWithdrawalList();
