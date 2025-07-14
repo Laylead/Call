@@ -9,8 +9,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <!-- External Firebase configuration -->
-    <script src="configuration.js"></script>
     <style>
         :root {
             --primary: #1a3a6c;
@@ -1251,11 +1249,6 @@
                                 <input type="text" id="product-image" placeholder="https://example.com/image.jpg">
                             </div>
                             
-                            <div class="form-group">
-                                <label for="product-payment-link">Payment Link (Optional)</label>
-                                <input type="text" id="product-payment-link" placeholder="https://payment.example.com">
-                            </div>
-                            
                             <div class="form-actions">
                                 <button type="button" id="cancel-product" class="btn btn-outline">Cancel</button>
                                 <button type="submit" class="btn btn-primary">Add Product</button>
@@ -1294,11 +1287,6 @@
                             <div class="form-group">
                                 <label for="edit-product-image">Product Image (URL)</label>
                                 <input type="text" id="edit-product-image" placeholder="https://example.com/image.jpg">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="edit-product-payment-link">Payment Link (Optional)</label>
-                                <input type="text" id="edit-product-payment-link" placeholder="https://payment.example.com">
                             </div>
                             
                             <div class="form-actions">
@@ -2209,17 +2197,6 @@
             return `${cleanName}-${randomNum}`;
         }
 
-        // Generate unique product referral code
-        function generateProductReferralCode(productName, userName) {
-            // Get first 3 letters of product name
-            const productCode = productName.substring(0, 3).toUpperCase();
-            // Get first 3 letters of username
-            const userCode = userName.substring(0, 3).toUpperCase();
-            // Generate a random 3-digit number
-            const randomNum = Math.floor(100 + Math.random() * 900);
-            return `${productCode}-${userCode}-${randomNum}`;
-        }
-
         // Generate one-time use tokens
         function generateTokens() {
             const count = parseInt(tokenCountInput.value);
@@ -2386,13 +2363,11 @@
                 commission: parseInt(document.getElementById('product-commission').value),
                 description: document.getElementById('product-description').value,
                 image: document.getElementById('product-image').value || 'https://via.placeholder.com/300',
-                paymentLink: document.getElementById('product-payment-link').value || '',
                 owner: currentUser.uid,
                 ownerName: userData.name,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                referralCode: generateProductReferralCode(
-                    document.getElementById('product-name').value,
-                    userData.name
+                referralCode: generateReferralCode(
+                    document.getElementById('product-name').value
                 )
             };
             
@@ -2420,7 +2395,6 @@
                 commission: parseInt(document.getElementById('edit-product-commission').value),
                 description: document.getElementById('edit-product-description').value,
                 image: document.getElementById('edit-product-image').value || 'https://via.placeholder.com/300',
-                paymentLink: document.getElementById('edit-product-payment-link').value || '',
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
             
@@ -2596,7 +2570,6 @@
             document.getElementById('edit-product-commission').value = product.commission;
             document.getElementById('edit-product-description').value = product.description;
             document.getElementById('edit-product-image').value = product.image;
-            document.getElementById('edit-product-payment-link').value = product.paymentLink || '';
             
             addProductForm.style.display = 'none';
             document.getElementById('products-grid').style.display = 'none';
@@ -2621,6 +2594,10 @@
                         <label>Commission (%)</label>
                         <input type="number" class="product-commission" value="${product.commission}" min="1" max="50">
                     </div>
+                    <div class="form-group">
+                        <label>Payment Link</label>
+                        <input type="text" class="product-payment-link" value="${product.paymentLink || ''}" placeholder="https://payment.example.com">
+                    </div>
                     <div class="product-actions">
                         <button class="btn btn-outline btn-sm save-product">Save</button>
                         <button class="btn btn-danger btn-sm delete-product">Delete</button>
@@ -2631,10 +2608,12 @@
             const saveBtn = card.querySelector('.save-product');
             const deleteBtn = card.querySelector('.delete-product');
             const commissionInput = card.querySelector('.product-commission');
+            const paymentLinkInput = card.querySelector('.product-payment-link');
             
             saveBtn.addEventListener('click', () => {
                 const updates = {
-                    commission: parseInt(commissionInput.value)
+                    commission: parseInt(commissionInput.value),
+                    paymentLink: paymentLinkInput.value
                 };
                 
                 db.collection('products').doc(product.id).update(updates)
