@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FireCommerce | E-Commerce + Affiliate Platform</title>
+    <title>FireCommerce | Enhanced E-Commerce + Affiliate Platform</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -290,12 +290,17 @@
             font-weight: 500;
         }
 
-        .form-group input {
+        .form-group input, .form-group select, .form-group textarea {
             width: 100%;
             padding: 10px 15px;
             border: 1px solid var(--light-gray);
             border-radius: var(--radius);
             font-family: 'Poppins', sans-serif;
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
         }
 
         .form-actions {
@@ -615,6 +620,11 @@
             color: var(--success);
         }
 
+        .status-declined {
+            background-color: rgba(220, 53, 69, 0.2);
+            color: var(--danger);
+        }
+
         .notification-container {
             position: fixed;
             top: 20px;
@@ -734,6 +744,8 @@
             max-width: 500px;
             padding: 30px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            max-height: 90vh;
+            overflow-y: auto;
         }
 
         .checkout-header {
@@ -892,6 +904,88 @@
             background-color: rgba(0,0,0,0.05);
         }
 
+        /* Seller Orders */
+        .order-card {
+            background-color: white;
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        .order-details {
+            margin-bottom: 15px;
+        }
+
+        .order-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        .decline-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .decline-content {
+            background-color: white;
+            border-radius: var(--radius);
+            width: 100%;
+            max-width: 500px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        /* Transactions Filter */
+        .filter-container {
+            background-color: white;
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        /* Category Badges */
+        .category-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: var(--light-gray);
+            border-radius: 20px;
+            margin: 5px 5px 5px 0;
+            font-size: 0.85rem;
+        }
+
         /* Responsive Design */
         @media (max-width: 768px) {
             .header-container {
@@ -981,6 +1075,8 @@
             <ul>
                 <li><a href="#dashboard" class="nav-link active">Dashboard</a></li>
                 <li><a href="#products" class="nav-link">Products</a></li>
+                <li><a href="#categories" class="nav-link">Categories</a></li>
+                <li><a href="#orders" class="nav-link" id="orders-link" style="display:none;">My Orders</a></li>
                 <li><a href="#referrals" class="nav-link">Referrals</a></li>
                 <li><a href="#wallet" class="nav-link">Wallet</a></li>
                 <li><a href="#admin" class="nav-link" id="admin-link" style="display:none;">Admin</a></li>
@@ -1049,6 +1145,10 @@
                     <input type="email" id="register-email" required>
                 </div>
                 <div class="form-group">
+                    <label for="register-account">Account Number</label>
+                    <input type="text" id="register-account" required>
+                </div>
+                <div class="form-group">
                     <label for="register-password">Password (min 6 characters)</label>
                     <input type="password" id="register-password" minlength="6" required>
                 </div>
@@ -1089,6 +1189,10 @@
                 </div>
             </div>
             <div class="form-group">
+                <label for="checkout-address">Shipping Address</label>
+                <textarea id="checkout-address" required></textarea>
+            </div>
+            <div class="form-group">
                 <label for="checkout-referral">Referral Code (optional)</label>
                 <input type="text" id="checkout-referral" placeholder="Enter referral code">
             </div>
@@ -1124,6 +1228,24 @@
             
             <div class="form-actions">
                 <button id="proceed-payment" class="btn btn-primary">Proceed to Payment</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Decline Order Modal -->
+    <div id="decline-modal" class="decline-modal">
+        <div class="decline-content">
+            <div class="checkout-header">
+                <h2>Decline Order</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="form-group">
+                <label for="decline-reason">Reason for declining this order</label>
+                <textarea id="decline-reason" required></textarea>
+            </div>
+            <div class="form-actions">
+                <button id="confirm-decline" class="btn btn-danger">Confirm Decline</button>
+                <button id="cancel-decline" class="btn btn-outline">Cancel</button>
             </div>
         </div>
     </div>
@@ -1241,8 +1363,20 @@
                             </div>
                             
                             <div class="form-group">
+                                <label for="product-category">Category</label>
+                                <select id="product-category" class="form-control" required>
+                                    <option value="electronics">Electronics</option>
+                                    <option value="fashion">Fashion</option>
+                                    <option value="home">Home & Kitchen</option>
+                                    <option value="beauty">Beauty</option>
+                                    <option value="books">Books</option>
+                                    <option value="sports">Sports</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
                                 <label for="product-description">Description</label>
-                                <textarea id="product-description" class="form-control" required></textarea>
+                                <textarea id="product-description" class="form-control" required style="min-height: 150px;"></textarea>
                             </div>
                             
                             <div class="form-group">
@@ -1281,8 +1415,20 @@
                             </div>
                             
                             <div class="form-group">
+                                <label for="edit-product-category">Category</label>
+                                <select id="edit-product-category" class="form-control" required>
+                                    <option value="electronics">Electronics</option>
+                                    <option value="fashion">Fashion</option>
+                                    <option value="home">Home & Kitchen</option>
+                                    <option value="beauty">Beauty</option>
+                                    <option value="books">Books</option>
+                                    <option value="sports">Sports</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
                                 <label for="edit-product-description">Description</label>
-                                <textarea id="edit-product-description" class="form-control" required></textarea>
+                                <textarea id="edit-product-description" class="form-control" required style="min-height: 150px;"></textarea>
                             </div>
                             
                             <div class="form-group">
@@ -1296,6 +1442,106 @@
                             </div>
                         </form>
                     </div>
+                </div>
+            </div>
+            
+            <!-- Categories Page -->
+            <div id="categories-page" class="page">
+                <h1 class="section-title">Product Categories</h1>
+                
+                <div class="products-grid">
+                    <div class="product-card">
+                        <div class="product-image" style="background-color: #e3f2fd;">
+                            <i class="fas fa-laptop fa-3x" style="color: #2196f3;"></i>
+                        </div>
+                        <div class="product-content">
+                            <h3 class="product-title">Electronics</h3>
+                            <p>Smartphones, laptops, gadgets and more</p>
+                            <button class="btn btn-outline btn-sm">View Products</button>
+                        </div>
+                    </div>
+                    
+                    <div class="product-card">
+                        <div class="product-image" style="background-color: #fce4ec;">
+                            <i class="fas fa-tshirt fa-3x" style="color: #e91e63;"></i>
+                        </div>
+                        <div class="product-content">
+                            <h3 class="product-title">Fashion</h3>
+                            <p>Clothing, shoes, accessories and more</p>
+                            <button class="btn btn-outline btn-sm">View Products</button>
+                        </div>
+                    </div>
+                    
+                    <div class="product-card">
+                        <div class="product-image" style="background-color: #fff8e1;">
+                            <i class="fas fa-home fa-3x" style="color: #ff9800;"></i>
+                        </div>
+                        <div class="product-content">
+                            <h3 class="product-title">Home & Kitchen</h3>
+                            <p>Furniture, appliances, decor and more</p>
+                            <button class="btn btn-outline btn-sm">View Products</button>
+                        </div>
+                    </div>
+                    
+                    <div class="product-card">
+                        <div class="product-image" style="background-color: #e8f5e9;">
+                            <i class="fas fa-spa fa-3x" style="color: #4caf50;"></i>
+                        </div>
+                        <div class="product-content">
+                            <h3 class="product-title">Beauty</h3>
+                            <p>Skincare, makeup, haircare and more</p>
+                            <button class="btn btn-outline btn-sm">View Products</button>
+                        </div>
+                    </div>
+                    
+                    <div class="product-card">
+                        <div class="product-image" style="background-color: #e0f7fa;">
+                            <i class="fas fa-book fa-3x" style="color: #00bcd4;"></i>
+                        </div>
+                        <div class="product-content">
+                            <h3 class="product-title">Books</h3>
+                            <p>Fiction, non-fiction, textbooks and more</p>
+                            <button class="btn btn-outline btn-sm">View Products</button>
+                        </div>
+                    </div>
+                    
+                    <div class="product-card">
+                        <div class="product-image" style="background-color: #f3e5f5;">
+                            <i class="fas fa-football-ball fa-3x" style="color: #9c27b0;"></i>
+                        </div>
+                        <div class="product-content">
+                            <h3 class="product-title">Sports</h3>
+                            <p>Equipment, apparel, fitness gear and more</p>
+                            <button class="btn btn-outline btn-sm">View Products</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Orders Page -->
+            <div id="orders-page" class="page">
+                <h1 class="section-title">My Orders</h1>
+                
+                <div class="filter-container">
+                    <div class="filter-group">
+                        <label for="order-status">Filter by Status</label>
+                        <select id="order-status" class="form-control">
+                            <option value="all">All Orders</option>
+                            <option value="pending">Pending Approval</option>
+                            <option value="approved">Approved</option>
+                            <option value="shipped">Shipped</option>
+                            <option value="delivered">Delivered</option>
+                            <option value="declined">Declined</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="order-date">Filter by Date</label>
+                        <input type="date" id="order-date" class="form-control">
+                    </div>
+                </div>
+                
+                <div id="orders-list">
+                    <!-- Orders will be loaded dynamically -->
                 </div>
             </div>
             
@@ -1341,6 +1587,7 @@
                 <div class="wallet-balance">
                     <p>Available Balance</p>
                     <div class="balance-amount" id="wallet-balance-display">$0.00</div>
+                    <p id="pending-earnings">Pending Earnings: $0.00</p>
                     <p id="total-earnings">Total Earnings: $0.00</p>
                     
                     <div class="wallet-actions">
@@ -1393,13 +1640,6 @@
                         <h3>Pending Seller Approvals</h3>
                         <ul class="admin-list" id="pending-sellers">
                             <!-- Pending sellers will be loaded dynamically -->
-                        </ul>
-                    </div>
-                    
-                    <div class="admin-card">
-                        <h3>Pending Product Approvals</h3>
-                        <ul class="admin-list" id="pending-products">
-                            <!-- Pending products will be loaded dynamically -->
                         </ul>
                     </div>
                     
@@ -1458,6 +1698,21 @@
                     
                     <div class="admin-card">
                         <h3>Recent Transactions</h3>
+                        <div class="filter-container">
+                            <div class="filter-group">
+                                <label for="transaction-status">Filter by Status</label>
+                                <select id="transaction-status" class="form-control">
+                                    <option value="all">All Transactions</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="declined">Declined</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label for="transaction-date">Filter by Date</label>
+                                <input type="date" id="transaction-date" class="form-control">
+                            </div>
+                        </div>
                         <ul class="admin-list" id="admin-transactions">
                             <!-- Transactions will be loaded dynamically -->
                         </ul>
@@ -1496,6 +1751,7 @@
                                 <th>Role</th>
                                 <th>Status</th>
                                 <th>Balance</th>
+                                <th>Account #</th>
                                 <th>Joined</th>
                             </tr>
                         </thead>
@@ -1525,6 +1781,8 @@
         const pages = {
             dashboard: document.getElementById('dashboard-page'),
             products: document.getElementById('products-page'),
+            categories: document.getElementById('categories-page'),
+            orders: document.getElementById('orders-page'),
             referrals: document.getElementById('referrals-page'),
             wallet: document.getElementById('wallet-page'),
             admin: document.getElementById('admin-page')
@@ -1536,6 +1794,7 @@
         const logoutBtn = document.getElementById('logout-btn');
         const userEmail = document.getElementById('user-email');
         const adminLink = document.getElementById('admin-link');
+        const ordersLink = document.getElementById('orders-link');
         const addProductBtn = document.getElementById('add-product-btn');
         const addProductForm = document.getElementById('add-product-form');
         const productForm = document.getElementById('product-form');
@@ -1543,6 +1802,7 @@
         const productEditForm = document.getElementById('product-edit-form');
         const authModal = document.getElementById('auth-modal');
         const checkoutModal = document.getElementById('checkout-modal');
+        const declineModal = document.getElementById('decline-modal');
         const closeModal = document.querySelectorAll('.close-modal');
         const loginTab = document.getElementById('login-tab');
         const registerTab = document.getElementById('register-tab');
@@ -1590,7 +1850,11 @@
         const fundUrlInput = document.getElementById('fund-url');
         const saveSettingsBtn = document.getElementById('save-settings');
         const usersTableBody = document.getElementById('users-table-body');
-        const pendingProductsList = document.getElementById('pending-products');
+        const confirmDeclineBtn = document.getElementById('confirm-decline');
+        const cancelDeclineBtn = document.getElementById('cancel-decline');
+        const declineReasonInput = document.getElementById('decline-reason');
+        const orderStatusFilter = document.getElementById('order-status');
+        const transactionStatusFilter = document.getElementById('transaction-status');
 
         // App State
         let currentUser = null;
@@ -1600,6 +1864,7 @@
         let lastScrollPosition = 0;
         let contactUrl = 'https://www.contact.me.com';
         let fundUrl = 'https://www.fundme.wakka.com';
+        let currentOrderToDecline = null;
 
         // Initialize the app
         function initApp() {
@@ -1739,6 +2004,16 @@
                 updatePaymentMethodUI();
             });
             
+            // Decline order handlers
+            confirmDeclineBtn.addEventListener('click', confirmDeclineOrder);
+            cancelDeclineBtn.addEventListener('click', () => {
+                declineModal.style.display = 'none';
+            });
+            
+            // Order filter
+            orderStatusFilter.addEventListener('change', loadOrders);
+            transactionStatusFilter.addEventListener('change', loadAdminData);
+            
             // Initialize UI
             updateAuthUI();
             loadSystemSettings();
@@ -1830,14 +2105,27 @@
             }
         }
 
+        // Show decline order modal
+        function showDeclineModal(order) {
+            currentOrderToDecline = order;
+            declineReasonInput.value = '';
+            declineModal.style.display = 'flex';
+        }
+
         // Process payment
         function processPayment() {
             const email = document.getElementById('checkout-email').value;
+            const address = document.getElementById('checkout-address').value;
             const referralCode = document.getElementById('checkout-referral').value;
             const paymentMethod = document.querySelector('input[name="payment-method"]:checked');
             
             if (!email) {
                 showNotification('Error', 'Please enter your email', 'error');
+                return;
+            }
+            
+            if (!address) {
+                showNotification('Error', 'Please enter shipping address', 'error');
                 return;
             }
             
@@ -1867,17 +2155,21 @@
                     wallet: newBalance
                 }).then(() => {
                     // Record purchase
-                    db.collection('transactions').add({
+                    const order = {
                         userId: currentUser.uid,
-                        type: 'purchase',
-                        amount: -currentProduct.price,
                         productId: currentProduct.id,
                         productName: currentProduct.name,
+                        amount: currentProduct.price,
+                        commission: currentProduct.commission,
+                        status: 'pending',
+                        address: address,
                         referralCode: referralCode || null,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    }).then(() => {
+                    };
+                    
+                    db.collection('orders').add(order).then(() => {
                         checkoutModal.style.display = 'none';
-                        showNotification('Success', 'Payment processed successfully from your account balance!', 'success');
+                        showNotification('Success', 'Order placed successfully! Waiting for seller approval.', 'success');
                     });
                 });
             } else if (paymentMethod.value === 'direct') {
@@ -1911,6 +2203,7 @@
         function signUp() {
             const name = document.getElementById('register-name').value;
             const email = document.getElementById('register-email').value;
+            const account = document.getElementById('register-account').value;
             const password = document.getElementById('register-password').value;
             const role = document.getElementById('register-role').value;
             
@@ -1920,8 +2213,10 @@
                     const userData = {
                         name: name,
                         email: email,
+                        account: account,
                         role: role,
                         wallet: 0,
+                        pendingEarnings: 0,
                         referralCode: generateReferralCode(name),
                         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                         status: role === 'seller' ? 'pending' : 'approved',
@@ -1970,6 +2265,14 @@
                             adminLink.style.display = 'none';
                         }
                         
+                        // Show orders link if seller
+                        if (userRole === 'seller') {
+                            ordersLink.style.display = 'block';
+                            loadOrders();
+                        } else {
+                            ordersLink.style.display = 'none';
+                        }
+                        
                         // Show add product button if seller and approved
                         if (userRole === 'seller' && userData.status === 'approved') {
                             addProductBtn.style.display = 'block';
@@ -2007,6 +2310,7 @@
                 registerBtn.style.display = 'block';
                 logoutBtn.style.display = 'none';
                 adminLink.style.display = 'none';
+                ordersLink.style.display = 'none';
                 addProductBtn.style.display = 'none';
                 sellerApprovalBlock.style.display = 'none';
                 regularDashboard.style.display = 'block';
@@ -2038,6 +2342,9 @@
                     break;
                 case 'products':
                     loadProducts();
+                    break;
+                case 'orders':
+                    loadOrders();
                     break;
                 case 'referrals':
                     loadReferrals();
@@ -2080,278 +2387,6 @@
             });
         }
 
-        // Search users function
-        function searchUsers() {
-            const query = userSearchInput.value.trim();
-            if (!query) {
-                showNotification('Error', 'Please enter a search term', 'error');
-                return;
-            }
-            
-            userSearchResults.innerHTML = '<p>Searching users...</p>';
-            
-            // Search by name or email
-            db.collection('users')
-                .where('name', '>=', query)
-                .where('name', '<=', query + '\uf8ff')
-                .get()
-                .then(snapshot => {
-                    if (snapshot.empty) {
-                        userSearchResults.innerHTML = '<p>No users found</p>';
-                        return;
-                    }
-                    
-                    userSearchResults.innerHTML = '';
-                    snapshot.forEach(doc => {
-                        const user = doc.data();
-                        user.id = doc.id;
-                        const userElement = createUserCard(user);
-                        userSearchResults.appendChild(userElement);
-                    });
-                })
-                .catch(error => {
-                    showNotification('Error', `Search failed: ${error.message}`, 'error');
-                });
-        }
-
-        // Create user card for search results
-        function createUserCard(user) {
-            const card = document.createElement('div');
-            card.className = 'user-card';
-            card.style.padding = '10px';
-            card.style.borderBottom = '1px solid var(--light-gray)';
-            
-            card.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <strong>${user.name}</strong>
-                        <p>${user.email}</p>
-                        <p>Role: ${user.role} ${user.verified ? '<i class="fas fa-check-circle" style="color: #1a73e8;"></i>' : ''}</p>
-                        <p>Balance: ${formatCurrency(user.wallet || 0)}</p>
-                        <p>Status: ${user.banned ? '<span style="color: var(--danger);">Banned</span>' : 'Active'}</p>
-                    </div>
-                    <div>
-                        <button class="btn btn-sm btn-primary edit-user-btn">Edit</button>
-                    </div>
-                </div>
-                <div class="user-edit-form" style="display: none; margin-top: 10px;">
-                    <div class="form-group">
-                        <label>Balance</label>
-                        <input type="number" class="user-balance" value="${user.wallet || 0}" step="0.01">
-                    </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" class="user-verified" ${user.verified ? 'checked' : ''}>
-                            Verified Seller
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" class="user-banned" ${user.banned ? 'checked' : ''}>
-                            Banned
-                        </label>
-                    </div>
-                    <div class="form-actions">
-                        <button class="btn btn-sm btn-outline cancel-edit">Cancel</button>
-                        <button class="btn btn-sm btn-primary save-user">Save</button>
-                    </div>
-                </div>
-            `;
-            
-            const editBtn = card.querySelector('.edit-user-btn');
-            const editForm = card.querySelector('.user-edit-form');
-            const cancelBtn = card.querySelector('.cancel-edit');
-            const saveBtn = card.querySelector('.save-user');
-            
-            editBtn.addEventListener('click', () => {
-                editForm.style.display = 'block';
-            });
-            
-            cancelBtn.addEventListener('click', () => {
-                editForm.style.display = 'none';
-            });
-            
-            saveBtn.addEventListener('click', () => {
-                const updates = {
-                    wallet: parseFloat(card.querySelector('.user-balance').value),
-                    verified: card.querySelector('.user-verified').checked,
-                    banned: card.querySelector('.user-banned').checked
-                };
-                
-                db.collection('users').doc(user.id).update(updates)
-                    .then(() => {
-                        showNotification('Success', 'User updated successfully', 'success');
-                        editForm.style.display = 'none';
-                        // Refresh the card
-                        user.wallet = updates.wallet;
-                        user.verified = updates.verified;
-                        user.banned = updates.banned;
-                        const newCard = createUserCard(user);
-                        card.parentNode.replaceChild(newCard, card);
-                    })
-                    .catch(error => {
-                        showNotification('Error', `Failed to update user: ${error.message}`, 'error');
-                    });
-            });
-            
-            return card;
-        }
-
-        // Generate unique referral code based on username
-        function generateReferralCode(name) {
-            // Convert name to uppercase and remove spaces
-            const cleanName = name.toUpperCase().replace(/\s+/g, '');
-            // Generate a random 4-digit number
-            const randomNum = Math.floor(1000 + Math.random() * 9000);
-            return `${cleanName}-${randomNum}`;
-        }
-
-        // Generate one-time use tokens
-        function generateTokens() {
-            const count = parseInt(tokenCountInput.value);
-            const value = parseInt(tokenValueInput.value);
-            
-            if (isNaN(count) || count < 1 || count > 100) {
-                showNotification('Error', 'Please enter a valid number of tokens (1-100)', 'error');
-                return;
-            }
-            
-            if (isNaN(value) || value < 1) {
-                showNotification('Error', 'Please enter a valid token value', 'error');
-                return;
-            }
-            
-            const tokens = [];
-            for (let i = 0; i < count; i++) {
-                const token = generateRandomToken();
-                tokens.push({
-                    code: token,
-                    value: value,
-                    used: false,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-            }
-            
-            // Save tokens to Firestore
-            const batch = db.batch();
-            tokens.forEach(token => {
-                const ref = db.collection('tokens').doc();
-                batch.set(ref, token);
-            });
-            
-            batch.commit()
-                .then(() => {
-                    // Display generated tokens
-                    tokenList.innerHTML = tokens.map(t => t.code).join('<br>');
-                    generatedTokensDiv.style.display = 'block';
-                    showNotification('Success', `${count} tokens generated successfully`, 'success');
-                })
-                .catch(error => {
-                    showNotification('Error', `Failed to generate tokens: ${error.message}`, 'error');
-                });
-        }
-
-        // Generate random token string
-        function generateRandomToken() {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            let result = '';
-            for (let i = 0; i < 12; i++) {
-                result += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return result.match(/.{1,4}/g).join('-');
-        }
-
-        // Copy generated tokens to clipboard
-        function copyGeneratedTokens() {
-            const tokens = tokenList.textContent;
-            copyToClipboard(tokens);
-            showNotification('Success', 'All tokens copied to clipboard', 'success');
-        }
-
-        // Create discount code
-        function createDiscountCode() {
-            const code = discountCodeInput.value.trim();
-            const type = discountTypeSelect.value;
-            const value = parseFloat(discountValueInput.value);
-            const expiry = discountExpiryInput.value;
-            
-            if (!code) {
-                showNotification('Error', 'Please enter a discount code', 'error');
-                return;
-            }
-            
-            if (isNaN(value) || value <= 0) {
-                showNotification('Error', 'Please enter a valid discount value', 'error');
-                return;
-            }
-            
-            const discount = {
-                code: code.toUpperCase(),
-                type: type,
-                value: value,
-                active: true,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            };
-            
-            if (expiry) {
-                discount.expiry = new Date(expiry);
-            }
-            
-            db.collection('discounts').doc(code).set(discount)
-                .then(() => {
-                    showNotification('Success', `Discount code "${code}" created successfully`, 'success');
-                    discountCodeInput.value = '';
-                    discountValueInput.value = '10';
-                    discountExpiryInput.value = '';
-                })
-                .catch(error => {
-                    showNotification('Error', `Failed to create discount: ${error.message}`, 'error');
-                });
-        }
-
-        // Save system settings
-        function saveSystemSettings() {
-            const currency = currencySelect.value;
-            const newContactUrl = contactUrlInput.value.trim() || 'https://www.contact.me.com';
-            const newFundUrl = fundUrlInput.value.trim() || 'https://www.fundme.wakka.com';
-            
-            const settings = {
-                currency: currency,
-                contactUrl: newContactUrl,
-                fundUrl: newFundUrl
-            };
-            
-            db.collection('settings').doc('system').set(settings)
-                .then(() => {
-                    contactUrl = newContactUrl;
-                    fundUrl = newFundUrl;
-                    
-                    showNotification('Success', 'System settings saved', 'success');
-                    updateCurrencyDisplays();
-                })
-                .catch(error => {
-                    showNotification('Error', `Failed to save settings: ${error.message}`, 'error');
-                });
-        }
-
-        // Load system settings
-        function loadSystemSettings() {
-            db.collection('settings').doc('system').get()
-                .then(doc => {
-                    if (doc.exists) {
-                        const settings = doc.data();
-                        currencySelect.value = settings.currency || 'USD';
-                        contactUrlInput.value = settings.contactUrl || 'https://www.contact.me.com';
-                        fundUrlInput.value = settings.fundUrl || 'https://www.fundme.wakka.com';
-                        
-                        contactUrl = settings.contactUrl || 'https://www.contact.me.com';
-                        fundUrl = settings.fundUrl || 'https://www.fundme.wakka.com';
-                        
-                        updateCurrencyDisplays();
-                    }
-                });
-        }
-
         // Add new product (for sellers)
         function addProduct(e) {
             e.preventDefault();
@@ -2370,6 +2405,7 @@
                 name: document.getElementById('product-name').value,
                 price: parseFloat(document.getElementById('product-price').value),
                 commission: parseInt(document.getElementById('product-commission').value),
+                category: document.getElementById('product-category').value,
                 description: document.getElementById('product-description').value,
                 image: document.getElementById('product-image').value || 'https://via.placeholder.com/300',
                 owner: currentUser.uid,
@@ -2403,6 +2439,7 @@
                 name: document.getElementById('edit-product-name').value,
                 price: parseFloat(document.getElementById('edit-product-price').value),
                 commission: parseInt(document.getElementById('edit-product-commission').value),
+                category: document.getElementById('edit-product-category').value,
                 description: document.getElementById('edit-product-description').value,
                 image: document.getElementById('edit-product-image').value || 'https://via.placeholder.com/300',
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -2551,6 +2588,7 @@
                 <div class="product-content">
                     <h3 class="product-title">${product.name}</h3>
                     <div class="product-price">${formatCurrency(product.price)}</div>
+                    <div class="category-badge">${product.category}</div>
                     <div class="product-actions">
                         ${isOwner ? `
                             <button class="btn btn-outline btn-sm edit-btn">Edit</button>
@@ -2590,519 +2628,202 @@
             return card;
         }
 
-        // Edit product
-        function editProduct(product) {
-            document.getElementById('edit-product-id').value = product.id;
-            document.getElementById('edit-product-name').value = product.name;
-            document.getElementById('edit-product-price').value = product.price;
-            document.getElementById('edit-product-commission').value = product.commission;
-            document.getElementById('edit-product-description').value = product.description;
-            document.getElementById('edit-product-image').value = product.image;
+        // Load orders for seller
+        function loadOrders() {
+            if (!currentUser || userRole !== 'seller') return;
             
-            addProductForm.style.display = 'none';
-            document.getElementById('products-grid').style.display = 'none';
-            editProductForm.style.display = 'block';
+            const ordersList = document.getElementById('orders-list');
+            ordersList.innerHTML = '<p>Loading orders...</p>';
+            
+            const status = orderStatusFilter.value;
+            let query = db.collection('orders')
+                .where('productOwner', '==', currentUser.uid);
+            
+            if (status !== 'all') {
+                query = query.where('status', '==', status);
+            }
+            
+            query.get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        ordersList.innerHTML = '<p>No orders found</p>';
+                        return;
+                    }
+                    
+                    ordersList.innerHTML = '';
+                    snapshot.forEach(doc => {
+                        const order = doc.data();
+                        order.id = doc.id;
+                        ordersList.appendChild(createOrderCard(order));
+                    });
+                });
         }
 
-        // Create admin product card
-        function createAdminProductCard(product) {
+        // Create order card for seller
+        function createOrderCard(order) {
             const card = document.createElement('div');
-            card.className = 'product-card';
+            card.className = 'order-card';
+            
+            // Map status to badge class
+            let statusBadge = '';
+            switch(order.status) {
+                case 'pending':
+                    statusBadge = 'status-pending';
+                    break;
+                case 'approved':
+                    statusBadge = 'status-approved';
+                    break;
+                case 'shipped':
+                    statusBadge = 'status-badge';
+                    break;
+                case 'delivered':
+                    statusBadge = 'status-approved';
+                    break;
+                case 'declined':
+                    statusBadge = 'status-declined';
+                    break;
+            }
             
             card.innerHTML = `
-                <div class="product-image">
-                    ${product.image ? `<img src="${product.image}" alt="${product.name}">` : 
-                     `<i class="fas fa-box fa-3x"></i>`}
-                    ${product.status === 'pending' ? '<div class="referral-badge" style="background-color: var(--warning);">Pending</div>' : ''}
+                <div class="order-header">
+                    <div>
+                        <h3>Order #${order.id.substring(0, 8).toUpperCase()}</h3>
+                        <p>Placed on: ${order.createdAt.toDate().toLocaleDateString()}</p>
+                    </div>
+                    <div>
+                        <span class="status-badge ${statusBadge}">${order.status}</span>
+                    </div>
                 </div>
-                <div class="product-content">
-                    <h3 class="product-title">${product.name}</h3>
-                    <p>Seller: ${product.ownerName}</p>
-                    <div class="product-price">${formatCurrency(product.price)}</div>
-                    <div class="form-group">
-                        <label>Commission (%)</label>
-                        <input type="number" class="product-commission" value="${product.commission}" min="1" max="50">
+                <div class="order-details">
+                    <div class="order-item">
+                        <span>${order.productName}</span>
+                        <span>${formatCurrency(order.amount)}</span>
                     </div>
-                    <div class="form-group">
-                        <label>Payment Link</label>
-                        <input type="text" class="product-payment-link" value="${product.paymentLink || ''}" placeholder="https://payment.example.com">
+                    <div class="order-item" style="font-weight: bold;">
+                        <span>Total</span>
+                        <span>${formatCurrency(order.amount)}</span>
                     </div>
-                    <div class="product-actions">
-                        ${product.status === 'pending' ? `
-                            <button class="btn btn-sm btn-primary approve-product">Approve</button>
-                            <button class="btn btn-sm btn-outline reject-product">Reject</button>
-                        ` : ''}
-                        <button class="btn btn-outline btn-sm save-product">Save</button>
-                        <button class="btn btn-danger btn-sm delete-product">Delete</button>
+                    <div style="margin-top: 15px;">
+                        <p><strong>Shipping Address:</strong> ${order.address}</p>
                     </div>
+                </div>
+                <div class="order-actions">
+                    ${order.status === 'pending' ? `
+                        <button class="btn btn-primary approve-btn">Approve</button>
+                        <button class="btn btn-danger decline-btn">Decline</button>
+                    ` : ''}
+                    ${order.status === 'approved' ? `
+                        <button class="btn btn-outline ship-btn">Mark as Shipped</button>
+                    ` : ''}
                 </div>
             `;
             
-            const saveBtn = card.querySelector('.save-product');
-            const deleteBtn = card.querySelector('.delete-product');
-            const commissionInput = card.querySelector('.product-commission');
-            const paymentLinkInput = card.querySelector('.product-payment-link');
-            
-            saveBtn.addEventListener('click', () => {
-                const updates = {
-                    commission: parseInt(commissionInput.value),
-                    paymentLink: paymentLinkInput.value
-                };
-                
-                db.collection('products').doc(product.id).update(updates)
-                    .then(() => {
-                        showNotification('Success', 'Product updated successfully', 'success');
-                    })
-                    .catch(error => {
-                        showNotification('Error', `Failed to update product: ${error.message}`, 'error');
-                    });
-            });
-            
-            deleteBtn.addEventListener('click', () => {
-                if (confirm('Are you sure you want to delete this product?')) {
-                    db.collection('products').doc(product.id).delete()
-                        .then(() => {
-                            card.remove();
-                            showNotification('Success', 'Product deleted successfully', 'success');
-                        })
-                        .catch(error => {
-                            showNotification('Error', `Failed to delete product: ${error.message}`, 'error');
-                        });
-                }
-            });
-            
-            // Add approve/reject buttons if pending
-            if (product.status === 'pending') {
-                const approveBtn = card.querySelector('.approve-product');
-                const rejectBtn = card.querySelector('.reject-product');
+            // Add action handlers
+            if (order.status === 'pending') {
+                const approveBtn = card.querySelector('.approve-btn');
+                const declineBtn = card.querySelector('.decline-btn');
                 
                 approveBtn.addEventListener('click', () => {
-                    db.collection('products').doc(product.id).update({
-                        status: 'approved'
-                    })
-                    .then(() => {
-                        card.remove();
-                        showNotification('Success', 'Product approved', 'success');
-                    });
+                    approveOrder(order);
                 });
                 
-                rejectBtn.addEventListener('click', () => {
-                    db.collection('products').doc(product.id).update({
-                        status: 'rejected'
-                    })
-                    .then(() => {
-                        card.remove();
-                        showNotification('Success', 'Product rejected', 'success');
-                    });
+                declineBtn.addEventListener('click', () => {
+                    showDeclineModal(order);
+                });
+            } else if (order.status === 'approved') {
+                const shipBtn = card.querySelector('.ship-btn');
+                shipBtn.addEventListener('click', () => {
+                    markAsShipped(order);
                 });
             }
             
             return card;
         }
 
-        // Load pending products for admin approval
-        function loadPendingProducts() {
-            pendingProductsList.innerHTML = '';
-            
-            db.collection('products').where('status', '==', 'pending').get()
-                .then(snapshot => {
-                    if (snapshot.empty) {
-                        pendingProductsList.innerHTML = '<p>No pending products for approval</p>';
-                        return;
-                    }
-                    
-                    snapshot.forEach(doc => {
-                        const product = doc.data();
-                        product.id = doc.id;
-                        
-                        const li = document.createElement('li');
-                        li.innerHTML = `
-                            <div>
-                                <strong>${product.name}</strong>
-                                <p>${product.ownerName} · ${formatCurrency(product.price)}</p>
-                            </div>
-                            <div>
-                                <button class="btn btn-sm btn-primary approve-product">Approve</button>
-                                <button class="btn btn-sm btn-outline reject-product">Reject</button>
-                            </div>
-                        `;
-                        
-                        const approveBtn = li.querySelector('.approve-product');
-                        const rejectBtn = li.querySelector('.reject-product');
-                        
-                        approveBtn.addEventListener('click', () => {
-                            db.collection('products').doc(product.id).update({
-                                status: 'approved'
-                            })
-                            .then(() => {
-                                li.remove();
-                                showNotification('Success', 'Product approved', 'success');
-                            });
-                        });
-                        
-                        rejectBtn.addEventListener('click', () => {
-                            db.collection('products').doc(product.id).update({
-                                status: 'rejected'
-                            })
-                            .then(() => {
-                                li.remove();
-                                showNotification('Success', 'Product rejected', 'success');
-                            });
-                        });
-                        
-                        pendingProductsList.appendChild(li);
-                    });
+        // Approve order
+        function approveOrder(order) {
+            db.collection('orders').doc(order.id).update({
+                status: 'approved',
+                approvedAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                // Credit seller
+                const sellerEarnings = order.amount * (1 - order.commission/100);
+                db.collection('users').doc(order.productOwner).update({
+                    wallet: firebase.firestore.FieldValue.increment(sellerEarnings)
                 });
-        }
-
-        // Update withdrawal list to include approve/reject functionality
-        function updateWithdrawalList() {
-            const withdrawalsList = document.getElementById('withdrawals-list');
-            withdrawalsList.innerHTML = '';
-            
-            db.collection('withdrawals').where('status', '==', 'pending').get()
-                .then(snapshot => {
-                    if (snapshot.empty) {
-                        withdrawalsList.innerHTML = '<p>No pending withdrawals</p>';
-                        return;
-                    }
-                    
-                    snapshot.forEach(doc => {
-                        const withdrawal = doc.data();
-                        withdrawal.id = doc.id;
-                        
-                        const li = document.createElement('li');
-                        li.innerHTML = `
-                            <div>
-                                <strong>${withdrawal.userName}</strong>
-                                <p>${formatCurrency(withdrawal.amount)} · ${withdrawal.createdAt.toDate().toLocaleDateString()}</p>
-                            </div>
-                            <div>
-                                <button class="btn btn-sm btn-primary approve-withdrawal">Approve</button>
-                                <button class="btn btn-sm btn-outline reject-withdrawal">Reject</button>
-                            </div>
-                        `;
-                        
-                        const approveBtn = li.querySelector('.approve-withdrawal');
-                        const rejectBtn = li.querySelector('.reject-withdrawal');
-                        
-                        approveBtn.addEventListener('click', () => {
-                            processWithdrawal(withdrawal.id, 'approved');
-                        });
-                        
-                        rejectBtn.addEventListener('click', () => {
-                            processWithdrawal(withdrawal.id, 'rejected');
-                        });
-                        
-                        withdrawalsList.appendChild(li);
-                    });
-                });
-        }
-
-        // Process withdrawal (approve or reject)
-        function processWithdrawal(withdrawalId, action) {
-            db.collection('withdrawals').doc(withdrawalId).update({ status: action })
-                .then(() => {
-                    showNotification('Success', `Withdrawal ${action} successfully`, 'success');
-                    updateWithdrawalList();
-                })
-                .catch(error => {
-                    showNotification('Error', `Failed to process withdrawal: ${error.message}`, 'error');
-                });
-        }
-
-        // Load referrals data
-        function loadReferrals() {
-            if (!currentUser) return;
-            
-            // Update referral code
-            document.getElementById('referral-code').textContent = userData.referralCode;
-            document.getElementById('referral-link').textContent = 
-                `https://firecommerce.com/?ref=${userData.referralCode}`;
-            
-            // Load referrals
-            const referralsList = document.getElementById('referrals-list');
-            referralsList.innerHTML = '<p>Loading referrals...</p>';
-            
-            db.collection('transactions')
-                .where('referralCode', '==', userData.referralCode)
-                .get()
-                .then(snapshot => {
-                    if (snapshot.empty) {
-                        referralsList.innerHTML = '<p>No referrals yet</p>';
-                        return;
-                    }
-                    
-                    referralsList.innerHTML = '';
-                    snapshot.forEach(doc => {
-                        const referral = doc.data();
-                        const li = document.createElement('div');
-                        li.className = 'referral-info';
-                        li.innerHTML = `
-                            <h3>${referral.referredEmail || 'Anonymous'}</h3>
-                            <p>Purchased: ${referral.productName}</p>
-                            <p><strong>Commission:</strong> ${formatCurrency(referral.amount)}</p>
-                            <p><strong>Date:</strong> ${referral.createdAt.toDate().toLocaleDateString()}</p>
-                        `;
-                        referralsList.appendChild(li);
-                    });
-                });
-        }
-
-        // Load wallet data
-        function loadWallet() {
-            if (!currentUser) return;
-            
-            document.getElementById('wallet-balance-display').textContent = 
-                formatCurrency(userData.wallet);
-            
-            // Calculate total earnings
-            db.collection('transactions')
-                .where('userId', '==', currentUser.uid)
-                .where('type', '==', 'referral')
-                .get()
-                .then(snapshot => {
-                    let totalEarnings = 0;
-                    snapshot.forEach(doc => {
-                        totalEarnings += doc.data().amount;
-                    });
-                    
-                    document.getElementById('total-earnings').textContent = 
-                        `Total Earnings: ${formatCurrency(totalEarnings)}`;
-                });
-            
-            // Load transactions
-            const transactionsList = document.getElementById('transactions-list');
-            transactionsList.innerHTML = '<p>Loading transactions...</p>';
-            
-            db.collection('transactions')
-                .where('userId', '==', currentUser.uid)
-                .orderBy('createdAt', 'desc')
-                .limit(10)
-                .get()
-                .then(snapshot => {
-                    if (snapshot.empty) {
-                        transactionsList.innerHTML = '<p>No transactions yet</p>';
-                        return;
-                    }
-                    
-                    transactionsList.innerHTML = '';
-                    snapshot.forEach(doc => {
-                        const txn = doc.data();
-                        const item = document.createElement('div');
-                        item.className = 'transaction-item';
-                        
-                        let description = '';
-                        if (txn.type === 'purchase') {
-                            description = `Purchase: ${txn.productName}`;
-                        } else if (txn.type === 'referral') {
-                            description = `Referral: ${txn.productName}`;
-                        } else if (txn.type === 'withdrawal') {
-                            description = 'Withdrawal';
-                        }
-                        
-                        item.innerHTML = `
-                            <div class="transaction-info">
-                                <h4>${description}</h4>
-                                <p>${txn.createdAt.toDate().toLocaleDateString()}</p>
-                            </div>
-                            <div class="transaction-amount ${txn.amount > 0 ? 'positive' : 'negative'}">
-                                ${txn.amount > 0 ? '+' : ''}${formatCurrency(txn.amount)}
-                            </div>
-                        `;
-                        transactionsList.appendChild(item);
-                    });
-                });
-        }
-
-        // Load admin data
-        function loadAdminData() {
-            // Update stats
-            db.collection('users').get().then(snapshot => {
-                document.getElementById('total-users').textContent = snapshot.size;
                 
-                let sellers = 0;
-                snapshot.forEach(doc => {
-                    if (doc.data().role === 'seller' && doc.data().status === 'approved') {
-                        sellers++;
-                    }
-                });
-                document.getElementById('active-sellers').textContent = sellers;
+                // Credit affiliate if any
+                if (order.referralCode) {
+                    db.collection('users').where('referralCode', '==', order.referralCode).get()
+                        .then(snapshot => {
+                            if (!snapshot.empty) {
+                                const affiliate = snapshot.docs[0].data();
+                                const commission = order.amount * (order.commission/100);
+                                
+                                db.collection('users').doc(affiliate.uid).update({
+                                    wallet: firebase.firestore.FieldValue.increment(commission)
+                                });
+                            }
+                        });
+                }
+                
+                showNotification('Success', 'Order approved! Funds have been credited.', 'success');
+                loadOrders();
             });
-            
-            // Recent registrations (last 30 days)
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            
-            db.collection('users')
-                .where('createdAt', '>=', thirtyDaysAgo)
-                .get()
-                .then(snapshot => {
-                    document.getElementById('new-users').textContent = snapshot.size;
-                });
-            
-            // Affiliates (users with referrals)
-            db.collection('transactions')
-                .where('type', '==', 'referral')
-                .get()
-                .then(snapshot => {
-                    const referrers = new Set();
-                    snapshot.forEach(doc => {
-                        referrers.add(doc.data().userId);
-                    });
-                    document.getElementById('affiliates').textContent = referrers.size;
-                });
-            
-            // Load pending sellers
-            const pendingSellersList = document.getElementById('pending-sellers');
-            pendingSellersList.innerHTML = '';
-            
-            db.collection('users').where('role', '==', 'seller').where('status', '==', 'pending').get()
-                .then(snapshot => {
-                    if (snapshot.empty) {
-                        pendingSellersList.innerHTML = '<p>No pending seller approvals</p>';
-                        return;
-                    }
-                    
-                    snapshot.forEach(doc => {
-                        const seller = doc.data();
-                        seller.id = doc.id;
-                        
-                        const li = document.createElement('li');
-                        li.innerHTML = `
-                            <div>
-                                <strong>${seller.name}</strong>
-                                <p>${seller.email}</p>
-                            </div>
-                            <div>
-                                <button class="btn btn-sm btn-primary approve-seller">Approve</button>
-                                <button class="btn btn-sm btn-outline reject-seller">Reject</button>
-                            </div>
-                        `;
-                        
-                        const approveBtn = li.querySelector('.approve-seller');
-                        const rejectBtn = li.querySelector('.reject-seller');
-                        
-                        approveBtn.addEventListener('click', () => {
-                            db.collection('users').doc(seller.id).update({ status: 'approved' })
-                                .then(() => {
-                                    li.remove();
-                                    showNotification('Success', 'Seller approved successfully', 'success');
-                                });
-                        });
-                        
-                        rejectBtn.addEventListener('click', () => {
-                            db.collection('users').doc(seller.id).update({ status: 'rejected' })
-                                .then(() => {
-                                    li.remove();
-                                    showNotification('Success', 'Seller rejected', 'success');
-                                });
-                        });
-                        
-                        pendingSellersList.appendChild(li);
-                    });
-                });
-            
-            // Load pending products
-            loadPendingProducts();
-            
-            // Load withdrawals
-            updateWithdrawalList();
-            
-            // Load products for admin
-            const productsList = document.getElementById('admin-products-list');
-            productsList.innerHTML = '<p>Loading products...</p>';
-            
-            db.collection('products').get()
-                .then(snapshot => {
-                    if (snapshot.empty) {
-                        productsList.innerHTML = '<p>No products found</p>';
-                        return;
-                    }
-                    
-                    productsList.innerHTML = '';
-                    snapshot.forEach(doc => {
-                        const product = doc.data();
-                        product.id = doc.id;
-                        productsList.appendChild(createAdminProductCard(product));
-                    });
-                });
-            
-            // Load recent transactions
-            const adminTransactions = document.getElementById('admin-transactions');
-            adminTransactions.innerHTML = '';
-            
-            db.collection('transactions')
-                .orderBy('createdAt', 'desc')
-                .limit(5)
-                .get()
-                .then(snapshot => {
-                    snapshot.forEach(doc => {
-                        const txn = doc.data();
-                        const li = document.createElement('li');
-                        
-                        let description = '';
-                        if (txn.type === 'purchase') {
-                            description = `Purchase: ${txn.productName}`;
-                        } else if (txn.type === 'referral') {
-                            description = `Referral: ${txn.productName}`;
-                        } else if (txn.type === 'withdrawal') {
-                            description = 'Withdrawal';
-                        }
-                        
-                        li.innerHTML = `
-                            <div>
-                                <strong>${description}</strong>
-                                <p>${txn.userName || txn.referredEmail} · ${txn.createdAt.toDate().toLocaleDateString()}</p>
-                            </div>
-                            <div class="${txn.amount > 0 ? 'transaction-amount positive' : 'transaction-amount negative'}">
-                                ${txn.amount > 0 ? '+' : ''}${formatCurrency(txn.amount)}
-                            </div>
-                        `;
-                        adminTransactions.appendChild(li);
-                    });
-                });
-            
-            // Load all users for admin table
-            loadAllUsers();
         }
 
-        // Load all users for admin
-        function loadAllUsers() {
-            usersTableBody.innerHTML = '<tr><td colspan="6">Loading users...</td></tr>';
+        // Confirm decline order
+        function confirmDeclineOrder() {
+            if (!currentOrderToDecline || !declineReasonInput.value) {
+                showNotification('Error', 'Please provide a reason for declining the order', 'error');
+                return;
+            }
             
-            db.collection('users').get()
-                .then(snapshot => {
-                    if (snapshot.empty) {
-                        usersTableBody.innerHTML = '<tr><td colspan="6">No users found</td></tr>';
-                        return;
-                    }
-                    
-                    usersTableBody.innerHTML = '';
-                    snapshot.forEach(doc => {
-                        const user = doc.data();
-                        const tr = document.createElement('tr');
-                        
-                        tr.innerHTML = `
-                            <td>${user.name}</td>
-                            <td>${user.email}</td>
-                            <td>${user.role}</td>
-                            <td>
-                                ${user.status === 'approved' ? 
-                                    '<span class="status-badge status-approved">Approved</span>' : 
-                                  user.status === 'pending' ? 
-                                    '<span class="status-badge status-pending">Pending</span>' : 
-                                  user.banned ? 
-                                    '<span class="status-badge status-pending">Banned</span>' : 
-                                    '<span class="status-badge status-approved">Active</span>'}
-                            </td>
-                            <td>${formatCurrency(user.wallet || 0)}</td>
-                            <td>${user.createdAt.toDate().toLocaleDateString()}</td>
-                        `;
-                        
-                        usersTableBody.appendChild(tr);
-                    });
+            const reason = declineReasonInput.value;
+            
+            db.collection('orders').doc(currentOrderToDecline.id).update({
+                status: 'declined',
+                declineReason: reason,
+                declinedAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                // Refund buyer
+                db.collection('users').doc(currentOrderToDecline.userId).update({
+                    wallet: firebase.firestore.FieldValue.increment(currentOrderToDecline.amount)
                 });
+                
+                // Remove affiliate commission if any
+                if (currentOrderToDecline.referralCode) {
+                    db.collection('users').where('referralCode', '==', currentOrderToDecline.referralCode).get()
+                        .then(snapshot => {
+                            if (!snapshot.empty) {
+                                const affiliate = snapshot.docs[0].data();
+                                const commission = currentOrderToDecline.amount * (currentOrderToDecline.commission/100);
+                                
+                                db.collection('users').doc(affiliate.uid).update({
+                                    pendingEarnings: firebase.firestore.FieldValue.increment(-commission)
+                                });
+                            }
+                        });
+                }
+                
+                declineModal.style.display = 'none';
+                showNotification('Order Declined', 'The order has been declined and buyer has been refunded', 'info');
+                loadOrders();
+            });
+        }
+
+        // Mark order as shipped
+        function markAsShipped(order) {
+            db.collection('orders').doc(order.id).update({
+                status: 'shipped',
+                shippedAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                showNotification('Success', 'Order marked as shipped!', 'success');
+                loadOrders();
+            });
         }
 
         // Show notification
@@ -3150,6 +2871,290 @@
             textarea.select();
             document.execCommand('copy');
             document.body.removeChild(textarea);
+        }
+
+        // Generate random referral code
+        function generateReferralCode(name) {
+            const prefix = name.substring(0, 3).toUpperCase();
+            const randomNum = Math.floor(1000 + Math.random() * 9000);
+            return `${prefix}-${randomNum}`;
+        }
+
+        // Generate tokens (admin function)
+        function generateTokens() {
+            const count = parseInt(tokenCountInput.value) || 1;
+            const value = parseInt(tokenValueInput.value) || 10;
+            
+            if (count <= 0 || count > 100) {
+                showNotification('Error', 'Token count must be between 1 and 100', 'error');
+                return;
+            }
+            
+            const tokens = [];
+            for (let i = 0; i < count; i++) {
+                const token = `TOKEN-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+                tokens.push(token);
+            }
+            
+            tokenList.innerHTML = tokens.map(token => 
+                `<div>${token} - Value: ${formatCurrency(value)}</div>`
+            ).join('');
+            generatedTokensDiv.style.display = 'block';
+            
+            showNotification('Success', `${count} tokens generated successfully!`, 'success');
+        }
+
+        // Copy generated tokens
+        function copyGeneratedTokens() {
+            const tokens = Array.from(tokenList.querySelectorAll('div')).map(div => div.textContent);
+            copyToClipboard(tokens.join('\n'));
+            showNotification('Copied', 'All tokens copied to clipboard!', 'success');
+        }
+
+        // Search users (admin function)
+        function searchUsers() {
+            const query = userSearchInput.value.trim();
+            if (!query) {
+                showNotification('Error', 'Please enter a search query', 'error');
+                return;
+            }
+            
+            userSearchResults.innerHTML = '<p>Searching...</p>';
+            
+            // Search by name or email
+            db.collection('users')
+                .where('name', '>=', query)
+                .where('name', '<=', query + '\uf8ff')
+                .get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        userSearchResults.innerHTML = '<p>No users found</p>';
+                        return;
+                    }
+                    
+                    userSearchResults.innerHTML = '';
+                    snapshot.forEach(doc => {
+                        const user = doc.data();
+                        const userCard = document.createElement('div');
+                        userCard.className = 'user-card';
+                        userCard.innerHTML = `
+                            <h4>${user.name}</h4>
+                            <p>Email: ${user.email}</p>
+                            <p>Role: ${user.role}</p>
+                            <p>Status: ${user.status}</p>
+                            <button class="btn btn-sm btn-outline edit-user-btn" data-id="${doc.id}">Edit</button>
+                        `;
+                        userSearchResults.appendChild(userCard);
+                    });
+                });
+        }
+
+        // Create discount code (admin function)
+        function createDiscountCode() {
+            const code = discountCodeInput.value.trim();
+            const type = discountTypeSelect.value;
+            const value = parseFloat(discountValueInput.value);
+            const expiry = discountExpiryInput.value;
+            
+            if (!code || !value) {
+                showNotification('Error', 'Please fill all required fields', 'error');
+                return;
+            }
+            
+            const discount = {
+                code: code,
+                type: type,
+                value: value,
+                expiry: expiry ? new Date(expiry) : null,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                active: true
+            };
+            
+            db.collection('discounts').add(discount)
+                .then(() => {
+                    showNotification('Success', 'Discount code created successfully!', 'success');
+                    discountCodeInput.value = '';
+                    discountValueInput.value = '10';
+                    discountExpiryInput.value = '';
+                })
+                .catch(error => {
+                    showNotification('Error', `Error creating discount: ${error.message}`, 'error');
+                });
+        }
+
+        // Save system settings (admin function)
+        function saveSystemSettings() {
+            const currency = currencySelect.value;
+            contactUrl = contactUrlInput.value || contactUrl;
+            fundUrl = fundUrlInput.value || fundUrl;
+            
+            // In a real app, you would save these to Firestore or other storage
+            showNotification('Success', 'System settings saved successfully!', 'success');
+        }
+
+        // Load system settings (admin function)
+        function loadSystemSettings() {
+            // In a real app, you would load these from Firestore or other storage
+            contactUrlInput.value = contactUrl;
+            fundUrlInput.value = fundUrl;
+        }
+
+        // Edit product
+        function editProduct(product) {
+            document.getElementById('edit-product-id').value = product.id;
+            document.getElementById('edit-product-name').value = product.name;
+            document.getElementById('edit-product-price').value = product.price;
+            document.getElementById('edit-product-commission').value = product.commission;
+            document.getElementById('edit-product-category').value = product.category;
+            document.getElementById('edit-product-description').value = product.description;
+            document.getElementById('edit-product-image').value = product.image || '';
+            
+            document.getElementById('products-grid').style.display = 'none';
+            editProductForm.style.display = 'block';
+        }
+
+        // Load referrals
+        function loadReferrals() {
+            if (!currentUser || !userData) return;
+            
+            const referralsList = document.getElementById('referrals-list');
+            referralsList.innerHTML = '<p>Loading referrals...</p>';
+            
+            // Set the user's referral code
+            document.getElementById('referral-code').textContent = userData.referralCode;
+            document.getElementById('referral-link').textContent = 
+                `https://firecommerce.com/?ref=${userData.referralCode}`;
+            
+            // Load referrals from database
+            db.collection('users').where('referredBy', '==', userData.referralCode).get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        referralsList.innerHTML = '<p>No referrals yet</p>';
+                        return;
+                    }
+                    
+                    referralsList.innerHTML = '';
+                    snapshot.forEach(doc => {
+                        const referral = doc.data();
+                        const referralItem = document.createElement('div');
+                        referralItem.className = 'transaction-item';
+                        referralItem.innerHTML = `
+                            <div class="transaction-info">
+                                <h4>${referral.name}</h4>
+                                <p>${referral.email}</p>
+                            </div>
+                            <div class="transaction-amount positive">${formatCurrency(10)}</div>
+                        `;
+                        referralsList.appendChild(referralItem);
+                    });
+                });
+        }
+
+        // Load wallet data
+        function loadWallet() {
+            if (!currentUser || !userData) return;
+            
+            document.getElementById('wallet-balance-display').textContent = formatCurrency(userData.wallet);
+            document.getElementById('pending-earnings').textContent = `Pending Earnings: ${formatCurrency(userData.pendingEarnings || 0)}`;
+            document.getElementById('total-earnings').textContent = `Total Earnings: ${formatCurrency((userData.wallet || 0) + (userData.pendingEarnings || 0))}`;
+            
+            const transactionsList = document.getElementById('transactions-list');
+            transactionsList.innerHTML = '<p>Loading transactions...</p>';
+            
+            // Load transactions
+            db.collection('transactions')
+                .where('userId', '==', currentUser.uid)
+                .orderBy('date', 'desc')
+                .limit(10)
+                .get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        transactionsList.innerHTML = '<p>No transactions yet</p>';
+                        return;
+                    }
+                    
+                    transactionsList.innerHTML = '';
+                    snapshot.forEach(doc => {
+                        const transaction = doc.data();
+                        const transactionItem = document.createElement('div');
+                        transactionItem.className = 'transaction-item';
+                        transactionItem.innerHTML = `
+                            <div class="transaction-info">
+                                <h4>${transaction.description}</h4>
+                                <p>${transaction.date.toDate().toLocaleDateString()}</p>
+                            </div>
+                            <div class="transaction-amount ${transaction.type === 'credit' ? 'positive' : 'negative'}">
+                                ${transaction.type === 'credit' ? '+' : '-'}${formatCurrency(transaction.amount)}
+                            </div>
+                        `;
+                        transactionsList.appendChild(transactionItem);
+                    });
+                });
+        }
+
+        // Load admin data
+        function loadAdminData() {
+            if (userRole !== 'admin') return;
+            
+            // Load pending sellers
+            const pendingSellersList = document.getElementById('pending-sellers');
+            pendingSellersList.innerHTML = '<li>Loading...</li>';
+            
+            db.collection('users')
+                .where('role', '==', 'seller')
+                .where('status', '==', 'pending')
+                .get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        pendingSellersList.innerHTML = '<li>No pending sellers</li>';
+                        return;
+                    }
+                    
+                    pendingSellersList.innerHTML = '';
+                    snapshot.forEach(doc => {
+                        const seller = doc.data();
+                        const sellerItem = document.createElement('li');
+                        sellerItem.innerHTML = `
+                            <div>
+                                <strong>${seller.name}</strong>
+                                <p>${seller.email}</p>
+                            </div>
+                            <div>
+                                <button class="btn btn-sm btn-primary approve-seller" data-id="${doc.id}">Approve</button>
+                                <button class="btn btn-sm btn-danger decline-seller" data-id="${doc.id}">Decline</button>
+                            </div>
+                        `;
+                        pendingSellersList.appendChild(sellerItem);
+                    });
+                });
+            
+            // Load users for table
+            const usersTable = document.getElementById('users-table-body');
+            usersTable.innerHTML = '<tr><td colspan="7">Loading users...</td></tr>';
+            
+            db.collection('users').get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        usersTable.innerHTML = '<tr><td colspan="7">No users found</td></tr>';
+                        return;
+                    }
+                    
+                    usersTable.innerHTML = '';
+                    snapshot.forEach(doc => {
+                        const user = doc.data();
+                        const userRow = document.createElement('tr');
+                        userRow.innerHTML = `
+                            <td>${user.name}</td>
+                            <td>${user.email}</td>
+                            <td>${user.role}</td>
+                            <td>${user.status}</td>
+                            <td>${formatCurrency(user.wallet || 0)}</td>
+                            <td>${user.account || ''}</td>
+                            <td>${user.createdAt?.toDate().toLocaleDateString() || ''}</td>
+                        `;
+                        usersTable.appendChild(userRow);
+                    });
+                });
         }
 
         // Initialize the app when DOM is loaded
