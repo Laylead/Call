@@ -9,6 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <!-- External Firebase Configuration -->
     <script src="configuration.js"></script>
     <style>
@@ -965,7 +966,7 @@
             padding: 30px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
-
+        
         /* Transactions Filter */
         .filter-container {
             background-color: white;
@@ -1321,9 +1322,16 @@
                     <input type="email" id="register-email" required>
                 </div>
                 <div class="form-group">
+                    <label for="register-account-name">Account Name</label>
+                    <input type="text" id="register-account-name" required>
+                </div>
+                <div class="form-group">
                     <label for="register-account">Account Number</label>
                     <input type="text" id="register-account" required>
-                    <small>This cannot be changed later</small>
+                </div>
+                <div class="form-group">
+                    <label for="register-bank">Bank Name</label>
+                    <input type="text" id="register-bank" required>
                 </div>
                 <div class="form-group">
                     <label for="register-password">Password (min 6 characters)</label>
@@ -1358,15 +1366,15 @@
                 <h3>Order Summary</h3>
                 <div class="checkout-item">
                     <span id="checkout-product-name">Product Name</span>
-                    <span id="checkout-product-price">$0.00</span>
+                    <span id="checkout-product-price">₦0.00</span>
                 </div>
                 <div class="checkout-item">
                     <span>Commission (35%)</span>
-                    <span id="checkout-commission">$0.00</span>
+                    <span id="checkout-commission">₦0.00</span>
                 </div>
                 <div class="checkout-item checkout-total">
                     <span>Total</span>
-                    <span id="checkout-total">$0.00</span>
+                    <span id="checkout-total">₦0.00</span>
                 </div>
             </div>
             <div class="form-group">
@@ -1390,7 +1398,7 @@
                     <div class="payment-option-label">
                         <label for="balance-method">Pay with Account Balance</label>
                         <div class="payment-option-details">
-                            <p>Current Balance: <span id="current-balance-display">$0.00</span></p>
+                            <p>Current Balance: <span id="current-balance-display">₦0.00</span></p>
                             <p id="balance-status">Sufficient funds available</p>
                         </div>
                     </div>
@@ -1443,6 +1451,19 @@
             </div>
         </div>
     </div>
+    
+    <!-- Product Detail Modal -->
+    <div id="product-detail-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="product-detail-title">Product Details</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div id="product-detail-content">
+                <!-- Product details will be populated here -->
+            </div>
+        </div>
+    </div>
 
     <!-- Floating Contact Widget -->
     <div class="contact-widget" id="contact-widget">
@@ -1491,7 +1512,7 @@
                                 <i class="fas fa-wallet"></i>
                             </div>
                             <div class="stat-content">
-                                <h3 id="wallet-balance">$0.00</h3>
+                                <h3 id="wallet-balance">₦0.00</h3>
                                 <p>Wallet Balance</p>
                             </div>
                         </div>
@@ -1509,7 +1530,7 @@
                                 <i class="fas fa-chart-line"></i>
                             </div>
                             <div class="stat-content">
-                                <h3 id="month-earnings">$0.00</h3>
+                                <h3 id="month-earnings">₦0.00</h3>
                                 <p>Earned This Month</p>
                             </div>
                         </div>
@@ -1518,15 +1539,16 @@
                     <!-- Account Information -->
                     <div class="account-info" id="account-info" style="display:none;">
                         <h3>Account Information</h3>
+                        <p>Account Name: <span class="account-number" id="user-account-name">N/A</span></p>
                         <p>Account Number: <span class="account-number" id="user-account-number">N/A</span></p>
-                        <p>This account number cannot be changed</p>
+                        <p>Bank Name: <span class="account-number" id="user-bank-name">N/A</span></p>
                     </div>
                     
                     <!-- Affiliate Earnings Summary -->
                     <div class="affiliate-earnings" id="affiliate-earnings" style="display:none;">
                         <h3>Affiliate Earnings</h3>
-                        <p>Pending: <strong id="pending-affiliate">$0.00</strong></p>
-                        <p>Available: <strong id="available-affiliate">$0.00</strong></p>
+                        <p>Pending: <strong id="pending-affiliate">₦0.00</strong></p>
+                        <p>Available: <strong id="available-affiliate">₦0.00</strong></p>
                     </div>
                     
                     <h2 class="section-title" id="product-section-title">Products</h2>
@@ -1554,109 +1576,6 @@
                 <div class="products-grid" id="products-grid">
                     <!-- Products will be loaded dynamically -->
                 </div>
-                
-                <!-- Add Product Form (for sellers) -->
-                <div id="add-product-form" style="display:none;">
-                    <h2 class="section-title">Add New Product</h2>
-                    <div class="form-container">
-                        <form id="product-form">
-                            <div class="form-group">
-                                <label for="product-name">Product Name</label>
-                                <input type="text" id="product-name" required>
-                            </div>
-                            
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="product-price">Price ($)</label>
-                                    <input type="number" id="product-price" step="0.01" min="0.01" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="product-commission">Commission (%)</label>
-                                    <input type="number" id="product-commission" min="1" max="50" value="10" required>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="product-category">Category</label>
-                                <select id="product-category" class="form-control" required>
-                                    <option value="electronics">Electronics</option>
-                                    <option value="fashion">Fashion</option>
-                                    <option value="home">Home & Kitchen</option>
-                                    <option value="beauty">Beauty</option>
-                                    <option value="books">Books</option>
-                                    <option value="sports">Sports</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="product-description">Description</label>
-                                <textarea id="product-description" class="product-description" required></textarea>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="product-image">Product Image (URL)</label>
-                                <input type="text" id="product-image" placeholder="https://example.com/image.jpg">
-                            </div>
-                            
-                            <div class="form-actions">
-                                <button type="button" id="cancel-product" class="btn btn-outline">Cancel</button>
-                                <button type="submit" class="btn btn-primary">Add Product</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Edit Product Form (for sellers) -->
-                <div id="edit-product-form" style="display:none;">
-                    <h2 class="section-title">Edit Product</h2>
-                    <div class="form-container">
-                        <form id="product-edit-form">
-                            <input type="hidden" id="edit-product-id">
-                            <div class="form-group">
-                                <label for="edit-product-name">Product Name</label>
-                                <input type="text" id="edit-product-name" required>
-                            </div>
-                            
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="edit-product-price">Price ($)</label>
-                                    <input type="number" id="edit-product-price" step="0.01" min="0.01" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="edit-product-commission">Commission (%)</label>
-                                    <input type="number" id="edit-product-commission" min="1" max="50" required>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="edit-product-category">Category</label>
-                                <select id="edit-product-category" class="form-control" required>
-                                    <option value="electronics">Electronics</option>
-                                    <option value="fashion">Fashion</option>
-                                    <option value="home">Home & Kitchen</option>
-                                    <option value="beauty">Beauty</option>
-                                    <option value="books">Books</option>
-                                    <option value="sports">Sports</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="edit-product-description">Description</label>
-                                <textarea id="edit-product-description" class="product-description" required></textarea>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="edit-product-image">Product Image (URL)</label>
-                                <input type="text" id="edit-product-image" placeholder="https://example.com/image.jpg">
-                            </div>
-                            
-                            <div class="form-actions">
-                                <button type="button" id="cancel-edit" class="btn btn-outline">Cancel</button>
-                                <button type="submit" class="btn btn-primary">Save Changes</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
             </div>
             
             <!-- Categories Page -->
@@ -1671,7 +1590,7 @@
                         <div class="product-content">
                             <h3 class="product-title">Electronics</h3>
                             <p>Smartphones, laptops, gadgets and more</p>
-                            <button class="btn btn-outline btn-sm">View Products</button>
+                            <button class="btn btn-outline btn-sm view-category-btn">View Products</button>
                         </div>
                     </div>
                     
@@ -1682,7 +1601,7 @@
                         <div class="product-content">
                             <h3 class="product-title">Fashion</h3>
                             <p>Clothing, shoes, accessories and more</p>
-                            <button class="btn btn-outline btn-sm">View Products</button>
+                            <button class="btn btn-outline btn-sm view-category-btn">View Products</button>
                         </div>
                     </div>
                     
@@ -1693,7 +1612,7 @@
                         <div class="product-content">
                             <h3 class="product-title">Home & Kitchen</h3>
                             <p>Furniture, appliances, decor and more</p>
-                            <button class="btn btn-outline btn-sm">View Products</button>
+                            <button class="btn btn-outline btn-sm view-category-btn">View Products</button>
                         </div>
                     </div>
                     
@@ -1704,7 +1623,7 @@
                         <div class="product-content">
                             <h3 class="product-title">Beauty</h3>
                             <p>Skincare, makeup, haircare and more</p>
-                            <button class="btn btn-outline btn-sm">View Products</button>
+                            <button class="btn btn-outline btn-sm view-category-btn">View Products</button>
                         </div>
                     </div>
                     
@@ -1715,7 +1634,7 @@
                         <div class="product-content">
                             <h3 class="product-title">Books</h3>
                             <p>Fiction, non-fiction, textbooks and more</p>
-                            <button class="btn btn-outline btn-sm">View Products</button>
+                            <button class="btn btn-outline btn-sm view-category-btn">View Products</button>
                         </div>
                     </div>
                     
@@ -1726,7 +1645,7 @@
                         <div class="product-content">
                             <h3 class="product-title">Sports</h3>
                             <p>Equipment, apparel, fitness gear and more</p>
-                            <button class="btn btn-outline btn-sm">View Products</button>
+                            <button class="btn btn-outline btn-sm view-category-btn">View Products</button>
                         </div>
                     </div>
                 </div>
@@ -1805,9 +1724,9 @@
                 
                 <div class="wallet-balance">
                     <p>Available Balance</p>
-                    <div class="balance-amount" id="wallet-balance-display">$1,250.75</div>
-                    <p id="pending-earnings">Pending Earnings: $350.00</p>
-                    <p id="total-earnings">Total Earnings: $1,600.75</p>
+                    <div class="balance-amount" id="wallet-balance-display">₦0.00</div>
+                    <p id="pending-earnings">Pending Earnings: ₦0.00</p>
+                    <p id="total-earnings">Total Earnings: ₦0.00</p>
                     
                     <div class="wallet-actions">
                         <button class="btn btn-accent" id="withdraw-btn">Withdraw Funds</button>
@@ -1844,8 +1763,8 @@
                             <input type="number" id="token-count" min="1" max="100" value="1">
                         </div>
                         <div class="form-group">
-                            <label for="token-value">Token Value (USD)</label>
-                            <input type="number" id="token-value" min="1" step="1" value="10">
+                            <label for="token-value">Token Value (₦)</label>
+                            <input type="number" id="token-value" min="1" step="1" value="1000">
                         </div>
                         <button id="generate-tokens" class="btn btn-primary">Generate Tokens</button>
                         <div id="generated-tokens" style="margin-top: 15px; display: none;">
@@ -1898,8 +1817,8 @@
                         <div class="form-group">
                             <label for="currency-select">Default Currency</label>
                             <select id="currency-select" class="form-control">
+                                <option value="NGN" selected>Nigerian Naira (₦)</option>
                                 <option value="USD">US Dollar ($)</option>
-                                <option value="NGN">Nigerian Naira (₦)</option>
                                 <option value="EUR">Euro (€)</option>
                                 <option value="GBP">British Pound (£)</option>
                             </select>
@@ -1946,19 +1865,19 @@
                         <ul class="admin-list" id="system-stats">
                             <li>
                                 <span>Total Users</span>
-                                <span id="total-users">1,245</span>
+                                <span id="total-users">0</span>
                             </li>
                             <li>
                                 <span>Active Sellers</span>
-                                <span id="active-sellers">85</span>
+                                <span id="active-sellers">0</span>
                             </li>
                             <li>
                                 <span>New Registrations (30d)</span>
-                                <span id="new-users">142</span>
+                                <span id="new-users">0</span>
                             </li>
                             <li>
                                 <span>Affiliate Signups</span>
-                                <span id="affiliates">320</span>
+                                <span id="affiliates">0</span>
                             </li>
                         </ul>
                     </div>
@@ -2071,16 +1990,14 @@
     </main>
 
     <script>
-        // Firebase initialization from external configuration.js
-        // Check if Firebase app is already initialized
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        // Initialize Firebase from external configuration
+        firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
+        const storage = firebase.storage();
 
         // Global Constants
-        const BASE_URL = 'https://yourlivedomain.com'; // REPLACE WITH YOUR LIVE DOMAIN
+        const BASE_URL = window.location.origin;
         
         // DOM Elements
         const pages = {
@@ -2104,14 +2021,11 @@
         const ordersLink = document.getElementById('orders-link');
         const shopLink = document.getElementById('shop-link');
         const addProductBtn = document.getElementById('add-product-btn');
-        const addProductForm = document.getElementById('add-product-form');
-        const productForm = document.getElementById('product-form');
-        const editProductForm = document.getElementById('edit-product-form');
-        const productEditForm = document.getElementById('product-edit-form');
         const authModal = document.getElementById('auth-modal');
         const checkoutModal = document.getElementById('checkout-modal');
         const declineModal = document.getElementById('decline-modal');
         const orderDetailModal = document.getElementById('order-detail-modal');
+        const productDetailModal = document.getElementById('product-detail-modal');
         const closeModal = document.querySelectorAll('.close-modal');
         const loginTab = document.getElementById('login-tab');
         const registerTab = document.getElementById('register-tab');
@@ -2142,6 +2056,8 @@
         const copyShopUrlBtn = document.getElementById('copy-shop-url');
         const accountInfo = document.getElementById('account-info');
         const userAccountNumber = document.getElementById('user-account-number');
+        const userAccountName = document.getElementById('user-account-name');
+        const userBankName = document.getElementById('user-bank-name');
         const affiliateEarnings = document.getElementById('affiliate-earnings');
         const pendingAffiliate = document.getElementById('pending-affiliate');
         const availableAffiliate = document.getElementById('available-affiliate');
@@ -2164,8 +2080,9 @@
         let currentShop = null;
         let fixedReferralCode = null;
         let platformCommissionRate = 35; // Default platform commission rate
-        let currency = 'USD';
-        let currencySymbol = '$';
+        let currency = 'NGN';
+        let currencySymbol = '₦';
+        let currentCategory = null;
 
         // Initialize the app
         function initApp() {
@@ -2220,25 +2137,25 @@
             });
             
             addProductBtn.addEventListener('click', () => {
-                addProductForm.style.display = 'block';
+                document.getElementById('add-product-form').style.display = 'block';
                 document.getElementById('products-grid').style.display = 'none';
-                editProductForm.style.display = 'none';
+                document.getElementById('edit-product-form').style.display = 'none';
             });
             
             document.getElementById('cancel-product').addEventListener('click', () => {
-                addProductForm.style.display = 'none';
+                document.getElementById('add-product-form').style.display = 'none';
                 document.getElementById('products-grid').style.display = 'grid';
-                productForm.reset();
+                document.getElementById('product-form').reset();
             });
             
             document.getElementById('cancel-edit').addEventListener('click', () => {
-                editProductForm.style.display = 'none';
+                document.getElementById('edit-product-form').style.display = 'none';
                 document.getElementById('products-grid').style.display = 'grid';
-                productEditForm.reset();
+                document.getElementById('product-edit-form').reset();
             });
             
-            productForm.addEventListener('submit', addProduct);
-            productEditForm.addEventListener('submit', updateProduct);
+            document.getElementById('product-form').addEventListener('submit', addProduct);
+            document.getElementById('product-edit-form').addEventListener('submit', updateProduct);
             withdrawBtn.addEventListener('click', requestWithdrawal);
             contactSupportBtn.addEventListener('click', () => {
                 window.location.href = contactUrl;
@@ -2331,18 +2248,19 @@
                 currency = e.target.value;
                 switch(currency) {
                     case 'NGN': currencySymbol = '₦'; break;
+                    case 'USD': currencySymbol = '$'; break;
                     case 'EUR': currencySymbol = '€'; break;
                     case 'GBP': currencySymbol = '£'; break;
-                    default: currencySymbol = '$';
+                    default: currencySymbol = '₦';
                 }
                 updateCurrencyUI();
             });
             
             // Category click handlers
-            document.querySelectorAll('#categories-page .product-card').forEach(card => {
-                card.addEventListener('click', () => {
-                    const category = card.getAttribute('data-category');
-                    loadProductsByCategory(category);
+            document.querySelectorAll('.view-category-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const category = e.target.closest('.product-card').getAttribute('data-category');
+                    currentCategory = category;
                     navigateTo('products');
                 });
             });
@@ -2511,6 +2429,33 @@
             
             orderDetailModal.style.display = 'flex';
         }
+        
+        // Show product details modal
+        function showProductDetails(product) {
+            const detailContent = document.getElementById('product-detail-content');
+            detailContent.innerHTML = `
+                <div class="product-image" style="height: 300px; margin-bottom: 20px;">
+                    <img src="${product.image || 'https://via.placeholder.com/300'}" alt="${product.name}" style="width:100%; height:100%; object-fit:contain;">
+                </div>
+                <h3>${product.name}</h3>
+                <div class="product-price">${formatCurrency(product.price)}</div>
+                <div class="category-badge">${product.category}</div>
+                <p style="margin: 15px 0;">${product.description}</p>
+                <div class="platform-commission">
+                    <p><strong>Platform Commission:</strong> ${product.commission}%</p>
+                </div>
+                <div class="product-actions" style="margin-top: 20px;">
+                    <button class="btn btn-primary buy-btn" style="width:100%;">Buy Now</button>
+                </div>
+            `;
+            
+            detailContent.querySelector('.buy-btn').addEventListener('click', () => {
+                showCheckoutModal(product);
+                productDetailModal.style.display = 'none';
+            });
+            
+            productDetailModal.style.display = 'flex';
+        }
 
         // Process payment
         function processPayment() {
@@ -2584,7 +2529,7 @@
             } else if (paymentMethod.value === 'direct') {
                 // Pay directly via payment link
                 if (currentProduct.paymentLink) {
-                    showNotification('Redirecting', 'Redirecting to payment gateway...', 'info');
+                    showNotification('Redirecting', 'Redirecting to the payment gateway...', 'info');
                     setTimeout(() => {
                         window.location.href = currentProduct.paymentLink;
                     }, 1000);
@@ -2622,7 +2567,7 @@
         // Record platform commission
         function recordPlatformCommission(amount) {
             // In a real system, this would go to a platform wallet
-            console.log(`Platform earned $${amount.toFixed(2)} from commission`);
+            console.log(`Platform earned ${formatCurrency(amount)} from commission`);
         }
 
         // Sign in with email/password
@@ -2643,7 +2588,9 @@
         function signUp() {
             const name = document.getElementById('register-name').value;
             const email = document.getElementById('register-email').value;
+            const accountName = document.getElementById('register-account-name').value;
             const account = document.getElementById('register-account').value;
+            const bank = document.getElementById('register-bank').value;
             const password = document.getElementById('register-password').value;
             const role = document.getElementById('register-role').value;
             const referralCode = document.getElementById('register-referral').value || fixedReferralCode;
@@ -2654,7 +2601,9 @@
                     const userData = {
                         name: name,
                         email: email,
+                        accountName: accountName,
                         account: account,
+                        bank: bank,
                         role: role,
                         wallet: 0,
                         pendingEarnings: 0,
@@ -2729,7 +2678,9 @@
                         // Show account information
                         if (userData.account) {
                             accountInfo.style.display = 'block';
-                            userAccountNumber.textContent = userData.account;
+                            userAccountName.textContent = userData.accountName || 'N/A';
+                            userAccountNumber.textContent = userData.account || 'N/A';
+                            userBankName.textContent = userData.bank || 'N/A';
                         }
                         
                         // Show affiliate earnings if applicable
@@ -2847,23 +2798,23 @@
 
         // Currency formatting function
         function formatCurrency(amount) {
-            return `${currencySymbol}${amount.toFixed(2)}`;
+            return `${currencySymbol}${parseFloat(amount).toFixed(2)}`;
         }
         
         // Update currency in UI
         function updateCurrencyUI() {
             // Update wallet displays
             if (document.getElementById('wallet-balance')) {
-                document.getElementById('wallet-balance').textContent = formatCurrency(userData.wallet);
+                document.getElementById('wallet-balance').textContent = formatCurrency(userData?.wallet || 0);
             }
             if (document.getElementById('wallet-balance-display')) {
-                document.getElementById('wallet-balance-display').textContent = formatCurrency(userData.wallet);
+                document.getElementById('wallet-balance-display').textContent = formatCurrency(userData?.wallet || 0);
             }
             if (document.getElementById('pending-earnings')) {
-                document.getElementById('pending-earnings').textContent = `Pending Earnings: ${formatCurrency(userData.pendingEarnings || 0)}`;
+                document.getElementById('pending-earnings').textContent = `Pending Earnings: ${formatCurrency(userData?.pendingEarnings || 0)}`;
             }
             if (document.getElementById('total-earnings')) {
-                document.getElementById('total-earnings').textContent = `Total Earnings: ${formatCurrency((userData.wallet || 0) + (userData.pendingEarnings || 0))}`;
+                document.getElementById('total-earnings').textContent = `Total Earnings: ${formatCurrency((userData?.wallet || 0) + (userData?.pendingEarnings || 0))}`;
             }
             
             // Update product prices
@@ -2895,7 +2846,6 @@
                 commission: parseInt(document.getElementById('product-commission').value),
                 category: document.getElementById('product-category').value,
                 description: document.getElementById('product-description').value,
-                image: document.getElementById('product-image').value || 'https://via.placeholder.com/300',
                 owner: currentUser.uid,
                 ownerName: userData.name,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -2909,8 +2859,8 @@
             db.collection('products').add(product)
                 .then(() => {
                     showNotification('Success', 'Product submitted for admin approval!', 'success');
-                    productForm.reset();
-                    addProductForm.style.display = 'none';
+                    document.getElementById('product-form').reset();
+                    document.getElementById('add-product-form').style.display = 'none';
                     document.getElementById('products-grid').style.display = 'grid';
                     loadProducts();
                 })
@@ -2930,7 +2880,6 @@
                 commission: parseInt(document.getElementById('edit-product-commission').value),
                 category: document.getElementById('edit-product-category').value,
                 description: document.getElementById('edit-product-description').value,
-                image: document.getElementById('edit-product-image').value || 'https://via.placeholder.com/300',
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
                 status: 'pending' // Products go back to pending after edit
             };
@@ -2938,8 +2887,8 @@
             db.collection('products').doc(productId).update(updates)
                 .then(() => {
                     showNotification('Success', 'Product updated and submitted for admin approval!', 'success');
-                    productEditForm.reset();
-                    editProductForm.style.display = 'none';
+                    document.getElementById('product-edit-form').reset();
+                    document.getElementById('edit-product-form').style.display = 'none';
                     document.getElementById('products-grid').style.display = 'grid';
                     loadProducts();
                 })
@@ -2971,9 +2920,9 @@
                 userName: userData.name,
                 amount: amount,
                 status: 'pending',
-                accountName: userData.name,
+                accountName: userData.accountName,
                 accountNumber: userData.account,
-                bankName: 'Main Bank',
+                bankName: userData.bank,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             })
             .then(() => {
@@ -3041,6 +2990,12 @@
             
             let query = db.collection('products');
             
+            // Apply category filter if set
+            if (currentCategory) {
+                query = query.where('category', '==', currentCategory);
+                document.querySelector('.section-title').textContent = currentCategory.charAt(0).toUpperCase() + currentCategory.slice(1) + ' Products';
+            }
+            
             // If seller, show only their products
             if (userRole === 'seller' && userData.status === 'approved') {
                 query = query.where('owner', '==', currentUser.uid);
@@ -3053,30 +3008,6 @@
                 .then(snapshot => {
                     if (snapshot.empty) {
                         productsGrid.innerHTML = '<p>No products found</p>';
-                        return;
-                    }
-                    
-                    productsGrid.innerHTML = '';
-                    snapshot.forEach(doc => {
-                        const product = doc.data();
-                        product.id = doc.id;
-                        productsGrid.appendChild(createProductCard(product));
-                    });
-                });
-        }
-        
-        // Load products by category
-        function loadProductsByCategory(category) {
-            const productsGrid = document.getElementById('products-grid');
-            productsGrid.innerHTML = '<p>Loading products...</p>';
-            
-            db.collection('products')
-                .where('category', '==', category)
-                .where('status', '==', 'approved')
-                .get()
-                .then(snapshot => {
-                    if (snapshot.empty) {
-                        productsGrid.innerHTML = '<p>No products found in this category</p>';
                         return;
                     }
                     
@@ -3165,6 +3096,10 @@
                     showCheckoutModal(product, product.referralCode, true);
                 });
                 
+                card.querySelector('.details-btn').addEventListener('click', () => {
+                    showProductDetails(product);
+                });
+                
                 card.querySelector('.share-btn').addEventListener('click', () => {
                     showShareProductModal(product);
                 });
@@ -3189,6 +3124,21 @@
             }
             
             return card;
+        }
+
+        // Edit product
+        function editProduct(product) {
+            document.getElementById('edit-product-id').value = product.id;
+            document.getElementById('edit-product-name').value = product.name;
+            document.getElementById('edit-product-price').value = product.price;
+            document.getElementById('edit-product-commission').value = product.commission;
+            document.getElementById('edit-product-category').value = product.category;
+            document.getElementById('edit-product-description').value = product.description;
+            
+            // Show edit form
+            document.getElementById('add-product-form').style.display = 'none';
+            document.getElementById('products-grid').style.display = 'none';
+            document.getElementById('edit-product-form').style.display = 'block';
         }
 
         // Show share product modal
@@ -3276,7 +3226,7 @@
             let statusBadge = '';
             switch(order.status) {
                 case 'pending': statusBadge = 'status-pending'; break;
-                case 'approved': statusBadge = 'status-approved'; break;
+                case 'approved': status极  'status-approved'; break;
                 case 'shipped': statusBadge = 'status-badge'; break;
                 case 'delivered': statusBadge = 'status-approved'; break;
                 case 'declined': statusBadge = 'status-declined'; break;
@@ -3290,7 +3240,7 @@
                     </div>
                     <div>
                         <span class="status-badge ${statusBadge}">${order.status}</span>
-                    </div>
+                    </极>
                 </div>
                 <div class="order-details">
                     <div class="order-item">
@@ -3458,7 +3408,7 @@
                             });
                             
                             // Notify seller
-                            showNotification('Negative Balance', `Your account has a negative balance of $${deficit.toFixed(2)} due to a declined order`, 'warning');
+                            showNotification('Negative Balance', `Your account has a negative balance of ${formatCurrency(deficit)} due to a declined order`, 'warning');
                         }
                     }
                 });
@@ -3649,7 +3599,7 @@
                             approveSeller(e.target.dataset.id);
                         });
                         
-                        li.querySelector('.reject-seller').addEventListener('click', (e) => {
+                        li.querySelector('.reject-seller').addEventListener('click', (极) => {
                             rejectSeller(e.target.dataset.id);
                         });
                     });
@@ -3754,7 +3704,7 @@
                                 <p>Buyer: ${order.buyerEmail || 'N/A'}</p>
                             </div>
                             <div>
-                                <span class="status-badge ${statusBadge}">${order.status}</span>
+                                <span class极status-badge ${statusBadge}">${order.status}</span>
                             </div>
                         `;
                         transactionsList.appendChild(li);
