@@ -9,8 +9,10 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <!-- External Firebase Configuration -->
+    
+    <!-- External configuration file -->
     <script src="configuration.js"></script>
+    
     <style>
         :root {
             --primary: #1a3a6c;
@@ -251,6 +253,9 @@
             float: right;
             font-size: 1.5rem;
             cursor: pointer;
+            background: none;
+            border: none;
+            color: var(--gray);
         }
 
         .tabs {
@@ -834,13 +839,13 @@
             right: 30px;
             background-color: var(--accent);
             color: white;
-            width: 50px;
-            height: 50px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
+            font-size: 1.2rem;
             cursor: pointer;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
             z-index: 999;
@@ -1786,7 +1791,7 @@
                             </div>
                             
                             <h3>Your Referral Link</h3>
-                            <div class="referral-link" id="referral-link">https://myliveurl.com/?ref=FIRE-12345</div>
+                            <div class="referral-link" id="referral-link">https://yourlivedomain.com/?ref=FIRE-12345</div>
                             <button class="btn btn-outline btn-sm" id="copy-link">Copy Link</button>
                             
                             <div class="referral-priority">
@@ -2061,7 +2066,7 @@
                     <h3>Share Your Shop</h3>
                     <p>Share your shop URL with customers:</p>
                     <div class="share-input-group">
-                        <input type="text" id="shop-url" value="https://myliveurl.com/shop/my-shop" readonly>
+                        <input type="text" id="shop-url" value="https://yourlivedomain.com/shop/my-shop" readonly>
                         <button class="btn btn-primary" id="copy-shop-url">Copy</button>
                     </div>
                 </div>
@@ -2070,17 +2075,11 @@
     </main>
 
     <script>
-        // Firebase initialization from external configuration.js
-        // Check if Firebase app is already initialized
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        // Initialize Firebase with configuration from external file
+        firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
-
-        // Live domain from configuration
-        const liveDomain = "https://myliveurl.com"; // Will be set from configuration.js
-
+        
         // DOM Elements
         const pages = {
             dashboard: document.getElementById('dashboard-page'),
@@ -2153,6 +2152,7 @@
         const shopProfileImage = document.getElementById('shop-profile-image');
         const myShopBio = document.getElementById('my-shop-bio');
         const currencySelect = document.getElementById('currency-select');
+        const viewCategoryBtns = document.querySelectorAll('.view-category');
         
         // App State
         let currentUser = null;
@@ -2335,7 +2335,7 @@
             });
             
             // Category view
-            document.querySelectorAll('.view-category').forEach(btn => {
+            viewCategoryBtns.forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const category = e.target.closest('.product-card').dataset.category;
                     viewCategory(category);
@@ -3687,7 +3687,7 @@
                         
                         li.innerHTML = `
                             <div>
-                                <strong>Order #${doc.id.substring(0, 8).toUpperCase()}</strong>
+                                <strong>Order #${doc.id.substring(0,8)}</strong>
                                 <div class="transaction-details">
                                     <p>Buyer: ${order.buyerEmail}</p>
                                     <p>Seller: ${order.productOwner}</p>
@@ -3760,9 +3760,15 @@
             if (!currentUser || userRole !== 'seller') return;
             
             // Set shop name and description
-            document.getElementById('my-shop-name').textContent = userData.shopName;
-            myShopBio.textContent = userData.shopBio;
-            shopProfileImage.src = userData.shopImage;
+            document.getElementById('my-shop-name').textContent = userData.shopName || "My Shop";
+            myShopBio.textContent = userData.shopBio || "Premium products at affordable prices";
+            
+            // Set shop profile image
+            if (userData.shopImage) {
+                shopProfileImage.src = userData.shopImage;
+            } else {
+                shopProfileImage.src = "https://via.placeholder.com/100";
+            }
             
             // Set shop URL
             shopUrlInput.value = `${liveDomain}/shop/${currentUser.uid}`;
@@ -3777,7 +3783,7 @@
                 .get()
                 .then(snapshot => {
                     if (snapshot.empty) {
-                        shopProductsGrid.innerHTML = '<p>No products found</p>';
+                        shopProductsGrid.innerHTML = '<p>No products found in your shop</p>';
                         return;
                     }
                     
@@ -3787,6 +3793,10 @@
                         product.id = doc.id;
                         shopProductsGrid.appendChild(createProductCard(product, true));
                     });
+                })
+                .catch(error => {
+                    shopProductsGrid.innerHTML = '<p>Error loading products</p>';
+                    showNotification('Error', `Failed to load products: ${error.message}`, 'error');
                 });
         }
 
