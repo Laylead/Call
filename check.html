@@ -305,6 +305,7 @@
             background-color: var(--lightest-gray);
             border-radius: var(--radius-sm);
             margin-top: 15px;
+            transition: var(--transition);
         }
 
         .auth-form.active {
@@ -1453,6 +1454,27 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* Index Error Handling */
+        .index-error {
+            background-color: rgba(220, 53, 69, 0.1);
+            border-left: 4px solid var(--danger);
+            padding: 20px;
+            border-radius: var(--radius-sm);
+            margin: 20px 0;
+            font-size: 0.9rem;
+        }
+        
+        .index-error h4 {
+            color: var(--danger);
+            margin-bottom: 10px;
+        }
+        
+        .index-error a {
+            color: var(--primary);
+            text-decoration: underline;
+            word-break: break-all;
+        }
+
         /* Responsive Design */
         @media (max-width: 992px) {
             .sidebar-open + main {
@@ -2046,9 +2068,9 @@
                             
                             <h3 style="margin-top: 20px;">Share On Social Media</h3>
                             <div style="display: flex; gap: 10px; margin-top: 10px;">
-                                <button class="btn btn-outline btn-sm"><i class="fab fa-facebook"></i> Facebook</button>
-                                <button class="btn btn-outline btn-sm"><i class="fab fa-twitter"></i> Twitter</button>
-                                <button class="btn btn-outline btn-sm"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+                                <button class="btn btn-outline btn-sm" id="share-facebook"><i class="fab fa-facebook"></i> Facebook</button>
+                                <button class="btn btn-outline btn-sm" id="share-twitter"><i class="fab fa-twitter"></i> Twitter</button>
+                                <button class="btn btn-outline btn-sm" id="share-whatsapp"><i class="fab fa-whatsapp"></i> WhatsApp</button>
                             </div>
                         </div>
                     </div>
@@ -2319,7 +2341,9 @@
         </div>
     </main>
 
+    <!-- External configuration file -->
     <script src="configuration.js"></script>
+    
     <script>
         // Initialize Firebase using configuration from external file
         firebase.initializeApp(firebaseConfig);
@@ -2381,6 +2405,9 @@
         const searchProductsBtn = document.getElementById('search-products');
         const productSearchInput = document.getElementById('product-search');
         const productDetailsModal = document.getElementById('product-details-modal');
+        const shareFacebookBtn = document.getElementById('share-facebook');
+        const shareTwitterBtn = document.getElementById('share-twitter');
+        const shareWhatsappBtn = document.getElementById('share-whatsapp');
         
         // App State
         let currentUser = null;
@@ -2525,6 +2552,11 @@
             contactSupportBtn?.addEventListener('click', () => {
                 window.location.href = contactUrl;
             });
+            
+            // Social sharing buttons
+            shareFacebookBtn.addEventListener('click', shareOnFacebook);
+            shareTwitterBtn.addEventListener('click', shareOnTwitter);
+            shareWhatsappBtn.addEventListener('click', shareOnWhatsapp);
         }
 
         // Update currency display throughout the app
@@ -3177,7 +3209,7 @@
             return orderCard;
         }
 
-        // Load referrals
+        // Load referrals with index error handling
         function loadReferrals() {
             if (!userData) return;
             
@@ -3188,10 +3220,13 @@
             const referralsList = document.getElementById('referrals-list');
             referralsList.innerHTML = '<div class="loader"></div>';
             
-            const unsubscribe = db.collection('referrals')
+            // Create the query
+            const query = db.collection('referrals')
                 .where('referrerId', '==', currentUser.uid)
-                .orderBy('createdAt', 'desc')
-                .onSnapshot(querySnapshot => {
+                .orderBy('createdAt', 'desc');
+            
+            try {
+                const unsubscribe = query.onSnapshot(querySnapshot => {
                     referralsList.innerHTML = '';
                     
                     if (querySnapshot.empty) {
@@ -3205,11 +3240,34 @@
                         referralsList.appendChild(createReferralItem(referral));
                     });
                 }, error => {
-                    showNotification('Error', `Failed to load referrals: ${error.message}`, 'error');
-                    referralsList.innerHTML = '<p>Error loading referrals</p>';
+                    // Handle index error specifically
+                    if (error.code === 'failed-precondition' && error.message.includes('index')) {
+                        const indexErrorDiv = document.createElement('div');
+                        indexErrorDiv.className = 'index-error';
+                        indexErrorDiv.innerHTML = `
+                            <h4>Index Required</h4>
+                            <p>Firestore needs a composite index to load referrals.</p>
+                            <p>Please create this index in the Firebase Console:</p>
+                            <p><strong>Collection:</strong> referrals</p>
+                            <p><strong>Fields:</strong> referrerId (Ascending), createdAt (Descending)</p>
+                            <p>Or click this link to create it automatically:</p>
+                            <p><a href="https://console.firebase.google.com/v1/r/project/${firebase.app().options.projectId}/firestore/indexes?create_composite=Ck5wcm9qZWN0cy9raGVlbXotZmI5YjYvZGF0YWJhc2VzLyhkZWZhdWx0KS9jb2xsZWN0aW9uR3JvdXBzL3JlZmVycmFscy9pbmRleGVzL18QARoOCgpyZWZlcnJlcklkEAEaDQoJY3JlYXRlZEF0EAIaDAoIX19uYW1lX18QAg" target="_blank">
+                                Create Required Index
+                            </a></p>
+                        `;
+                        referralsList.innerHTML = '';
+                        referralsList.appendChild(indexErrorDiv);
+                    } else {
+                        showNotification('Error', `Failed to load referrals: ${error.message}`, 'error');
+                        referralsList.innerHTML = '<p>Error loading referrals</p>';
+                    }
                 });
                 
-            unsubscribeFunctions.push(unsubscribe);
+                unsubscribeFunctions.push(unsubscribe);
+            } catch (error) {
+                showNotification('Error', `Failed to load referrals: ${error.message}`, 'error');
+                referralsList.innerHTML = '<p>Error loading referrals</p>';
+            }
         }
         
         // Create referral item
@@ -3467,6 +3525,25 @@
             .catch(error => {
                 showNotification('Error', `Failed to process withdrawal: ${error.message}`, 'error');
             });
+        }
+
+        // Social sharing functions
+        function shareOnFacebook() {
+            const referralLink = document.getElementById('referral-link').textContent;
+            const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralLink)}`;
+            window.open(shareUrl, '_blank');
+        }
+        
+        function shareOnTwitter() {
+            const referralLink = document.getElementById('referral-link').textContent;
+            const shareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(referralLink)}&text=Check%20out%20this%20awesome%20platform!`;
+            window.open(shareUrl, '_blank');
+        }
+        
+        function shareOnWhatsapp() {
+            const referralLink = document.getElementById('referral-link').textContent;
+            const shareUrl = `https://wa.me/?text=${encodeURIComponent(`Check out this platform: ${referralLink}`)}`;
+            window.open(shareUrl, '_blank');
         }
 
         // Initialize the app when DOM is loaded
