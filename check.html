@@ -10,6 +10,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     
+    <!-- External configuration file -->
+    <script src="configuration.js"></script>
+    
     <style>
         :root {
             --primary: #1a3a6c;
@@ -1861,22 +1864,333 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Orders Page -->
+            <div id="orders-page" class="page">
+                <h1 class="section-title">My Orders</h1>
+                
+                <div class="filter-container">
+                    <div class="filter-group">
+                        <label for="order-status">Filter by Status</label>
+                        <select id="order-status" class="form-control">
+                            <option value="all">All Orders</option>
+                            <option value="pending">Pending Approval</option>
+                            <option value="approved">Approved</option>
+                            <option value="shipped">Shipped</option>
+                            <option value="delivered">Delivered</option>
+                            <option value="declined">Declined</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="order-date">Filter by Date</label>
+                        <input type="date" id="order-date" class="form-control">
+                    </div>
+                </div>
+                
+                <div id="orders-list">
+                    <!-- Orders will be loaded dynamically -->
+                </div>
+            </div>
+            
+            <!-- Referrals Page -->
+            <div id="referrals-page" class="page">
+                <h1 class="section-title">Referral Program</h1>
+                
+                <div class="referral-section">
+                    <div class="referral-content">
+                        <div class="referral-info">
+                            <h3>Your Referral Code</h3>
+                            <div class="referral-code-box">
+                                <span id="referral-code">FIRE-12345</span>
+                                <button class="btn btn-accent btn-sm" id="copy-code">Copy</button>
+                            </div>
+                            
+                            <h3>Your Referral Link</h3>
+                            <div class="referral-link" id="referral-link">https://yourlivedomain.com/?ref=FIRE-12345</div>
+                            <button class="btn btn-outline btn-sm" id="copy-link">Copy Link</button>
+                            
+                            <div class="referral-priority">
+                                <h4>Referral Priority</h4>
+                                <p>When someone signs up using your referral link, you'll earn commission on their purchases unless they use another referral code at checkout.</p>
+                            </div>
+                            
+                            <h3 style="margin-top: 20px;">Share On Social Media</h3>
+                            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                <button class="btn btn-outline btn-sm"><i class="fab fa-facebook"></i> Facebook</button>
+                                <button class="btn btn-outline btn-sm"><i class="fab fa-twitter"></i> Twitter</button>
+                                <button class="btn btn-outline btn-sm"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <h2 class="section-title">Your Referrals</h2>
+                <div class="referral-section">
+                    <div id="referrals-list">
+                        <!-- Referrals will be loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Wallet Page -->
+            <div id="wallet-page" class="page">
+                <h1 class="section-title">My Wallet</h1>
+                
+                <div class="wallet-balance">
+                    <p>Available Balance</p>
+                    <div class="balance-amount" id="wallet-balance-display">$1,250.75</div>
+                    <p id="pending-earnings">Pending Earnings: $350.00</p>
+                    <p id="total-earnings">Total Earnings: $1,600.75</p>
+                    
+                    <div class="wallet-actions">
+                        <button class="btn btn-accent" id="withdraw-btn">Withdraw Funds</button>
+                        <button class="btn btn-outline" style="background-color: rgba(255,255,255,0.1); color: white; border-color: rgba(255,255,255,0.3);">View Statements</button>
+                    </div>
+                </div>
+                
+                <h2 class="section-title">Transaction History</h2>
+                <div class="transactions" id="transactions-list">
+                    <!-- Transactions will be loaded dynamically -->
+                </div>
+            </div>
+            
+            <!-- Admin Page -->
+            <div id="admin-page" class="page">
+                <h1 class="section-title">Admin Dashboard</h1>
+                
+                <div class="admin-grid">
+                    <div class="admin-card">
+                        <h3>User Management</h3>
+                        <div class="form-group">
+                            <input type="text" id="user-search" placeholder="Search users by name, email, etc.">
+                            <button id="search-users" class="btn btn-primary btn-sm">Search</button>
+                        </div>
+                        <div id="user-search-results" style="max-height: 300px; overflow-y: auto;">
+                            <!-- Search results will appear here -->
+                        </div>
+                    </div>
+                    
+                    <div class="admin-card">
+                        <h3>Generate Tokens</h3>
+                        <div class="form-group">
+                            <label for="token-count">Number of Tokens</label>
+                            <input type="number" id="token-count" min="1" max="100" value="1">
+                        </div>
+                        <div class="form-group">
+                            <label for="token-value">Token Value (USD)</label>
+                            <input type="number" id="token-value" min="1" step="1" value="10">
+                        </div>
+                        <button id="generate-tokens" class="btn btn-primary">Generate Tokens</button>
+                        <div id="generated-tokens" style="margin-top: 15px; display: none;">
+                            <h4>Generated Tokens</h4>
+                            <div id="token-list" style="font-family: monospace;"></div>
+                            <button id="copy-tokens" class="btn btn-outline btn-sm">Copy All</button>
+                        </div>
+                    </div>
+                    
+                    <div class="admin-card">
+                        <h3>Pending Seller Approvals</h3>
+                        <ul class="admin-list" id="pending-sellers">
+                            <!-- Pending sellers will be loaded dynamically -->
+                        </ul>
+                    </div>
+                    
+                    <div class="admin-card">
+                        <h3>Pending Withdrawals</h3>
+                        <ul class="admin-list" id="withdrawals-list">
+                            <!-- Withdrawals will be loaded dynamically -->
+                        </ul>
+                    </div>
+                    
+                    <div class="admin-card">
+                        <h3>Create Discount Code</h3>
+                        <div class="form-group">
+                            <label for="discount-code">Code</label>
+                            <input type="text" id="discount-code" placeholder="e.g. SUMMER20">
+                        </div>
+                        <div class="form-group">
+                            <label for="discount-type">Type</label>
+                            <select id="discount-type" class="form-control">
+                                <option value="percentage">Percentage</option>
+                                <option value="fixed">Fixed Amount</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="discount-value">Value</label>
+                            <input type="number" id="discount-value" min="1" step="1" value="10">
+                        </div>
+                        <div class="form-group">
+                            <label for="discount-expiry">Expiry Date</label>
+                            <input type="date" id="discount-expiry">
+                        </div>
+                        <button id="create-discount" class="btn btn-primary">Create Discount</button>
+                    </div>
+                    
+                    <div class="admin-card">
+                        <h3>System Settings</h3>
+                        <div class="form-group">
+                            <label for="currency-select">Default Currency</label>
+                            <select id="currency-select" class="form-control">
+                                <option value="USD">US Dollar ($)</option>
+                                <option value="NGN">Nigerian Naira (₦)</option>
+                                <option value="EUR">Euro (€)</option>
+                                <option value="GBP">British Pound (£)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="contact-url">Contact Widget URL</label>
+                            <input type="text" id="contact-url" placeholder="https://www.contact.me.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="fund-url">Fund Wallet URL</label>
+                            <input type="text" id="fund-url" placeholder="https://www.fundme.wakka.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="platform-commission">Platform Commission (%)</label>
+                            <input type="number" id="platform-commission" min="0" max="100" value="35">
+                        </div>
+                        <button id="save-settings" class="btn btn-primary">Save Settings</button>
+                    </div>
+                    
+                    <div class="admin-card">
+                        <h3>Recent Transactions</h3>
+                        <div class="filter-container">
+                            <div class="filter-group">
+                                <label for="transaction-status">Filter by Status</label>
+                                <select id="transaction-status" class="form-control">
+                                    <option value="all">All Transactions</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="declined">Declined</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label for="transaction-date">Filter by Date</label>
+                                <input type="date" id="transaction-date" class="form-control">
+                            </div>
+                        </div>
+                        <ul class="admin-list" id="admin-transactions">
+                            <!-- Transactions will be loaded dynamically -->
+                        </ul>
+                    </div>
+                    
+                    <div class="admin-card">
+                        <h3>System Overview</h3>
+                        <ul class="admin-list" id="system-stats">
+                            <li>
+                                <span>Total Users</span>
+                                <span id="total-users">1,245</span>
+                            </li>
+                            <li>
+                                <span>Active Sellers</span>
+                                <span id="active-sellers">85</span>
+                            </li>
+                            <li>
+                                <span>New Registrations (30d)</span>
+                                <span id="new-users">142</span>
+                            </li>
+                            <li>
+                                <span>Affiliate Signups</span>
+                                <span id="affiliates">320</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <h2 class="section-title">All Users</h2>
+                <div class="users-table-container">
+                    <table class="users-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Balance</th>
+                                <th>Account #</th>
+                                <th>Joined</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body">
+                            <!-- Users will be loaded dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <h2 class="section-title">Manage Products</h2>
+                <div class="admin-card">
+                    <h3>All Products</h3>
+                    <div id="admin-products-list" class="products-grid">
+                        <!-- Products for admin will be loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Shop Page -->
+            <div id="shop-page" class="page">
+                <div class="shop-header">
+                    <div class="shop-avatar">
+                        <i class="fas fa-store"></i>
+                    </div>
+                    <div class="shop-info">
+                        <h2 id="shop-name">Tech Gadgets Store</h2>
+                        <div class="shop-rating">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star-half-alt"></i>
+                            <span style="margin-left: 10px; color: var(--gray);">4.5 (128 reviews)</span>
+                        </div>
+                        <p id="shop-description">Premium tech gadgets at competitive prices</p>
+                    </div>
+                </div>
+                
+                <h2 class="section-title">Shop Products</h2>
+                <div class="products-grid" id="shop-products">
+                    <!-- Shop products will be loaded dynamically -->
+                </div>
+            </div>
+            
+            <!-- My Shop Page -->
+            <div id="my-shop-page" class="page">
+                <div class="shop-header">
+                    <div class="shop-avatar">
+                        <img id="shop-profile-image" src="https://via.placeholder.com/100" alt="Shop Profile">
+                    </div>
+                    <div class="shop-info">
+                        <h2 id="my-shop-name">My Shop</h2>
+                        <p id="my-shop-bio">Premium products at affordable prices</p>
+                        <div class="shop-rating">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star-half-alt"></i>
+                            <span style="margin-left: 10px; color: var(--gray);">4.5 (128 reviews)</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <h2 class="section-title">My Products</h2>
+                <div class="products-grid" id="my-shop-products">
+                    <!-- My shop products will be loaded dynamically -->
+                </div>
+                
+                <div class="share-container">
+                    <h3>Share Your Shop</h3>
+                    <p>Share your shop URL with customers:</p>
+                    <div class="share-input-group">
+                        <input type="text" id="shop-url" value="https://yourlivedomain.com/shop/my-shop" readonly>
+                        <button class="btn btn-primary" id="copy-shop-url">Copy</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </main>
 
     <script>
-        // Firebase configuration - This would normally be in configuration.js
-        // For demo purposes, we'll include it here
-        const firebaseConfig = {
-            apiKey: "AIzaSyDummyAPIKeyForDemoPurposes",
-            authDomain: "firecommerce-demo.firebaseapp.com",
-            projectId: "firecommerce-demo",
-            storageBucket: "firecommerce-demo.appspot.com",
-            messagingSenderId: "1234567890",
-            appId: "1:1234567890:web:abcdef1234567890"
-        };
-
-        // Initialize Firebase
+        // Initialize Firebase with configuration from external file
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
@@ -1928,6 +2242,11 @@
         const sidebar = document.getElementById('sidebar');
         const closeSidebar = document.getElementById('close-sidebar');
         const viewCategoryBtns = document.querySelectorAll('.view-category');
+        const copyCodeBtn = document.getElementById('copy-code');
+        const copyLinkBtn = document.getElementById('copy-link');
+        const copyShopUrlBtn = document.getElementById('copy-shop-url');
+        const searchProductsBtn = document.getElementById('search-products');
+        const productSearchInput = document.getElementById('product-search');
         
         // App State
         let currentUser = null;
@@ -2024,6 +2343,25 @@
             
             // Check for referral code in URL
             checkUrlForReferral();
+            
+            // Copy buttons
+            copyCodeBtn.addEventListener('click', copyReferralCode);
+            copyLinkBtn.addEventListener('click', copyReferralLink);
+            copyShopUrlBtn.addEventListener('click', copyShopUrl);
+            
+            // Product search
+            searchProductsBtn.addEventListener('click', searchProducts);
+            productSearchInput.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') searchProducts();
+            });
+            
+            // Contact widgets
+            contactWidget.addEventListener('click', () => {
+                window.location.href = contactUrl;
+            });
+            fundWalletWidget.addEventListener('click', () => {
+                window.location.href = fundUrl;
+            });
         }
 
         // Show auth form in sidebar
@@ -2179,13 +2517,13 @@
                         
                         // Show account information
                         if (userData.account) {
-                            accountInfo.style.display = 'block';
+                            document.getElementById('account-info').style.display = 'block';
                             document.getElementById('user-account-number').textContent = userData.account;
                         }
                         
                         // Show affiliate earnings if applicable
                         if (userData.pendingEarnings || userData.wallet) {
-                            affiliateEarnings.style.display = 'block';
+                            document.getElementById('affiliate-earnings').style.display = 'block';
                             document.getElementById('pending-affiliate').textContent = formatCurrency(userData.pendingEarnings || 0);
                             document.getElementById('available-affiliate').textContent = formatCurrency(userData.wallet || 0);
                         }
@@ -2226,8 +2564,8 @@
                 addProductBtn.style.display = 'none';
                 sellerApprovalBlock.style.display = 'none';
                 regularDashboard.style.display = 'block';
-                accountInfo.style.display = 'none';
-                affiliateEarnings.style.display = 'none';
+                document.getElementById('account-info').style.display = 'none';
+                document.getElementById('affiliate-earnings').style.display = 'none';
                 hideAuthForms();
             }
         }
@@ -2249,6 +2587,35 @@
                     link.classList.add('active');
                 }
             });
+            
+            // Load data for the page
+            switch(pageId) {
+                case 'dashboard':
+                    loadDashboardData();
+                    break;
+                case 'products':
+                    loadProducts();
+                    break;
+                case 'categories':
+                    break;
+                case 'orders':
+                    loadOrders();
+                    break;
+                case 'referrals':
+                    loadReferrals();
+                    break;
+                case 'wallet':
+                    loadWallet();
+                    break;
+                case 'admin':
+                    if (userRole === 'admin') {
+                        loadAdminData();
+                    }
+                    break;
+                case 'my-shop':
+                    loadMyShop();
+                    break;
+            }
         }
 
         // Format currency based on selected currency
@@ -2433,6 +2800,323 @@
             }
             
             checkoutModal.style.display = 'flex';
+        }
+
+        // Load products
+        function loadProducts() {
+            const productsGrid = document.getElementById('products-grid');
+            productsGrid.innerHTML = '<p>Loading products...</p>';
+            
+            // In a real implementation, this would fetch from Firebase
+            setTimeout(() => {
+                productsGrid.innerHTML = '';
+                
+                const products = [
+                    {
+                        id: 'prod1',
+                        name: 'Wireless Headphones',
+                        price: 89.99,
+                        commission: 15,
+                        category: 'electronics',
+                        description: 'Premium noise-cancelling headphones',
+                        image: '',
+                        status: 'approved'
+                    },
+                    {
+                        id: 'prod2',
+                        name: 'Smart Watch',
+                        price: 199.99,
+                        commission: 20,
+                        category: 'electronics',
+                        description: 'Latest model with health tracking',
+                        image: '',
+                        status: 'approved'
+                    },
+                    {
+                        id: 'prod3',
+                        name: 'Running Shoes',
+                        price: 129.99,
+                        commission: 12,
+                        category: 'sports',
+                        description: 'Lightweight running shoes',
+                        image: '',
+                        status: 'approved'
+                    },
+                    {
+                        id: 'prod4',
+                        name: 'Bluetooth Speaker',
+                        price: 59.99,
+                        commission: 18,
+                        category: 'electronics',
+                        description: 'Portable speaker with great sound',
+                        image: '',
+                        status: 'approved'
+                    },
+                    {
+                        id: 'prod5',
+                        name: 'Designer Handbag',
+                        price: 299.99,
+                        commission: 25,
+                        category: 'fashion',
+                        description: 'Luxury designer handbag',
+                        image: '',
+                        status: 'approved'
+                    },
+                    {
+                        id: 'prod6',
+                        name: 'Coffee Maker',
+                        price: 89.99,
+                        commission: 15,
+                        category: 'home',
+                        description: 'Premium coffee maker with timer',
+                        image: '',
+                        status: 'approved'
+                    }
+                ];
+                
+                products.forEach(product => {
+                    productsGrid.appendChild(createProductCard(product));
+                });
+            }, 1000);
+        }
+
+        // Load orders
+        function loadOrders() {
+            const ordersList = document.getElementById('orders-list');
+            ordersList.innerHTML = '<p>Loading orders...</p>';
+            
+            setTimeout(() => {
+                ordersList.innerHTML = '';
+                
+                const orders = [
+                    {
+                        id: 'ORD12345',
+                        productName: 'Wireless Headphones',
+                        amount: 89.99,
+                        status: 'pending',
+                        date: '2023-07-15'
+                    },
+                    {
+                        id: 'ORD12346',
+                        productName: 'Smart Watch',
+                        amount: 199.99,
+                        status: 'approved',
+                        date: '2023-07-10'
+                    },
+                    {
+                        id: 'ORD12347',
+                        productName: 'Running Shoes',
+                        amount: 129.99,
+                        status: 'delivered',
+                        date: '2023-07-05'
+                    }
+                ];
+                
+                orders.forEach(order => {
+                    const orderCard = document.createElement('div');
+                    orderCard.className = 'order-card';
+                    orderCard.innerHTML = `
+                        <div class="order-header">
+                            <div>
+                                <h3>Order #${order.id}</h3>
+                                <p>Placed on: ${order.date}</p>
+                            </div>
+                            <div>
+                                <span class="status-badge ${order.status === 'pending' ? 'status-pending' : 
+                                 order.status === 'approved' ? 'status-approved' : 'status-approved'}">${order.status}</span>
+                            </div>
+                        </div>
+                        <div class="order-details">
+                            <div class="order-item">
+                                <span>${order.productName}</span>
+                                <span>${formatCurrency(order.amount)}</span>
+                            </div>
+                        </div>
+                    `;
+                    ordersList.appendChild(orderCard);
+                });
+            }, 1000);
+        }
+
+        // Load referrals
+        function loadReferrals() {
+            document.getElementById('referral-code').textContent = userData.referralCode;
+            document.getElementById('referral-link').textContent = 
+                `${window.location.origin}/?ref=${userData.referralCode}`;
+                
+            const referralsList = document.getElementById('referrals-list');
+            referralsList.innerHTML = '<p>Loading referrals...</p>';
+            
+            setTimeout(() => {
+                referralsList.innerHTML = '';
+                
+                const referrals = [
+                    { name: 'John Smith', email: 'john@example.com', date: '2023-06-15', earnings: 25.50 },
+                    { name: 'Sarah Johnson', email: 'sarah@example.com', date: '2023-06-20', earnings: 18.75 },
+                    { name: 'Michael Brown', email: 'michael@example.com', date: '2023-07-01', earnings: 42.30 }
+                ];
+                
+                referrals.forEach(ref => {
+                    const referralItem = document.createElement('div');
+                    referralItem.className = 'transaction-item';
+                    referralItem.innerHTML = `
+                        <div class="transaction-info">
+                            <h4>${ref.name}</h4>
+                            <p>${ref.email}</p>
+                            <p>Joined: ${ref.date}</p>
+                        </div>
+                        <div class="transaction-amount positive">+${formatCurrency(ref.earnings)}</div>
+                    `;
+                    referralsList.appendChild(referralItem);
+                });
+            }, 1000);
+        }
+
+        // Load wallet
+        function loadWallet() {
+            if (!currentUser || !userData) return;
+            
+            document.getElementById('wallet-balance-display').textContent = formatCurrency(userData.wallet || 1250.75);
+            document.getElementById('pending-earnings').textContent = `Pending Earnings: ${formatCurrency(userData.pendingEarnings || 350.00)}`;
+            document.getElementById('total-earnings').textContent = `Total Earnings: ${formatCurrency((userData.wallet || 0) + (userData.pendingEarnings || 0) + 1600.75)}`;
+            
+            const transactionsList = document.getElementById('transactions-list');
+            transactionsList.innerHTML = '<p>Loading transactions...</p>';
+            
+            setTimeout(() => {
+                transactionsList.innerHTML = '';
+                
+                const transactions = [
+                    { description: 'Product Purchase: Smart Watch', amount: -199.99, date: '2023-07-18', type: 'debit' },
+                    { description: 'Referral Earnings: John Smith', amount: 25.50, date: '2023-07-15', type: 'credit' },
+                    { description: 'Product Purchase: Wireless Headphones', amount: -89.99, date: '2023-07-10', type: 'debit' },
+                    { description: 'Wallet Top-up', amount: 500.00, date: '2023-07-05', type: 'credit' }
+                ];
+                
+                transactions.forEach(transaction => {
+                    const transactionItem = document.createElement('div');
+                    transactionItem.className = 'transaction-item';
+                    
+                    transactionItem.innerHTML = `
+                        <div class="transaction-info">
+                            <h4>${transaction.description}</h4>
+                            <p>${transaction.date}</p>
+                        </div>
+                        <div class="transaction-amount ${transaction.type === 'credit' ? 'positive' : 'negative'}">
+                            ${transaction.type === 'credit' ? '+' : '-'}${formatCurrency(Math.abs(transaction.amount))}
+                        </div>
+                    `;
+                    transactionsList.appendChild(transactionItem);
+                });
+            }, 1000);
+        }
+
+        // Load admin data
+        function loadAdminData() {
+            const pendingSellersList = document.getElementById('pending-sellers');
+            pendingSellersList.innerHTML = '<p>Loading pending sellers...</p>';
+            
+            setTimeout(() => {
+                pendingSellersList.innerHTML = '';
+                
+                const sellers = [
+                    { name: 'Tech Gadgets Store', email: 'tech@example.com', account: '1234567890' },
+                    { name: 'Fashion Boutique', email: 'fashion@example.com', account: '0987654321' }
+                ];
+                
+                sellers.forEach(seller => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div>
+                            <strong>${seller.name}</strong>
+                            <p>${seller.email}</p>
+                            <p>Account: ${seller.account}</p>
+                        </div>
+                        <div>
+                            <button class="btn btn-success btn-sm">Approve</button>
+                            <button class="btn btn-danger btn-sm">Reject</button>
+                        </div>
+                    `;
+                    pendingSellersList.appendChild(li);
+                });
+            }, 1000);
+        }
+
+        // Load my shop
+        function loadMyShop() {
+            if (!currentUser || userRole !== 'seller') return;
+            
+            document.getElementById('my-shop-name').textContent = userData.shopName;
+            document.getElementById('my-shop-bio').textContent = userData.shopBio;
+            document.getElementById('shop-url').value = `${window.location.origin}/shop/${currentUser.uid}`;
+            
+            const myShopProducts = document.getElementById('my-shop-products');
+            myShopProducts.innerHTML = '<p>Loading products...</p>';
+            
+            setTimeout(() => {
+                myShopProducts.innerHTML = '';
+                
+                const products = [
+                    {
+                        id: 'prod1',
+                        name: 'Premium Wireless Earbuds',
+                        price: 129.99,
+                        commission: 20,
+                        category: 'electronics',
+                        description: 'High-quality wireless earbuds with noise cancellation',
+                        image: '',
+                        status: 'approved'
+                    },
+                    {
+                        id: 'prod2',
+                        name: 'Smart Fitness Tracker',
+                        price: 79.99,
+                        commission: 18,
+                        category: 'electronics',
+                        description: 'Track your fitness goals with this smart wearable',
+                        image: '',
+                        status: 'approved'
+                    },
+                    {
+                        id: 'prod3',
+                        name: 'Portable Bluetooth Speaker',
+                        price: 59.99,
+                        commission: 15,
+                        category: 'electronics',
+                        description: 'Take your music anywhere with this portable speaker',
+                        image: '',
+                        status: 'approved'
+                    }
+                ];
+                
+                products.forEach(product => {
+                    myShopProducts.appendChild(createProductCard(product, true));
+                });
+            }, 1000);
+        }
+
+        // Copy referral code
+        function copyReferralCode() {
+            navigator.clipboard.writeText(document.getElementById('referral-code').textContent);
+            showNotification('Copied!', 'Referral code copied to clipboard', 'success');
+        }
+
+        // Copy referral link
+        function copyReferralLink() {
+            navigator.clipboard.writeText(document.getElementById('referral-link').textContent);
+            showNotification('Copied!', 'Referral link copied to clipboard', 'success');
+        }
+
+        // Copy shop URL
+        function copyShopUrl() {
+            navigator.clipboard.writeText(document.getElementById('shop-url').value);
+            showNotification('Copied!', 'Shop URL copied to clipboard', 'success');
+        }
+
+        // Search products
+        function searchProducts() {
+            const searchTerm = productSearchInput.value.toLowerCase();
+            showNotification('Search Results', `Showing products matching: ${searchTerm}`, 'info');
         }
 
         // Initialize the app when DOM is loaded
