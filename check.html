@@ -1833,6 +1833,50 @@
         </div>
     </div>
 
+    <!-- Add Product Modal -->
+    <div id="add-product-modal" class="checkout-modal">
+        <div class="checkout-content">
+            <div class="checkout-header">
+                <h2>Add New Product</h2>
+                <span class="close-modal" id="close-add-product">&times;</span>
+            </div>
+            <div class="form-group">
+                <label for="product-name">Product Name</label>
+                <input type="text" id="product-name" required>
+            </div>
+            <div class="form-group">
+                <label for="product-price">Price (₦)</label>
+                <input type="number" id="product-price" min="1" required>
+            </div>
+            <div class="form-group">
+                <label for="product-category">Category</label>
+                <select id="product-category" class="form-control" required>
+                    <option value="electronics">Electronics</option>
+                    <option value="fashion">Fashion</option>
+                    <option value="home">Home & Kitchen</option>
+                    <option value="beauty">Beauty</option>
+                    <option value="books">Books</option>
+                    <option value="sports">Sports</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="product-commission">Commission (%)</label>
+                <input type="number" id="product-commission" min="1" max="100" value="10" required>
+            </div>
+            <div class="form-group">
+                <label for="product-image">Image URL</label>
+                <input type="text" id="product-image" placeholder="https://example.com/image.jpg">
+            </div>
+            <div class="form-group">
+                <label for="product-description">Description</label>
+                <textarea id="product-description" rows="4" required></textarea>
+            </div>
+            <div class="form-actions">
+                <button id="save-product" class="btn btn-primary">Save Product</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Floating Contact Widget -->
     <div class="contact-widget" id="contact-widget">
         <i class="fas fa-headset"></i>
@@ -1927,7 +1971,7 @@
             
             <!-- Products Page -->
             <div id="products-page" class="page">
-                <div class="section-header">
+                <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
                     <h1 class="section-title">Products Marketplace</h1>
                     <button id="add-product-btn" class="btn btn-primary" style="display:none;">
                         <i class="fas fa-plus"></i> Add Product
@@ -2341,15 +2385,34 @@
         </div>
     </main>
 
-    <!-- External configuration file -->
+    <!-- External Configuration -->
     <script src="configuration.js"></script>
-    
+
     <script>
-        // Initialize Firebase using configuration from external file
+        // Initialize Firebase with external config
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
         
+        // Use app configuration
+        let contactUrl = appConfig.contactUrl;
+        let fundUrl = appConfig.fundUrl;
+        let platformCommissionRate = appConfig.platformCommissionRate;
+        let currentCurrency = appConfig.defaultCurrency;
+        let exchangeRates = appConfig.exchangeRates;
+        
+        // App State
+        let currentUser = null;
+        let userData = null;
+        let userRole = 'buyer';
+        let currentProduct = null;
+        let lastScrollPosition = 0;
+        let currentOrderToDecline = null;
+        let currentShop = null;
+        let fixedReferralCode = null;
+        let currentCategory = null;
+        let unsubscribeFunctions = [];
+
         // DOM Elements
         const pages = {
             dashboard: document.getElementById('dashboard-page'),
@@ -2408,28 +2471,9 @@
         const shareFacebookBtn = document.getElementById('share-facebook');
         const shareTwitterBtn = document.getElementById('share-twitter');
         const shareWhatsappBtn = document.getElementById('share-whatsapp');
-        
-        // App State
-        let currentUser = null;
-        let userData = null;
-        let userRole = 'buyer';
-        let currentProduct = null;
-        let lastScrollPosition = 0;
-        let contactUrl = 'https://www.contact.me.com';
-        let fundUrl = 'https://www.fundme.wakka.com';
-        let currentOrderToDecline = null;
-        let currentShop = null;
-        let fixedReferralCode = null;
-        let platformCommissionRate = 35; // Default platform commission rate
-        let currentCurrency = 'NGN'; // Set default currency to NGN
-        let exchangeRates = {
-            USD: 1,
-            NGN: 1,
-            EUR: 0.93,
-            GBP: 0.79
-        };
-        let currentCategory = null;
-        let unsubscribeFunctions = []; // To hold real-time unsubscribe functions
+        const addProductModal = document.getElementById('add-product-modal');
+        const saveProductBtn = document.getElementById('save-product');
+        const closeAddProduct = document.getElementById('close-add-product');
 
         // Initialize the app
         function initApp() {
@@ -2454,6 +2498,17 @@
             loginBtn.addEventListener('click', () => showAuthForm('login'));
             registerBtn.addEventListener('click', () => showAuthForm('register'));
             logoutBtn.addEventListener('click', signOut);
+            
+            // Admin link navigation
+            adminLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (userRole === 'admin') {
+                    navigateTo('admin');
+                } else {
+                    showNotification('Access Denied', 'Admin privileges required', 'error');
+                }
+                sidebar.classList.remove('sidebar-open');
+            });
             
             // Switch between forms
             switchToRegisterBtn.addEventListener('click', () => showAuthForm('register'));
@@ -2481,6 +2536,10 @@
             
             closeProductDetails.addEventListener('click', () => {
                 productDetailsModal.style.display = 'none';
+            });
+            
+            closeAddProduct.addEventListener('click', () => {
+                addProductModal.style.display = 'none';
             });
             
             doLogin.addEventListener('click', signIn);
@@ -2539,12 +2598,6 @@
                 window.location.href = fundUrl;
             });
             
-            // Initialize currency selector
-            document.getElementById('currency-select').addEventListener('change', (e) => {
-                currentCurrency = e.target.value;
-                updateCurrencyDisplay();
-            });
-            
             // Withdraw button
             withdrawBtn?.addEventListener('click', withdrawFunds);
             
@@ -2557,6 +2610,14 @@
             shareFacebookBtn.addEventListener('click', shareOnFacebook);
             shareTwitterBtn.addEventListener('click', shareOnTwitter);
             shareWhatsappBtn.addEventListener('click', shareOnWhatsapp);
+            
+            // Add product button
+            addProductBtn.addEventListener('click', () => {
+                addProductModal.style.display = 'flex';
+            });
+            
+            // Save product button
+            saveProductBtn.addEventListener('click', saveProduct);
         }
 
         // Update currency display throughout the app
@@ -2850,12 +2911,15 @@
 
         // Format currency based on selected currency
         function formatCurrency(amount) {
-            const converted = amount * exchangeRates[currentCurrency];
+            if (isNaN(amount)) amount = 0;
+            const converted = amount * (exchangeRates[currentCurrency] || 1);
+            
             switch(currentCurrency) {
                 case 'USD': return `$${converted.toFixed(2)}`;
                 case 'NGN': return `₦${converted.toFixed(2)}`;
                 case 'EUR': return `€${converted.toFixed(2)}`;
                 case 'GBP': return `£${converted.toFixed(2)}`;
+                default: return `₦${converted.toFixed(2)}`;
             }
         }
 
@@ -2943,6 +3007,9 @@
                         product.id = doc.id;
                         productsGrid.appendChild(createProductCard(product));
                     });
+                }, error => {
+                    showNotification('Error', `Failed to load products: ${error.message}`, 'error');
+                    productsGrid.innerHTML = '<p>Error loading products</p>';
                 });
                 
             unsubscribeFunctions.push(productsUnsubscribe);
@@ -3097,41 +3164,41 @@
             productsGrid.innerHTML = '<div class="loader"></div>';
             
             let query = db.collection('products')
-                .where('status', '==', 'approved');
+                .where('status', '==', 'approved')
+                .limit(20); // Limit to 20 products
             
             if (category) {
                 query = query.where('category', '==', category);
             }
             
-            const unsubscribe = query.onSnapshot(querySnapshot => {
-                productsGrid.innerHTML = '';
-                
-                if (querySnapshot.empty) {
-                    productsGrid.innerHTML = `
-                        <div class="no-products">
-                            <i class="fas fa-box-open fa-3x" style="color: var(--gray); margin-bottom: 20px;"></i>
-                            <h3>No Products Found</h3>
-                            <p>There are currently no products in this category.</p>
-                            <p>Please check back later or browse other categories.</p>
-                            <button class="btn btn-outline" style="margin-top: 20px;" onclick="navigateTo('categories')">
-                                Browse Categories
-                            </button>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                querySnapshot.forEach(doc => {
-                    const product = doc.data();
-                    product.id = doc.id;
-                    productsGrid.appendChild(createProductCard(product));
+            query.get()
+                .then(querySnapshot => {
+                    productsGrid.innerHTML = '';
+                    
+                    if (querySnapshot.empty) {
+                        productsGrid.innerHTML = `
+                            <div class="no-products">
+                                <i class="fas fa-box-open fa-3x" style="color: var(--gray); margin-bottom: 20px;"></i>
+                                <h3>No Products Found</h3>
+                                <p>There are currently no products in this category.</p>
+                                <button class="btn btn-outline" style="margin-top: 20px;" onclick="navigateTo('categories')">
+                                    Browse Categories
+                                </button>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    querySnapshot.forEach(doc => {
+                        const product = doc.data();
+                        product.id = doc.id;
+                        productsGrid.appendChild(createProductCard(product));
+                    });
+                })
+                .catch(error => {
+                    productsGrid.innerHTML = '<p>Error loading products</p>';
+                    showNotification('Error', `Failed to load products: ${error.message}`, 'error');
                 });
-            }, error => {
-                showNotification('Error', `Failed to load products: ${error.message}`, 'error');
-                productsGrid.innerHTML = '<p>Error loading products</p>';
-            });
-            
-            unsubscribeFunctions.push(unsubscribe);
         }
 
         // Load orders
@@ -3157,25 +3224,24 @@
                 query = query.where('status', '==', statusFilter);
             }
             
-            const unsubscribe = query.orderBy('createdAt', 'desc').onSnapshot(querySnapshot => {
-                ordersList.innerHTML = '';
-                
-                if (querySnapshot.empty) {
-                    ordersList.innerHTML = '<p>No orders found</p>';
-                    return;
-                }
-                
-                querySnapshot.forEach(doc => {
-                    const order = doc.data();
-                    order.id = doc.id;
-                    ordersList.appendChild(createOrderCard(order));
+            query.get()
+                .then(querySnapshot => {
+                    ordersList.innerHTML = '';
+                    
+                    if (querySnapshot.empty) {
+                        ordersList.innerHTML = '<p>No orders found</p>';
+                    } else {
+                        querySnapshot.forEach(doc => {
+                            const order = doc.data();
+                            order.id = doc.id;
+                            ordersList.appendChild(createOrderCard(order));
+                        });
+                    }
+                })
+                .catch(error => {
+                    showNotification('Error', `Failed to load orders: ${error.message}`, 'error');
+                    ordersList.innerHTML = '<p>Error loading orders</p>';
                 });
-            }, error => {
-                showNotification('Error', `Failed to load orders: ${error.message}`, 'error');
-                ordersList.innerHTML = '<p>Error loading orders</p>';
-            });
-            
-            unsubscribeFunctions.push(unsubscribe);
         }
         
         // Create order card
@@ -3221,12 +3287,10 @@
             referralsList.innerHTML = '<div class="loader"></div>';
             
             // Create the query
-            const query = db.collection('referrals')
+            db.collection('referrals')
                 .where('referrerId', '==', currentUser.uid)
-                .orderBy('createdAt', 'desc');
-            
-            try {
-                const unsubscribe = query.onSnapshot(querySnapshot => {
+                .get()
+                .then(querySnapshot => {
                     referralsList.innerHTML = '';
                     
                     if (querySnapshot.empty) {
@@ -3239,9 +3303,10 @@
                         referral.id = doc.id;
                         referralsList.appendChild(createReferralItem(referral));
                     });
-                }, error => {
+                })
+                .catch(error => {
                     // Handle index error specifically
-                    if (error.code === 'failed-precondition' && error.message.includes('index')) {
+                    if (error.code === 'failed-precondition') {
                         const indexErrorDiv = document.createElement('div');
                         indexErrorDiv.className = 'index-error';
                         indexErrorDiv.innerHTML = `
@@ -3249,11 +3314,7 @@
                             <p>Firestore needs a composite index to load referrals.</p>
                             <p>Please create this index in the Firebase Console:</p>
                             <p><strong>Collection:</strong> referrals</p>
-                            <p><strong>Fields:</strong> referrerId (Ascending), createdAt (Descending)</p>
-                            <p>Or click this link to create it automatically:</p>
-                            <p><a href="https://console.firebase.google.com/v1/r/project/${firebase.app().options.projectId}/firestore/indexes?create_composite=Ck5wcm9qZWN0cy9raGVlbXotZmI5YjYvZGF0YWJhc2VzLyhkZWZhdWx0KS9jb2xsZWN0aW9uR3JvdXBzL3JlZmVycmFscy9pbmRleGVzL18QARoOCgpyZWZlcnJlcklkEAEaDQoJY3JlYXRlZEF0EAIaDAoIX19uYW1lX18QAg" target="_blank">
-                                Create Required Index
-                            </a></p>
+                            <p><strong>Fields:</strong> referrerId (Ascending)</p>
                         `;
                         referralsList.innerHTML = '';
                         referralsList.appendChild(indexErrorDiv);
@@ -3262,12 +3323,6 @@
                         referralsList.innerHTML = '<p>Error loading referrals</p>';
                     }
                 });
-                
-                unsubscribeFunctions.push(unsubscribe);
-            } catch (error) {
-                showNotification('Error', `Failed to load referrals: ${error.message}`, 'error');
-                referralsList.innerHTML = '<p>Error loading referrals</p>';
-            }
         }
         
         // Create referral item
@@ -3309,10 +3364,11 @@
             const transactionsList = document.getElementById('transactions-list');
             transactionsList.innerHTML = '<div class="loader"></div>';
             
-            const unsubscribe = db.collection('transactions')
+            db.collection('transactions')
                 .where('userId', '==', currentUser.uid)
                 .orderBy('date', 'desc')
-                .onSnapshot(querySnapshot => {
+                .get()
+                .then(querySnapshot => {
                     transactionsList.innerHTML = '';
                     
                     if (querySnapshot.empty) {
@@ -3324,12 +3380,11 @@
                             transactionsList.appendChild(createTransactionItem(transaction));
                         });
                     }
-                }, error => {
+                })
+                .catch(error => {
                     showNotification('Error', `Failed to load transactions: ${error.message}`, 'error');
                     transactionsList.innerHTML = '<p>Error loading transactions</p>';
                 });
-                
-            unsubscribeFunctions.push(unsubscribe);
         }
         
         // Create transaction item
@@ -3352,13 +3407,27 @@
 
         // Load admin data
         function loadAdminData() {
+            if (!currentUser || userRole !== 'admin') {
+                showNotification('Access Denied', 'You need admin privileges to access this page', 'error');
+                navigateTo('dashboard');
+                return;
+            }
+
             const pendingSellersList = document.getElementById('pending-sellers');
-            pendingSellersList.innerHTML = '<div class="loader"></div>';
+            const usersTableBody = document.getElementById('users-table-body');
+            const adminProductsList = document.getElementById('admin-products-list');
             
-            const unsubscribe = db.collection('users')
+            // Clear previous content
+            pendingSellersList.innerHTML = '<div class="loader"></div>';
+            usersTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;"><div class="loader"></div></td></tr>';
+            adminProductsList.innerHTML = '<div class="loader"></div>';
+
+            // Load pending sellers
+            db.collection('users')
                 .where('role', '==', 'seller')
                 .where('status', '==', 'pending')
-                .onSnapshot(querySnapshot => {
+                .get()
+                .then(querySnapshot => {
                     pendingSellersList.innerHTML = '';
                     
                     if (querySnapshot.empty) {
@@ -3371,36 +3440,78 @@
                         seller.id = doc.id;
                         pendingSellersList.appendChild(createSellerItem(seller));
                     });
-                }, error => {
+                })
+                .catch(error => {
                     showNotification('Error', `Failed to load sellers: ${error.message}`, 'error');
                     pendingSellersList.innerHTML = '<p>Error loading sellers</p>';
                 });
-                
-            unsubscribeFunctions.push(unsubscribe);
-            
-            // Load system stats
-            const statsUnsubscribe = db.collection('stats').doc('overview')
-                .onSnapshot(doc => {
-                    if (doc.exists) {
-                        const stats = doc.data();
-                        document.getElementById('total-users').textContent = stats.totalUsers || '0';
-                        document.getElementById('active-sellers').textContent = stats.activeSellers || '0';
-                        document.getElementById('new-users').textContent = stats.newUsers || '0';
-                        document.getElementById('affiliates').textContent = stats.affiliates || '0';
+
+            // Load all users
+            db.collection('users').get()
+                .then(querySnapshot => {
+                    usersTableBody.innerHTML = '';
+                    
+                    if (querySnapshot.empty) {
+                        usersTableBody.innerHTML = '<tr><td colspan="7">No users found</td></tr>';
+                        return;
                     }
+                    
+                    querySnapshot.forEach(doc => {
+                        const user = doc.data();
+                        user.id = doc.id;
+                        usersTableBody.appendChild(createUserTableRow(user));
+                    });
+                })
+                .catch(error => {
+                    showNotification('Error', `Failed to load users: ${error.message}`, 'error');
+                    usersTableBody.innerHTML = '<tr><td colspan="7">Error loading users</td></tr>';
                 });
-                
-            unsubscribeFunctions.push(statsUnsubscribe);
+
+            // Load all products
+            db.collection('products').get()
+                .then(querySnapshot => {
+                    adminProductsList.innerHTML = '';
+                    
+                    if (querySnapshot.empty) {
+                        adminProductsList.innerHTML = '<p>No products found</p>';
+                        return;
+                    }
+                    
+                    querySnapshot.forEach(doc => {
+                        const product = doc.data();
+                        product.id = doc.id;
+                        adminProductsList.appendChild(createProductCard(product));
+                    });
+                })
+                .catch(error => {
+                    showNotification('Error', `Failed to load products: ${error.message}`, 'error');
+                    adminProductsList.innerHTML = '<p>Error loading products</p>';
+                });
         }
-        
+
+        // Create user table row
+        function createUserTableRow(user) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${user.name || 'N/A'}</td>
+                <td>${user.email || 'N/A'}</td>
+                <td>${user.role || 'buyer'}</td>
+                <td>${user.status || 'approved'}</td>
+                <td>${formatCurrency(user.wallet || 0)}</td>
+                <td>${user.account || 'N/A'}</td>
+                <td>${user.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</td>
+            `;
+            return tr;
+        }
+
         // Create seller item for admin
         function createSellerItem(seller) {
             const li = document.createElement('li');
             li.innerHTML = `
                 <div>
-                    <strong>${seller.name}</strong>
-                    <p>${seller.email}</p>
-                    <p>Account: ${seller.account}</p>
+                    <strong>${seller.name || 'Unknown Seller'}</strong>
+                    <p>${seller.email || 'No email'}</p>
+                    <p>Account: ${seller.account || 'Not provided'}</p>
                 </div>
                 <div>
                     <button class="btn btn-success btn-sm" onclick="approveSeller('${seller.id}')">Approve</button>
@@ -3409,7 +3520,7 @@
             `;
             return li;
         }
-        
+
         // Approve seller (admin function)
         function approveSeller(userId) {
             db.collection('users').doc(userId).update({
@@ -3417,6 +3528,8 @@
             })
             .then(() => {
                 showNotification('Seller Approved', 'The seller account has been approved', 'success');
+                // Refresh the list
+                loadAdminData();
             })
             .catch(error => {
                 showNotification('Error', `Failed to approve seller: ${error.message}`, 'error');
@@ -3430,6 +3543,8 @@
             })
             .then(() => {
                 showNotification('Seller Rejected', 'The seller account has been rejected', 'success');
+                // Refresh the list
+                loadAdminData();
             })
             .catch(error => {
                 showNotification('Error', `Failed to reject seller: ${error.message}`, 'error');
@@ -3442,14 +3557,16 @@
             
             document.getElementById('my-shop-name').textContent = userData.shopName;
             document.getElementById('my-shop-bio').textContent = userData.shopBio;
+            document.getElementById('shop-profile-image').src = userData.shopImage || "https://via.placeholder.com/100";
             document.getElementById('shop-url').value = `${window.location.origin}/shop/${currentUser.uid}`;
             
             const myShopProducts = document.getElementById('my-shop-products');
             myShopProducts.innerHTML = '<div class="loader"></div>';
             
-            const unsubscribe = db.collection('products')
+            db.collection('products')
                 .where('sellerId', '==', currentUser.uid)
-                .onSnapshot(querySnapshot => {
+                .get()
+                .then(querySnapshot => {
                     myShopProducts.innerHTML = '';
                     
                     if (querySnapshot.empty) {
@@ -3462,12 +3579,57 @@
                         product.id = doc.id;
                         myShopProducts.appendChild(createProductCard(product, true));
                     });
-                }, error => {
+                })
+                .catch(error => {
                     showNotification('Error', `Failed to load products: ${error.message}`, 'error');
                     myShopProducts.innerHTML = '<p>Error loading products</p>';
                 });
-                
-            unsubscribeFunctions.push(unsubscribe);
+        }
+
+        // Save new product
+        function saveProduct() {
+            const name = document.getElementById('product-name').value;
+            const price = parseFloat(document.getElementById('product-price').value);
+            const category = document.getElementById('product-category').value;
+            const commission = parseInt(document.getElementById('product-commission').value);
+            const imageUrl = document.getElementById('product-image').value;
+            const description = document.getElementById('product-description').value;
+            
+            if (!name || !price || !category || !commission || !description) {
+                showNotification('Error', 'Please fill all required fields', 'error');
+                return;
+            }
+            
+            // Add product to Firestore
+            db.collection('products').add({
+                name: name,
+                price: price,
+                category: category,
+                commission: commission,
+                imageUrl: imageUrl || '',
+                description: description,
+                sellerId: currentUser.uid,
+                sellerName: userData.name,
+                status: 'pending',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                showNotification('Success', 'Product submitted for approval', 'success');
+                addProductModal.style.display = 'none';
+                // Clear form
+                document.getElementById('product-name').value = '';
+                document.getElementById('product-price').value = '';
+                document.getElementById('product-commission').value = '10';
+                document.getElementById('product-image').value = '';
+                document.getElementById('product-description').value = '';
+                // Refresh product list
+                if (pages['my-shop'].classList.contains('active')) {
+                    loadMyShop();
+                }
+            })
+            .catch(error => {
+                showNotification('Error', `Failed to save product: ${error.message}`, 'error');
+            });
         }
 
         // Copy referral code
