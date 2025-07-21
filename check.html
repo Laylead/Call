@@ -8,7 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-    <script src="configuration.js"></script>
+    <script src="configuration.js"></script> <!-- External config -->
     <style>
         * {
             margin: 0;
@@ -615,6 +615,14 @@
             pointer-events: none;
         }
         
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+            animation: confettiFall 1s forwards;
+        }
+        
         .history-container {
             margin-top: 40px;
             background: rgba(15, 23, 42, 0.3);
@@ -827,6 +835,11 @@
         @keyframes balloonPop {
             0% { transform: translateX(-50%) scale(1); opacity: 1; }
             100% { transform: translateX(-50%) scale(2); opacity: 0; }
+        }
+        
+        @keyframes confettiFall {
+            0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
         }
         
         @media (max-width: 768px) {
@@ -1183,9 +1196,26 @@
     </div>
     
     <script>
-        // Configuration will be loaded from external configuration.js
-        // Firebase is initialized with config from external file
+        // Get configuration from external file
+        const config = window.appConfig || {
+            firebase: {
+                apiKey: "AIzaSyDummyKey1234567890",
+                authDomain: "premiumwin-demo.firebaseapp.com",
+                projectId: "premiumwin-demo",
+                storageBucket: "premiumwin-demo.appspot.com",
+                messagingSenderId: "1234567890",
+                appId: "1:1234567890:web:abc123def456"
+            },
+            cpaOfferUrl: "https://example.com/subscribe",
+            minimumWithdrawal: 100,
+            welcomeBonusAmount: 83
+        };
         
+        // Initialize Firebase
+        firebase.initializeApp(config.firebase);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
         // Game state
         const gameState = {
             bonusBalance: 0,
@@ -1329,6 +1359,10 @@
                             confetti.style.left = Math.random() * 100 + '%';
                             confetti.style.top = Math.random() * 100 + '%';
                             confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 60%)`;
+                            confetti.style.position = 'absolute';
+                            confetti.style.width = '10px';
+                            confetti.style.height = '10px';
+                            confetti.style.borderRadius = '2px';
                             confetti.style.animation = `fadeIn 0.5s forwards, confettiFall ${1 + Math.random() * 3}s forwards`;
                             winAnimation.appendChild(confetti);
                         }
@@ -1658,7 +1692,7 @@
                 const password = document.getElementById('loginPassword').value;
                 const errorElement = document.getElementById('loginError');
                 
-                // Fake login for demo
+                // For demo purposes, any non-empty credentials will work
                 if (email && password) {
                     document.getElementById('authSection').style.display = 'none';
                     document.getElementById('dashboard').style.display = 'block';
@@ -1701,7 +1735,7 @@
                     return;
                 }
                 
-                // Fake registration for demo
+                // For demo purposes, any valid registration will work
                 document.getElementById('authSection').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
                 
@@ -1724,8 +1758,6 @@
         
         // Initialize when page loads
         window.addEventListener('load', () => {
-            // Initialize Firebase from external configuration
-            firebase.initializeApp(config.firebase);
             initGame();
         });
     </script>
