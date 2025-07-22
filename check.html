@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FireCommerce | Real-time E-Commerce Platform</title>
+    <title>FireCommerce | Enhanced E-Commerce Platform</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -651,6 +651,30 @@
             justify-content: center;
         }
 
+        .add-funds-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            color: var(--primary);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: var(--shadow);
+        }
+
+        .add-funds-btn:hover {
+            background: var(--accent);
+            color: white;
+            transform: scale(1.1);
+        }
+
         .transactions {
             background-color: white;
             border-radius: var(--radius);
@@ -1092,6 +1116,18 @@
             background-color: rgba(0,0,0,0.05);
         }
 
+        .users-table .fraud-flag {
+            color: var(--danger);
+            font-weight: bold;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
         /* Seller Orders */
         .order-card {
             background-color: white;
@@ -1520,65 +1556,56 @@
             margin-top: 10px;
         }
 
-        /* NEW STYLES FOR FIXES */
-        .add-funds-btn {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(255,255,255,0.2);
-            border: 1px solid rgba(255,255,255,0.4);
-            color: white;
-            border-radius: 20px;
-            padding: 5px 15px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            gap: 5px;
+        /* Admin Summary Cards */
+        .admin-summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
         }
         
-        .add-funds-btn:hover {
-            background: rgba(255,255,255,0.3);
-        }
-        
-        .fraud-alert {
-            background-color: rgba(220, 53, 69, 0.1);
-            border-left: 3px solid var(--danger);
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 5px;
-            font-size: 0.85rem;
-        }
-        
-        .total-balance-badge {
-            background-color: rgba(26, 58, 108, 0.1);
-            padding: 10px 15px;
-            border-radius: 20px;
-            font-weight: 600;
-            margin-top: 10px;
-            display: inline-block;
-        }
-        
-        .pagination-controls {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-top: 20px;
-        }
-        
-        .page-btn {
-            padding: 8px 16px;
+        .summary-card {
             background: white;
-            border: 1px solid var(--light-gray);
-            border-radius: var(--radius-sm);
-            cursor: pointer;
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            transition: var(--transition);
         }
         
-        .page-btn.active {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
+        .summary-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        .summary-card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: var(--dark);
+        }
+        
+        .summary-card .value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        
+        .summary-card .description {
+            font-size: 0.9rem;
+            color: var(--gray);
+            margin-top: 10px;
+        }
+        
+        .summary-card.warning {
+            border-top: 4px solid var(--warning);
+        }
+        
+        .summary-card.danger {
+            border-top: 4px solid var(--danger);
+        }
+        
+        .summary-card.success {
+            border-top: 4px solid var(--success);
         }
 
         /* Responsive Design */
@@ -1852,7 +1879,7 @@
             </div>
             <div class="form-group">
                 <label for="checkout-referral">Referral Code</label>
-                <input type="text" id="checkout-referral" placeholder="Enter referral code (optional)">
+                <input type="text" id="checkout-referral" placeholder="Enter referral code" readonly>
             </div>
             <div class="form-group">
                 <label for="checkout-email">Email</label>
@@ -2148,6 +2175,8 @@
                 <div id="orders-list">
                     <div class="loader"></div>
                 </div>
+                
+                <div class="pagination" id="orders-pagination"></div>
             </div>
             
             <!-- Referrals Page -->
@@ -2187,6 +2216,7 @@
                     <div id="referrals-list">
                         <div class="loader"></div>
                     </div>
+                    <div class="pagination" id="referrals-pagination"></div>
                 </div>
             </div>
             
@@ -2200,12 +2230,13 @@
                     <p id="pending-earnings">Pending Earnings: ₦0.00</p>
                     <p id="total-earnings">Total Earnings: ₦0.00</p>
                     
+                    <div class="add-funds-btn" id="add-funds-btn">
+                        <i class="fas fa-plus"></i>
+                    </div>
+                    
                     <div class="wallet-actions">
                         <button class="btn btn-accent" id="withdraw-btn">Withdraw Funds</button>
                         <button class="btn btn-outline" style="background-color: rgba(255,255,255,0.1); color: white; border-color: rgba(255,255,255,0.3);">View Statements</button>
-                        <button class="btn btn-outline add-funds-btn" id="add-funds-btn" style="background-color: rgba(255,255,255,0.1); color: white; border-color: rgba(255,255,255,0.3);">
-                            <i class="fas fa-plus"></i> Add Funds
-                        </button>
                     </div>
                 </div>
                 
@@ -2213,11 +2244,39 @@
                 <div class="transactions" id="transactions-list">
                     <div class="loader"></div>
                 </div>
+                <div class="pagination" id="transactions-pagination"></div>
             </div>
             
             <!-- Admin Page -->
             <div id="admin-page" class="page">
                 <h1 class="section-title">Admin Dashboard</h1>
+                
+                <!-- Admin Summary Cards -->
+                <div class="admin-summary-cards">
+                    <div class="summary-card success">
+                        <h3>Total User Balance</h3>
+                        <div class="value" id="total-user-balance">₦0.00</div>
+                        <div class="description">Sum of all user wallets</div>
+                    </div>
+                    
+                    <div class="summary-card">
+                        <h3>Affiliate Balance</h3>
+                        <div class="value" id="total-affiliate-balance">₦0.00</div>
+                        <div class="description">Total affiliate earnings</div>
+                    </div>
+                    
+                    <div class="summary-card warning">
+                        <h3>Pending Balances</h3>
+                        <div class="value" id="total-pending-balance">₦0.00</div>
+                        <div class="description">Total pending earnings</div>
+                    </div>
+                    
+                    <div class="summary-card danger">
+                        <h3>Fraud Alerts</h3>
+                        <div class="value" id="fraud-alert-count">0</div>
+                        <div class="description">Suspicious accounts</div>
+                    </div>
+                </div>
                 
                 <div class="admin-grid">
                     <div class="admin-card">
@@ -2393,11 +2452,12 @@
                                 <th>Status</th>
                                 <th>Balance</th>
                                 <th>Account #</th>
+                                <th>Fraud</th>
                                 <th>Joined</th>
                             </tr>
                         </thead>
                         <tbody id="users-table-body">
-                            <tr><td colspan="7" style="text-align: center;"><div class="loader"></div></td></tr>
+                            <tr><td colspan="8" style="text-align: center;"><div class="loader"></div></td></tr>
                         </tbody>
                     </table>
                     <div class="admin-list-controls">
@@ -2582,12 +2642,15 @@
         let currentCategory = null;
         let unsubscribeFunctions = []; // To hold real-time unsubscribe functions
         
-        // Admin Pagination State
-        const adminPagination = {
-            sellers: { currentPage: 1, pageSize: 5, totalItems: 0 },
-            withdrawals: { currentPage: 1, pageSize: 5, totalItems: 0 },
+        // Pagination State
+        const pagination = {
+            orders: { currentPage: 1, pageSize: 5, totalItems: 0 },
+            referrals: { currentPage: 1, pageSize: 5, totalItems: 0 },
             transactions: { currentPage: 1, pageSize: 5, totalItems: 0 },
             users: { currentPage: 1, pageSize: 5, totalItems: 0 },
+            sellers: { currentPage: 1, pageSize: 5, totalItems: 0 },
+            withdrawals: { currentPage: 1, pageSize: 5, totalItems: 0 },
+            adminTransactions: { currentPage: 1, pageSize: 5, totalItems: 0 },
             products: { currentPage: 1, pageSize: 5, totalItems: 0 }
         };
 
@@ -2698,9 +2761,6 @@
             fundWalletWidget.addEventListener('click', () => {
                 window.location.href = fundUrl;
             });
-            addFundsBtn.addEventListener('click', () => {
-                window.location.href = fundUrl;
-            });
             
             // Initialize currency selector
             document.getElementById('currency-select').addEventListener('change', (e) => {
@@ -2724,11 +2784,14 @@
             // Admin settings save
             document.getElementById('save-settings')?.addEventListener('click', saveSettings);
             
-            // Admin pagination
+            // Pagination handlers
+            document.getElementById('orders-pagination')?.addEventListener('click', handlePagination);
+            document.getElementById('referrals-pagination')?.addEventListener('click', handlePagination);
+            document.getElementById('transactions-pagination')?.addEventListener('click', handlePagination);
+            document.getElementById('users-pagination')?.addEventListener('click', handlePagination);
             document.getElementById('sellers-pagination')?.addEventListener('click', handlePagination);
             document.getElementById('withdrawals-pagination')?.addEventListener('click', handlePagination);
             document.getElementById('transactions-pagination')?.addEventListener('click', handlePagination);
-            document.getElementById('users-pagination')?.addEventListener('click', handlePagination);
             document.getElementById('products-pagination')?.addEventListener('click', handlePagination);
             
             // Admin product filter
@@ -2736,29 +2799,23 @@
                 loadAdminProducts();
             });
             
-            // Payment processing
-            proceedPaymentBtn.addEventListener('click', processPayment);
+            // Add funds button
+            addFundsBtn.addEventListener('click', () => {
+                window.location.href = fundUrl;
+            });
             
-            // Order filter
-            document.getElementById('order-status').addEventListener('change', loadOrders);
-            document.getElementById('order-date').addEventListener('change', loadOrders);
+            // Proceed payment button
+            proceedPaymentBtn.addEventListener('click', processPayment);
         }
 
         // Update currency display throughout the app
-        function updateCurrencyDisplay() {
-            if (userData) {
-                document.getElementById('wallet-balance').textContent = formatCurrency(userData.wallet || 0);
-                document.getElementById('wallet-balance-display').textContent = formatCurrency(userData.wallet || 0);
-                document.getElementById('pending-earnings').textContent = `Pending Earnings: ${formatCurrency(userData.pendingEarnings || 0)}`;
-                document.getElementById('total-earnings').textContent = `Total Earnings: ${formatCurrency((userData.wallet || 0) + (userData.pendingEarnings || 0))}`;
-                document.getElementById('pending-affiliate').textContent = formatCurrency(userData.pendingEarnings || 0);
-                document.getElementById('available-affiliate').textContent = formatCurrency(userData.wallet || 0);
-                document.getElementById('current-balance-display').textContent = formatCurrency(userData.wallet || 0);
-            }
-            
-            // Reload products to update currency display
-            if (pages['products'].classList.contains('active')) {
-                loadProducts(currentCategory);
+        function formatCurrency(amount) {
+            const converted = amount * exchangeRates[currentCurrency];
+            switch(currentCurrency) {
+                case 'USD': return `$${converted.toFixed(2)}`;
+                case 'NGN': return `₦${converted.toFixed(2)}`;
+                case 'EUR': return `€${converted.toFixed(2)}`;
+                case 'GBP': return `£${converted.toFixed(2)}`;
             }
         }
 
@@ -3272,6 +3329,15 @@
             // Set current balance
             if (userData && userData.wallet) {
                 document.getElementById('current-balance-display').textContent = formatCurrency(userData.wallet);
+                
+                // Check if balance is sufficient
+                if (userData.wallet >= total) {
+                    document.getElementById('balance-status').textContent = 'Sufficient funds available';
+                    document.getElementById('balance-status').style.color = 'var(--success)';
+                } else {
+                    document.getElementById('balance-status').textContent = 'Insufficient funds';
+                    document.getElementById('balance-status').style.color = 'var(--danger)';
+                }
             }
             
             checkoutModal.style.display = 'flex';
@@ -3279,91 +3345,65 @@
 
         // Process payment
         function processPayment() {
-            const paymentMethod = document.querySelector('input[name="payment-method"]:checked').value;
+            if (!currentUser || !currentProduct) return;
+            
+            const selectedPayment = document.querySelector('input[name="payment-method"]:checked');
+            if (!selectedPayment) {
+                showNotification('Payment Error', 'Please select a payment method', 'error');
+                return;
+            }
+            
+            const paymentMethod = selectedPayment.value;
+            const referralCode = document.getElementById('checkout-referral').value;
+            const address = document.getElementById('checkout-address').value;
+            const email = document.getElementById('checkout-email').value;
             const total = currentProduct.price;
             
             if (paymentMethod === 'balance') {
-                // Check if user has sufficient balance
-                if (userData.wallet >= total) {
-                    // Deduct from balance
-                    db.collection('users').doc(currentUser.uid).update({
-                        wallet: firebase.firestore.FieldValue.increment(-total)
-                    })
-                    .then(() => {
-                        createOrder(total, 'balance');
-                    })
-                    .catch(error => {
-                        showNotification('Payment Error', error.message, 'error');
-                    });
-                } else {
-                    showNotification('Insufficient Funds', 'Your account balance is too low for this purchase', 'error');
+                // Check if balance is sufficient
+                if (!userData || userData.wallet < total) {
+                    showNotification('Payment Error', 'Insufficient funds in your wallet', 'error');
+                    return;
                 }
-            } else {
+                
+                // Deduct from wallet
+                db.collection('users').doc(currentUser.uid).update({
+                    wallet: firebase.firestore.FieldValue.increment(-total)
+                })
+                .then(() => {
+                    // Create order
+                    return createOrder(referralCode, address, email, 'balance');
+                })
+                .then(() => {
+                    showNotification('Order Placed', 'Your order has been placed successfully', 'success');
+                    checkoutModal.style.display = 'none';
+                })
+                .catch(error => {
+                    showNotification('Payment Error', error.message, 'error');
+                });
+            } else if (paymentMethod === 'direct') {
                 // Redirect to payment gateway
-                window.location.href = paymentUrl;
+                window.location.href = `${paymentUrl}?amount=${total}&email=${email}`;
             }
         }
         
         // Create order
-        function createOrder(amount, paymentMethod) {
-            const referralCode = document.getElementById('checkout-referral').value;
-            const address = document.getElementById('checkout-address').value;
-            
-            db.collection('orders').add({
+        function createOrder(referralCode, address, email, paymentMethod) {
+            const orderData = {
                 userId: currentUser.uid,
                 productId: currentProduct.id,
                 productName: currentProduct.name,
-                amount: amount,
+                amount: currentProduct.price,
                 status: 'pending',
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                referralCode: referralCode || null,
                 paymentMethod: paymentMethod,
-                address: address,
-                referralCode: referralCode || null
-            })
-            .then(docRef => {
-                checkoutModal.style.display = 'none';
-                showNotification('Order Placed', 'Your order has been placed successfully', 'success');
-                
-                // Handle referral commission if applicable
-                if (referralCode) {
-                    handleReferral(docRef.id, amount);
-                }
-            })
-            .catch(error => {
-                showNotification('Order Error', `Failed to place order: ${error.message}`, 'error');
-            });
-        }
-        
-        // Handle referral commission
-        function handleReferral(orderId, totalAmount) {
-            // Find referrer by code
-            db.collection('users')
-                .where('referralCode', '==', referralCode)
-                .limit(1)
-                .get()
-                .then(snapshot => {
-                    if (!snapshot.empty) {
-                        const referrer = snapshot.docs[0].data();
-                        const referrerId = snapshot.docs[0].id;
-                        
-                        // Calculate commission (10% of total)
-                        const commission = totalAmount * 0.1;
-                        
-                        // Update referrer's wallet
-                        db.collection('users').doc(referrerId).update({
-                            pendingEarnings: firebase.firestore.FieldValue.increment(commission)
-                        });
-                        
-                        // Create referral record
-                        db.collection('referrals').add({
-                            referrerId: referrerId,
-                            orderId: orderId,
-                            commission: commission,
-                            date: new Date(),
-                            status: 'pending'
-                        });
-                    }
-                });
+                shippingAddress: address,
+                email: email,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                sellerId: currentProduct.sellerId || ''
+            };
+            
+            return db.collection('orders').add(orderData);
         }
 
         // Load products with category filtering
@@ -3409,7 +3449,7 @@
             unsubscribeFunctions.push(unsubscribe);
         }
 
-        // Load orders
+        // Load orders with pagination
         function loadOrders() {
             const ordersList = document.getElementById('orders-list');
             ordersList.innerHTML = '<div class="loader"></div>';
@@ -3432,11 +3472,28 @@
                 query = query.where('status', '==', statusFilter);
             }
             
-            const unsubscribe = query.orderBy('createdAt', 'desc').onSnapshot(querySnapshot => {
+            if (dateFilter) {
+                const startDate = new Date(dateFilter);
+                startDate.setHours(0, 0, 0, 0);
+                const endDate = new Date(dateFilter);
+                endDate.setHours(23, 59, 59, 999);
+                
+                query = query.where('createdAt', '>=', startDate)
+                             .where('createdAt', '<=', endDate);
+            }
+            
+            const { currentPage, pageSize } = pagination.orders;
+            const startAfter = (currentPage - 1) * pageSize;
+            
+            query = query.orderBy('createdAt', 'desc').limit(pageSize);
+            
+            const unsubscribe = query.onSnapshot(querySnapshot => {
                 ordersList.innerHTML = '';
+                pagination.orders.totalItems = querySnapshot.size;
                 
                 if (querySnapshot.empty) {
                     ordersList.innerHTML = '<p>No orders found</p>';
+                    document.getElementById('orders-pagination').innerHTML = '';
                     return;
                 }
                 
@@ -3445,6 +3502,8 @@
                     order.id = doc.id;
                     ordersList.appendChild(createOrderCard(order));
                 });
+                
+                renderPagination('orders');
             }, error => {
                 showNotification('Error', `Failed to load orders: ${error.message}`, 'error');
                 ordersList.innerHTML = '<p>Error loading orders</p>';
@@ -3478,13 +3537,17 @@
                         <span>Status</span>
                         <span>${order.status}</span>
                     </div>
+                    <div class="order-item">
+                        <span>Payment Method</span>
+                        <span>${order.paymentMethod || 'N/A'}</span>
+                    </div>
                 </div>
             `;
             
             return orderCard;
         }
 
-        // Load referrals with index error handling
+        // Load referrals with pagination
         function loadReferrals() {
             if (!userData) return;
             
@@ -3495,17 +3558,22 @@
             const referralsList = document.getElementById('referrals-list');
             referralsList.innerHTML = '<div class="loader"></div>';
             
+            const { currentPage, pageSize } = pagination.referrals;
+            
             // Create the query
             const query = db.collection('referrals')
                 .where('referrerId', '==', currentUser.uid)
-                .orderBy('createdAt', 'desc');
+                .orderBy('createdAt', 'desc')
+                .limit(pageSize);
             
             try {
                 const unsubscribe = query.onSnapshot(querySnapshot => {
                     referralsList.innerHTML = '';
+                    pagination.referrals.totalItems = querySnapshot.size;
                     
                     if (querySnapshot.empty) {
                         referralsList.innerHTML = '<p>No referrals found</p>';
+                        document.getElementById('referrals-pagination').innerHTML = '';
                         return;
                     }
                     
@@ -3514,6 +3582,8 @@
                         referral.id = doc.id;
                         referralsList.appendChild(createReferralItem(referral));
                     });
+                    
+                    renderPagination('referrals');
                 }, error => {
                     // Handle index error specifically
                     if (error.code === 'failed-precondition' && error.message.includes('index')) {
@@ -3573,7 +3643,7 @@
             return referralItem;
         }
 
-        // Load wallet
+        // Load wallet with pagination
         function loadWallet() {
             if (!currentUser || !userData) return;
             
@@ -3584,20 +3654,27 @@
             const transactionsList = document.getElementById('transactions-list');
             transactionsList.innerHTML = '<div class="loader"></div>';
             
+            const { currentPage, pageSize } = pagination.transactions;
+            
             const unsubscribe = db.collection('transactions')
                 .where('userId', '==', currentUser.uid)
                 .orderBy('date', 'desc')
+                .limit(pageSize)
                 .onSnapshot(querySnapshot => {
                     transactionsList.innerHTML = '';
+                    pagination.transactions.totalItems = querySnapshot.size;
                     
                     if (querySnapshot.empty) {
                         transactionsList.innerHTML = '<p>No transactions found</p>';
+                        document.getElementById('transactions-pagination').innerHTML = '';
                     } else {
                         querySnapshot.forEach(doc => {
                             const transaction = doc.data();
                             transaction.id = doc.id;
                             transactionsList.appendChild(createTransactionItem(transaction));
                         });
+                        
+                        renderPagination('transactions');
                     }
                 }, error => {
                     showNotification('Error', `Failed to load transactions: ${error.message}`, 'error');
@@ -3625,38 +3702,7 @@
             return transactionItem;
         }
 
-        // Withdraw funds
-        function withdrawFunds() {
-            if (!userData || userData.wallet <= 0) {
-                showNotification('Error', 'No funds available to withdraw', 'error');
-                return;
-            }
-            
-            const amount = userData.wallet;
-            
-            // Create withdrawal request
-            db.collection('withdrawals').add({
-                userId: currentUser.uid,
-                amount: amount,
-                status: 'pending',
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                account: userData.account
-            })
-            .then(() => {
-                // Update user wallet
-                return db.collection('users').doc(currentUser.uid).update({
-                    wallet: firebase.firestore.FieldValue.increment(-amount)
-                });
-            })
-            .then(() => {
-                showNotification('Withdrawal Requested', `Your withdrawal of ${formatCurrency(amount)} has been submitted`, 'success');
-            })
-            .catch(error => {
-                showNotification('Error', `Failed to process withdrawal: ${error.message}`, 'error');
-            });
-        }
-
-        // Load admin data
+        // Load admin data (fixed implementation)
         function loadAdminData() {
             // Load settings
             loadSettings();
@@ -3668,6 +3714,34 @@
             loadRecentTransactions();
             loadAllUsers();
             loadAdminProducts();
+            loadAdminSummary();
+        }
+        
+        // Load admin summary data
+        function loadAdminSummary() {
+            db.collection('users').get().then(querySnapshot => {
+                let totalBalance = 0;
+                let totalAffiliate = 0;
+                let totalPending = 0;
+                let fraudCount = 0;
+                
+                querySnapshot.forEach(doc => {
+                    const user = doc.data();
+                    totalBalance += user.wallet || 0;
+                    totalAffiliate += user.affiliateEarnings || 0;
+                    totalPending += user.pendingEarnings || 0;
+                    
+                    // Simple fraud detection - flag accounts with balance > 1,000,000
+                    if (user.wallet > 1000000) {
+                        fraudCount++;
+                    }
+                });
+                
+                document.getElementById('total-user-balance').textContent = formatCurrency(totalBalance);
+                document.getElementById('total-affiliate-balance').textContent = formatCurrency(totalAffiliate);
+                document.getElementById('total-pending-balance').textContent = formatCurrency(totalPending);
+                document.getElementById('fraud-alert-count').textContent = fraudCount;
+            });
         }
         
         // Load system settings
@@ -3725,8 +3799,7 @@
             
             pendingSellersList.innerHTML = '<div class="loader"></div>';
             
-            const { currentPage, pageSize } = adminPagination.sellers;
-            const startAfter = (currentPage - 1) * pageSize;
+            const { currentPage, pageSize } = pagination.sellers;
             
             let query = db.collection('users')
                 .where('role', '==', 'seller')
@@ -3734,15 +3807,9 @@
                 .orderBy('createdAt')
                 .limit(pageSize);
                 
-            if (currentPage > 1) {
-                // Get last document from previous page to start after
-                // This would require storing the last document, but for simplicity we'll reload
-                // In real app, you would implement proper pagination with startAfter()
-            }
-            
             const unsubscribe = query.onSnapshot(querySnapshot => {
                 pendingSellersList.innerHTML = '';
-                adminPagination.sellers.totalItems = querySnapshot.size;
+                pagination.sellers.totalItems = querySnapshot.size;
                 counter.textContent = querySnapshot.size;
                 
                 if (querySnapshot.empty) {
@@ -3817,7 +3884,7 @@
             
             withdrawalsList.innerHTML = '<div class="loader"></div>';
             
-            const { currentPage, pageSize } = adminPagination.withdrawals;
+            const { currentPage, pageSize } = pagination.withdrawals;
             
             let query = db.collection('withdrawals')
                 .where('status', '==', 'pending')
@@ -3826,7 +3893,7 @@
             
             const unsubscribe = query.onSnapshot(querySnapshot => {
                 withdrawalsList.innerHTML = '';
-                adminPagination.withdrawals.totalItems = querySnapshot.size;
+                pagination.withdrawals.totalItems = querySnapshot.size;
                 counter.textContent = querySnapshot.size;
                 
                 if (querySnapshot.empty) {
@@ -3929,7 +3996,7 @@
             
             adminTransactionsList.innerHTML = '<div class="loader"></div>';
             
-            const { currentPage, pageSize } = adminPagination.transactions;
+            const { currentPage, pageSize } = pagination.adminTransactions;
             
             let query = db.collection('transactions')
                 .orderBy('date', 'desc')
@@ -3937,7 +4004,7 @@
             
             const unsubscribe = query.onSnapshot(querySnapshot => {
                 adminTransactionsList.innerHTML = '';
-                adminPagination.transactions.totalItems = querySnapshot.size;
+                pagination.adminTransactions.totalItems = querySnapshot.size;
                 counter.textContent = querySnapshot.size;
                 
                 if (querySnapshot.empty) {
@@ -3952,7 +4019,7 @@
                     adminTransactionsList.appendChild(createAdminTransactionItem(transaction));
                 });
                 
-                renderPagination('transactions');
+                renderPagination('adminTransactions');
             }, error => {
                 showNotification('Error', `Failed to load transactions: ${error.message}`, 'error');
                 adminTransactionsList.innerHTML = '<p>Error loading transactions</p>';
@@ -3982,9 +4049,9 @@
             const counter = document.getElementById('users-counter');
             const paginationContainer = document.getElementById('users-pagination');
             
-            usersTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;"><div class="loader"></div></td></tr>';
+            usersTableBody.innerHTML = '<tr><td colspan="8" style="text-align: center;"><div class="loader"></div></td></tr>';
             
-            const { currentPage, pageSize } = adminPagination.users;
+            const { currentPage, pageSize } = pagination.users;
             
             let query = db.collection('users')
                 .orderBy('createdAt', 'desc')
@@ -3992,11 +4059,11 @@
             
             const unsubscribe = query.onSnapshot(querySnapshot => {
                 usersTableBody.innerHTML = '';
-                adminPagination.users.totalItems = querySnapshot.size;
+                pagination.users.totalItems = querySnapshot.size;
                 counter.textContent = querySnapshot.size;
                 
                 if (querySnapshot.empty) {
-                    usersTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No users found</td></tr>';
+                    usersTableBody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No users found</td></tr>';
                     paginationContainer.innerHTML = '';
                     return;
                 }
@@ -4010,7 +4077,7 @@
                 renderPagination('users');
             }, error => {
                 showNotification('Error', `Failed to load users: ${error.message}`, 'error');
-                usersTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Error loading users</td></tr>';
+                usersTableBody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Error loading users</td></tr>';
             });
             
             unsubscribeFunctions.push(unsubscribe);
@@ -4019,6 +4086,10 @@
         // Create user table row
         function createUserTableRow(user) {
             const tr = document.createElement('tr');
+            
+            // Simple fraud detection - flag accounts with balance > 1,000,000
+            const isFraud = user.wallet > 1000000;
+            
             tr.innerHTML = `
                 <td>${user.name || 'N/A'}</td>
                 <td>${user.email || 'N/A'}</td>
@@ -4026,6 +4097,7 @@
                 <td>${user.status || 'N/A'}</td>
                 <td>${formatCurrency(user.wallet || 0)}</td>
                 <td>${user.account || 'N/A'}</td>
+                <td>${isFraud ? '<span class="fraud-flag">SUSPECT</span>' : 'OK'}</td>
                 <td>${user.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</td>
             `;
             return tr;
@@ -4039,7 +4111,7 @@
             
             adminProductsList.innerHTML = '<div class="loader"></div>';
             
-            const { currentPage, pageSize } = adminPagination.products;
+            const { currentPage, pageSize } = pagination.products;
             const filter = document.getElementById('product-filter').value;
             
             let query = db.collection('products');
@@ -4052,7 +4124,7 @@
             
             const unsubscribe = query.onSnapshot(querySnapshot => {
                 adminProductsList.innerHTML = '';
-                adminPagination.products.totalItems = querySnapshot.size;
+                pagination.products.totalItems = querySnapshot.size;
                 counter.textContent = querySnapshot.size;
                 
                 if (querySnapshot.empty) {
@@ -4166,7 +4238,7 @@
         
         // Render pagination controls
         function renderPagination(type) {
-            const { currentPage, pageSize, totalItems } = adminPagination[type];
+            const { currentPage, pageSize, totalItems } = pagination[type];
             const totalPages = Math.ceil(totalItems / pageSize);
             const paginationContainer = document.getElementById(`${type}-pagination`);
             
@@ -4199,22 +4271,25 @@
             const action = e.target.dataset.page;
             
             if (action === 'prev') {
-                adminPagination[type].currentPage = Math.max(1, adminPagination[type].currentPage - 1);
+                pagination[type].currentPage = Math.max(1, pagination[type].currentPage - 1);
             } else if (action === 'next') {
-                adminPagination[type].currentPage = Math.min(
-                    Math.ceil(adminPagination[type].totalItems / adminPagination[type].pageSize),
-                    adminPagination[type].currentPage + 1
+                pagination[type].currentPage = Math.min(
+                    Math.ceil(pagination[type].totalItems / pagination[type].pageSize),
+                    pagination[type].currentPage + 1
                 );
             } else if (!isNaN(action)) {
-                adminPagination[type].currentPage = parseInt(action);
+                pagination[type].currentPage = parseInt(action);
             }
             
             // Reload the data
             switch(type) {
+                case 'orders': loadOrders(); break;
+                case 'referrals': loadReferrals(); break;
+                case 'transactions': loadWallet(); break;
+                case 'users': loadAllUsers(); break;
                 case 'sellers': loadPendingSellers(); break;
                 case 'withdrawals': loadPendingWithdrawals(); break;
-                case 'transactions': loadRecentTransactions(); break;
-                case 'users': loadAllUsers(); break;
+                case 'adminTransactions': loadRecentTransactions(); break;
                 case 'products': loadAdminProducts(); break;
             }
         }
@@ -4279,21 +4354,50 @@
             // In a real app, this would filter products
         }
 
-        // Share on Facebook
+        // Withdraw funds
+        function withdrawFunds() {
+            if (!userData || userData.wallet <= 0) {
+                showNotification('Error', 'No funds available to withdraw', 'error');
+                return;
+            }
+            
+            const amount = userData.wallet;
+            
+            // Create withdrawal request
+            db.collection('withdrawals').add({
+                userId: currentUser.uid,
+                amount: amount,
+                status: 'pending',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                account: userData.account
+            })
+            .then(() => {
+                // Update user wallet
+                return db.collection('users').doc(currentUser.uid).update({
+                    wallet: firebase.firestore.FieldValue.increment(-amount)
+                });
+            })
+            .then(() => {
+                showNotification('Withdrawal Requested', `Your withdrawal of ${formatCurrency(amount)} has been submitted`, 'success');
+            })
+            .catch(error => {
+                showNotification('Error', `Failed to process withdrawal: ${error.message}`, 'error');
+            });
+        }
+
+        // Social sharing functions
         function shareOnFacebook() {
             const referralLink = document.getElementById('referral-link').textContent;
             const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralLink)}`;
             window.open(shareUrl, '_blank');
         }
         
-        // Share on Twitter
         function shareOnTwitter() {
             const referralLink = document.getElementById('referral-link').textContent;
             const shareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(referralLink)}&text=Check%20out%20this%20awesome%20platform!`;
             window.open(shareUrl, '_blank');
         }
         
-        // Share on WhatsApp
         function shareOnWhatsapp() {
             const referralLink = document.getElementById('referral-link').textContent;
             const shareUrl = `https://wa.me/?text=${encodeURIComponent(`Check out this platform: ${referralLink}`)}`;
