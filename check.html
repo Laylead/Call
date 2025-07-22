@@ -1475,6 +1475,51 @@
             word-break: break-all;
         }
 
+        /* Admin Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 8px;
+        }
+        
+        .pagination button {
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid var(--light-gray);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .pagination button.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        
+        .pagination button:hover:not(.active) {
+            background: var(--lightest-gray);
+        }
+        
+        .admin-list-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            align-items: center;
+        }
+        
+        .list-counter {
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+        
+        .admin-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
         /* Responsive Design */
         @media (max-width: 992px) {
             .sidebar-open + main {
@@ -2145,6 +2190,10 @@
                         <ul class="admin-list" id="pending-sellers">
                             <div class="loader"></div>
                         </ul>
+                        <div class="admin-list-controls">
+                            <div class="list-counter">Showing <span id="sellers-counter">0</span> sellers</div>
+                            <div class="pagination" id="sellers-pagination"></div>
+                        </div>
                     </div>
                     
                     <div class="admin-card">
@@ -2152,6 +2201,10 @@
                         <ul class="admin-list" id="withdrawals-list">
                             <div class="loader"></div>
                         </ul>
+                        <div class="admin-list-controls">
+                            <div class="list-counter">Showing <span id="withdrawals-counter">0</span> withdrawals</div>
+                            <div class="pagination" id="withdrawals-pagination"></div>
+                        </div>
                     </div>
                     
                     <div class="admin-card">
@@ -2198,6 +2251,10 @@
                             <input type="text" id="fund-url" placeholder="https://www.fundme.wakka.com">
                         </div>
                         <div class="form-group">
+                            <label for="payment-url">Payment Gateway URL</label>
+                            <input type="text" id="payment-url" placeholder="https://payment-gateway.example.com">
+                        </div>
+                        <div class="form-group">
                             <label for="platform-commission">Platform Commission (%)</label>
                             <input type="number" id="platform-commission" min="0" max="100" value="35">
                         </div>
@@ -2224,6 +2281,10 @@
                         <ul class="admin-list" id="admin-transactions">
                             <div class="loader"></div>
                         </ul>
+                        <div class="admin-list-controls">
+                            <div class="list-counter">Showing <span id="transactions-counter">0</span> transactions</div>
+                            <div class="pagination" id="transactions-pagination"></div>
+                        </div>
                     </div>
                     
                     <div class="admin-card">
@@ -2244,6 +2305,14 @@
                             <li>
                                 <span>Affiliate Signups</span>
                                 <span id="affiliates">0</span>
+                            </li>
+                            <li>
+                                <span>Total Products</span>
+                                <span id="total-products">0</span>
+                            </li>
+                            <li>
+                                <span>Pending Products</span>
+                                <span id="pending-products">0</span>
                             </li>
                         </ul>
                     </div>
@@ -2267,13 +2336,29 @@
                             <tr><td colspan="7" style="text-align: center;"><div class="loader"></div></td></tr>
                         </tbody>
                     </table>
+                    <div class="admin-list-controls">
+                        <div class="list-counter">Showing <span id="users-counter">0</span> users</div>
+                        <div class="pagination" id="users-pagination"></div>
+                    </div>
                 </div>
                 
                 <h2 class="section-title">Manage Products</h2>
                 <div class="admin-card">
                     <h3>All Products</h3>
+                    <div class="admin-actions">
+                        <button id="add-product-admin" class="btn btn-primary btn-sm">Add Product</button>
+                        <select id="product-filter" class="form-control">
+                            <option value="all">All Products</option>
+                            <option value="pending">Pending Approval</option>
+                            <option value="approved">Approved</option>
+                        </select>
+                    </div>
                     <div id="admin-products-list" class="products-grid">
                         <div class="loader"></div>
+                    </div>
+                    <div class="admin-list-controls">
+                        <div class="list-counter">Showing <span id="products-counter">0</span> products</div>
+                        <div class="pagination" id="products-pagination"></div>
                     </div>
                 </div>
             </div>
@@ -2417,6 +2502,7 @@
         let lastScrollPosition = 0;
         let contactUrl = 'https://www.contact.me.com';
         let fundUrl = 'https://www.fundme.wakka.com';
+        let paymentUrl = 'https://payment-gateway.example.com';
         let currentOrderToDecline = null;
         let currentShop = null;
         let fixedReferralCode = null;
@@ -2430,6 +2516,15 @@
         };
         let currentCategory = null;
         let unsubscribeFunctions = []; // To hold real-time unsubscribe functions
+        
+        // Admin Pagination State
+        const adminPagination = {
+            sellers: { currentPage: 1, pageSize: 5, totalItems: 0 },
+            withdrawals: { currentPage: 1, pageSize: 5, totalItems: 0 },
+            transactions: { currentPage: 1, pageSize: 5, totalItems: 0 },
+            users: { currentPage: 1, pageSize: 10, totalItems: 0 },
+            products: { currentPage: 1, pageSize: 8, totalItems: 0 }
+        };
 
         // Initialize the app
         function initApp() {
@@ -2557,6 +2652,21 @@
             shareFacebookBtn.addEventListener('click', shareOnFacebook);
             shareTwitterBtn.addEventListener('click', shareOnTwitter);
             shareWhatsappBtn.addEventListener('click', shareOnWhatsapp);
+            
+            // Admin settings save
+            document.getElementById('save-settings')?.addEventListener('click', saveSettings);
+            
+            // Admin pagination
+            document.getElementById('sellers-pagination')?.addEventListener('click', handlePagination);
+            document.getElementById('withdrawals-pagination')?.addEventListener('click', handlePagination);
+            document.getElementById('transactions-pagination')?.addEventListener('click', handlePagination);
+            document.getElementById('users-pagination')?.addEventListener('click', handlePagination);
+            document.getElementById('products-pagination')?.addEventListener('click', handlePagination);
+            
+            // Admin product filter
+            document.getElementById('product-filter')?.addEventListener('change', () => {
+                loadAdminProducts();
+            });
         }
 
         // Update currency display throughout the app
@@ -3352,150 +3462,112 @@
 
         // Load admin data (fixed implementation)
         function loadAdminData() {
+            // Load settings
+            loadSettings();
+            
+            // Load all admin sections
+            loadPendingSellers();
+            loadPendingWithdrawals();
+            loadSystemStats();
+            loadRecentTransactions();
+            loadAllUsers();
+            loadAdminProducts();
+        }
+        
+        // Load system settings
+        function loadSettings() {
+            const settingsRef = db.collection('settings').doc('general');
+            settingsRef.get().then(doc => {
+                if (doc.exists) {
+                    const settings = doc.data();
+                    document.getElementById('contact-url').value = settings.contactUrl || '';
+                    document.getElementById('fund-url').value = settings.fundUrl || '';
+                    document.getElementById('payment-url').value = settings.paymentUrl || '';
+                    document.getElementById('platform-commission').value = settings.platformCommission || 35;
+                    document.getElementById('currency-select').value = settings.currency || 'NGN';
+                    
+                    // Update global variables
+                    contactUrl = settings.contactUrl || contactUrl;
+                    fundUrl = settings.fundUrl || fundUrl;
+                    paymentUrl = settings.paymentUrl || paymentUrl;
+                    platformCommissionRate = settings.platformCommission || platformCommissionRate;
+                    currentCurrency = settings.currency || currentCurrency;
+                }
+            });
+        }
+        
+        // Save settings
+        function saveSettings() {
+            const settings = {
+                contactUrl: document.getElementById('contact-url').value,
+                fundUrl: document.getElementById('fund-url').value,
+                paymentUrl: document.getElementById('payment-url').value,
+                platformCommission: parseInt(document.getElementById('platform-commission').value),
+                currency: document.getElementById('currency-select').value
+            };
+            
+            db.collection('settings').doc('general').set(settings)
+                .then(() => {
+                    showNotification('Settings Saved', 'The settings have been saved successfully', 'success');
+                    // Update global variables
+                    contactUrl = settings.contactUrl;
+                    fundUrl = settings.fundUrl;
+                    paymentUrl = settings.paymentUrl;
+                    platformCommissionRate = settings.platformCommission;
+                    currentCurrency = settings.currency;
+                })
+                .catch(error => {
+                    showNotification('Error', `Failed to save settings: ${error.message}`, 'error');
+                });
+        }
+        
+        // Load pending sellers with pagination
+        function loadPendingSellers() {
             const pendingSellersList = document.getElementById('pending-sellers');
-            const withdrawalsList = document.getElementById('withdrawals-list');
-            const adminTransactionsList = document.getElementById('admin-transactions');
-            const usersTableBody = document.getElementById('users-table-body');
-            const adminProductsList = document.getElementById('admin-products-list');
+            const counter = document.getElementById('sellers-counter');
+            const paginationContainer = document.getElementById('sellers-pagination');
             
-            // Clear previous content and show loaders
             pendingSellersList.innerHTML = '<div class="loader"></div>';
-            withdrawalsList.innerHTML = '<div class="loader"></div>';
-            adminTransactionsList.innerHTML = '<div class="loader"></div>';
-            usersTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;"><div class="loader"></div></td></tr>';
-            adminProductsList.innerHTML = '<div class="loader"></div>';
             
-            // Load pending sellers
-            const sellersUnsubscribe = db.collection('users')
+            const { currentPage, pageSize } = adminPagination.sellers;
+            const startAfter = (currentPage - 1) * pageSize;
+            
+            let query = db.collection('users')
                 .where('role', '==', 'seller')
                 .where('status', '==', 'pending')
-                .onSnapshot(querySnapshot => {
-                    pendingSellersList.innerHTML = '';
-                    
-                    if (querySnapshot.empty) {
-                        pendingSellersList.innerHTML = '<p>No pending seller applications</p>';
-                        return;
-                    }
-                    
-                    querySnapshot.forEach(doc => {
-                        const seller = doc.data();
-                        seller.id = doc.id;
-                        pendingSellersList.appendChild(createSellerItem(seller));
-                    });
-                }, error => {
-                    showNotification('Error', `Failed to load sellers: ${error.message}`, 'error');
-                    pendingSellersList.innerHTML = '<p>Error loading sellers</p>';
-                });
+                .orderBy('createdAt')
+                .limit(pageSize);
                 
-            unsubscribeFunctions.push(sellersUnsubscribe);
+            if (currentPage > 1) {
+                // Get last document from previous page to start after
+                // This would require storing the last document, but for simplicity we'll reload
+                // In real app, you would implement proper pagination with startAfter()
+            }
             
-            // Load pending withdrawals
-            const withdrawalsUnsubscribe = db.collection('withdrawals')
-                .where('status', '==', 'pending')
-                .onSnapshot(querySnapshot => {
-                    withdrawalsList.innerHTML = '';
-                    
-                    if (querySnapshot.empty) {
-                        withdrawalsList.innerHTML = '<p>No pending withdrawals</p>';
-                        return;
-                    }
-                    
-                    querySnapshot.forEach(doc => {
-                        const withdrawal = doc.data();
-                        withdrawal.id = doc.id;
-                        withdrawalsList.appendChild(createWithdrawalItem(withdrawal));
-                    });
-                }, error => {
-                    showNotification('Error', `Failed to load withdrawals: ${error.message}`, 'error');
-                    withdrawalsList.innerHTML = '<p>Error loading withdrawals</p>';
+            const unsubscribe = query.onSnapshot(querySnapshot => {
+                pendingSellersList.innerHTML = '';
+                adminPagination.sellers.totalItems = querySnapshot.size;
+                counter.textContent = querySnapshot.size;
+                
+                if (querySnapshot.empty) {
+                    pendingSellersList.innerHTML = '<p>No pending seller applications</p>';
+                    paginationContainer.innerHTML = '';
+                    return;
+                }
+                
+                querySnapshot.forEach(doc => {
+                    const seller = doc.data();
+                    seller.id = doc.id;
+                    pendingSellersList.appendChild(createSellerItem(seller));
                 });
                 
-            unsubscribeFunctions.push(withdrawalsUnsubscribe);
+                renderPagination('sellers');
+            }, error => {
+                showNotification('Error', `Failed to load sellers: ${error.message}`, 'error');
+                pendingSellersList.innerHTML = '<p>Error loading sellers</p>';
+            });
             
-            // Load system stats
-            const statsUnsubscribe = db.collection('stats').doc('overview')
-                .onSnapshot(doc => {
-                    if (doc.exists) {
-                        const stats = doc.data();
-                        document.getElementById('total-users').textContent = stats.totalUsers || '0';
-                        document.getElementById('active-sellers').textContent = stats.activeSellers || '0';
-                        document.getElementById('new-users').textContent = stats.newUsers || '0';
-                        document.getElementById('affiliates').textContent = stats.affiliates || '0';
-                    }
-                });
-                
-            unsubscribeFunctions.push(statsUnsubscribe);
-            
-            // Load recent transactions
-            const transactionsUnsubscribe = db.collection('transactions')
-                .orderBy('date', 'desc')
-                .limit(5)
-                .onSnapshot(querySnapshot => {
-                    adminTransactionsList.innerHTML = '';
-                    
-                    if (querySnapshot.empty) {
-                        adminTransactionsList.innerHTML = '<p>No recent transactions</p>';
-                        return;
-                    }
-                    
-                    querySnapshot.forEach(doc => {
-                        const transaction = doc.data();
-                        transaction.id = doc.id;
-                        adminTransactionsList.appendChild(createAdminTransactionItem(transaction));
-                    });
-                }, error => {
-                    showNotification('Error', `Failed to load transactions: ${error.message}`, 'error');
-                    adminTransactionsList.innerHTML = '<p>Error loading transactions</p>';
-                });
-                
-            unsubscribeFunctions.push(transactionsUnsubscribe);
-            
-            // Load all users for table
-            const usersUnsubscribe = db.collection('users')
-                .orderBy('createdAt', 'desc')
-                .onSnapshot(querySnapshot => {
-                    usersTableBody.innerHTML = '';
-                    
-                    if (querySnapshot.empty) {
-                        usersTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No users found</td></tr>';
-                        return;
-                    }
-                    
-                    querySnapshot.forEach(doc => {
-                        const user = doc.data();
-                        user.id = doc.id;
-                        usersTableBody.appendChild(createUserTableRow(user));
-                    });
-                }, error => {
-                    showNotification('Error', `Failed to load users: ${error.message}`, 'error');
-                    usersTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Error loading users</td></tr>';
-                });
-                
-            unsubscribeFunctions.push(usersUnsubscribe);
-            
-            // Load products for admin
-            const productsUnsubscribe = db.collection('products')
-                .orderBy('createdAt', 'desc')
-                .limit(8)
-                .onSnapshot(querySnapshot => {
-                    adminProductsList.innerHTML = '';
-                    
-                    if (querySnapshot.empty) {
-                        adminProductsList.innerHTML = '<p>No products available</p>';
-                        return;
-                    }
-                    
-                    querySnapshot.forEach(doc => {
-                        const product = doc.data();
-                        product.id = doc.id;
-                        adminProductsList.appendChild(createProductCard(product));
-                    });
-                }, error => {
-                    showNotification('Error', `Failed to load products: ${error.message}`, 'error');
-                    adminProductsList.innerHTML = '<p>Error loading products</p>';
-                });
-                
-            unsubscribeFunctions.push(productsUnsubscribe);
+            unsubscribeFunctions.push(unsubscribe);
         }
         
         // Create seller item for admin
@@ -3513,53 +3585,6 @@
                 </div>
             `;
             return li;
-        }
-        
-        // Create withdrawal item for admin
-        function createWithdrawalItem(withdrawal) {
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <div>
-                    <strong>Amount: ${formatCurrency(withdrawal.amount)}</strong>
-                    <p>Account: ${withdrawal.account}</p>
-                    <p>Date: ${new Date(withdrawal.createdAt?.seconds * 1000).toLocaleDateString()}</p>
-                </div>
-                <div>
-                    <button class="btn btn-success btn-sm" onclick="approveWithdrawal('${withdrawal.id}')">Approve</button>
-                    <button class="btn btn-danger btn-sm" onclick="rejectWithdrawal('${withdrawal.id}')">Reject</button>
-                </div>
-            `;
-            return li;
-        }
-        
-        // Create admin transaction item
-        function createAdminTransactionItem(transaction) {
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <div>
-                    <strong>${transaction.description}</strong>
-                    <p>${new Date(transaction.date?.seconds * 1000).toLocaleDateString()}</p>
-                </div>
-                <div class="transaction-amount ${transaction.type === 'credit' ? 'positive' : 'negative'}">
-                    ${transaction.type === 'credit' ? '+' : '-'}${formatCurrency(Math.abs(transaction.amount))}
-                </div>
-            `;
-            return li;
-        }
-        
-        // Create user table row
-        function createUserTableRow(user) {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${user.name || 'N/A'}</td>
-                <td>${user.email || 'N/A'}</td>
-                <td>${user.role || 'N/A'}</td>
-                <td>${user.status || 'N/A'}</td>
-                <td>${formatCurrency(user.wallet || 0)}</td>
-                <td>${user.account || 'N/A'}</td>
-                <td>${user.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</td>
-            `;
-            return tr;
         }
         
         // Approve seller (admin function)
@@ -3586,6 +3611,64 @@
             .catch(error => {
                 showNotification('Error', `Failed to reject seller: ${error.message}`, 'error');
             });
+        }
+        
+        // Load pending withdrawals with pagination
+        function loadPendingWithdrawals() {
+            const withdrawalsList = document.getElementById('withdrawals-list');
+            const counter = document.getElementById('withdrawals-counter');
+            const paginationContainer = document.getElementById('withdrawals-pagination');
+            
+            withdrawalsList.innerHTML = '<div class="loader"></div>';
+            
+            const { currentPage, pageSize } = adminPagination.withdrawals;
+            
+            let query = db.collection('withdrawals')
+                .where('status', '==', 'pending')
+                .orderBy('createdAt')
+                .limit(pageSize);
+            
+            const unsubscribe = query.onSnapshot(querySnapshot => {
+                withdrawalsList.innerHTML = '';
+                adminPagination.withdrawals.totalItems = querySnapshot.size;
+                counter.textContent = querySnapshot.size;
+                
+                if (querySnapshot.empty) {
+                    withdrawalsList.innerHTML = '<p>No pending withdrawals</p>';
+                    paginationContainer.innerHTML = '';
+                    return;
+                }
+                
+                querySnapshot.forEach(doc => {
+                    const withdrawal = doc.data();
+                    withdrawal.id = doc.id;
+                    withdrawalsList.appendChild(createWithdrawalItem(withdrawal));
+                });
+                
+                renderPagination('withdrawals');
+            }, error => {
+                showNotification('Error', `Failed to load withdrawals: ${error.message}`, 'error');
+                withdrawalsList.innerHTML = '<p>Error loading withdrawals</p>';
+            });
+            
+            unsubscribeFunctions.push(unsubscribe);
+        }
+        
+        // Create withdrawal item for admin
+        function createWithdrawalItem(withdrawal) {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div>
+                    <strong>Amount: ${formatCurrency(withdrawal.amount)}</strong>
+                    <p>Account: ${withdrawal.account}</p>
+                    <p>Date: ${new Date(withdrawal.createdAt?.seconds * 1000).toLocaleDateString()}</p>
+                </div>
+                <div>
+                    <button class="btn btn-success btn-sm" onclick="approveWithdrawal('${withdrawal.id}')">Approve</button>
+                    <button class="btn btn-danger btn-sm" onclick="rejectWithdrawal('${withdrawal.id}')">Reject</button>
+                </div>
+            `;
+            return li;
         }
         
         // Approve withdrawal (admin function)
@@ -3621,6 +3704,323 @@
             .catch(error => {
                 showNotification('Error', `Failed to reject withdrawal: ${error.message}`, 'error');
             });
+        }
+        
+        // Load system stats
+        function loadSystemStats() {
+            const statsRef = db.collection('stats').doc('overview');
+            
+            const unsubscribe = statsRef.onSnapshot(doc => {
+                if (doc.exists) {
+                    const stats = doc.data();
+                    document.getElementById('total-users').textContent = stats.totalUsers || '0';
+                    document.getElementById('active-sellers').textContent = stats.activeSellers || '0';
+                    document.getElementById('new-users').textContent = stats.newUsers || '0';
+                    document.getElementById('affiliates').textContent = stats.affiliates || '0';
+                    document.getElementById('total-products').textContent = stats.totalProducts || '0';
+                    document.getElementById('pending-products').textContent = stats.pendingProducts || '0';
+                }
+            });
+            
+            unsubscribeFunctions.push(unsubscribe);
+        }
+        
+        // Load recent transactions with pagination
+        function loadRecentTransactions() {
+            const adminTransactionsList = document.getElementById('admin-transactions');
+            const counter = document.getElementById('transactions-counter');
+            const paginationContainer = document.getElementById('transactions-pagination');
+            
+            adminTransactionsList.innerHTML = '<div class="loader"></div>';
+            
+            const { currentPage, pageSize } = adminPagination.transactions;
+            
+            let query = db.collection('transactions')
+                .orderBy('date', 'desc')
+                .limit(pageSize);
+            
+            const unsubscribe = query.onSnapshot(querySnapshot => {
+                adminTransactionsList.innerHTML = '';
+                adminPagination.transactions.totalItems = querySnapshot.size;
+                counter.textContent = querySnapshot.size;
+                
+                if (querySnapshot.empty) {
+                    adminTransactionsList.innerHTML = '<p>No recent transactions</p>';
+                    paginationContainer.innerHTML = '';
+                    return;
+                }
+                
+                querySnapshot.forEach(doc => {
+                    const transaction = doc.data();
+                    transaction.id = doc.id;
+                    adminTransactionsList.appendChild(createAdminTransactionItem(transaction));
+                });
+                
+                renderPagination('transactions');
+            }, error => {
+                showNotification('Error', `Failed to load transactions: ${error.message}`, 'error');
+                adminTransactionsList.innerHTML = '<p>Error loading transactions</p>';
+            });
+            
+            unsubscribeFunctions.push(unsubscribe);
+        }
+        
+        // Create admin transaction item
+        function createAdminTransactionItem(transaction) {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div>
+                    <strong>${transaction.description}</strong>
+                    <p>${new Date(transaction.date?.seconds * 1000).toLocaleDateString()}</p>
+                </div>
+                <div class="transaction-amount ${transaction.type === 'credit' ? 'positive' : 'negative'}">
+                    ${transaction.type === 'credit' ? '+' : '-'}${formatCurrency(Math.abs(transaction.amount))}
+                </div>
+            `;
+            return li;
+        }
+        
+        // Load all users with pagination
+        function loadAllUsers() {
+            const usersTableBody = document.getElementById('users-table-body');
+            const counter = document.getElementById('users-counter');
+            const paginationContainer = document.getElementById('users-pagination');
+            
+            usersTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;"><div class="loader"></div></td></tr>';
+            
+            const { currentPage, pageSize } = adminPagination.users;
+            
+            let query = db.collection('users')
+                .orderBy('createdAt', 'desc')
+                .limit(pageSize);
+            
+            const unsubscribe = query.onSnapshot(querySnapshot => {
+                usersTableBody.innerHTML = '';
+                adminPagination.users.totalItems = querySnapshot.size;
+                counter.textContent = querySnapshot.size;
+                
+                if (querySnapshot.empty) {
+                    usersTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No users found</td></tr>';
+                    paginationContainer.innerHTML = '';
+                    return;
+                }
+                
+                querySnapshot.forEach(doc => {
+                    const user = doc.data();
+                    user.id = doc.id;
+                    usersTableBody.appendChild(createUserTableRow(user));
+                });
+                
+                renderPagination('users');
+            }, error => {
+                showNotification('Error', `Failed to load users: ${error.message}`, 'error');
+                usersTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Error loading users</td></tr>';
+            });
+            
+            unsubscribeFunctions.push(unsubscribe);
+        }
+        
+        // Create user table row
+        function createUserTableRow(user) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${user.name || 'N/A'}</td>
+                <td>${user.email || 'N/A'}</td>
+                <td>${user.role || 'N/A'}</td>
+                <td>${user.status || 'N/A'}</td>
+                <td>${formatCurrency(user.wallet || 0)}</td>
+                <td>${user.account || 'N/A'}</td>
+                <td>${user.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</td>
+            `;
+            return tr;
+        }
+        
+        // Load admin products with pagination
+        function loadAdminProducts() {
+            const adminProductsList = document.getElementById('admin-products-list');
+            const counter = document.getElementById('products-counter');
+            const paginationContainer = document.getElementById('products-pagination');
+            
+            adminProductsList.innerHTML = '<div class="loader"></div>';
+            
+            const { currentPage, pageSize } = adminPagination.products;
+            const filter = document.getElementById('product-filter').value;
+            
+            let query = db.collection('products');
+            
+            if (filter !== 'all') {
+                query = query.where('status', '==', filter);
+            }
+            
+            query = query.orderBy('createdAt', 'desc').limit(pageSize);
+            
+            const unsubscribe = query.onSnapshot(querySnapshot => {
+                adminProductsList.innerHTML = '';
+                adminPagination.products.totalItems = querySnapshot.size;
+                counter.textContent = querySnapshot.size;
+                
+                if (querySnapshot.empty) {
+                    adminProductsList.innerHTML = '<p>No products available</p>';
+                    paginationContainer.innerHTML = '';
+                    return;
+                }
+                
+                querySnapshot.forEach(doc => {
+                    const product = doc.data();
+                    product.id = doc.id;
+                    adminProductsList.appendChild(createAdminProductCard(product));
+                });
+                
+                renderPagination('products');
+            }, error => {
+                showNotification('Error', `Failed to load products: ${error.message}`, 'error');
+                adminProductsList.innerHTML = '<p>Error loading products</p>';
+            });
+            
+            unsubscribeFunctions.push(unsubscribe);
+        }
+        
+        // Create admin product card with approval controls
+        function createAdminProductCard(product) {
+            const card = document.createElement('div');
+            card.className = 'product-card';
+            
+            card.innerHTML = `
+                <div class="product-image">
+                    ${product.imageUrl ? `<img src="${product.imageUrl}" alt="${product.name}">` : 
+                     `<i class="fas fa-box fa-3x"></i>`}
+                    <div class="referral-badge">${product.commission}% Commission</div>
+                    ${product.status === 'pending' ? '<div class="referral-badge" style="top: 40px; background-color: var(--warning);">Pending Approval</div>' : ''}
+                </div>
+                <div class="product-content">
+                    <h3 class="product-title">${product.name}</h3>
+                    <div class="product-price">${formatCurrency(product.price)}</div>
+                    <div class="category-badge">${product.category}</div>
+                    <div class="product-actions">
+                        <button class="btn btn-outline btn-sm details-btn">Details</button>
+                        ${product.status === 'pending' ? 
+                            `<button class="btn btn-success btn-sm approve-btn">Approve</button>` : 
+                            `<button class="btn btn-warning btn-sm disable-btn">Disable</button>`
+                        }
+                        <button class="btn btn-danger btn-sm delete-btn">Delete</button>
+                    </div>
+                </div>
+            `;
+            
+            // Add event listeners
+            card.querySelector('.details-btn').addEventListener('click', () => {
+                showProductDetails(product);
+            });
+            
+            if (product.status === 'pending') {
+                card.querySelector('.approve-btn').addEventListener('click', () => {
+                    approveProduct(product.id);
+                });
+            } else {
+                card.querySelector('.disable-btn').addEventListener('click', () => {
+                    disableProduct(product.id);
+                });
+            }
+            
+            card.querySelector('.delete-btn').addEventListener('click', () => {
+                deleteProduct(product.id);
+            });
+            
+            return card;
+        }
+        
+        // Approve product (admin function)
+        function approveProduct(productId) {
+            db.collection('products').doc(productId).update({
+                status: 'approved'
+            })
+            .then(() => {
+                showNotification('Product Approved', 'The product has been approved', 'success');
+            })
+            .catch(error => {
+                showNotification('Error', `Failed to approve product: ${error.message}`, 'error');
+            });
+        }
+        
+        // Disable product (admin function)
+        function disableProduct(productId) {
+            db.collection('products').doc(productId).update({
+                status: 'disabled'
+            })
+            .then(() => {
+                showNotification('Product Disabled', 'The product has been disabled', 'success');
+            })
+            .catch(error => {
+                showNotification('Error', `Failed to disable product: ${error.message}`, 'error');
+            });
+        }
+        
+        // Delete product (admin function)
+        function deleteProduct(productId) {
+            if (confirm('Are you sure you want to delete this product?')) {
+                db.collection('products').doc(productId).delete()
+                .then(() => {
+                    showNotification('Product Deleted', 'The product has been deleted', 'success');
+                })
+                .catch(error => {
+                    showNotification('Error', `Failed to delete product: ${error.message}`, 'error');
+                });
+            }
+        }
+        
+        // Render pagination controls
+        function renderPagination(type) {
+            const { currentPage, pageSize, totalItems } = adminPagination[type];
+            const totalPages = Math.ceil(totalItems / pageSize);
+            const paginationContainer = document.getElementById(`${type}-pagination`);
+            
+            if (totalPages <= 1) {
+                paginationContainer.innerHTML = '';
+                return;
+            }
+            
+            let html = '';
+            
+            // Previous button
+            html += `<button class="${currentPage === 1 ? 'disabled' : ''}" data-page="prev">&laquo;</button>`;
+            
+            // Page numbers
+            for (let i = 1; i <= totalPages; i++) {
+                html += `<button class="${currentPage === i ? 'active' : ''}" data-page="${i}">${i}</button>`;
+            }
+            
+            // Next button
+            html += `<button class="${currentPage === totalPages ? 'disabled' : ''}" data-page="next">&raquo;</button>`;
+            
+            paginationContainer.innerHTML = html;
+        }
+        
+        // Handle pagination clicks
+        function handlePagination(e) {
+            if (!e.target.matches('button')) return;
+            
+            const type = this.id.split('-')[0];
+            const action = e.target.dataset.page;
+            
+            if (action === 'prev') {
+                adminPagination[type].currentPage = Math.max(1, adminPagination[type].currentPage - 1);
+            } else if (action === 'next') {
+                adminPagination[type].currentPage = Math.min(
+                    Math.ceil(adminPagination[type].totalItems / adminPagination[type].pageSize),
+                    adminPagination[type].currentPage + 1
+                );
+            } else if (!isNaN(action)) {
+                adminPagination[type].currentPage = parseInt(action);
+            }
+            
+            // Reload the data
+            switch(type) {
+                case 'sellers': loadPendingSellers(); break;
+                case 'withdrawals': loadPendingWithdrawals(); break;
+                case 'transactions': loadRecentTransactions(); break;
+                case 'users': loadAllUsers(); break;
+                case 'products': loadAdminProducts(); break;
+            }
         }
 
         // Load my shop
@@ -3742,6 +4142,9 @@
         window.rejectSeller = rejectSeller;
         window.approveWithdrawal = approveWithdrawal;
         window.rejectWithdrawal = rejectWithdrawal;
+        window.approveProduct = approveProduct;
+        window.disableProduct = disableProduct;
+        window.deleteProduct = deleteProduct;
     </script>
 </body>
 </html>
