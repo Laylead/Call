@@ -649,6 +649,8 @@
             z-index: 2;
             position: relative;
             justify-content: center;
+            flex-direction: column;
+            align-items: center;
         }
 
         .add-funds-btn {
@@ -1608,6 +1610,110 @@
             border-top: 4px solid var(--success);
         }
 
+        /* Add Funds Modal */
+        .add-funds-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .add-funds-content {
+            background-color: white;
+            border-radius: var(--radius);
+            width: 100%;
+            max-width: 500px;
+            padding: 30px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .fund-option {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 15px;
+            border: 1px solid var(--light-gray);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+            background: white;
+        }
+
+        .fund-option:hover {
+            border-color: var(--primary);
+        }
+
+        .fund-option.selected {
+            border-color: var(--primary);
+            background-color: rgba(26, 58, 108, 0.05);
+        }
+
+        .fund-option input {
+            margin-right: 10px;
+        }
+
+        .fund-option-label {
+            flex: 1;
+        }
+
+        .fund-option-details {
+            padding: 10px;
+            background-color: var(--lightest-gray);
+            border-radius: var(--radius-sm);
+            margin-top: 10px;
+            display: none;
+        }
+
+        .fund-option.selected .fund-option-details {
+            display: block;
+        }
+
+        /* Payment Confirmation Modal */
+        .payment-confirmation-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .payment-confirmation-content {
+            background-color: white;
+            border-radius: var(--radius);
+            width: 100%;
+            max-width: 500px;
+            padding: 30px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        .payment-confirmation-image {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 20px;
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .payment-confirmation-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
         /* Responsive Design */
         @media (max-width: 992px) {
             .sidebar-open + main {
@@ -1693,7 +1799,7 @@
                 grid-template-columns: 1fr;
             }
             
-            .checkout-content {
+            .checkout-content, .add-funds-content, .payment-confirmation-content {
                 max-width: 95%;
             }
             
@@ -1711,6 +1817,11 @@
             
             .approval-block {
                 padding: 30px 20px;
+            }
+            
+            .payment-confirmation-image {
+                width: 150px;
+                height: 150px;
             }
         }
     </style>
@@ -1878,8 +1989,8 @@
                 <textarea id="checkout-address" required></textarea>
             </div>
             <div class="form-group">
-                <label for="checkout-referral">Referral Code</label>
-                <input type="text" id="checkout-referral" placeholder="Enter referral code" readonly>
+                <label for="checkout-referral">Referral Code (optional)</label>
+                <input type="text" id="checkout-referral" placeholder="Enter referral code">
             </div>
             <div class="form-group">
                 <label for="checkout-email">Email</label>
@@ -1913,6 +2024,75 @@
             
             <div class="form-actions">
                 <button id="proceed-payment" class="btn btn-primary">Proceed to Payment</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Funds Modal -->
+    <div id="add-funds-modal" class="add-funds-modal">
+        <div class="add-funds-content">
+            <div class="checkout-header">
+                <h2>Add Funds to Wallet</h2>
+                <span class="close-modal" id="close-add-funds">&times;</span>
+            </div>
+            
+            <div class="fund-options">
+                <div class="fund-option" id="token-funding">
+                    <input type="radio" name="fund-method" id="token-method" value="token">
+                    <div class="fund-option-label">
+                        <label for="token-method">Add Funds with Token</label>
+                        <div class="fund-option-details">
+                            <div class="form-group">
+                                <label for="token-input">Token Code</label>
+                                <input type="text" id="token-input" placeholder="Enter token code">
+                            </div>
+                            <button id="validate-token" class="btn btn-outline">Validate Token</button>
+                            <div id="token-validation-result" class="form-group"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="fund-option" id="payment-link-fund">
+                    <input type="radio" name="fund-method" id="payment-link-method" value="payment-link">
+                    <div class="fund-option-label">
+                        <label for="payment-link-method">Pay with Payment Link</label>
+                        <div class="fund-option-details">
+                            <p>You will be redirected to the payment gateway</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button id="proceed-funding" class="btn btn-primary">Add Funds</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Confirmation Modal -->
+    <div id="payment-confirmation-modal" class="payment-confirmation-modal">
+        <div class="payment-confirmation-content">
+            <div class="checkout-header">
+                <h2>Payment Confirmation</h2>
+                <span class="close-modal" id="close-payment-confirmation">&times;</span>
+            </div>
+            
+            <div class="payment-confirmation-image">
+                <img id="payment-confirmation-image" src="" alt="Product Image">
+            </div>
+            
+            <h3 id="payment-confirmation-title">Order #12345</h3>
+            <p>Did you send the money for this order?</p>
+            
+            <div class="form-actions" style="margin-top: 20px;">
+                <button id="confirm-payment" class="btn btn-success">Yes, I Paid</button>
+                <button id="deny-payment" class="btn btn-danger">No, I Didn't Pay</button>
+            </div>
+            
+            <div class="form-actions" style="margin-top: 10px;">
+                <button id="contact-customer-care" class="btn btn-outline">
+                    <i class="fas fa-headset"></i> Talk to Customer Care
+                </button>
             </div>
         </div>
     </div>
@@ -2618,6 +2798,15 @@
         const shareTwitterBtn = document.getElementById('share-twitter');
         const shareWhatsappBtn = document.getElementById('share-whatsapp');
         const addFundsBtn = document.getElementById('add-funds-btn');
+        const addFundsModal = document.getElementById('add-funds-modal');
+        const closeAddFunds = document.getElementById('close-add-funds');
+        const validateTokenBtn = document.getElementById('validate-token');
+        const proceedFundingBtn = document.getElementById('proceed-funding');
+        const paymentConfirmationModal = document.getElementById('payment-confirmation-modal');
+        const closePaymentConfirmation = document.getElementById('close-payment-confirmation');
+        const confirmPaymentBtn = document.getElementById('confirm-payment');
+        const denyPaymentBtn = document.getElementById('deny-payment');
+        const contactCustomerCareBtn = document.getElementById('contact-customer-care');
         
         // App State
         let currentUser = null;
@@ -2641,6 +2830,7 @@
         };
         let currentCategory = null;
         let unsubscribeFunctions = []; // To hold real-time unsubscribe functions
+        let paymentConfirmationShown = false; // To track if payment confirmation has been shown
         
         // Pagination State
         const pagination = {
@@ -2661,6 +2851,7 @@
                 if (user) {
                     currentUser = user;
                     fetchUserData(user.uid);
+                    checkForPaymentConfirmation();
                 } else {
                     currentUser = null;
                     userData = null;
@@ -2704,6 +2895,14 @@
             
             closeProductDetails.addEventListener('click', () => {
                 productDetailsModal.style.display = 'none';
+            });
+            
+            closeAddFunds.addEventListener('click', () => {
+                addFundsModal.style.display = 'none';
+            });
+            
+            closePaymentConfirmation.addEventListener('click', () => {
+                paymentConfirmationModal.style.display = 'none';
             });
             
             doLogin.addEventListener('click', signIn);
@@ -2759,8 +2958,11 @@
                 window.location.href = contactUrl;
             });
             fundWalletWidget.addEventListener('click', () => {
-                window.location.href = fundUrl;
+                showAddFundsModal();
             });
+            
+            // Add funds button
+            addFundsBtn.addEventListener('click', showAddFundsModal);
             
             // Initialize currency selector
             document.getElementById('currency-select').addEventListener('change', (e) => {
@@ -2799,13 +3001,174 @@
                 loadAdminProducts();
             });
             
-            // Add funds button
-            addFundsBtn.addEventListener('click', () => {
-                window.location.href = fundUrl;
-            });
-            
             // Proceed payment button
             proceedPaymentBtn.addEventListener('click', processPayment);
+            
+            // Token validation button
+            validateTokenBtn.addEventListener('click', validateToken);
+            
+            // Proceed funding button
+            proceedFundingBtn.addEventListener('click', processFunding);
+            
+            // Payment confirmation buttons
+            confirmPaymentBtn.addEventListener('click', confirmPayment);
+            denyPaymentBtn.addEventListener('click', denyPayment);
+            contactCustomerCareBtn.addEventListener('click', () => {
+                window.location.href = contactUrl;
+            });
+            
+            // Check for payment confirmation on page load
+            window.addEventListener('load', checkForPaymentConfirmation);
+        }
+
+        // Show add funds modal
+        function showAddFundsModal() {
+            document.getElementById('add-funds-modal').style.display = 'flex';
+        }
+
+        // Validate token
+        function validateToken() {
+            const token = document.getElementById('token-input').value;
+            if (!token) {
+                document.getElementById('token-validation-result').innerHTML = 
+                    '<p style="color:var(--danger);">Please enter a token</p>';
+                return;
+            }
+            
+            db.collection('tokens').where('code', '==', token).where('used', '==', false).get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        document.getElementById('token-validation-result').innerHTML = 
+                            '<p style="color:var(--danger);">Invalid or used token</p>';
+                    } else {
+                        const tokenData = snapshot.docs[0].data();
+                        document.getElementById('token-validation-result').innerHTML = 
+                            `<p style="color:var(--success);">Valid token! Value: ${formatCurrency(tokenData.value)}</p>`;
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('token-validation-result').innerHTML = 
+                        '<p style="color:var(--danger);">Error validating token</p>';
+                });
+        }
+
+        // Process funding
+        function processFunding() {
+            const selectedMethod = document.querySelector('input[name="fund-method"]:checked');
+            if (!selectedMethod) {
+                showNotification('Error', 'Please select a funding method', 'error');
+                return;
+            }
+            
+            const method = selectedMethod.value;
+            
+            if (method === 'token') {
+                const token = document.getElementById('token-input').value;
+                if (!token) {
+                    showNotification('Error', 'Please enter a token', 'error');
+                    return;
+                }
+                
+                // Validate token again
+                db.collection('tokens').where('code', '==', token).where('used', '==', false).get()
+                    .then(snapshot => {
+                        if (snapshot.empty) {
+                            showNotification('Error', 'Invalid or used token', 'error');
+                            return;
+                        }
+                        
+                        const tokenDoc = snapshot.docs[0];
+                        const tokenData = tokenDoc.data();
+                        
+                        // Add funds to wallet
+                        db.collection('users').doc(currentUser.uid).update({
+                            wallet: firebase.firestore.FieldValue.increment(tokenData.value)
+                        })
+                        .then(() => {
+                            // Mark token as used
+                            db.collection('tokens').doc(tokenDoc.id).update({
+                                used: true,
+                                usedBy: currentUser.uid,
+                                usedAt: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                            
+                            // Create transaction record
+                            db.collection('transactions').add({
+                                userId: currentUser.uid,
+                                type: 'credit',
+                                amount: tokenData.value,
+                                description: 'Token funding',
+                                date: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                            
+                            showNotification('Success', `Wallet funded with ${formatCurrency(tokenData.value)}`, 'success');
+                            addFundsModal.style.display = 'none';
+                        });
+                    });
+            } else if (method === 'payment-link') {
+                window.location.href = fundUrl;
+            }
+        }
+
+        // Check for payment confirmation
+        function checkForPaymentConfirmation() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const orderId = urlParams.get('order_id');
+            
+            if (orderId && !paymentConfirmationShown) {
+                paymentConfirmationShown = true;
+                
+                // Fetch order details
+                db.collection('orders').doc(orderId).get()
+                    .then(doc => {
+                        if (doc.exists) {
+                            const order = doc.data();
+                            showPaymentConfirmation(order);
+                        }
+                    });
+            }
+        }
+
+        // Show payment confirmation
+        function showPaymentConfirmation(order) {
+            document.getElementById('payment-confirmation-title').textContent = `Order #${order.id.substring(0, 8)}`;
+            
+            // Fetch product image
+            db.collection('products').doc(order.productId).get()
+                .then(productDoc => {
+                    if (productDoc.exists) {
+                        const product = productDoc.data();
+                        if (product.imageUrl) {
+                            document.getElementById('payment-confirmation-image').src = product.imageUrl;
+                        } else {
+                            document.getElementById('payment-confirmation-image').src = "https://via.placeholder.com/200";
+                        }
+                    }
+                });
+            
+            paymentConfirmationModal.style.display = 'flex';
+        }
+
+        // Confirm payment
+        function confirmPayment() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const orderId = urlParams.get('order_id');
+            
+            if (orderId) {
+                db.collection('orders').doc(orderId).update({
+                    status: 'pending_admin_approval'
+                })
+                .then(() => {
+                    showNotification('Success', 'Payment confirmation sent to admin', 'success');
+                    paymentConfirmationModal.style.display = 'none';
+                });
+            }
+        }
+
+        // Deny payment
+        function denyPayment() {
+            paymentConfirmationModal.style.display = 'none';
+            showNotification('Info', 'You can place the order again or contact customer care', 'info');
         }
 
         // Update currency display throughout the app
@@ -3227,7 +3590,7 @@
                         sidebar.classList.add('sidebar-open');
                         showNotification('Login Required', 'Please login to purchase products', 'info');
                     } else {
-                        showCheckoutModal(product, product.referralCode, true);
+                        showCheckoutModal(product, null, false);
                     }
                 });
                 
@@ -3286,7 +3649,7 @@
                     sidebar.classList.add('sidebar-open');
                     showNotification('Login Required', 'Please login to purchase products', 'info');
                 } else {
-                    showCheckoutModal(product, product.referralCode, true);
+                    showCheckoutModal(product, null, false);
                     productDetailsModal.style.display = 'none';
                 }
             });
@@ -3383,7 +3746,7 @@
                 });
             } else if (paymentMethod === 'direct') {
                 // Redirect to payment gateway
-                window.location.href = `${paymentUrl}?amount=${total}&email=${email}`;
+                window.location.href = `${paymentUrl}?amount=${total}&email=${email}&product=${currentProduct.id}`;
             }
         }
         
@@ -3394,7 +3757,7 @@
                 productId: currentProduct.id,
                 productName: currentProduct.name,
                 amount: currentProduct.price,
-                status: 'pending',
+                status: 'pending_admin_approval',
                 referralCode: referralCode || null,
                 paymentMethod: paymentMethod,
                 shippingAddress: address,
@@ -4402,6 +4765,24 @@
             const referralLink = document.getElementById('referral-link').textContent;
             const shareUrl = `https://wa.me/?text=${encodeURIComponent(`Check out this platform: ${referralLink}`)}`;
             window.open(shareUrl, '_blank');
+        }
+
+        // Update currency display
+        function updateCurrencyDisplay() {
+            // Update wallet display
+            if (pages['wallet'].classList.contains('active')) {
+                loadWallet();
+            }
+            
+            // Update dashboard stats
+            if (pages['dashboard'].classList.contains('active')) {
+                loadDashboardData();
+            }
+            
+            // Update products
+            if (pages['products'].classList.contains('active')) {
+                loadProducts();
+            }
         }
 
         // Initialize the app when DOM is loaded
