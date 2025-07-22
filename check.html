@@ -1520,6 +1520,67 @@
             margin-top: 10px;
         }
 
+        /* NEW STYLES FOR FIXES */
+        .add-funds-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.4);
+            color: white;
+            border-radius: 20px;
+            padding: 5px 15px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .add-funds-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .fraud-alert {
+            background-color: rgba(220, 53, 69, 0.1);
+            border-left: 3px solid var(--danger);
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 5px;
+            font-size: 0.85rem;
+        }
+        
+        .total-balance-badge {
+            background-color: rgba(26, 58, 108, 0.1);
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-top: 10px;
+            display: inline-block;
+        }
+        
+        .pagination-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .page-btn {
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid var(--light-gray);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+        }
+        
+        .page-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
         /* Responsive Design */
         @media (max-width: 992px) {
             .sidebar-open + main {
@@ -1791,7 +1852,7 @@
             </div>
             <div class="form-group">
                 <label for="checkout-referral">Referral Code</label>
-                <input type="text" id="checkout-referral" placeholder="Enter referral code" readonly>
+                <input type="text" id="checkout-referral" placeholder="Enter referral code (optional)">
             </div>
             <div class="form-group">
                 <label for="checkout-email">Email</label>
@@ -2142,6 +2203,9 @@
                     <div class="wallet-actions">
                         <button class="btn btn-accent" id="withdraw-btn">Withdraw Funds</button>
                         <button class="btn btn-outline" style="background-color: rgba(255,255,255,0.1); color: white; border-color: rgba(255,255,255,0.3);">View Statements</button>
+                        <button class="btn btn-outline add-funds-btn" id="add-funds-btn" style="background-color: rgba(255,255,255,0.1); color: white; border-color: rgba(255,255,255,0.3);">
+                            <i class="fas fa-plus"></i> Add Funds
+                        </button>
                     </div>
                 </div>
                 
@@ -2493,6 +2557,7 @@
         const shareFacebookBtn = document.getElementById('share-facebook');
         const shareTwitterBtn = document.getElementById('share-twitter');
         const shareWhatsappBtn = document.getElementById('share-whatsapp');
+        const addFundsBtn = document.getElementById('add-funds-btn');
         
         // App State
         let currentUser = null;
@@ -2522,8 +2587,8 @@
             sellers: { currentPage: 1, pageSize: 5, totalItems: 0 },
             withdrawals: { currentPage: 1, pageSize: 5, totalItems: 0 },
             transactions: { currentPage: 1, pageSize: 5, totalItems: 0 },
-            users: { currentPage: 1, pageSize: 10, totalItems: 0 },
-            products: { currentPage: 1, pageSize: 8, totalItems: 0 }
+            users: { currentPage: 1, pageSize: 5, totalItems: 0 },
+            products: { currentPage: 1, pageSize: 5, totalItems: 0 }
         };
 
         // Initialize the app
@@ -2633,6 +2698,9 @@
             fundWalletWidget.addEventListener('click', () => {
                 window.location.href = fundUrl;
             });
+            addFundsBtn.addEventListener('click', () => {
+                window.location.href = fundUrl;
+            });
             
             // Initialize currency selector
             document.getElementById('currency-select').addEventListener('change', (e) => {
@@ -2667,6 +2735,13 @@
             document.getElementById('product-filter')?.addEventListener('change', () => {
                 loadAdminProducts();
             });
+            
+            // Payment processing
+            proceedPaymentBtn.addEventListener('click', processPayment);
+            
+            // Order filter
+            document.getElementById('order-status').addEventListener('change', loadOrders);
+            document.getElementById('order-date').addEventListener('change', loadOrders);
         }
 
         // Update currency display throughout the app
@@ -2678,6 +2753,7 @@
                 document.getElementById('total-earnings').textContent = `Total Earnings: ${formatCurrency((userData.wallet || 0) + (userData.pendingEarnings || 0))}`;
                 document.getElementById('pending-affiliate').textContent = formatCurrency(userData.pendingEarnings || 0);
                 document.getElementById('available-affiliate').textContent = formatCurrency(userData.wallet || 0);
+                document.getElementById('current-balance-display').textContent = formatCurrency(userData.wallet || 0);
             }
             
             // Reload products to update currency display
@@ -3201,6 +3277,95 @@
             checkoutModal.style.display = 'flex';
         }
 
+        // Process payment
+        function processPayment() {
+            const paymentMethod = document.querySelector('input[name="payment-method"]:checked').value;
+            const total = currentProduct.price;
+            
+            if (paymentMethod === 'balance') {
+                // Check if user has sufficient balance
+                if (userData.wallet >= total) {
+                    // Deduct from balance
+                    db.collection('users').doc(currentUser.uid).update({
+                        wallet: firebase.firestore.FieldValue.increment(-total)
+                    })
+                    .then(() => {
+                        createOrder(total, 'balance');
+                    })
+                    .catch(error => {
+                        showNotification('Payment Error', error.message, 'error');
+                    });
+                } else {
+                    showNotification('Insufficient Funds', 'Your account balance is too low for this purchase', 'error');
+                }
+            } else {
+                // Redirect to payment gateway
+                window.location.href = paymentUrl;
+            }
+        }
+        
+        // Create order
+        function createOrder(amount, paymentMethod) {
+            const referralCode = document.getElementById('checkout-referral').value;
+            const address = document.getElementById('checkout-address').value;
+            
+            db.collection('orders').add({
+                userId: currentUser.uid,
+                productId: currentProduct.id,
+                productName: currentProduct.name,
+                amount: amount,
+                status: 'pending',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                paymentMethod: paymentMethod,
+                address: address,
+                referralCode: referralCode || null
+            })
+            .then(docRef => {
+                checkoutModal.style.display = 'none';
+                showNotification('Order Placed', 'Your order has been placed successfully', 'success');
+                
+                // Handle referral commission if applicable
+                if (referralCode) {
+                    handleReferral(docRef.id, amount);
+                }
+            })
+            .catch(error => {
+                showNotification('Order Error', `Failed to place order: ${error.message}`, 'error');
+            });
+        }
+        
+        // Handle referral commission
+        function handleReferral(orderId, totalAmount) {
+            // Find referrer by code
+            db.collection('users')
+                .where('referralCode', '==', referralCode)
+                .limit(1)
+                .get()
+                .then(snapshot => {
+                    if (!snapshot.empty) {
+                        const referrer = snapshot.docs[0].data();
+                        const referrerId = snapshot.docs[0].id;
+                        
+                        // Calculate commission (10% of total)
+                        const commission = totalAmount * 0.1;
+                        
+                        // Update referrer's wallet
+                        db.collection('users').doc(referrerId).update({
+                            pendingEarnings: firebase.firestore.FieldValue.increment(commission)
+                        });
+                        
+                        // Create referral record
+                        db.collection('referrals').add({
+                            referrerId: referrerId,
+                            orderId: orderId,
+                            commission: commission,
+                            date: new Date(),
+                            status: 'pending'
+                        });
+                    }
+                });
+        }
+
         // Load products with category filtering
         function loadProducts(category = null) {
             const productsGrid = document.getElementById('products-grid');
@@ -3460,7 +3625,38 @@
             return transactionItem;
         }
 
-        // Load admin data (fixed implementation)
+        // Withdraw funds
+        function withdrawFunds() {
+            if (!userData || userData.wallet <= 0) {
+                showNotification('Error', 'No funds available to withdraw', 'error');
+                return;
+            }
+            
+            const amount = userData.wallet;
+            
+            // Create withdrawal request
+            db.collection('withdrawals').add({
+                userId: currentUser.uid,
+                amount: amount,
+                status: 'pending',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                account: userData.account
+            })
+            .then(() => {
+                // Update user wallet
+                return db.collection('users').doc(currentUser.uid).update({
+                    wallet: firebase.firestore.FieldValue.increment(-amount)
+                });
+            })
+            .then(() => {
+                showNotification('Withdrawal Requested', `Your withdrawal of ${formatCurrency(amount)} has been submitted`, 'success');
+            })
+            .catch(error => {
+                showNotification('Error', `Failed to process withdrawal: ${error.message}`, 'error');
+            });
+        }
+
+        // Load admin data
         function loadAdminData() {
             // Load settings
             loadSettings();
@@ -4083,50 +4279,21 @@
             // In a real app, this would filter products
         }
 
-        // Withdraw funds
-        function withdrawFunds() {
-            if (!userData || userData.wallet <= 0) {
-                showNotification('Error', 'No funds available to withdraw', 'error');
-                return;
-            }
-            
-            const amount = userData.wallet;
-            
-            // Create withdrawal request
-            db.collection('withdrawals').add({
-                userId: currentUser.uid,
-                amount: amount,
-                status: 'pending',
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                account: userData.account
-            })
-            .then(() => {
-                // Update user wallet
-                return db.collection('users').doc(currentUser.uid).update({
-                    wallet: firebase.firestore.FieldValue.increment(-amount)
-                });
-            })
-            .then(() => {
-                showNotification('Withdrawal Requested', `Your withdrawal of ${formatCurrency(amount)} has been submitted`, 'success');
-            })
-            .catch(error => {
-                showNotification('Error', `Failed to process withdrawal: ${error.message}`, 'error');
-            });
-        }
-
-        // Social sharing functions
+        // Share on Facebook
         function shareOnFacebook() {
             const referralLink = document.getElementById('referral-link').textContent;
             const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralLink)}`;
             window.open(shareUrl, '_blank');
         }
         
+        // Share on Twitter
         function shareOnTwitter() {
             const referralLink = document.getElementById('referral-link').textContent;
             const shareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(referralLink)}&text=Check%20out%20this%20awesome%20platform!`;
             window.open(shareUrl, '_blank');
         }
         
+        // Share on WhatsApp
         function shareOnWhatsapp() {
             const referralLink = document.getElementById('referral-link').textContent;
             const shareUrl = `https://wa.me/?text=${encodeURIComponent(`Check out this platform: ${referralLink}`)}`;
