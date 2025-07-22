@@ -3350,12 +3350,23 @@
             return transactionItem;
         }
 
-        // Load admin data
+        // Load admin data (fixed implementation)
         function loadAdminData() {
             const pendingSellersList = document.getElementById('pending-sellers');
-            pendingSellersList.innerHTML = '<div class="loader"></div>';
+            const withdrawalsList = document.getElementById('withdrawals-list');
+            const adminTransactionsList = document.getElementById('admin-transactions');
+            const usersTableBody = document.getElementById('users-table-body');
+            const adminProductsList = document.getElementById('admin-products-list');
             
-            const unsubscribe = db.collection('users')
+            // Clear previous content and show loaders
+            pendingSellersList.innerHTML = '<div class="loader"></div>';
+            withdrawalsList.innerHTML = '<div class="loader"></div>';
+            adminTransactionsList.innerHTML = '<div class="loader"></div>';
+            usersTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;"><div class="loader"></div></td></tr>';
+            adminProductsList.innerHTML = '<div class="loader"></div>';
+            
+            // Load pending sellers
+            const sellersUnsubscribe = db.collection('users')
                 .where('role', '==', 'seller')
                 .where('status', '==', 'pending')
                 .onSnapshot(querySnapshot => {
@@ -3376,7 +3387,30 @@
                     pendingSellersList.innerHTML = '<p>Error loading sellers</p>';
                 });
                 
-            unsubscribeFunctions.push(unsubscribe);
+            unsubscribeFunctions.push(sellersUnsubscribe);
+            
+            // Load pending withdrawals
+            const withdrawalsUnsubscribe = db.collection('withdrawals')
+                .where('status', '==', 'pending')
+                .onSnapshot(querySnapshot => {
+                    withdrawalsList.innerHTML = '';
+                    
+                    if (querySnapshot.empty) {
+                        withdrawalsList.innerHTML = '<p>No pending withdrawals</p>';
+                        return;
+                    }
+                    
+                    querySnapshot.forEach(doc => {
+                        const withdrawal = doc.data();
+                        withdrawal.id = doc.id;
+                        withdrawalsList.appendChild(createWithdrawalItem(withdrawal));
+                    });
+                }, error => {
+                    showNotification('Error', `Failed to load withdrawals: ${error.message}`, 'error');
+                    withdrawalsList.innerHTML = '<p>Error loading withdrawals</p>';
+                });
+                
+            unsubscribeFunctions.push(withdrawalsUnsubscribe);
             
             // Load system stats
             const statsUnsubscribe = db.collection('stats').doc('overview')
@@ -3391,6 +3425,77 @@
                 });
                 
             unsubscribeFunctions.push(statsUnsubscribe);
+            
+            // Load recent transactions
+            const transactionsUnsubscribe = db.collection('transactions')
+                .orderBy('date', 'desc')
+                .limit(5)
+                .onSnapshot(querySnapshot => {
+                    adminTransactionsList.innerHTML = '';
+                    
+                    if (querySnapshot.empty) {
+                        adminTransactionsList.innerHTML = '<p>No recent transactions</p>';
+                        return;
+                    }
+                    
+                    querySnapshot.forEach(doc => {
+                        const transaction = doc.data();
+                        transaction.id = doc.id;
+                        adminTransactionsList.appendChild(createAdminTransactionItem(transaction));
+                    });
+                }, error => {
+                    showNotification('Error', `Failed to load transactions: ${error.message}`, 'error');
+                    adminTransactionsList.innerHTML = '<p>Error loading transactions</p>';
+                });
+                
+            unsubscribeFunctions.push(transactionsUnsubscribe);
+            
+            // Load all users for table
+            const usersUnsubscribe = db.collection('users')
+                .orderBy('createdAt', 'desc')
+                .onSnapshot(querySnapshot => {
+                    usersTableBody.innerHTML = '';
+                    
+                    if (querySnapshot.empty) {
+                        usersTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No users found</td></tr>';
+                        return;
+                    }
+                    
+                    querySnapshot.forEach(doc => {
+                        const user = doc.data();
+                        user.id = doc.id;
+                        usersTableBody.appendChild(createUserTableRow(user));
+                    });
+                }, error => {
+                    showNotification('Error', `Failed to load users: ${error.message}`, 'error');
+                    usersTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Error loading users</td></tr>';
+                });
+                
+            unsubscribeFunctions.push(usersUnsubscribe);
+            
+            // Load products for admin
+            const productsUnsubscribe = db.collection('products')
+                .orderBy('createdAt', 'desc')
+                .limit(8)
+                .onSnapshot(querySnapshot => {
+                    adminProductsList.innerHTML = '';
+                    
+                    if (querySnapshot.empty) {
+                        adminProductsList.innerHTML = '<p>No products available</p>';
+                        return;
+                    }
+                    
+                    querySnapshot.forEach(doc => {
+                        const product = doc.data();
+                        product.id = doc.id;
+                        adminProductsList.appendChild(createProductCard(product));
+                    });
+                }, error => {
+                    showNotification('Error', `Failed to load products: ${error.message}`, 'error');
+                    adminProductsList.innerHTML = '<p>Error loading products</p>';
+                });
+                
+            unsubscribeFunctions.push(productsUnsubscribe);
         }
         
         // Create seller item for admin
@@ -3408,6 +3513,53 @@
                 </div>
             `;
             return li;
+        }
+        
+        // Create withdrawal item for admin
+        function createWithdrawalItem(withdrawal) {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div>
+                    <strong>Amount: ${formatCurrency(withdrawal.amount)}</strong>
+                    <p>Account: ${withdrawal.account}</p>
+                    <p>Date: ${new Date(withdrawal.createdAt?.seconds * 1000).toLocaleDateString()}</p>
+                </div>
+                <div>
+                    <button class="btn btn-success btn-sm" onclick="approveWithdrawal('${withdrawal.id}')">Approve</button>
+                    <button class="btn btn-danger btn-sm" onclick="rejectWithdrawal('${withdrawal.id}')">Reject</button>
+                </div>
+            `;
+            return li;
+        }
+        
+        // Create admin transaction item
+        function createAdminTransactionItem(transaction) {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div>
+                    <strong>${transaction.description}</strong>
+                    <p>${new Date(transaction.date?.seconds * 1000).toLocaleDateString()}</p>
+                </div>
+                <div class="transaction-amount ${transaction.type === 'credit' ? 'positive' : 'negative'}">
+                    ${transaction.type === 'credit' ? '+' : '-'}${formatCurrency(Math.abs(transaction.amount))}
+                </div>
+            `;
+            return li;
+        }
+        
+        // Create user table row
+        function createUserTableRow(user) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${user.name || 'N/A'}</td>
+                <td>${user.email || 'N/A'}</td>
+                <td>${user.role || 'N/A'}</td>
+                <td>${user.status || 'N/A'}</td>
+                <td>${formatCurrency(user.wallet || 0)}</td>
+                <td>${user.account || 'N/A'}</td>
+                <td>${user.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</td>
+            `;
+            return tr;
         }
         
         // Approve seller (admin function)
@@ -3433,6 +3585,41 @@
             })
             .catch(error => {
                 showNotification('Error', `Failed to reject seller: ${error.message}`, 'error');
+            });
+        }
+        
+        // Approve withdrawal (admin function)
+        function approveWithdrawal(withdrawalId) {
+            db.collection('withdrawals').doc(withdrawalId).update({
+                status: 'approved'
+            })
+            .then(() => {
+                showNotification('Withdrawal Approved', 'The withdrawal has been processed', 'success');
+            })
+            .catch(error => {
+                showNotification('Error', `Failed to approve withdrawal: ${error.message}`, 'error');
+            });
+        }
+        
+        // Reject withdrawal (admin function)
+        function rejectWithdrawal(withdrawalId) {
+            db.collection('withdrawals').doc(withdrawalId).update({
+                status: 'rejected'
+            })
+            .then(() => {
+                // Return funds to user's wallet
+                db.collection('withdrawals').doc(withdrawalId).get().then(doc => {
+                    const withdrawal = doc.data();
+                    return db.collection('users').doc(withdrawal.userId).update({
+                        wallet: firebase.firestore.FieldValue.increment(withdrawal.amount)
+                    });
+                })
+                .then(() => {
+                    showNotification('Withdrawal Rejected', 'Funds have been returned to user wallet', 'success');
+                });
+            })
+            .catch(error => {
+                showNotification('Error', `Failed to reject withdrawal: ${error.message}`, 'error');
             });
         }
 
@@ -3553,6 +3740,8 @@
         window.navigateTo = navigateTo;
         window.approveSeller = approveSeller;
         window.rejectSeller = rejectSeller;
+        window.approveWithdrawal = approveWithdrawal;
+        window.rejectWithdrawal = rejectWithdrawal;
     </script>
 </body>
 </html>
