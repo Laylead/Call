@@ -2656,6 +2656,10 @@
         const searchUsersBtn = document.getElementById('search-users');
         const detailsButtons = document.querySelectorAll('.details-btn');
         const buyButtons = document.querySelectorAll('.buy-btn');
+        const generateTokensBtn = document.getElementById('generate-tokens');
+        const copyTokensBtn = document.getElementById('copy-tokens');
+        const createDiscountBtn = document.getElementById('create-discount');
+        const saveSettingsBtn = document.getElementById('save-settings');
         
         // App State
         let currentUser = null;
@@ -2789,7 +2793,6 @@
             // Copy buttons
             copyCodeBtn.addEventListener('click', copyReferralCode);
             copyLinkBtn.addEventListener('click', copyReferralLink);
-            copyShopUrlBtn.addEventListener('click', copyShopUrl);
             
             // Product search
             searchProductsBtn.addEventListener('click', searchProducts);
@@ -2824,7 +2827,7 @@
             shareWhatsappBtn.addEventListener('click', shareOnWhatsapp);
             
             // Admin settings save
-            document.getElementById('save-settings')?.addEventListener('click', saveSettings);
+            saveSettingsBtn?.addEventListener('click', saveSettings);
             
             // Proceed payment button
             proceedPaymentBtn.addEventListener('click', processPayment);
@@ -2843,36 +2846,12 @@
             // Search users button
             searchUsersBtn?.addEventListener('click', searchUsers);
             
-            // Product details buttons
-            detailsButtons.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const productCard = this.closest('.product-card');
-                    const product = {
-                        id: 'prod-123',
-                        name: productCard.querySelector('.product-title').textContent,
-                        price: parseFloat(productCard.querySelector('.product-price').textContent.replace('₦', '').replace(',', '')),
-                        category: productCard.querySelector('.category-badge').textContent,
-                        commission: parseInt(productCard.querySelector('.referral-badge').textContent),
-                        description: "Premium product with advanced features and long battery life. Perfect for daily use and professional needs."
-                    };
-                    showProductDetails(product);
-                });
-            });
+            // Token generation
+            generateTokensBtn?.addEventListener('click', generateTokens);
+            copyTokensBtn?.addEventListener('click', copyTokens);
             
-            // Buy buttons
-            buyButtons.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const productCard = this.closest('.product-card');
-                    const product = {
-                        id: 'prod-123',
-                        name: productCard.querySelector('.product-title').textContent,
-                        price: parseFloat(productCard.querySelector('.product-price').textContent.replace('₦', '').replace(',', '')),
-                        category: productCard.querySelector('.category-badge').textContent,
-                        commission: parseInt(productCard.querySelector('.referral-badge').textContent)
-                    };
-                    showCheckoutModal(product);
-                });
-            });
+            // Discount creation
+            createDiscountBtn?.addEventListener('click', createDiscount);
         }
 
         // Show auth form in sidebar
@@ -3253,6 +3232,9 @@
             card.className = 'product-card';
             card.dataset.id = product.id;
             
+            // Determine if we're in My Shop page
+            const isMyShop = window.location.hash === '#my-shop';
+            
             card.innerHTML = `
                 <div class="product-image">
                     <img src="${product.imageUrl || 'https://via.placeholder.com/300'}" alt="${product.name}">
@@ -3263,9 +3245,14 @@
                     <div class="product-price">${formatCurrency(product.price)}</div>
                     <div class="category-badge">${product.category}</div>
                     <div class="product-actions">
-                        <button class="btn btn-outline btn-sm details-btn">Details</button>
-                        <button class="btn btn-primary btn-sm buy-btn">Buy Now</button>
-                        <button class="btn btn-accent btn-sm share-btn">Share</button>
+                        ${isMyShop ? `
+                            <button class="btn btn-outline btn-sm edit-btn" data-id="${product.id}">Edit</button>
+                            <button class="btn btn-danger btn-sm delete-btn" data-id="${product.id}">Delete</button>
+                        ` : `
+                            <button class="btn btn-outline btn-sm details-btn">Details</button>
+                            <button class="btn btn-primary btn-sm buy-btn">Buy Now</button>
+                            <button class="btn btn-accent btn-sm share-btn">Share</button>
+                        `}
                     </div>
                 </div>
             `;
@@ -3288,6 +3275,55 @@
                     loadProductForPurchase(productId);
                 });
             });
+            
+            document.querySelectorAll('.share-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const productCard = this.closest('.product-card');
+                    const productName = productCard.querySelector('.product-title').textContent;
+                    const productUrl = window.location.href.split('?')[0] + `?product=${productCard.dataset.id}`;
+                    navigator.clipboard.writeText(`${productName}: ${productUrl}`);
+                    showNotification('Product Shared', 'Link copied to clipboard!', 'success');
+                });
+            });
+            
+            document.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const productId = this.dataset.id;
+                    editProduct(productId);
+                });
+            });
+            
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const productId = this.dataset.id;
+                    deleteProduct(productId);
+                });
+            });
+        }
+
+        // Edit product
+        function editProduct(productId) {
+            db.collection('products').doc(productId).get().then(doc => {
+                const product = doc.data();
+                document.getElementById('product-name').value = product.name;
+                document.getElementById('product-price').value = product.price;
+                document.getElementById('product-category').value = product.category;
+                document.getElementById('product-image').value = product.imageUrl || '';
+                document.getElementById('product-description').value = product.description || '';
+                document.getElementById('product-commission').value = product.commission;
+                document.getElementById('save-product').dataset.id = productId;
+                addProductModal.style.display = 'flex';
+            });
+        }
+
+        // Delete product
+        function deleteProduct(productId) {
+            if(confirm('Are you sure you want to delete this product?')) {
+                db.collection('products').doc(productId).delete().then(() => {
+                    showNotification('Deleted', 'Product removed successfully', 'success');
+                    loadMyShop();
+                });
+            }
         }
 
         // Show product details modal
@@ -3317,6 +3353,12 @@
             content.querySelector('.buy-btn').addEventListener('click', () => {
                 modal.style.display = 'none';
                 showCheckoutModal(product);
+            });
+
+            content.querySelector('.share-btn').addEventListener('click', () => {
+                const productUrl = window.location.href.split('?')[0] + `?product=${product.id}`;
+                navigator.clipboard.writeText(`${product.name}: ${productUrl}`);
+                showNotification('Product Shared', 'Link copied to clipboard!', 'success');
             });
             
             modal.style.display = 'flex';
@@ -3734,12 +3776,25 @@
                                 <p>${seller.email}</p>
                             </div>
                             <div>
-                                <button class="btn btn-success btn-sm">Approve</button>
-                                <button class="btn btn-danger btn-sm">Reject</button>
+                                <button class="btn btn-success btn-sm approve-btn" data-id="${doc.id}">Approve</button>
+                                <button class="btn btn-danger btn-sm reject-btn" data-id="${doc.id}">Reject</button>
                             </div>
                         `;
                         
                         pendingSellers.appendChild(sellerItem);
+                    });
+                    
+                    // Add event listeners
+                    document.querySelectorAll('.approve-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            updateSellerStatus(this.dataset.id, 'approved');
+                        });
+                    });
+                    
+                    document.querySelectorAll('.reject-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            updateSellerStatus(this.dataset.id, 'rejected');
+                        });
                     });
                     
                     // Hide loader
@@ -3779,6 +3834,13 @@
                         systemStatsLoader.style.display = 'none';
                     }
                 });
+        }
+        
+        // Update seller status
+        function updateSellerStatus(userId, status) {
+            db.collection('users').doc(userId).update({ status })
+                .then(() => showNotification('Success', `Seller ${status}`, 'success'))
+                .then(() => loadAdminData());
         }
         
         // Load settings
@@ -3898,11 +3960,26 @@
                             // Replace actions with edit/delete buttons
                             const actions = productCard.querySelector('.product-actions');
                             actions.innerHTML = `
-                                <button class="btn btn-outline btn-sm">Edit</button>
-                                <button class="btn btn-danger btn-sm">Delete</button>
+                                <button class="btn btn-outline btn-sm edit-btn" data-id="${doc.id}">Edit</button>
+                                <button class="btn btn-danger btn-sm delete-btn" data-id="${doc.id}">Delete</button>
                             `;
                             
                             productsGrid.appendChild(productCard);
+                        });
+
+                        // Add event listeners to edit/delete buttons
+                        document.querySelectorAll('.edit-btn').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                const productId = this.dataset.id;
+                                editProduct(productId);
+                            });
+                        });
+                        
+                        document.querySelectorAll('.delete-btn').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                const productId = this.dataset.id;
+                                deleteProduct(productId);
+                            });
                         });
                     }
                     
@@ -3978,7 +4055,19 @@
             }
             
             const amount = userData.wallet;
-            showNotification('Withdrawal Requested', `Your withdrawal of ${formatCurrency(amount)} has been submitted`, 'success');
+            
+            db.collection('withdrawals').add({
+                userId: currentUser.uid,
+                amount,
+                status: 'pending',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                showNotification('Request Sent', `Withdrawal request for ${formatCurrency(amount)} submitted`, 'success');
+                // Deduct from wallet immediately
+                db.collection('users').doc(currentUser.uid).update({
+                    wallet: 0
+                });
+            });
         }
 
         // Save new product
@@ -3995,25 +4084,24 @@
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             };
             
-            db.collection('products').add(productData)
-                .then(() => {
-                    showNotification('Success', 'Product submitted for approval', 'success');
-                    addProductModal.style.display = 'none';
-                    
-                    // Clear form
-                    document.getElementById('product-name').value = '';
-                    document.getElementById('product-price').value = '';
-                    document.getElementById('product-image').value = '';
-                    document.getElementById('product-description').value = '';
-                    
-                    // Refresh my shop page if active
-                    if (pages['myShop'].classList.contains('active')) {
-                        loadMyShop();
-                    }
-                })
-                .catch(error => {
-                    showNotification('Error', 'Failed to save product', 'error');
-                });
+            // Check if editing existing product
+            if (document.getElementById('save-product').dataset.id) {
+                const productId = document.getElementById('save-product').dataset.id;
+                db.collection('products').doc(productId).update(productData)
+                    .then(() => {
+                        showNotification('Updated', 'Product updated successfully', 'success');
+                        addProductModal.style.display = 'none';
+                        if (pages['myShop'].classList.contains('active')) loadMyShop();
+                    });
+            } else {
+                // Create new product
+                db.collection('products').add(productData)
+                    .then(() => {
+                        showNotification('Success', 'Product submitted for approval', 'success');
+                        addProductModal.style.display = 'none';
+                        if (pages['myShop'].classList.contains('active')) loadMyShop();
+                    });
+            }
         }
 
         // Search users
@@ -4093,6 +4181,54 @@
                 .catch(error => {
                     showNotification('Error', 'Failed to load product', 'error');
                 });
+        }
+
+        // Generate tokens
+        function generateTokens() {
+            const count = parseInt(document.getElementById('token-count').value);
+            const value = parseInt(document.getElementById('token-value').value);
+            const tokens = [];
+            
+            for(let i = 0; i < count; i++) {
+                const token = 'TOK-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+                tokens.push(token);
+                
+                // Save to Firestore
+                db.collection('tokens').add({
+                    token,
+                    value,
+                    status: 'active',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+            
+            document.getElementById('token-list').textContent = tokens.join('\n');
+            document.getElementById('generated-tokens').style.display = 'block';
+        }
+
+        // Copy tokens
+        function copyTokens() {
+            navigator.clipboard.writeText(document.getElementById('token-list').textContent);
+            showNotification('Copied!', 'Tokens copied to clipboard', 'success');
+        }
+
+        // Create discount
+        function createDiscount() {
+            const code = document.getElementById('discount-code').value;
+            const type = document.getElementById('discount-type').value;
+            const value = parseInt(document.getElementById('discount-value').value);
+            const expiry = document.getElementById('discount-expiry').value;
+            
+            db.collection('discounts').add({
+                code,
+                type,
+                value,
+                expiry: new Date(expiry),
+                status: 'active',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                showNotification('Success', 'Discount code created', 'success');
+            });
         }
 
         // Initialize the app when DOM is loaded
