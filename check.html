@@ -863,11 +863,16 @@
             color: var(--text);
             cursor: pointer;
         }
+        
+        /* Hidden utility class */
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
     <!-- Loading overlay -->
-    <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-overlay hidden" id="loadingOverlay">
         <div class="loading-spinner"></div>
         <div class="loading-text">Loading Luxuria Casino</div>
     </div>
@@ -948,7 +953,7 @@
     </div>
     
     <!-- Main Dashboard -->
-    <div class="dashboard" id="dashboard">
+    <div class="dashboard hidden" id="dashboard">
         <div class="container">
             <header>
                 <div class="user-info">
@@ -1223,12 +1228,12 @@
         
         // Show loading overlay
         function showLoading() {
-            document.getElementById('loadingOverlay').style.display = 'flex';
+            document.getElementById('loadingOverlay').classList.remove('hidden');
         }
         
         // Hide loading overlay
         function hideLoading() {
-            document.getElementById('loadingOverlay').style.display = 'none';
+            document.getElementById('loadingOverlay').classList.add('hidden');
         }
         
         // Format currency
@@ -1413,7 +1418,7 @@
             showLoading();
             auth.signOut().then(() => {
                 document.getElementById('authSection').style.display = 'flex';
-                document.getElementById('dashboard').style.display = 'none';
+                document.getElementById('dashboard').classList.add('hidden');
                 hideLoading();
             }).catch((error) => {
                 console.error('Sign out error:', error);
@@ -1486,18 +1491,18 @@
             const multiplierElement = document.getElementById('limboMultiplier');
             
             // Validate bet
-            if (isNaN(betAmount) {
-                alert('Please enter a valid bet amount');
+            if (isNaN(betAmount)) {
+                toastr.error('Please enter a valid bet amount');
                 return;
             }
             
             if (betAmount <= 0) {
-                alert('Bet amount must be greater than zero');
+                toastr.error('Bet amount must be greater than zero');
                 return;
             }
             
             if (targetMultiplier < 1.01) {
-                alert('Target multiplier must be at least 1.01x');
+                toastr.error('Target multiplier must be at least 1.01x');
                 return;
             }
             
@@ -1509,7 +1514,7 @@
             if (!placeBet(betAmount, useBonus)) {
                 hideLoading();
                 playBtn.disabled = false;
-                alert('Not enough balance');
+                toastr.error('Not enough balance');
                 return;
             }
             
@@ -1545,8 +1550,10 @@
                         if (win) {
                             addWin(winAmount, false);
                             multiplierElement.classList.add('win');
+                            toastr.success(`You won $${formatCurrency(winAmount)}!`);
                         } else {
                             multiplierElement.classList.add('loss');
+                            toastr.error('Better luck next time!');
                         }
                         
                         // Add to history
@@ -1585,12 +1592,12 @@
             
             // Validate bet
             if (isNaN(betAmount)) {
-                alert('Please enter a valid bet amount');
+                toastr.error('Please enter a valid bet amount');
                 return;
             }
             
             if (betAmount <= 0) {
-                alert('Bet amount must be greater than zero');
+                toastr.error('Bet amount must be greater than zero');
                 return;
             }
             
@@ -1602,7 +1609,7 @@
             if (!placeBet(betAmount, useBonus)) {
                 hideLoading();
                 spinBtn.disabled = false;
-                alert('Not enough balance');
+                toastr.error('Not enough balance');
                 return;
             }
             
@@ -1647,7 +1654,7 @@
                 spinBtn.disabled = false;
                 hideLoading();
                 
-                alert(`You won ${multiplier}x! $${formatCurrency(winAmount)} has been added to your balance.`);
+                toastr.success(`You won ${multiplier}x! $${formatCurrency(winAmount)} has been added to your balance.`);
             }, 3000);
         }
         
@@ -1658,12 +1665,12 @@
             
             // Validate bet
             if (isNaN(betAmount)) {
-                alert('Please enter a valid bet amount');
+                toastr.error('Please enter a valid bet amount');
                 return;
             }
             
             if (betAmount <= 0) {
-                alert('Bet amount must be greater than zero');
+                toastr.error('Bet amount must be greater than zero');
                 return;
             }
             
@@ -1675,7 +1682,7 @@
             if (!placeBet(betAmount, useBonus)) {
                 hideLoading();
                 spinBtn.disabled = false;
-                alert('Not enough balance');
+                toastr.error('Not enough balance');
                 return;
             }
             
@@ -1748,9 +1755,9 @@
                 hideLoading();
                 
                 if (winAmount > 0) {
-                    alert(`${resultText} You won $${formatCurrency(winAmount)}!`);
+                    toastr.success(`${resultText} You won $${formatCurrency(winAmount)}!`);
                 } else {
-                    alert('No win this time. Try again!');
+                    toastr.error('No win this time. Try again!');
                 }
             }, 2000);
         }
@@ -1811,7 +1818,7 @@
                                         
                                         // Show dashboard
                                         document.getElementById('authSection').style.display = 'none';
-                                        document.getElementById('dashboard').style.display = 'block';
+                                        document.getElementById('dashboard').classList.remove('hidden');
                                         
                                         // Initialize game
                                         initGame();
@@ -1831,7 +1838,7 @@
                                     
                                     // Show dashboard
                                     document.getElementById('authSection').style.display = 'none';
-                                    document.getElementById('dashboard').style.display = 'block';
+                                    document.getElementById('dashboard').classList.remove('hidden');
                                     
                                     // Initialize game
                                     initGame();
@@ -1924,7 +1931,7 @@
                         
                         // Show dashboard
                         document.getElementById('authSection').style.display = 'none';
-                        document.getElementById('dashboard').style.display = 'block';
+                        document.getElementById('dashboard').classList.remove('hidden');
                         
                         // Initialize game
                         initGame();
@@ -1950,6 +1957,13 @@
         
         // Initialize when page loads
         window.addEventListener('load', () => {
+            // Initialize Toastr
+            toastr.options = {
+                positionClass: 'toast-bottom-right',
+                progressBar: true,
+                timeOut: 3000
+            };
+            
             // Check if user is already signed in
             auth.onAuthStateChanged((user) => {
                 if (user) {
@@ -1997,7 +2011,7 @@
                                         
                                         // Show dashboard
                                         document.getElementById('authSection').style.display = 'none';
-                                        document.getElementById('dashboard').style.display = 'block';
+                                        document.getElementById('dashboard').classList.remove('hidden');
                                         
                                         // Initialize game
                                         initGame();
@@ -2017,7 +2031,7 @@
                                     
                                     // Show dashboard
                                     document.getElementById('authSection').style.display = 'none';
-                                    document.getElementById('dashboard').style.display = 'block';
+                                    document.getElementById('dashboard').classList.remove('hidden');
                                     
                                     // Initialize game
                                     initGame();
@@ -2026,10 +2040,8 @@
                             }
                         });
                 } else {
-                    // Hide loader after 1 second if no user is signed in
-                    setTimeout(() => {
-                        hideLoading();
-                    }, 1000);
+                    // Hide loader immediately if no user is signed in
+                    hideLoading();
                 }
             });
         });
