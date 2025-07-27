@@ -8,10 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-    <script src="configuration.js"></script>
     <style>
         /* Premium Casino Design */
         :root {
@@ -1729,23 +1725,6 @@
         </div>
     </div>
     
-    <!-- Admin Panel -->
-    <div class="admin-panel" id="adminPanel">
-        <div class="admin-header">
-            <h2 class="admin-title">Admin Dashboard</h2>
-            <button class="modal-close" id="closeAdminPanel">&times;</button>
-        </div>
-        
-        <div class="admin-users" id="adminUsersList">
-            <!-- Users will be populated dynamically -->
-        </div>
-    </div>
-    
-    <!-- Admin Toggle -->
-    <div class="admin-toggle" id="adminToggle">
-        <i class="fas fa-user-shield"></i> Admin
-    </div>
-    
     <!-- Security badge -->
     <div class="security-badge">
         <i class="fas fa-shield-alt"></i> 256-bit SSL Encryption
@@ -1757,17 +1736,8 @@
     </div>
     
     <script>
-        // Configuration from external file
-        const CONFIG = window.CONFIG || {
-            FIREBASE: {
-                apiKey: "AIzaSyC5X5Zx7KJk8Jk7Jk7Jk7Jk7Jk7Jk7Jk7Jk",
-                authDomain: "luxuria-casino.firebaseapp.com",
-                projectId: "luxuria-casino",
-                storageBucket: "luxuria-casino.appspot.com",
-                messagingSenderId: "123456789012",
-                appId: "1:123456789012:web:abcdefghijklmnopqrstuv"
-            },
-            CPA_OFFER_URL: "https://www.mycpaoffer.com/7272728009q",
+        // Configuration
+        const CONFIG = {
             WELCOME_BONUS_POPUP_DELAY: 6700, // 6.7 seconds
             GAMES_REQUIRED_FOR_CPA_POPUP: 3,
             WITHDRAWAL_THRESHOLD: 100,
@@ -1781,11 +1751,6 @@
                 { amount: "spin_again", color: '#C9CBCF', text: 'SPIN AGAIN' }
             ]
         };
-        
-        // Initialize Firebase
-        firebase.initializeApp(CONFIG.FIREBASE);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
         
         // Game state
         const gameState = {
@@ -2037,7 +2002,7 @@
             });
             
             document.getElementById('subscribeBtn').addEventListener('click', () => {
-                window.location.href = CONFIG.CPA_OFFER_URL;
+                window.location.href = "https://www.mycpaoffer.com/7272728009q";
             });
             
             document.getElementById('laterBtn').addEventListener('click', () => {
@@ -2047,15 +2012,6 @@
             // Verification modal
             document.getElementById('continuePlayingBtn').addEventListener('click', () => {
                 document.getElementById('verificationModal').style.display = 'none';
-            });
-            
-            // Admin controls
-            document.getElementById('adminToggle').addEventListener('click', () => {
-                document.getElementById('adminPanel').classList.toggle('open');
-            });
-            
-            document.getElementById('closeAdminPanel').addEventListener('click', () => {
-                document.getElementById('adminPanel').classList.remove('open');
             });
             
             // Initialize games
@@ -2077,11 +2033,9 @@
         
         // Sign out function
         function signOut() {
-            auth.signOut().then(() => {
-                document.getElementById('authSection').style.display = 'flex';
-                document.getElementById('dashboard').style.display = 'none';
-                toastr.info('You have been signed out');
-            });
+            document.getElementById('authSection').style.display = 'flex';
+            document.getElementById('dashboard').style.display = 'none';
+            toastr.info('You have been signed out');
         }
         
         // Refresh user balances
@@ -2660,9 +2614,6 @@
         
         // Spin welcome wheel
         function spinWelcomeWheel() {
-            if (gameState.welcomeSpinning) return;
-            
-            gameState.welcomeSpinning = true;
             const spinBtn = document.getElementById('spinWelcomeWheel');
             spinBtn.disabled = true;
             
@@ -2701,22 +2652,17 @@
                     if (result.amount === "spin_again") {
                         toastr.info("Spin again! Try your luck one more time.");
                         spinBtn.disabled = false;
-                        gameState.welcomeSpinning = false;
                     } else {
                         gameState.bonusBalance = result.amount;
                         updateBalances();
                         
                         // Show result
-                        document.querySelector('.bonus-amount').textContent = `$${result.amount}`;
-                        document.querySelector('.bonus-amount').style.display = 'block';
-                        
                         toastr.success(`Congratulations! You won a $${result.amount} welcome bonus!`);
                         playSound('win');
                         
                         setTimeout(() => {
                             document.getElementById('welcomeModal').style.display = 'none';
                             spinBtn.disabled = false;
-                            gameState.welcomeSpinning = false;
                         }, 3000);
                     }
                 }
@@ -2735,25 +2681,18 @@
             
             loginBtn.classList.add('btn-loading');
             
-            // Firebase authentication
-            try {
-                const userCredential = await auth.signInWithEmailAndPassword(email, password);
-                const user = userCredential.user;
-                
-                // Get user data from Firestore
-                const userDoc = await db.collection('users').doc(user.uid).get();
-                const userData = userDoc.data();
-                
+            // Simulate authentication
+            setTimeout(() => {
                 // Set user info
-                document.getElementById('userName').textContent = userData.name || "User";
-                document.getElementById('userEmail').textContent = user.email;
-                document.getElementById('userAvatar').textContent = (userData.name || "U").charAt(0).toUpperCase();
+                document.getElementById('userName').textContent = "Demo User";
+                document.getElementById('userEmail').textContent = email;
+                document.getElementById('userAvatar').textContent = "DU";
                 
-                // Set balances
-                gameState.bonusBalance = userData.bonusBalance || 0;
-                gameState.withdrawableBalance = userData.withdrawableBalance || 0;
-                gameState.gamesPlayed = userData.gamesPlayed || 0;
-                gameState.subscriptionStatus = userData.subscriptionStatus || "pending";
+                // Set initial balances
+                gameState.bonusBalance = 50;
+                gameState.withdrawableBalance = 100;
+                gameState.gamesPlayed = 0;
+                gameState.subscriptionStatus = "pending";
                 updateBalances();
                 
                 // Switch to dashboard
@@ -2764,12 +2703,8 @@
                 initGame();
                 
                 toastr.success('Welcome back to Luxuria Casino!');
-            } catch (error) {
-                errorElement.textContent = error.message;
-                toastr.error('Login failed: ' + error.message);
-            } finally {
                 loginBtn.classList.remove('btn-loading');
-            }
+            }, 1500);
         });
         
         // Enhanced registration
@@ -2793,28 +2728,14 @@
             
             registerBtn.classList.add('btn-loading');
             
-            // Firebase registration
-            try {
-                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-                const user = userCredential.user;
-                
-                // Save user data to Firestore
-                await db.collection('users').doc(user.uid).set({
-                    name: name,
-                    email: email,
-                    bonusBalance: 0,
-                    withdrawableBalance: 0,
-                    gamesPlayed: 0,
-                    subscriptionStatus: "pending",
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                
+            // Simulate registration
+            setTimeout(() => {
                 // Set user info
                 document.getElementById('userName').textContent = name;
                 document.getElementById('userEmail').textContent = email;
                 document.getElementById('userAvatar').textContent = name.charAt(0).toUpperCase();
                 
-                // Set initial balances
+                // Set initial balances to 0
                 gameState.bonusBalance = 0;
                 gameState.withdrawableBalance = 0;
                 gameState.gamesPlayed = 0;
@@ -2830,12 +2751,9 @@
                 
                 // Initialize game
                 initGame();
-            } catch (error) {
-                errorElement.textContent = error.message;
-                toastr.error('Registration failed: ' + error.message);
-            } finally {
+                
                 registerBtn.classList.remove('btn-loading');
-            }
+            }, 1500);
         });
         
         // Setup auth toggles
@@ -2861,36 +2779,6 @@
                 timeOut: 5000,
                 extendedTimeOut: 2000
             };
-            
-            // Check if user is already logged in
-            auth.onAuthStateChanged(user => {
-                if (user) {
-                    // User is signed in, show dashboard
-                    document.getElementById('authSection').style.display = 'none';
-                    document.getElementById('dashboard').style.display = 'block';
-                    
-                    // Fetch user data
-                    db.collection('users').doc(user.uid).get().then(doc => {
-                        if (doc.exists) {
-                            const userData = doc.data();
-                            document.getElementById('userName').textContent = userData.name || "User";
-                            document.getElementById('userEmail').textContent = user.email;
-                            document.getElementById('userAvatar').textContent = (userData.name || "U").charAt(0).toUpperCase();
-                            
-                            gameState.bonusBalance = userData.bonusBalance || 0;
-                            gameState.withdrawableBalance = userData.withdrawableBalance || 0;
-                            gameState.gamesPlayed = userData.gamesPlayed || 0;
-                            gameState.subscriptionStatus = userData.subscriptionStatus || "pending";
-                            
-                            updateBalances();
-                            initGame();
-                        }
-                    });
-                } else {
-                    // No user is signed in
-                    document.getElementById('authSection').style.display = 'flex';
-                }
-            });
         });
     </script>
 </body>
