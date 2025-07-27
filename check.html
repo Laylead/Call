@@ -1388,13 +1388,16 @@
         
         // Sign out function
         function signOut() {
+            showLoading();
             auth.signOut().then(() => {
                 document.getElementById('authSection').style.display = 'flex';
                 document.getElementById('dashboard').style.display = 'none';
                 toastr.info('You have been signed out');
+                hideLoading();
             }).catch((error) => {
                 console.error('Sign out error:', error);
                 toastr.error('Could not sign out. Please try again.');
+                hideLoading();
             });
         }
         
@@ -1406,7 +1409,7 @@
             const multiplierElement = document.getElementById('limboMultiplier');
             
             // Validate bet
-            if (isNaN(betAmount) {
+            if (isNaN(betAmount)) {
                 toastr.error('Please enter a valid bet amount');
                 return;
             }
@@ -1509,23 +1512,6 @@
                         
                         playBtn.disabled = false;
                         hideLoading();
-                        
-                        // Save game result to Firestore
-                        if (gameState.user) {
-                            const gameData = {
-                                game: 'limbo',
-                                bet: betAmount,
-                                target: targetMultiplier,
-                                multiplier: actualMultiplier,
-                                win: win,
-                                winAmount: winAmount,
-                                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                            };
-                            
-                            db.collection('users').doc(gameState.user.uid).collection('games').add(gameData)
-                                .then(() => console.log('Game saved to Firestore'))
-                                .catch(error => console.error('Error saving game:', error));
-                        }
                     }
                 }, 20);
             }, 1500); // Simulate server delay
@@ -1547,79 +1533,23 @@
                     const user = userCredential.user;
                     gameState.user = user;
                     
-                    // Save user to Firestore
-                    const userRef = db.collection('users').doc(user.uid);
-                    userRef.get().then(doc => {
-                        if (!doc.exists) {
-                            // Create new user document
-                            userRef.set({
-                                name: user.email.split('@')[0],
-                                email: user.email,
-                                bonusBalance: 50.00,
-                                withdrawableBalance: 0.00,
-                                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                                lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
-                                gamesPlayed: 0
-                            });
-                        } else {
-                            // Update last login
-                            userRef.update({
-                                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-                            });
-                        }
-                        
-                        // Load user data
-                        return userRef.get();
-                    }).then(doc => {
-                        if (doc.exists) {
-                            const userData = doc.data();
-                            gameState.bonusBalance = userData.bonusBalance;
-                            gameState.withdrawableBalance = userData.withdrawableBalance;
-                            gameState.gamesPlayed = userData.gamesPlayed || 0;
-                            
-                            // Load game history
-                            db.collection('users').doc(user.uid).collection('games')
-                                .where('game', '==', 'limbo')
-                                .orderBy('timestamp', 'desc')
-                                .limit(10)
-                                .get()
-                                .then(querySnapshot => {
-                                    gameState.gameHistory.limbo = [];
-                                    querySnapshot.forEach(doc => {
-                                        const game = doc.data();
-                                        gameState.gameHistory.limbo.push({
-                                            bet: game.bet,
-                                            target: game.target,
-                                            multiplier: game.multiplier,
-                                            win: game.win,
-                                            winAmount: game.winAmount,
-                                            timestamp: game.timestamp.toDate().toLocaleString()
-                                        });
-                                    });
-                                    
-                                    hideLoading();
-                                    document.getElementById('authSection').style.display = 'none';
-                                    document.getElementById('dashboard').style.display = 'block';
-                                    
-                                    // Set user info
-                                    document.getElementById('userName').textContent = userData.name;
-                                    document.getElementById('userEmail').textContent = user.email;
-                                    document.getElementById('userAvatar').textContent = userData.name[0].toUpperCase();
-                                    
-                                    document.getElementById('accountName').textContent = userData.name;
-                                    document.getElementById('accountEmail').textContent = user.email;
-                                    document.getElementById('accountAvatar').textContent = userData.name[0].toUpperCase();
-                                    document.getElementById('accountCreated').textContent = userData.createdAt ? userData.createdAt.toDate().toLocaleDateString() : 'Unknown';
-                                    document.getElementById('lastLogin').textContent = userData.lastLogin ? userData.lastLogin.toDate().toLocaleString() : 'Just now';
-                                    
-                                    // Initialize game
-                                    initGame();
-                                });
-                        } else {
-                            hideLoading();
-                            toastr.error('User data not found');
-                        }
-                    });
+                    // Set user info immediately
+                    document.getElementById('userName').textContent = user.email.split('@')[0];
+                    document.getElementById('userEmail').textContent = user.email;
+                    document.getElementById('userAvatar').textContent = user.email[0].toUpperCase();
+                    
+                    document.getElementById('accountName').textContent = user.email.split('@')[0];
+                    document.getElementById('accountEmail').textContent = user.email;
+                    document.getElementById('accountAvatar').textContent = user.email[0].toUpperCase();
+                    
+                    // Show dashboard
+                    document.getElementById('authSection').style.display = 'none';
+                    document.getElementById('dashboard').style.display = 'block';
+                    
+                    // Initialize game
+                    initGame();
+                    
+                    hideLoading();
                 })
                 .catch((error) => {
                     hideLoading();
@@ -1686,46 +1616,27 @@
                     const user = userCredential.user;
                     gameState.user = user;
                     
-                    // Create user document in Firestore
-                    db.collection('users').doc(user.uid).set({
-                        name: name,
-                        email: email,
-                        bonusBalance: 50.00,
-                        withdrawableBalance: 0.00,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                        lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
-                        gamesPlayed: 0
-                    }).then(() => {
-                        hideLoading();
-                        toastr.success('Account created successfully!');
-                        
-                        // Update UI
-                        document.getElementById('authSection').style.display = 'none';
-                        document.getElementById('dashboard').style.display = 'block';
-                        
-                        // Set user info
-                        document.getElementById('userName').textContent = name;
-                        document.getElementById('userEmail').textContent = email;
-                        document.getElementById('userAvatar').textContent = name[0].toUpperCase();
-                        
-                        document.getElementById('accountName').textContent = name;
-                        document.getElementById('accountEmail').textContent = email;
-                        document.getElementById('accountAvatar').textContent = name[0].toUpperCase();
-                        document.getElementById('accountCreated').textContent = new Date().toLocaleDateString();
-                        document.getElementById('lastLogin').textContent = 'Just now';
-                        
-                        // Set initial balances
-                        gameState.bonusBalance = 50.00;
-                        gameState.withdrawableBalance = 0.00;
-                        updateBalances();
-                        
-                        // Initialize game
-                        initGame();
-                    }).catch(error => {
-                        hideLoading();
-                        console.error('Error creating user document:', error);
-                        toastr.error('Failed to create user account. Please try again.');
-                    });
+                    // Update UI immediately
+                    document.getElementById('authSection').style.display = 'none';
+                    document.getElementById('dashboard').style.display = 'block';
+                    
+                    // Set user info
+                    document.getElementById('userName').textContent = name;
+                    document.getElementById('userEmail').textContent = email;
+                    document.getElementById('userAvatar').textContent = name[0].toUpperCase();
+                    
+                    document.getElementById('accountName').textContent = name;
+                    document.getElementById('accountEmail').textContent = email;
+                    document.getElementById('accountAvatar').textContent = name[0].toUpperCase();
+                    document.getElementById('accountCreated').textContent = new Date().toLocaleDateString();
+                    document.getElementById('lastLogin').textContent = 'Just now';
+                    
+                    // Initialize game
+                    initGame();
+                    
+                    hideLoading();
+                    
+                    toastr.success('Account created successfully!');
                 })
                 .catch((error) => {
                     hideLoading();
@@ -1747,79 +1658,33 @@
         
         // Initialize when page loads
         window.addEventListener('load', () => {
-            // Hide loading after 1.5 seconds
-            setTimeout(() => {
-                document.getElementById('loadingOverlay').style.display = 'none';
-            }, 1500);
+            // Show loading initially
+            showLoading();
             
             // Check if user is already signed in
             auth.onAuthStateChanged((user) => {
                 if (user) {
-                    gameState.user = user;
+                    // Set user info immediately
+                    document.getElementById('userName').textContent = user.email.split('@')[0];
+                    document.getElementById('userEmail').textContent = user.email;
+                    document.getElementById('userAvatar').textContent = user.email[0].toUpperCase();
                     
-                    // Load user data from Firestore
-                    db.collection('users').doc(user.uid).get()
-                        .then(doc => {
-                            if (doc.exists) {
-                                const userData = doc.data();
-                                gameState.bonusBalance = userData.bonusBalance;
-                                gameState.withdrawableBalance = userData.withdrawableBalance;
-                                gameState.gamesPlayed = userData.gamesPlayed || 0;
-                                
-                                // Set user info
-                                document.getElementById('userName').textContent = userData.name;
-                                document.getElementById('userEmail').textContent = user.email;
-                                document.getElementById('userAvatar').textContent = userData.name[0].toUpperCase();
-                                
-                                document.getElementById('accountName').textContent = userData.name;
-                                document.getElementById('accountEmail').textContent = user.email;
-                                document.getElementById('accountAvatar').textContent = userData.name[0].toUpperCase();
-                                document.getElementById('accountCreated').textContent = userData.createdAt ? userData.createdAt.toDate().toLocaleDateString() : 'Unknown';
-                                document.getElementById('lastLogin').textContent = userData.lastLogin ? userData.lastLogin.toDate().toLocaleString() : 'Just now';
-                                
-                                // Load game history
-                                db.collection('users').doc(user.uid).collection('games')
-                                    .where('game', '==', 'limbo')
-                                    .orderBy('timestamp', 'desc')
-                                    .limit(10)
-                                    .get()
-                                    .then(querySnapshot => {
-                                        gameState.gameHistory.limbo = [];
-                                        querySnapshot.forEach(doc => {
-                                            const game = doc.data();
-                                            gameState.gameHistory.limbo.push({
-                                                bet: game.bet,
-                                                target: game.target,
-                                                multiplier: game.multiplier,
-                                                win: game.win,
-                                                winAmount: game.winAmount,
-                                                timestamp: game.timestamp.toDate().toLocaleString()
-                                            });
-                                        });
-                                        
-                                        document.getElementById('authSection').style.display = 'none';
-                                        document.getElementById('dashboard').style.display = 'block';
-                                        initGame();
-                                    });
-                            } else {
-                                // Create user document if it doesn't exist
-                                db.collection('users').doc(user.uid).set({
-                                    name: user.email.split('@')[0],
-                                    email: user.email,
-                                    bonusBalance: 50.00,
-                                    withdrawableBalance: 0.00,
-                                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                                    lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
-                                    gamesPlayed: 0
-                                }).then(() => {
-                                    document.getElementById('authSection').style.display = 'none';
-                                    document.getElementById('dashboard').style.display = 'block';
-                                    initGame();
-                                });
-                            }
-                        });
+                    document.getElementById('accountName').textContent = user.email.split('@')[0];
+                    document.getElementById('accountEmail').textContent = user.email;
+                    document.getElementById('accountAvatar').textContent = user.email[0].toUpperCase();
+                    
+                    // Show dashboard
+                    document.getElementById('authSection').style.display = 'none';
+                    document.getElementById('dashboard').style.display = 'block';
+                    
+                    // Initialize game
+                    initGame();
+                    
+                    hideLoading();
                 } else {
+                    // Show auth section
                     document.getElementById('authSection').style.display = 'flex';
+                    hideLoading();
                 }
             });
         });
