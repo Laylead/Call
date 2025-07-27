@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Luxuria Casino | Premium Gaming Experience</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -24,6 +28,7 @@
             --transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             --shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
             --glow: 0 0 15px rgba(212, 175, 55, 0.4);
+            --diamond: linear-gradient(45deg, #b9f2ff, #ffffff, #b9f2ff);
         }
         
         * {
@@ -609,8 +614,8 @@
         }
         
         .wheel-container {
-            width: 300px;
-            height: 300px;
+            width: 350px;
+            height: 350px;
             position: relative;
             margin: 20px auto;
         }
@@ -635,8 +640,10 @@
             align-items: center;
             justify-content: center;
             font-weight: bold;
-            color: #000;
-            font-size: 1.2rem;
+            color: #0c0b0b;
+            font-size: 1.3rem;
+            font-weight: 700;
+            text-shadow: 0 1px 1px rgba(0,0,0,0.2);
         }
         
         .wheel-pointer {
@@ -649,6 +656,7 @@
             background: var(--gold-primary);
             clip-path: polygon(50% 100%, 0 0, 100% 0);
             z-index: 10;
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.7);
         }
         
         /* Balloon Burst Game */
@@ -1325,6 +1333,11 @@
                 padding: 20px;
             }
             
+            .wheel-container {
+                width: 280px;
+                height: 280px;
+            }
+            
             .balloon-canvas-container {
                 height: 250px;
             }
@@ -1367,9 +1380,80 @@
             border-radius: 50%;
             animation: spin 1s ease infinite;
         }
+        
+        /* Diamond effect for premium look */
+        .diamond {
+            position: absolute;
+            background: var(--diamond);
+            width: 20px;
+            height: 20px;
+            transform: rotate(45deg);
+            z-index: -1;
+            opacity: 0.3;
+            animation: float 8s infinite ease-in-out;
+        }
+        
+        .diamond:nth-child(1) { top: 10%; left: 20%; animation-delay: 0s; }
+        .diamond:nth-child(2) { top: 30%; left: 80%; animation-delay: -2s; }
+        .diamond:nth-child(3) { top: 60%; left: 40%; animation-delay: -4s; }
+        .diamond:nth-child(4) { top: 80%; left: 70%; animation-delay: -6s; }
+        .diamond:nth-child(5) { top: 40%; left: 10%; animation-delay: -1s; }
+        
+        @keyframes float {
+            0%, 100% { transform: rotate(45deg) translateY(0); }
+            50% { transform: rotate(45deg) translateY(-20px); }
+        }
+        
+        /* Professional game animations */
+        .wheel-spinning {
+            animation: spin 0.1s linear infinite;
+        }
+        
+        @keyframes balloon-rise {
+            0% { transform: translateY(300px) scale(0.8); opacity: 0; }
+            100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        
+        .balloon-rise {
+            animation: balloon-rise 0.8s ease-out;
+        }
+        
+        /* Enhanced UI elements */
+        .premium-border {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .premium-border::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, 
+                #d4af37, #f1c40f, #d4af37);
+            z-index: 2;
+        }
+        
+        .diamond-icon {
+            background: var(--diamond);
+            width: 20px;
+            height: 20px;
+            transform: rotate(45deg);
+            display: inline-block;
+            margin-right: 10px;
+        }
     </style>
 </head>
 <body>
+    <!-- Floating diamonds for premium effect -->
+    <div class="diamond"></div>
+    <div class="diamond"></div>
+    <div class="diamond"></div>
+    <div class="diamond"></div>
+    <div class="diamond"></div>
+    
     <!-- Loading overlay -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-spinner"></div>
@@ -1378,7 +1462,7 @@
     
     <!-- Welcome Bonus Modal -->
     <div class="modal-overlay" id="welcomeModal" style="display: none;">
-        <div class="modal-content">
+        <div class="modal-content premium-border">
             <button class="modal-close" id="closeWelcomeModal">&times;</button>
             <div class="modal-header">
                 <h2 class="modal-title">WELCOME BONUS!</h2>
@@ -1398,60 +1482,10 @@
         </div>
     </div>
     
-    <!-- CPA Offer Modal -->
-    <div class="modal-overlay" id="cpaModal" style="display: none;">
-        <div class="modal-content">
-            <button class="modal-close" id="closeCpaModal">&times;</button>
-            <div class="modal-header">
-                <h2 class="modal-title">PREMIUM ACCESS REQUIRED</h2>
-                <p class="modal-subtitle">To continue playing and withdrawing your winnings, you need to be a verified subscriber</p>
-            </div>
-            
-            <div class="modal-subtitle">
-                <p>We noticed you haven't subscribed to our premium gaming offers. Subscribe now to unlock:</p>
-                <ul style="text-align: left; margin: 20px auto; max-width: 400px;">
-                    <li>Full access to all games</li>
-                    <li>Higher withdrawal limits</li>
-                    <li>Exclusive bonuses</li>
-                    <li>Priority customer support</li>
-                </ul>
-            </div>
-            
-            <div class="modal-buttons">
-                <button class="modal-btn modal-btn-primary" id="subscribeBtn">
-                    <i class="fas fa-lock"></i> SUBSCRIBE NOW
-                </button>
-                <button class="modal-btn modal-btn-secondary" id="laterBtn">
-                    REMIND ME LATER
-                </button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Subscription Verification Modal -->
-    <div class="modal-overlay" id="verificationModal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title">VERIFICATION PENDING</h2>
-                <p class="modal-subtitle">We're verifying your subscription status</p>
-            </div>
-            
-            <div class="loading-spinner" style="margin: 30px auto;"></div>
-            
-            <p class="modal-subtitle">
-                This process may take up to 24 hours. In the meantime, you can continue playing our games and accumulating your winnings.
-            </p>
-            
-            <button class="play-btn" id="continuePlayingBtn">
-                <i class="fas fa-play"></i> CONTINUE PLAYING
-            </button>
-        </div>
-    </div>
-    
     <!-- Authentication Section -->
     <div class="auth-container" id="authSection">
         <div class="auth-bg"></div>
-        <div class="auth-box" id="authBox">
+        <div class="auth-box premium-border" id="authBox">
             <div class="auth-header">
                 <div class="logo">Luxuria</div>
                 <p class="auth-subtitle">Premium Casino Experience</p>
@@ -1581,11 +1615,11 @@
                         <h2 class="game-title">LIMBO</h2>
                         <p class="game-subtitle">Predict the multiplier and win big! Set your target multiplier and see if you can beat the odds.</p>
                     </div>
-                    <div class="limbo-display">
+                    <div class="limbo-display premium-border">
                         <div class="limbo-multiplier" id="limboMultiplier">1.00x</div>
                         <div class="win-animation" id="limboWinAnimation"></div>
                     </div>
-                    <div class="limbo-controls">
+                    <div class="limbo-controls premium-border">
                         <div class="bet-controls">
                             <input type="number" class="bet-amount" id="limboBetAmount" placeholder="Bet Amount" value="5.00" min="0.1" step="0.1">
                             <input type="number" class="target-multiplier" id="limboTarget" placeholder="Target Multiplier" value="2.00" min="1.01" step="0.01">
@@ -1598,7 +1632,7 @@
                             <i class="fas fa-play"></i> PLAY NOW
                         </button>
                     </div>
-                    <div class="history-container">
+                    <div class="history-container premium-border">
                         <div class="history-title">
                             <i class="fas fa-history"></i> Recent Games
                         </div>
@@ -1614,7 +1648,7 @@
                         <h2 class="game-title">WHEEL OF FORTUNE</h2>
                         <p class="game-subtitle">Spin the wheel for a chance to win up to 100x your bet! Fortune favors the bold.</p>
                     </div>
-                    <div class="wheel-display">
+                    <div class="wheel-display premium-border">
                         <div class="wheel-container">
                             <div class="wheel" id="fortuneWheel">
                                 <!-- Wheel sections will be generated dynamically -->
@@ -1622,7 +1656,7 @@
                             <div class="wheel-pointer"></div>
                         </div>
                     </div>
-                    <div class="limbo-controls">
+                    <div class="limbo-controls premium-border">
                         <div class="bet-controls">
                             <input type="number" class="bet-amount" id="wheelBetAmount" placeholder="Bet Amount" value="5.00" min="0.1" step="0.1">
                         </div>
@@ -1634,7 +1668,7 @@
                             <i class="fas fa-redo"></i> SPIN WHEEL
                         </button>
                     </div>
-                    <div class="history-container">
+                    <div class="history-container premium-border">
                         <div class="history-title">
                             <i class="fas fa-history"></i> Recent Spins
                         </div>
@@ -1650,14 +1684,14 @@
                         <h2 class="game-title">BALLOON BURST</h2>
                         <p class="game-subtitle">Place your bet and watch the balloon rise! Cash out before it bursts to multiply your winnings.</p>
                     </div>
-                    <div class="balloon-display">
+                    <div class="balloon-display premium-border">
                         <div class="balloon-canvas-container">
                             <canvas id="balloonCanvas"></canvas>
                         </div>
                         <div class="balloon-multiplier" id="balloonMultiplier">1.00x</div>
                         <div class="win-animation" id="balloonWinAnimation"></div>
                     </div>
-                    <div class="balloon-controls">
+                    <div class="balloon-controls premium-border">
                         <div class="bet-controls">
                             <input type="number" class="bet-amount" id="balloonBetAmount" placeholder="Bet Amount" value="5.00" min="0.1" step="0.1">
                         </div>
@@ -1674,7 +1708,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="history-container">
+                    <div class="history-container premium-border">
                         <div class="history-title">
                             <i class="fas fa-history"></i> Recent Games
                         </div>
@@ -1686,7 +1720,7 @@
             </div>
             
             <!-- Withdrawal Section -->
-            <div class="withdraw-container">
+            <div class="withdraw-container premium-border">
                 <div class="withdraw-header">
                     <i class="fas fa-money-check-alt"></i> Withdraw Funds
                 </div>
@@ -1736,9 +1770,24 @@
     </div>
     
     <script>
+        // Firebase configuration - REPLACE WITH YOUR FIREBASE CONFIG
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        
         // Configuration
         const CONFIG = {
-            WELCOME_BONUS_POPUP_DELAY: 6700, // 6.7 seconds
+            WELCOME_BONUS_POPUP_DELAY: 2000, // 2 seconds after login
             GAMES_REQUIRED_FOR_CPA_POPUP: 3,
             WITHDRAWAL_THRESHOLD: 100,
             WELCOME_BONUS_WHEEL: [
@@ -1759,7 +1808,7 @@
             gamesPlayed: 0,
             user: null,
             soundEnabled: true,
-            subscriptionStatus: "pending", // pending, approved, rejected
+            welcomeBonusClaimed: false,
             limbo: {
                 multiplier: 1.0,
                 target: 2.0,
@@ -1890,12 +1939,12 @@
             // Increment games played
             gameState.gamesPlayed++;
             
-            // Show CPA popup after certain number of games
-            if (gameState.gamesPlayed === CONFIG.GAMES_REQUIRED_FOR_CPA_POPUP && 
-                gameState.subscriptionStatus === "pending") {
-                setTimeout(() => {
-                    document.getElementById('cpaModal').style.display = 'flex';
-                }, 2000);
+            // Save to Firestore
+            if (gameState.user) {
+                db.collection('users').doc(gameState.user.uid).update({
+                    [`gameHistory.${gameType}`]: firebase.firestore.FieldValue.arrayUnion(result),
+                    gamesPlayed: gameState.gamesPlayed
+                });
             }
         }
         
@@ -1996,32 +2045,16 @@
             
             document.getElementById('spinWelcomeWheel').addEventListener('click', spinWelcomeWheel);
             
-            // CPA modal controls
-            document.getElementById('closeCpaModal').addEventListener('click', () => {
-                document.getElementById('cpaModal').style.display = 'none';
-            });
-            
-            document.getElementById('subscribeBtn').addEventListener('click', () => {
-                window.location.href = "https://www.mycpaoffer.com/7272728009q";
-            });
-            
-            document.getElementById('laterBtn').addEventListener('click', () => {
-                document.getElementById('cpaModal').style.display = 'none';
-            });
-            
-            // Verification modal
-            document.getElementById('continuePlayingBtn').addEventListener('click', () => {
-                document.getElementById('verificationModal').style.display = 'none';
-            });
-            
             // Initialize games
             initBalloonGame();
             initWheels();
             
-            // Show welcome bonus after delay
-            setTimeout(() => {
-                document.getElementById('welcomeModal').style.display = 'flex';
-            }, CONFIG.WELCOME_BONUS_POPUP_DELAY);
+            // Show welcome bonus if not claimed
+            if (!gameState.welcomeBonusClaimed) {
+                setTimeout(() => {
+                    document.getElementById('welcomeModal').style.display = 'flex';
+                }, CONFIG.WELCOME_BONUS_POPUP_DELAY);
+            }
         }
         
         // Toggle sound effects
@@ -2033,14 +2066,27 @@
         
         // Sign out function
         function signOut() {
-            document.getElementById('authSection').style.display = 'flex';
-            document.getElementById('dashboard').style.display = 'none';
-            toastr.info('You have been signed out');
+            auth.signOut().then(() => {
+                document.getElementById('authSection').style.display = 'flex';
+                document.getElementById('dashboard').style.display = 'none';
+                toastr.info('You have been signed out');
+            }).catch(error => {
+                toastr.error('Sign out failed: ' + error.message);
+            });
         }
         
         // Refresh user balances
         function refreshBalances() {
-            toastr.success('Balances refreshed');
+            if (gameState.user) {
+                db.collection('users').doc(gameState.user.uid).get().then(doc => {
+                    if (doc.exists) {
+                        gameState.bonusBalance = doc.data().bonusBalance;
+                        gameState.withdrawableBalance = doc.data().withdrawableBalance;
+                        updateBalances();
+                        toastr.success('Balances refreshed');
+                    }
+                });
+            }
         }
         
         // Request withdrawal
@@ -2068,6 +2114,14 @@
             setTimeout(() => {
                 gameState.withdrawableBalance -= amount;
                 updateBalances();
+                
+                // Update Firestore
+                if (gameState.user) {
+                    db.collection('users').doc(gameState.user.uid).update({
+                        withdrawableBalance: gameState.withdrawableBalance
+                    });
+                }
+                
                 hideLoading();
                 toastr.success(`Withdrawal request for $${formatCurrency(amount)} has been submitted! Processing may take 24-48 hours.`);
             }, 2000);
@@ -2339,6 +2393,14 @@
                     // Save to history
                     saveGameResult('limbo', historyResult);
                     
+                    // Update Firestore
+                    if (gameState.user) {
+                        db.collection('users').doc(gameState.user.uid).update({
+                            bonusBalance: gameState.bonusBalance,
+                            withdrawableBalance: gameState.withdrawableBalance
+                        });
+                    }
+                    
                     updateBalances();
                     
                     playBtn.disabled = false;
@@ -2463,6 +2525,14 @@
                     
                     // Save to history
                     saveGameResult('wheel', historyResult);
+                    
+                    // Update Firestore
+                    if (gameState.user) {
+                        db.collection('users').doc(gameState.user.uid).update({
+                            bonusBalance: gameState.bonusBalance,
+                            withdrawableBalance: gameState.withdrawableBalance
+                        });
+                    }
                     
                     updateBalances();
                     spinBtn.disabled = false;
@@ -2597,6 +2667,14 @@
             // Save to history
             saveGameResult('balloon', historyResult);
             
+            // Update Firestore
+            if (gameState.user) {
+                db.collection('users').doc(gameState.user.uid).update({
+                    bonusBalance: gameState.bonusBalance,
+                    withdrawableBalance: gameState.withdrawableBalance
+                });
+            }
+            
             // Show win animation
             createWinAnimation('balloonWinAnimation');
             
@@ -2654,7 +2732,16 @@
                         spinBtn.disabled = false;
                     } else {
                         gameState.bonusBalance = result.amount;
+                        gameState.welcomeBonusClaimed = true;
                         updateBalances();
+                        
+                        // Update Firestore
+                        if (gameState.user) {
+                            db.collection('users').doc(gameState.user.uid).update({
+                                bonusBalance: gameState.bonusBalance,
+                                welcomeBonusClaimed: true
+                            });
+                        }
                         
                         // Show result
                         toastr.success(`Congratulations! You won a $${result.amount} welcome bonus!`);
@@ -2681,30 +2768,57 @@
             
             loginBtn.classList.add('btn-loading');
             
-            // Simulate authentication
-            setTimeout(() => {
-                // Set user info
-                document.getElementById('userName').textContent = "Demo User";
-                document.getElementById('userEmail').textContent = email;
-                document.getElementById('userAvatar').textContent = "DU";
-                
-                // Set initial balances
-                gameState.bonusBalance = 50;
-                gameState.withdrawableBalance = 100;
-                gameState.gamesPlayed = 0;
-                gameState.subscriptionStatus = "pending";
-                updateBalances();
-                
-                // Switch to dashboard
-                document.getElementById('authSection').style.display = 'none';
-                document.getElementById('dashboard').style.display = 'block';
-                
-                // Initialize game
-                initGame();
-                
-                toastr.success('Welcome back to Luxuria Casino!');
-                loginBtn.classList.remove('btn-loading');
-            }, 1500);
+            // Firebase authentication
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    const user = userCredential.user;
+                    gameState.user = user;
+                    
+                    // Get user data from Firestore
+                    db.collection('users').doc(user.uid).get()
+                        .then(doc => {
+                            if (doc.exists) {
+                                const userData = doc.data();
+                                gameState.bonusBalance = userData.bonusBalance;
+                                gameState.withdrawableBalance = userData.withdrawableBalance;
+                                gameState.gamesPlayed = userData.gamesPlayed || 0;
+                                gameState.welcomeBonusClaimed = userData.welcomeBonusClaimed || false;
+                                gameState.gameHistory = userData.gameHistory || {
+                                    limbo: [],
+                                    wheel: [],
+                                    balloon: []
+                                };
+                                
+                                // Set user info
+                                document.getElementById('userName').textContent = userData.name;
+                                document.getElementById('userEmail').textContent = user.email;
+                                document.getElementById('userAvatar').textContent = userData.name.charAt(0).toUpperCase();
+                                
+                                // Switch to dashboard
+                                document.getElementById('authSection').style.display = 'none';
+                                document.getElementById('dashboard').style.display = 'block';
+                                
+                                // Initialize game
+                                initGame();
+                                updateBalances();
+                                
+                                toastr.success('Welcome back to Luxuria Casino!');
+                            } else {
+                                toastr.error('User data not found');
+                            }
+                            loginBtn.classList.remove('btn-loading');
+                        })
+                        .catch(error => {
+                            toastr.error('Error getting user data: ' + error.message);
+                            loginBtn.classList.remove('btn-loading');
+                        });
+                })
+                .catch((error) => {
+                    const errorMessage = error.message;
+                    errorElement.textContent = errorMessage;
+                    toastr.error('Login failed: ' + errorMessage);
+                    loginBtn.classList.remove('btn-loading');
+                });
         });
         
         // Enhanced registration
@@ -2728,32 +2842,63 @@
             
             registerBtn.classList.add('btn-loading');
             
-            // Simulate registration
-            setTimeout(() => {
-                // Set user info
-                document.getElementById('userName').textContent = name;
-                document.getElementById('userEmail').textContent = email;
-                document.getElementById('userAvatar').textContent = name.charAt(0).toUpperCase();
-                
-                // Set initial balances to 0
-                gameState.bonusBalance = 0;
-                gameState.withdrawableBalance = 0;
-                gameState.gamesPlayed = 0;
-                gameState.subscriptionStatus = "pending";
-                updateBalances();
-                
-                // Show welcome modal
-                document.getElementById('welcomeModal').style.display = 'flex';
-                
-                // Switch to dashboard
-                document.getElementById('authSection').style.display = 'none';
-                document.getElementById('dashboard').style.display = 'block';
-                
-                // Initialize game
-                initGame();
-                
-                registerBtn.classList.remove('btn-loading');
-            }, 1500);
+            // Firebase registration
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    const user = userCredential.user;
+                    gameState.user = user;
+                    
+                    // Create user document in Firestore
+                    db.collection('users').doc(user.uid).set({
+                        name: name,
+                        email: email,
+                        bonusBalance: 0,
+                        withdrawableBalance: 0,
+                        gamesPlayed: 0,
+                        welcomeBonusClaimed: false,
+                        gameHistory: {
+                            limbo: [],
+                            wheel: [],
+                            balloon: []
+                        },
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    })
+                    .then(() => {
+                        // Set initial state
+                        gameState.bonusBalance = 0;
+                        gameState.withdrawableBalance = 0;
+                        gameState.gamesPlayed = 0;
+                        gameState.welcomeBonusClaimed = false;
+                        
+                        // Set user info
+                        document.getElementById('userName').textContent = name;
+                        document.getElementById('userEmail').textContent = email;
+                        document.getElementById('userAvatar').textContent = name.charAt(0).toUpperCase();
+                        
+                        // Show welcome modal
+                        document.getElementById('welcomeModal').style.display = 'flex';
+                        
+                        // Switch to dashboard
+                        document.getElementById('authSection').style.display = 'none';
+                        document.getElementById('dashboard').style.display = 'block';
+                        
+                        // Initialize game
+                        initGame();
+                        updateBalances();
+                        
+                        registerBtn.classList.remove('btn-loading');
+                    })
+                    .catch(error => {
+                        toastr.error('Error creating user data: ' + error.message);
+                        registerBtn.classList.remove('btn-loading');
+                    });
+                })
+                .catch((error) => {
+                    const errorMessage = error.message;
+                    errorElement.textContent = errorMessage;
+                    toastr.error('Registration failed: ' + errorMessage);
+                    registerBtn.classList.remove('btn-loading');
+                });
         });
         
         // Setup auth toggles
@@ -2767,6 +2912,53 @@
             e.preventDefault();
             document.getElementById('registerForm').style.display = 'none';
             document.getElementById('loginForm').style.display = 'block';
+        });
+        
+        // Check auth state
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                gameState.user = user;
+                
+                // Get user data from Firestore
+                db.collection('users').doc(user.uid).get()
+                    .then(doc => {
+                        if (doc.exists) {
+                            const userData = doc.data();
+                            gameState.bonusBalance = userData.bonusBalance;
+                            gameState.withdrawableBalance = userData.withdrawableBalance;
+                            gameState.gamesPlayed = userData.gamesPlayed || 0;
+                            gameState.welcomeBonusClaimed = userData.welcomeBonusClaimed || false;
+                            gameState.gameHistory = userData.gameHistory || {
+                                limbo: [],
+                                wheel: [],
+                                balloon: []
+                            };
+                            
+                            // Set user info
+                            document.getElementById('userName').textContent = userData.name;
+                            document.getElementById('userEmail').textContent = user.email;
+                            document.getElementById('userAvatar').textContent = userData.name.charAt(0).toUpperCase();
+                            
+                            // Switch to dashboard
+                            document.getElementById('authSection').style.display = 'none';
+                            document.getElementById('dashboard').style.display = 'block';
+                            
+                            // Initialize game
+                            initGame();
+                            updateBalances();
+                            
+                            // Show welcome bonus if not claimed
+                            if (!gameState.welcomeBonusClaimed) {
+                                setTimeout(() => {
+                                    document.getElementById('welcomeModal').style.display = 'flex';
+                                }, CONFIG.WELCOME_BONUS_POPUP_DELAY);
+                            }
+                        }
+                    });
+            } else {
+                document.getElementById('authSection').style.display = 'flex';
+                document.getElementById('dashboard').style.display = 'none';
+            }
         });
         
         // Initialize when page loads
