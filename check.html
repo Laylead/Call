@@ -1,244 +1,248 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WinZone - Play and Earn</title>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-  <script src="configuration.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Casino Play & Earn</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(to bottom, #1e1e1e, #2e2e2e);
-      color: white;
+      font-family: Arial, sans-serif;
       margin: 0;
       padding: 0;
+      background: #111;
+      color: #fff;
     }
-    .container {
-      max-width: 400px;
-      margin: auto;
-      padding: 20px;
-      background: #292929;
-      border-radius: 10px;
-      box-shadow: 0 0 15px rgba(0,0,0,0.5);
-      margin-top: 40px;
-    }
-    h2 {
+    header, footer {
+      background: #222;
+      padding: 15px;
       text-align: center;
-      margin-bottom: 20px;
     }
-    input, select, button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      margin-bottom: 20px;
-      border-radius: 5px;
-      border: none;
-    }
-    button {
-      background-color: #00b894;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    #dashboard, #gameSection, #withdrawSection {
+    #main, #loginSection, #adminPanel, #gameSection, #withdrawSection {
       display: none;
+      padding: 20px;
+    }
+    .visible {
+      display: block;
+    }
+    .btn {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    input, select {
+      padding: 10px;
+      margin: 10px;
+      width: 100%;
+      max-width: 400px;
+    }
+    .game-card {
+      background: #222;
+      margin: 10px;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.05);
+    }
+    .game-card h3 {
+      margin: 0 0 10px;
     }
     .popup {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0,0,0,0.7);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 999;
-      display: none;
-    }
-    .popup-content {
-      background: white;
-      color: black;
-      padding: 30px;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #444;
+      color: white;
+      padding: 15px;
       border-radius: 10px;
-      max-width: 300px;
-      text-align: center;
+      display: none;
+      z-index: 9999;
     }
   </style>
+  <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script defer src="configuration.js"></script>
 </head>
 <body>
-<div class="container" id="authSection">
-  <h2>WinZone Login</h2>
-  <input type="email" id="email" placeholder="Email">
-  <input type="password" id="password" placeholder="Password">
-  <button onclick="login()">Login</button>
-  <p style="text-align:center;">or</p>
-  <button onclick="signup()">Sign Up</button>
-</div>
+  <header>
+    <h1>🎰 Casino Play & Earn Platform</h1>
+  </header>
 
-<div class="container" id="dashboard">
-  <h2>Welcome <span id="usernameDisplay"></span></h2>
-  <p>Balance: <strong id="balanceDisplay">0</strong> USDT</p>
-  <button onclick="showGameSection()">Play Game</button>
-  <button onclick="showWithdraw()">Withdraw</button>
-  <button onclick="logout()">Logout</button>
-</div>
+  <div id="popup" class="popup"></div>
 
-<div class="container" id="gameSection">
-  <h2>Spin the Wheel</h2>
-  <select id="wheelOptions">
-    <option value="10">+10</option>
-    <option value="20">+20</option>
-    <option value="-10">-10</option>
-    <option value="50">+50</option>
-  </select>
-  <button onclick="spinWheel()">Spin</button>
-  <button onclick="backToDashboard()">Back</button>
-</div>
+  <div id="loginSection" class="visible">
+    <h2>Login or Signup</h2>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button class="btn" onclick="login()">Login</button>
+    <button class="btn" onclick="signup()">Signup</button>
+  </div>
 
-<div class="container" id="withdrawSection">
-  <h2>Withdraw</h2>
-  <select id="withdrawType">
-    <option value="usdt">USDT (TRC20)</option>
-    <option value="bank">Bank Account</option>
-  </select>
-  <input type="text" id="withdrawAccount" placeholder="Address / Account Number">
-  <input type="number" id="withdrawAmount" placeholder="Amount">
-  <button onclick="requestWithdraw()">Submit Request</button>
-  <button onclick="backToDashboard()">Back</button>
-</div>
+  <div id="main">
+    <button class="btn" onclick="showGameSection()">🎮 Play Games</button>
+    <button class="btn" onclick="showWithdraw()">💵 Withdraw</button>
+    <button class="btn" onclick="logout()">🚪 Logout</button>
+  </div>
 
-<div class="popup" id="popup">
-  <div class="popup-content" id="popupMsg"></div>
-</div>
+  <div id="gameSection">
+    <h2>Games</h2>
+    <div class="game-card">
+      <h3>🎡 Spin The Wheel</h3>
+      <button class="btn" onclick="playSpinWheel()">Play</button>
+    </div>
+    <div class="game-card">
+      <h3>🎲 Guess The Box</h3>
+      <button class="btn" onclick="playGuessBox()">Play</button>
+    </div>
+    <div class="game-card">
+      <h3>🏃 Dodge Game</h3>
+      <button class="btn" onclick="playDodge()">Play</button>
+    </div>
+    <div class="game-card">
+      <h3>📉 Limbo</h3>
+      <button class="btn" onclick="playLimbo()">Play</button>
+    </div>
+    <button class="btn" onclick="backToMain()">🔙 Back</button>
+  </div>
 
-<script>
-let currentUser = null;
+  <div id="withdrawSection">
+    <h2>Withdraw Earnings</h2>
+    <select id="withdrawType">
+      <option value="usdt">TRC20 USDT</option>
+      <option value="bank">Bank Account</option>
+    </select>
+    <input type="text" id="withdrawDetails" placeholder="Wallet address or Bank details">
+    <input type="number" id="withdrawAmount" placeholder="Amount">
+    <button class="btn" onclick="submitWithdraw()">Submit</button>
+    <button class="btn" onclick="backToMain()">🔙 Back</button>
+  </div>
 
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
+  <footer>
+    <p>&copy; 2025 Casino Play & Earn</p>
+  </footer>
 
-function show(id) {
-  document.querySelectorAll('.container').forEach(e => e.style.display = 'none');
-  document.getElementById(id).style.display = 'block';
-}
+  <script>
+    let currentUser = null;
+    const popup = document.getElementById('popup');
 
-function showPopup(msg) {
-  document.getElementById("popupMsg").innerText = msg;
-  document.getElementById("popup").style.display = 'flex';
-  setTimeout(() => document.getElementById("popup").style.display = 'none', 3000);
-}
+    function showPopup(msg) {
+      popup.innerText = msg;
+      popup.style.display = 'block';
+      setTimeout(() => popup.style.display = 'none', 3000);
+    }
 
-function signup() {
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-  auth.createUserWithEmailAndPassword(email, password).then(user => {
-    const uid = user.user.uid;
-    db.collection("users").doc(uid).set({
-      email,
-      balance: 100,
-      plays: 0
+    function login() {
+      const email = email.value;
+      const password = password.value;
+      firebase.auth().signInWithEmailAndPassword(email, password).then(cred => {
+        currentUser = cred.user;
+        document.getElementById('loginSection').classList.remove('visible');
+        document.getElementById('main').classList.add('visible');
+        showPopup('Logged in successfully');
+      }).catch(e => showPopup(e.message));
+    }
+
+    function signup() {
+      const email = email.value;
+      const password = password.value;
+      firebase.auth().createUserWithEmailAndPassword(email, password).then(cred => {
+        firebase.firestore().collection('users').doc(cred.user.uid).set({ balance: 0 });
+        showPopup('Signup successful! You got 5 USDT welcome bonus');
+        login();
+      }).catch(e => showPopup(e.message));
+    }
+
+    function logout() {
+      firebase.auth().signOut();
+      location.reload();
+    }
+
+    function showGameSection() {
+      hideAll();
+      document.getElementById('gameSection').classList.add('visible');
+    }
+
+    function showWithdraw() {
+      hideAll();
+      document.getElementById('withdrawSection').classList.add('visible');
+    }
+
+    function backToMain() {
+      hideAll();
+      document.getElementById('main').classList.add('visible');
+    }
+
+    function hideAll() {
+      document.getElementById('main').classList.remove('visible');
+      document.getElementById('gameSection').classList.remove('visible');
+      document.getElementById('withdrawSection').classList.remove('visible');
+    }
+
+    function updateBalance(diff) {
+      const userRef = firebase.firestore().collection('users').doc(currentUser.uid);
+      userRef.get().then(doc => {
+        let bal = doc.data().balance + diff;
+        if (bal < 0) bal = 0;
+        userRef.update({ balance: bal });
+        showPopup(`New balance: ${bal} USDT`);
+      });
+    }
+
+    function playSpinWheel() {
+      const outcomes = ["+1", "+2", "+0", "-1"];
+      const result = outcomes[Math.floor(Math.random() * outcomes.length)];
+      const sound = new Audio(result.startsWith('+') ? 'win.mp3' : 'fail.mp3');
+      sound.play();
+      const value = parseInt(result);
+      updateBalance(value);
+      showPopup(`Spin Result: ${result}`);
+    }
+
+    function playGuessBox() {
+      const result = Math.random() < 0.5 ? +2 : -1;
+      updateBalance(result);
+      showPopup(`Guess result: ${result > 0 ? '+2 USDT' : '-1 USDT'}`);
+    }
+
+    function playDodge() {
+      const result = Math.random() < 0.4 ? +3 : -2;
+      updateBalance(result);
+      showPopup(`Dodge result: ${result > 0 ? '+3 USDT' : '-2 USDT'}`);
+    }
+
+    function playLimbo() {
+      const result = Math.random() < 0.3 ? +5 : -3;
+      updateBalance(result);
+      showPopup(`Limbo result: ${result > 0 ? '+5 USDT' : '-3 USDT'}`);
+    }
+
+    function submitWithdraw() {
+      const details = document.getElementById('withdrawDetails').value;
+      const amount = parseFloat(document.getElementById('withdrawAmount').value);
+      const method = document.getElementById('withdrawType').value;
+      firebase.firestore().collection('withdrawals').add({
+        uid: currentUser.uid,
+        method,
+        details,
+        amount,
+        timestamp: Date.now(),
+        status: 'pending'
+      });
+      showPopup('Withdraw request submitted');
+    }
+
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) {
+        currentUser = user;
+        document.getElementById('loginSection').classList.remove('visible');
+        document.getElementById('main').classList.add('visible');
+        showPopup('Welcome back!');
+      }
     });
-    showPopup("Account created! Welcome bonus 100 USDT");
-    currentUser = user.user;
-    updateDashboard();
-    show('dashboard');
-  }).catch(e => showPopup(e.message));
-}
-
-function login() {
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-  auth.signInWithEmailAndPassword(email, password).then(user => {
-    currentUser = user.user;
-    updateDashboard();
-    show('dashboard');
-  }).catch(e => showPopup(e.message));
-}
-
-function logout() {
-  auth.signOut();
-  show('authSection');
-}
-
-auth.onAuthStateChanged(user => {
-  if (user) {
-    currentUser = user;
-    updateDashboard();
-    show('dashboard');
-  } else {
-    show('authSection');
-  }
-});
-
-function updateDashboard() {
-  db.collection("users").doc(currentUser.uid).get().then(doc => {
-    const data = doc.data();
-    document.getElementById("usernameDisplay").innerText = data.email;
-    document.getElementById("balanceDisplay").innerText = data.balance;
-  });
-}
-
-function showGameSection() {
-  show('gameSection');
-}
-
-function backToDashboard() {
-  show('dashboard');
-  updateDashboard();
-}
-
-function spinWheel() {
-  const value = parseInt(document.getElementById("wheelOptions").value);
-  const userRef = db.collection("users").doc(currentUser.uid);
-
-  userRef.get().then(doc => {
-    const data = doc.data();
-    let newBalance = data.balance + value;
-    if (newBalance < 0) newBalance = 0;
-    userRef.update({
-      balance: newBalance,
-      plays: (data.plays || 0) + 1
-    }).then(() => {
-      showPopup(value > 0 ? `You won ${value} USDT!` : `You lost ${-value} USDT.`);
-      updateDashboard();
-    });
-  });
-}
-
-function showWithdraw() {
-  show('withdrawSection');
-}
-
-function requestWithdraw() {
-  const type = document.getElementById("withdrawType").value;
-  const account = document.getElementById("withdrawAccount").value;
-  const amount = parseInt(document.getElementById("withdrawAmount").value);
-  if (!account || isNaN(amount) || amount <= 0) return showPopup("Invalid withdrawal request");
-
-  const userRef = db.collection("users").doc(currentUser.uid);
-  userRef.get().then(doc => {
-    const data = doc.data();
-    if (data.balance < amount) return showPopup("Insufficient balance");
-    db.collection("withdrawals").add({
-      uid: currentUser.uid,
-      email: data.email,
-      amount,
-      account,
-      type,
-      status: "pending",
-      created: Date.now()
-    }).then(() => {
-      userRef.update({ balance: data.balance - amount });
-      showPopup("Withdrawal requested!");
-      backToDashboard();
-    });
-  });
-}
-</script>
+  </script>
 </body>
 </html>
