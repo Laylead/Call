@@ -2,239 +2,257 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <title>Casino Live App</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BetFun Casino</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap">
+  <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script defer src="configuration.js"></script>
   <style>
     body {
-      margin: 0;
-      font-family: 'Orbitron', sans-serif;
-      background: #111;
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0; padding: 0;
+      background: #1e1e2f;
       color: #fff;
-      overflow-x: hidden;
     }
-    header {
-      background: linear-gradient(45deg, #222, #333);
-      padding: 1rem;
-      text-align: center;
-      font-size: 2rem;
-    }
-    .login-container, .game-container, .admin-dashboard {
-      display: none;
+    .container {
+      max-width: 500px;
+      margin: auto;
       padding: 20px;
     }
-    .active {
-      display: block;
+    input, button, select {
+      width: 100%; padding: 10px; margin: 5px 0;
+      border: none; border-radius: 5px;
     }
-    button {
-      padding: 10px 20px;
-      background: gold;
-      border: none;
-      border-radius: 8px;
+    .game, .admin-panel, .withdrawal-panel {
+      display: none;
+      background: #2c2c3c;
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+    .btn {
+      background: #00b894;
+      color: white;
       font-weight: bold;
       cursor: pointer;
     }
-    .wheel, .game, .popup, .admin-settings {
-      margin: 20px auto;
-      max-width: 500px;
-      background: #222;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px #000;
-    }
-    .game {
-      background: #1b1b1b;
+    .btn:disabled {
+      background: #555;
     }
     .popup {
-      background: rgba(0,0,0,0.9);
       position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      top: 20%;
+      left: 10%;
+      right: 10%;
+      background: #333;
+      padding: 20px;
+      text-align: center;
       z-index: 99;
-    }
-    .hidden {
+      border-radius: 10px;
       display: none;
+      animation: pop 0.3s ease-in-out;
+    }
+    @keyframes pop {
+      0% { transform: scale(0.7); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
     }
   </style>
 </head>
 <body>
-  <header>BetFun Casino</header>
+  <div class="container">
+    <h2>Casino Game Platform</h2>
 
-  <div class="login-container active" id="auth">
-    <h2>Login / Signup</h2>
-    <input type="email" id="email" placeholder="Email"><br><br>
-    <input type="password" id="password" placeholder="Password"><br><br>
-    <button onclick="login()">Login</button>
-    <button onclick="signup()">Signup</button>
-  </div>
-
-  <div class="game-container" id="main">
-    <div id="balance-display">Balance: 0 credits</div>
-
-    <div class="wheel" id="welcome-wheel">
-      <h3>Welcome Spin (Bonus)</h3>
-      <button onclick="spinWheel()">Spin</button>
-      <div id="wheel-result"></div>
+    <!-- Auth Section -->
+    <div id="auth-section">
+      <input id="email" placeholder="Email">
+      <input id="password" type="password" placeholder="Password">
+      <button class="btn" onclick="signup()">Sign Up</button>
+      <button class="btn" onclick="login()">Login</button>
     </div>
 
-    <div class="game" id="games">
-      <h3>Casino Games</h3>
-      <button onclick="playLimbo()">Limbo</button>
-      <button onclick="playGuessBox()">Guess the Box</button>
-      <button onclick="playDodge()">Dodge Game</button>
+    <!-- Admin Panel -->
+    <div class="admin-panel" id="admin-panel">
+      <h3>Admin Panel</h3>
+      <input id="cpa-url" placeholder="CPA Offer URL">
+      <button onclick="updateCPA()" class="btn">Update CPA Link</button>
+      <h4>Withdrawals:</h4>
+      <div id="withdrawals"></div>
     </div>
-  </div>
 
-  <div class="admin-dashboard" id="admin">
-    <h2>Admin Panel</h2>
-    <label>CPA Offer URL:</label>
-    <input type="text" id="cpa-url"><br><br>
-    <button onclick="saveCPAUrl()">Save URL</button>
-    <div id="admin-status"></div>
-  </div>
-
-  <div class="popup hidden" id="cpa-wall">
-    <div>
-      <h3>Access Restricted</h3>
-      <p>Complete a quick task to continue.</p>
-      <button onclick="redirectToCPA()">Subscribe</button>
+    <!-- Game Section -->
+    <div class="game" id="game-section">
+      <h3>Balance: <span id="balance">0</span> USDT</h3>
+      <button class="btn" onclick="playSpin()">🎡 Spin the Wheel</button>
+      <button class="btn" onclick="playLimbo()">🎯 Limbo</button>
+      <button class="btn" onclick="playGuess()">🎁 Guess the Box</button>
+      <button class="btn" onclick="playDodge()">🏃‍♂️ Dodge</button>
+      <button class="btn" onclick="requestWithdraw()">💸 Withdraw</button>
     </div>
-  </div>
 
-  <div class="popup hidden" id="cpa-return">
-    <div>
-      <h3>Did you complete the task?</h3>
-      <button onclick="cpaResponse('yes')">Yes</button>
-      <button onclick="cpaResponse('no')">No</button>
+    <!-- Withdraw Panel -->
+    <div class="withdrawal-panel" id="withdraw-panel">
+      <h3>Withdraw Funds</h3>
+      <select id="withdraw-method">
+        <option value="usdt">TRC20 USDT</option>
+        <option value="bank">Bank Account</option>
+      </select>
+      <input id="withdraw-details" placeholder="Enter wallet or account details">
+      <input id="withdraw-amount" type="number" placeholder="Amount">
+      <button class="btn" onclick="submitWithdraw()">Submit Request</button>
     </div>
   </div>
 
-  <script src="/configuration.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
+  <div id="popup" class="popup"></div>
+
+  <audio id="win-sound" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
+  <audio id="fail-sound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
+
   <script>
-    let app, auth, db, user;
+    let app, auth, db, user, playCount = 0, cpaLink = "", balance = 0;
 
-    window.onload = async () => {
+    setTimeout(() => {
       app = firebase.initializeApp(firebaseConfig);
       auth = firebase.auth();
       db = firebase.firestore();
+    }, 1000);
 
-      auth.onAuthStateChanged(async u => {
-        if (u) {
-          user = u;
-          const isAdmin = u.email === 'admin@example.com';
-          document.getElementById('auth').classList.remove('active');
-          if (isAdmin) {
-            document.getElementById('admin').classList.add('active');
-            loadCPAUrl();
-          } else {
-            document.getElementById('main').classList.add('active');
-            loadBalance();
-          }
-        }
-      });
-    };
+    function showPopup(msg) {
+      const popup = document.getElementById("popup");
+      popup.innerText = msg;
+      popup.style.display = "block";
+      setTimeout(() => popup.style.display = "none", 3000);
+    }
 
     function signup() {
-      const email = document.getElementById('email').value;
-      const pass = document.getElementById('password').value;
-      auth.createUserWithEmailAndPassword(email, pass);
+      const email = email.value, password = password.value;
+      auth.createUserWithEmailAndPassword(email, password).then(cred => {
+        db.collection("users").doc(cred.user.uid).set({ balance: 10, plays: 0, completedCPA: false });
+        login();
+      }).catch(e => showPopup(e.message));
     }
 
     function login() {
-      const email = document.getElementById('email').value;
-      const pass = document.getElementById('password').value;
-      auth.signInWithEmailAndPassword(email, pass);
+      const email = email.value, password = password.value;
+      auth.signInWithEmailAndPassword(email, password).then(cred => {
+        user = cred.user;
+        loadUser();
+      }).catch(e => showPopup(e.message));
     }
 
-    async function loadBalance() {
-      const doc = await db.collection('users').doc(user.uid).get();
-      if (!doc.exists) await db.collection('users').doc(user.uid).set({ balance: 0, plays: 0 });
-      document.getElementById('balance-display').innerText = `Balance: ${doc.data().balance} credits`;
-    }
-
-    async function spinWheel() {
-      const reward = Math.floor(Math.random() * 11) + 20;
-      await db.collection('users').doc(user.uid).update({
-        balance: firebase.firestore.FieldValue.increment(reward)
+    function loadUser() {
+      db.collection("users").doc(user.uid).onSnapshot(doc => {
+        if (!doc.exists) return;
+        let data = doc.data();
+        balance = data.balance || 0;
+        playCount = data.plays || 0;
+        cpaLink = data.cpaLink || "";
+        document.getElementById("balance").innerText = balance;
+        document.getElementById("auth-section").style.display = "none";
+        if (user.email === "admin@admin.com") {
+          document.getElementById("admin-panel").style.display = "block";
+          loadWithdrawals();
+        } else {
+          document.getElementById("game-section").style.display = "block";
+        }
       });
-      document.getElementById('wheel-result').innerText = `You won ${reward} credits!`;
-      loadBalance();
+    }
+
+    function updateBalance(delta) {
+      balance += delta;
+      playCount++;
+      db.collection("users").doc(user.uid).update({ balance, plays: playCount });
+      document.getElementById("balance").innerText = balance;
+      if (playCount >= 4) showPopup("Complete offer to withdraw!"), window.open(cpaLink, "_blank");
+    }
+
+    function playSpin() {
+      const outcomes = [0, 2, 5, 10, "-", 3];
+      const result = outcomes[Math.floor(Math.random() * outcomes.length)];
+      if (result === "-") {
+        document.getElementById("fail-sound").play();
+        updateBalance(-2);
+        showPopup("Oh no! You lost 2 USDT!");
+      } else {
+        document.getElementById("win-sound").play();
+        updateBalance(result);
+        showPopup("You won " + result + " USDT!");
+      }
     }
 
     function playLimbo() {
-      playGame('Limbo', 5, Math.random() < 0.5);
+      let chance = Math.random();
+      if (chance > 0.7) {
+        updateBalance(5);
+        document.getElementById("win-sound").play();
+        showPopup("You beat Limbo! +5 USDT");
+      } else {
+        updateBalance(-1);
+        document.getElementById("fail-sound").play();
+        showPopup("You lost Limbo! -1 USDT");
+      }
     }
 
-    function playGuessBox() {
-      playGame('Guess Box', 10, Math.random() < 0.4);
+    function playGuess() {
+      const correct = Math.floor(Math.random() * 3);
+      const choice = Math.floor(Math.random() * 3);
+      if (choice === correct) {
+        updateBalance(4);
+        document.getElementById("win-sound").play();
+        showPopup("Right box! +4 USDT");
+      } else {
+        updateBalance(-2);
+        document.getElementById("fail-sound").play();
+        showPopup("Wrong box! -2 USDT");
+      }
     }
 
     function playDodge() {
-      playGame('Dodge', 15, Math.random() < 0.3);
-    }
-
-    async function playGame(name, cost, win) {
-      const userRef = db.collection('users').doc(user.uid);
-      const snap = await userRef.get();
-      const balance = snap.data().balance || 0;
-      const plays = snap.data().plays || 0;
-
-      if (balance < cost) return alert("Insufficient credits");
-
-      await userRef.update({
-        balance: firebase.firestore.FieldValue.increment(-cost),
-        plays: firebase.firestore.FieldValue.increment(1)
-      });
-
-      if (plays + 1 >= 4) {
-        document.getElementById('cpa-wall').classList.remove('hidden');
-      }
-
-      if (win) {
-        const reward = cost * 2;
-        await userRef.update({ balance: firebase.firestore.FieldValue.increment(reward) });
-        alert(`You won ${reward} credits!`);
+      let survived = Math.random() > 0.6;
+      if (survived) {
+        updateBalance(3);
+        document.getElementById("win-sound").play();
+        showPopup("You dodged! +3 USDT");
       } else {
-        alert("You lost, try again.");
+        updateBalance(-2);
+        document.getElementById("fail-sound").play();
+        showPopup("Hit by trap! -2 USDT");
       }
-
-      loadBalance();
     }
 
-    async function redirectToCPA() {
-      const urlDoc = await db.doc('settings/cpaConfig').get();
-      const url = urlDoc.exists ? urlDoc.data().offerUrl : '#';
+    function requestWithdraw() {
+      document.getElementById("withdraw-panel").style.display = "block";
+    }
 
-      await db.collection('users').doc(user.uid).update({
-        cpaClickTime: new Date(),
-        userAgent: navigator.userAgent
+    function submitWithdraw() {
+      const method = document.getElementById("withdraw-method").value;
+      const details = document.getElementById("withdraw-details").value;
+      const amount = Number(document.getElementById("withdraw-amount").value);
+      if (amount > balance) return showPopup("Insufficient balance");
+      db.collection("withdrawals").add({ uid: user.uid, method, details, amount, status: "pending" });
+      showPopup("Withdrawal requested!");
+      document.getElementById("withdraw-panel").style.display = "none";
+    }
+
+    function updateCPA() {
+      const link = document.getElementById("cpa-url").value;
+      db.collection("users").get().then(snapshot => {
+        snapshot.forEach(doc => {
+          db.collection("users").doc(doc.id).update({ cpaLink: link });
+        });
       });
-
-      window.open(url, '_blank');
-      document.getElementById('cpa-wall').classList.add('hidden');
-      setTimeout(() => document.getElementById('cpa-return').classList.remove('hidden'), 5000);
+      showPopup("CPA Link updated!");
     }
 
-    async function cpaResponse(answer) {
-      await db.collection('users').doc(user.uid).update({ cpaAnswer: answer });
-      document.getElementById('cpa-return').classList.add('hidden');
-      if (answer === 'no') alert("Fake accounts will be banned!");
-    }
-
-    async function saveCPAUrl() {
-      const url = document.getElementById('cpa-url').value;
-      await db.doc('settings/cpaConfig').set({ offerUrl: url });
-      document.getElementById('admin-status').innerText = "URL Saved!";
-    }
-
-    async function loadCPAUrl() {
-      const snap = await db.doc('settings/cpaConfig').get();
-      if (snap.exists) document.getElementById('cpa-url').value = snap.data().offerUrl;
+    function loadWithdrawals() {
+      db.collection("withdrawals").onSnapshot(snapshot => {
+        const box = document.getElementById("withdrawals");
+        box.innerHTML = "";
+        snapshot.forEach(doc => {
+          const d = doc.data();
+          box.innerHTML += `<p>${d.method} ${d.amount} - ${d.details} [${d.status}]</p>`;
+        });
+      });
     }
   </script>
 </body>
