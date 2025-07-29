@@ -1,236 +1,241 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Casino CPA Platform</title>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="configuration.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BetFun Casino</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap">
   <style>
     body {
       margin: 0;
-      font-family: 'Segoe UI', sans-serif;
+      font-family: 'Orbitron', sans-serif;
       background: #111;
       color: #fff;
       overflow-x: hidden;
     }
     header {
-      background: linear-gradient(90deg, #0f0c29, #302b63, #24243e);
-      padding: 1em;
+      background: linear-gradient(45deg, #222, #333);
+      padding: 1rem;
       text-align: center;
-      font-size: 1.5em;
+      font-size: 2rem;
     }
-    .container {
-      padding: 2em;
-      max-width: 960px;
-      margin: auto;
+    .login-container, .game-container, .admin-dashboard {
+      display: none;
+      padding: 20px;
     }
-    .section {
-      background: #1e1e2f;
-      margin: 1em 0;
-      padding: 1.5em;
-      border-radius: 10px;
-      box-shadow: 0 0 10px #0008;
+    .active {
+      display: block;
     }
     button {
-      background: #ff416c;
+      padding: 10px 20px;
+      background: gold;
       border: none;
-      padding: 0.7em 1.5em;
-      color: white;
-      border-radius: 5px;
-      cursor: pointer;
-      margin: 0.5em;
+      border-radius: 8px;
       font-weight: bold;
+      cursor: pointer;
     }
-    h2 {
-      color: #ffcc00;
+    .wheel, .game, .popup, .admin-settings {
+      margin: 20px auto;
+      max-width: 500px;
+      background: #222;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #000;
+    }
+    .game {
+      background: #1b1b1b;
     }
     .popup {
-      background: #222;
-      padding: 2em;
-      border: 2px solid #ff416c;
-      border-radius: 8px;
+      background: rgba(0,0,0,0.9);
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 99;
+    }
+    .hidden {
       display: none;
-      text-align: center;
-    }
-    .wheel-canvas {
-      width: 100%;
-      max-width: 300px;
-      margin: auto;
-      transform: rotate(0deg);
-      transition: transform 4s cubic-bezier(0.33, 1, 0.68, 1);
-    }
-    .spin-button {
-      background: #00c853;
     }
   </style>
 </head>
 <body>
-  <header>🎰 Welcome to Casino CPA Challenge</header>
-  <div class="container">
-    <div class="section">
-      <h2>🎡 Spin the Wheel</h2>
-      <canvas id="wheelCanvas" class="wheel-canvas" width="300" height="300"></canvas>
-      <button class="spin-button" onclick="spinWheel()">Spin</button>
-      <p id="spinResult">Spin the wheel to earn credits!</p>
+  <header>BetFun Casino</header>
+
+  <div class="login-container active" id="auth">
+    <h2>Login / Signup</h2>
+    <input type="email" id="email" placeholder="Email"><br><br>
+    <input type="password" id="password" placeholder="Password"><br><br>
+    <button onclick="login()">Login</button>
+    <button onclick="signup()">Signup</button>
+  </div>
+
+  <div class="game-container" id="main">
+    <div id="balance-display">Balance: 0 credits</div>
+
+    <div class="wheel" id="welcome-wheel">
+      <h3>Welcome Spin (Bonus)</h3>
+      <button onclick="spinWheel()">Spin</button>
+      <div id="wheel-result"></div>
     </div>
 
-    <div class="section">
-      <h2>🕹️ Casino Games</h2>
-      <p>Games Played: <span id="gamesPlayed">0</span> | Balance: <span id="balance">0</span> credits</p>
-      <button onclick="playGame('limbo')">Play Limbo</button>
-      <button onclick="playGame('guessBox')">Guess the Box</button>
-      <button onclick="playGame('dodge')">Dodge Trap</button>
-      <p id="gameResult"></p>
-    </div>
-
-    <div class="popup" id="cpaPopup">
-      <h3>🚧 Access Restricted</h3>
-      <p>Complete a quick offer to continue playing.</p>
-      <button onclick="startCpaOffer()">Go to Offer</button>
-    </div>
-
-    <div class="popup" id="confirmPopup">
-      <h3>Did you finish the offer?</h3>
-      <button onclick="submitCpaStatus('yes')">Yes</button>
-      <button onclick="submitCpaStatus('no')">No</button>
-    </div>
-
-    <div class="section" id="withdrawalInfo" style="display:none">
-      <h2>💸 Withdrawal Queue</h2>
-      <p>Users ahead: <span id="queueCount">134</span></p>
+    <div class="game" id="games">
+      <h3>Casino Games</h3>
+      <button onclick="playLimbo()">Limbo</button>
+      <button onclick="playGuessBox()">Guess the Box</button>
+      <button onclick="playDodge()">Dodge Game</button>
     </div>
   </div>
 
-  <audio id="spinSound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
-  <audio id="winSound" src="https://actions.google.com/sounds/v1/cartoon/concussive_hit_guitar_boing.ogg"></audio>
-  <audio id="gameSound" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
+  <div class="admin-dashboard" id="admin">
+    <h2>Admin Panel</h2>
+    <label>CPA Offer URL:</label>
+    <input type="text" id="cpa-url"><br><br>
+    <button onclick="saveCPAUrl()">Save URL</button>
+    <div id="admin-status"></div>
+  </div>
 
+  <div class="popup hidden" id="cpa-wall">
+    <div>
+      <h3>Access Restricted</h3>
+      <p>Complete a quick task to continue.</p>
+      <button onclick="redirectToCPA()">Subscribe</button>
+    </div>
+  </div>
+
+  <div class="popup hidden" id="cpa-return">
+    <div>
+      <h3>Did you complete the task?</h3>
+      <button onclick="cpaResponse('yes')">Yes</button>
+      <button onclick="cpaResponse('no')">No</button>
+    </div>
+  </div>
+
+  <script src="/configuration.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
   <script>
-    let db, auth;
-    let userId = `guest-${Math.floor(Math.random() * 100000)}`;
-    let balance = 0;
-    let gamesPlayed = 0;
-    let cpaOfferUrl = "";
+    let app, auth, db, user;
 
-    const sectors = [0, 10, 20, 30, 40, 50];
-    let angle = 0;
-
-    function initFirebase() {
-      firebase.initializeApp(firebaseConfig);
-      db = firebase.firestore();
+    window.onload = async () => {
+      app = firebase.initializeApp(firebaseConfig);
       auth = firebase.auth();
+      db = firebase.firestore();
 
-      firebase.firestore().doc('settings/cpaConfig').get().then(doc => {
-        if (doc.exists) cpaOfferUrl = doc.data().offerUrl;
+      auth.onAuthStateChanged(async u => {
+        if (u) {
+          user = u;
+          const isAdmin = u.email === 'admin@example.com';
+          document.getElementById('auth').classList.remove('active');
+          if (isAdmin) {
+            document.getElementById('admin').classList.add('active');
+            loadCPAUrl();
+          } else {
+            document.getElementById('main').classList.add('active');
+            loadBalance();
+          }
+        }
       });
-    }
-
-    function drawWheel() {
-      const canvas = document.getElementById("wheelCanvas");
-      const ctx = canvas.getContext("2d");
-      const radius = canvas.width / 2;
-      const anglePer = 2 * Math.PI / sectors.length;
-
-      for (let i = 0; i < sectors.length; i++) {
-        ctx.beginPath();
-        ctx.moveTo(radius, radius);
-        ctx.arc(radius, radius, radius, i * anglePer, (i + 1) * anglePer);
-        ctx.fillStyle = i % 2 ? "#ff416c" : "#ffcc00";
-        ctx.fill();
-        ctx.fillStyle = "#000";
-        ctx.font = "16px bold";
-        ctx.fillText(`${sectors[i]}`,
-          radius + Math.cos(i * anglePer + anglePer / 2) * radius * 0.6 - 10,
-          radius + Math.sin(i * anglePer + anglePer / 2) * radius * 0.6 + 5
-        );
-      }
-    }
-
-    function spinWheel() {
-      const spinSound = document.getElementById("spinSound");
-      const winSound = document.getElementById("winSound");
-      spinSound.play();
-
-      const canvas = document.getElementById("wheelCanvas");
-      const result = Math.floor(Math.random() * sectors.length);
-      const finalAngle = (360 / sectors.length) * result + 360 * 5;
-      canvas.style.transform = `rotate(${finalAngle}deg)`;
-
-      setTimeout(() => {
-        const won = sectors[result];
-        balance += won;
-        document.getElementById("spinResult").innerText = `🎉 You won ${won} credits!`;
-        updateStats();
-        winSound.play();
-      }, 4200);
-    }
-
-    function playGame(type) {
-      if (gamesPlayed >= 4 && !localStorage.getItem("cpaComplete")) {
-        document.getElementById("cpaPopup").style.display = 'block';
-        return;
-      }
-
-      const gameSound = document.getElementById("gameSound");
-      gameSound.play();
-
-      let gain = 0;
-      if (type === 'limbo') gain = Math.floor(Math.random() * 20);
-      if (type === 'guessBox') gain = [0, 30, 10][Math.floor(Math.random() * 3)];
-      if (type === 'dodge') gain = Math.floor(Math.random() * 25);
-
-      balance += gain;
-      gamesPlayed++;
-      document.getElementById("gameResult").innerText = `You played ${type} and won ${gain} credits!`;
-      updateStats();
-
-      if (balance >= 100) {
-        document.getElementById("withdrawalInfo").style.display = 'block';
-      }
-    }
-
-    function updateStats() {
-      document.getElementById("gamesPlayed").innerText = gamesPlayed;
-      document.getElementById("balance").innerText = balance;
-    }
-
-    function startCpaOffer() {
-      const device = navigator.userAgent;
-      fetch('https://api.ipify.org?format=json')
-        .then(res => res.json())
-        .then(data => {
-          db.collection('users').doc(userId).set({
-            cpaClickedAt: Date.now(),
-            userAgent: device,
-            ip: data.ip,
-            balance,
-            gamesPlayed
-          });
-        });
-
-      document.getElementById("cpaPopup").style.display = 'none';
-      window.open(cpaOfferUrl, '_blank');
-      setTimeout(() => document.getElementById("confirmPopup").style.display = 'block', 1000);
-    }
-
-    function submitCpaStatus(ans) {
-      if (ans === 'yes') {
-        db.collection('users').doc(userId).update({ cpaClaimed: true });
-        localStorage.setItem("cpaComplete", "true");
-        alert("✅ Access restored.");
-      } else {
-        alert("⚠️ Fake claims will be flagged.");
-      }
-      document.getElementById("confirmPopup").style.display = 'none';
-    }
-
-    window.onload = () => {
-      initFirebase();
-      drawWheel();
     };
+
+    function signup() {
+      const email = document.getElementById('email').value;
+      const pass = document.getElementById('password').value;
+      auth.createUserWithEmailAndPassword(email, pass);
+    }
+
+    function login() {
+      const email = document.getElementById('email').value;
+      const pass = document.getElementById('password').value;
+      auth.signInWithEmailAndPassword(email, pass);
+    }
+
+    async function loadBalance() {
+      const doc = await db.collection('users').doc(user.uid).get();
+      if (!doc.exists) await db.collection('users').doc(user.uid).set({ balance: 0, plays: 0 });
+      document.getElementById('balance-display').innerText = `Balance: ${doc.data().balance} credits`;
+    }
+
+    async function spinWheel() {
+      const reward = Math.floor(Math.random() * 11) + 20;
+      await db.collection('users').doc(user.uid).update({
+        balance: firebase.firestore.FieldValue.increment(reward)
+      });
+      document.getElementById('wheel-result').innerText = `You won ${reward} credits!`;
+      loadBalance();
+    }
+
+    function playLimbo() {
+      playGame('Limbo', 5, Math.random() < 0.5);
+    }
+
+    function playGuessBox() {
+      playGame('Guess Box', 10, Math.random() < 0.4);
+    }
+
+    function playDodge() {
+      playGame('Dodge', 15, Math.random() < 0.3);
+    }
+
+    async function playGame(name, cost, win) {
+      const userRef = db.collection('users').doc(user.uid);
+      const snap = await userRef.get();
+      const balance = snap.data().balance || 0;
+      const plays = snap.data().plays || 0;
+
+      if (balance < cost) return alert("Insufficient credits");
+
+      await userRef.update({
+        balance: firebase.firestore.FieldValue.increment(-cost),
+        plays: firebase.firestore.FieldValue.increment(1)
+      });
+
+      if (plays + 1 >= 4) {
+        document.getElementById('cpa-wall').classList.remove('hidden');
+      }
+
+      if (win) {
+        const reward = cost * 2;
+        await userRef.update({ balance: firebase.firestore.FieldValue.increment(reward) });
+        alert(`You won ${reward} credits!`);
+      } else {
+        alert("You lost, try again.");
+      }
+
+      loadBalance();
+    }
+
+    async function redirectToCPA() {
+      const urlDoc = await db.doc('settings/cpaConfig').get();
+      const url = urlDoc.exists ? urlDoc.data().offerUrl : '#';
+
+      await db.collection('users').doc(user.uid).update({
+        cpaClickTime: new Date(),
+        userAgent: navigator.userAgent
+      });
+
+      window.open(url, '_blank');
+      document.getElementById('cpa-wall').classList.add('hidden');
+      setTimeout(() => document.getElementById('cpa-return').classList.remove('hidden'), 5000);
+    }
+
+    async function cpaResponse(answer) {
+      await db.collection('users').doc(user.uid).update({ cpaAnswer: answer });
+      document.getElementById('cpa-return').classList.add('hidden');
+      if (answer === 'no') alert("Fake accounts will be banned!");
+    }
+
+    async function saveCPAUrl() {
+      const url = document.getElementById('cpa-url').value;
+      await db.doc('settings/cpaConfig').set({ offerUrl: url });
+      document.getElementById('admin-status').innerText = "URL Saved!";
+    }
+
+    async function loadCPAUrl() {
+      const snap = await db.doc('settings/cpaConfig').get();
+      if (snap.exists) document.getElementById('cpa-url').value = snap.data().offerUrl;
+    }
   </script>
 </body>
 </html>
