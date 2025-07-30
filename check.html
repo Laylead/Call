@@ -1,172 +1,185 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BetMaster - CPA Betting Platform</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Betting Platform</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap">
   <style>
     body {
-      background: #000;
-      color: #fff;
-      font-family: 'Segoe UI', sans-serif;
+      font-family: 'Poppins', sans-serif;
+      background: #1e1e2f;
+      color: white;
+      margin: 0;
+      padding: 0;
     }
-    .game, .dashboard {
+    header {
+      background: #2d2d44;
+      padding: 1rem;
+      text-align: center;
+      font-size: 1.5rem;
+    }
+    #loginBox, #signupBox, #gameArea, #adminPanel, #withdrawalPanel {
+      max-width: 400px;
+      margin: 2rem auto;
+      background: #2a2a40;
+      padding: 1.5rem;
+      border-radius: 10px;
       display: none;
     }
-    .visible {
-      display: block !important;
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 5px;
     }
-    .game-container, .dashboard-container {
-      padding: 20px;
+    button {
+      background: #4caf50;
+      color: white;
+      cursor: pointer;
     }
-    .popup {
-      background: rgba(0,0,0,0.9);
-      color: #fff;
-      position: fixed;
-      top: 30%;
-      left: 50%;
-      transform: translate(-50%, -30%);
-      padding: 20px;
-      z-index: 1000;
-      border: 2px solid #fff;
-    }
-    .wheel {
+    #spinWheel {
       width: 200px;
       height: 200px;
       border-radius: 50%;
-      border: 10px solid #fff;
-      animation: spin 2s linear infinite;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      border: 5px solid #fff;
+      margin: 1rem auto;
+      background: conic-gradient(red 0deg 60deg, yellow 60deg 120deg, green 120deg 180deg, blue 180deg 240deg, orange 240deg 300deg, pink 300deg 360deg);
     }
   </style>
 </head>
 <body>
-  <div id="auth" class="container text-center mt-5">
-    <h1>🎲 BetMaster</h1>
-    <input id="email" type="email" placeholder="Email" class="form-control mb-2" />
-    <input id="password" type="password" placeholder="Password" class="form-control mb-2" />
-    <button onclick="login()" class="btn btn-success">Login</button>
-    <button onclick="signup()" class="btn btn-warning">Sign Up</button>
+  <header>Betting Game Platform</header>
+
+  <div id="loginBox">
+    <h3>Login</h3>
+    <input type="email" id="loginEmail" placeholder="Email">
+    <input type="password" id="loginPassword" placeholder="Password">
+    <button onclick="loginUser()">Login</button>
+    <p onclick="toggleAuth('signup')">Don't have an account? Sign up</p>
   </div>
 
-  <div id="dashboard" class="dashboard container dashboard-container">
-    <h2>Welcome, <span id="userName">User</span></h2>
-    <p>Balance: <span id="balance">0</span> credits</p>
-    <button onclick="playGame('wheel')" class="btn btn-primary">🎡 Spin the Wheel</button>
-    <button onclick="playGame('limbo')" class="btn btn-secondary">🪂 Limbo</button>
-    <button onclick="playGame('guess')" class="btn btn-danger">🎁 Guess the Box</button>
-    <button onclick="playGame('dodge')" class="btn btn-info">🌀 Dodge Game</button>
-    <button onclick="withdraw()" class="btn btn-success mt-3">💸 Withdraw</button>
+  <div id="signupBox">
+    <h3>Signup</h3>
+    <input type="email" id="signupEmail" placeholder="Email">
+    <input type="password" id="signupPassword" placeholder="Password">
+    <button onclick="signupUser()">Sign Up</button>
+    <p onclick="toggleAuth('login')">Already have an account? Login</p>
   </div>
 
-  <div id="withdrawPanel" class="popup" style="display:none">
-    <h4>Withdrawal</h4>
-    <select id="withdrawMethod" class="form-control mb-2">
+  <div id="gameArea">
+    <h3>Welcome, <span id="usernameDisplay"></span></h3>
+    <p>Balance: $<span id="userBalance">0</span></p>
+    <button onclick="playGame('limbo')">Play Limbo</button>
+    <button onclick="playGame('guessBox')">Guess the Box</button>
+    <button onclick="playGame('dodge')">Dodge Game</button>
+    <div id="spinWheel"></div>
+    <button onclick="spinWheel()">Spin to Win</button>
+    <button onclick="openWithdrawal()">Withdraw</button>
+    <button onclick="logoutUser()">Logout</button>
+  </div>
+
+  <div id="withdrawalPanel">
+    <h3>Withdraw Funds</h3>
+    <select id="withdrawMethod">
       <option value="bank">Bank Transfer</option>
       <option value="usdt">TRC20 USDT</option>
     </select>
-    <input id="withdrawName" class="form-control mb-2" placeholder="Your Full Name" />
-    <input id="withdrawAccount" class="form-control mb-2" placeholder="Account Number or Wallet" />
-    <input id="withdrawBank" class="form-control mb-2" placeholder="Bank Name or 'TRC20'" />
-    <button onclick="submitWithdrawal()" class="btn btn-warning">Submit</button>
+    <input type="text" id="withdrawName" placeholder="Name">
+    <input type="text" id="withdrawAccount" placeholder="Account / Wallet">
+    <input type="text" id="withdrawBank" placeholder="Bank Name / Network">
+    <button onclick="submitWithdrawal()">Submit Withdrawal</button>
   </div>
 
-  <audio id="sfx" src="https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg"></audio>
+  <div id="adminPanel">
+    <h3>Admin Dashboard</h3>
+    <input type="text" id="cpaInput" placeholder="CPA Offer URL">
+    <button onclick="saveCPA()">Save CPA Link</button>
+    <p>Current CPA URL: <span id="currentCPA"></span></p>
+  </div>
 
-  <script src="https://www.gstatic.com/firebasejs/9.0.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.0.2/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.0.2/firebase-firestore.js"></script>
   <script src="configuration.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
   <script>
     const app = firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
     const auth = firebase.auth();
+    const db = firebase.firestore();
 
     let currentUser = null;
+    let balance = 0;
 
-    function login() {
-      const email = email.value;
-      const password = password.value;
-      auth.signInWithEmailAndPassword(email, password).then(userCred => {
-        currentUser = userCred.user;
-        initDashboard();
-      });
+    function toggleAuth(type) {
+      document.getElementById('loginBox').style.display = type === 'login' ? 'block' : 'none';
+      document.getElementById('signupBox').style.display = type === 'signup' ? 'block' : 'none';
     }
 
-    function signup() {
-      const email = email.value;
-      const password = password.value;
-      auth.createUserWithEmailAndPassword(email, password).then(userCred => {
-        currentUser = userCred.user;
-        db.collection("users").doc(currentUser.uid).set({
-          balance: 30,
-          gamesPlayed: 0,
-          cpaClick: null,
-          device: navigator.userAgent,
-          cpaAnswer: null
-        });
-        initDashboard();
-      });
+    async function signupUser() {
+      const email = signupEmail.value;
+      const password = signupPassword.value;
+      try {
+        await auth.createUserWithEmailAndPassword(email, password);
+        alert("Signup successful");
+        toggleAuth('login');
+      } catch (e) {
+        alert(e.message);
+      }
     }
 
-    function initDashboard() {
-      document.getElementById("auth").style.display = "none";
-      document.getElementById("dashboard").classList.add("visible");
-      db.collection("users").doc(currentUser.uid).onSnapshot(doc => {
-        const data = doc.data();
-        userName.innerText = currentUser.email;
-        balance.innerText = data.balance;
-        if (data.gamesPlayed >= 4 && !data.cpaClick) triggerCPA();
-      });
+    async function loginUser() {
+      const email = loginEmail.value;
+      const password = loginPassword.value;
+      try {
+        const userCred = await auth.signInWithEmailAndPassword(email, password);
+        currentUser = userCred.user;
+        loadUser();
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    function logoutUser() {
+      auth.signOut();
+      document.getElementById('gameArea').style.display = 'none';
+      toggleAuth('login');
+    }
+
+    async function loadUser() {
+      const doc = await db.collection('users').doc(currentUser.uid).get();
+      if (doc.exists) {
+        balance = doc.data().balance || 0;
+      } else {
+        await db.collection('users').doc(currentUser.uid).set({ balance: 20 });
+        balance = 20;
+      }
+      document.getElementById('userBalance').innerText = balance;
+      usernameDisplay.innerText = currentUser.email;
+      document.getElementById('loginBox').style.display = 'none';
+      document.getElementById('signupBox').style.display = 'none';
+      document.getElementById('gameArea').style.display = 'block';
+      loadCPA();
     }
 
     function playGame(game) {
-      document.getElementById("sfx").play();
-      const ref = db.collection("users").doc(currentUser.uid);
-      ref.get().then(doc => {
-        let { balance, gamesPlayed } = doc.data();
-        let reward = Math.floor(Math.random() * 10) + 5;
-        let difficulty = gamesPlayed >= 10 ? 0.3 : 1;
-        if (Math.random() < difficulty) {
-          ref.update({
-            balance: balance + reward,
-            gamesPlayed: gamesPlayed + 1
-          });
-          alert(`You won ${reward} credits!`);
-        } else {
-          ref.update({ gamesPlayed: gamesPlayed + 1 });
-          alert("You lost this round. Try again!");
-        }
-      });
+      const win = Math.random() > 0.5 ? 10 : -10;
+      balance += win;
+      alert(`You ${win > 0 ? 'won' : 'lost'} $${Math.abs(win)} in ${game}`);
+      db.collection('users').doc(currentUser.uid).update({ balance });
+      document.getElementById('userBalance').innerText = balance;
     }
 
-    function triggerCPA() {
-      db.doc("settings/cpaConfig").get().then(doc => {
-        const offerUrl = doc.data().offerUrl;
-        const clickTime = Date.now();
-        const device = navigator.userAgent;
-        db.collection("users").doc(currentUser.uid).update({
-          cpaClick: clickTime,
-          device: device
-        });
-        const confirm = window.confirm("Access restricted. Complete quick task to continue. Continue?");
-        if (confirm) window.open(offerUrl, '_blank');
-        setTimeout(() => {
-          const answer = window.confirm("Did you complete the task?");
-          db.collection("users").doc(currentUser.uid).update({
-            cpaAnswer: answer ? "Yes" : "No"
-          });
-          if (!answer) alert("Fake attempts may lead to bans.");
-        }, 10000);
-      });
+    function spinWheel() {
+      const spin = Math.floor(Math.random() * 30);
+      alert(`You won $${spin} from spin!`);
+      balance += spin;
+      db.collection('users').doc(currentUser.uid).update({ balance });
+      userBalance.innerText = balance;
     }
 
-    function withdraw() {
-      withdrawPanel.style.display = "block";
+    function openWithdrawal() {
+      document.getElementById('withdrawalPanel').style.display = 'block';
     }
 
     function submitWithdrawal() {
@@ -174,16 +187,31 @@
       const name = withdrawName.value;
       const account = withdrawAccount.value;
       const bank = withdrawBank.value;
-      db.collection("withdrawals").add({
-        uid: currentUser.uid,
-        method, name, account, bank,
-        time: Date.now(),
-        status: "pending"
-      }).then(() => {
-        alert("Request submitted. Processing...");
-        withdrawPanel.style.display = "none";
-      });
+      db.collection('withdrawals').add({ uid: currentUser.uid, method, name, account, bank, balance });
+      alert("Request submitted");
     }
+
+    async function saveCPA() {
+      const url = document.getElementById('cpaInput').value;
+      await db.doc('settings/cpaConfig').set({ offerUrl: url });
+      alert("CPA URL Saved");
+    }
+
+    async function loadCPA() {
+      const doc = await db.doc('settings/cpaConfig').get();
+      if (doc.exists) {
+        currentCPA.innerText = doc.data().offerUrl;
+      }
+    }
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        currentUser = user;
+        loadUser();
+      } else {
+        toggleAuth('login');
+      }
+    });
   </script>
 </body>
 </html>
