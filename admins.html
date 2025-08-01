@@ -1,159 +1,201 @@
-    <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Betting Game Platform</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BetPro</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap">
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; background: #111; color: #fff; }
-    .container { padding: 20px; text-align: center; }
-    input, button { padding: 10px; margin: 10px; border: none; border-radius: 5px; }
-    button { background: #28a745; color: white; cursor: pointer; }
-    .hidden { display: none; }
-    .game-card { background: #222; padding: 15px; margin: 10px auto; border-radius: 10px; max-width: 400px; }
+    * {margin: 0; padding: 0; box-sizing: border-box; font-family: 'Roboto', sans-serif;}
+    body {background: #0a0a0a; color: white; overflow-x: hidden;}
+    header {background: #111; padding: 1rem; text-align: center; font-size: 1.5rem; font-weight: bold;}
+    .container {padding: 1rem;}
+    .auth, .dashboard, .game-section, .cpa-offer, .withdrawal-form, .admin-panel {display: none;}
+    input, button, select {padding: 10px; margin: 5px 0; width: 100%; font-size: 1rem;}
+    button {cursor: pointer; background: #0f62fe; color: white; border: none; border-radius: 5px;}
+    .hidden {display: none;}
+    .games {display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;}
+    .game-card {background: #222; padding: 1rem; border-radius: 10px; text-align: center;}
+    audio {display: none;}
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🔥 Betting Game Hub</h1>
-    <div id="authSection">
-      <input id="email" placeholder="Email">
-      <input id="password" type="password" placeholder="Password">
-      <br>
-      <button onclick="login()">Login</button>
-      <button onclick="signup()">Sign Up</button>
-    </div>
 
-    <div id="dashboard" class="hidden">
-      <h2>Welcome, <span id="username"></span></h2>
-      <p>Balance: <span id="balance">0</span> credits</p>
+<header>BetPro - Earn By Playing</header>
 
+<div class="container">
+
+  <div class="auth">
+    <h2>Login / Signup</h2>
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="signup()">Signup</button>
+    <button onclick="login()">Login</button>
+  </div>
+
+  <div class="dashboard">
+    <h2>Welcome <span id="username"></span></h2>
+    <p>Balance: <span id="balance">0</span> credits</p>
+    <button onclick="showGames()">Play Games</button>
+    <button onclick="showWithdraw()">Withdraw</button>
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <div class="game-section">
+    <h3>Games</h3>
+    <div class="games">
       <div class="game-card">
-        <h3>🎲 Dice Game</h3>
-        <button onclick="playDice()">Roll Dice</button>
-        <p id="diceResult"></p>
+        <h4>Coin Toss</h4>
+        <button onclick="playGame('coin')">Play</button>
       </div>
-
       <div class="game-card">
-        <h3>🃏 Card Flip</h3>
-        <button onclick="flipCard()">Flip Card</button>
-        <p id="cardResult"></p>
+        <h4>Dice Roll</h4>
+        <button onclick="playGame('dice')">Play</button>
       </div>
-
       <div class="game-card">
-        <h3>🎯 Target Hit</h3>
-        <button onclick="playTarget()">Shoot</button>
-        <p id="targetResult"></p>
+        <h4>Spin</h4>
+        <button onclick="playGame('spin')">Play</button>
       </div>
-
       <div class="game-card">
-        <h3>💸 Withdrawal</h3>
-        <input id="bankName" placeholder="Bank or USDT">
-        <input id="account" placeholder="Account Number / Wallet">
-        <input id="accountName" placeholder="Account Name">
-        <button onclick="requestWithdrawal()">Request Withdrawal</button>
-        <p id="withdrawMsg"></p>
+        <h4>Lucky Box</h4>
+        <button onclick="playGame('box')">Play</button>
       </div>
     </div>
   </div>
 
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="configuration.js"></script>
-  <script>
-    const app = firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+  <div class="cpa-offer">
+    <h3>Complete Offer to Unlock More</h3>
+    <p><a id="cpaLink" href="#" target="_blank">Click to Continue</a></p>
+  </div>
 
-    let currentUser;
+  <div class="withdrawal-form">
+    <h3>Withdraw</h3>
+    <select id="method">
+      <option value="bank">Bank</option>
+      <option value="usdt">TRC20 USDT</option>
+    </select>
+    <input type="text" id="accName" placeholder="Account Name"/>
+    <input type="text" id="accDetails" placeholder="Account No. or Wallet"/>
+    <button onclick="requestWithdrawal()">Submit</button>
+  </div>
 
-    function show(id) {
-      document.getElementById(id).classList.remove("hidden");
-    }
-    function hide(id) {
-      document.getElementById(id).classList.add("hidden");
-    }
+  <div class="admin-panel">
+    <h3>Admin CPA Control</h3>
+    <input type="text" id="adminLink" placeholder="CPA Offer Link"/>
+    <button onclick="saveCPA()">Save CPA Link</button>
+  </div>
 
-    function login() {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      auth.signInWithEmailAndPassword(email, password).then((cred) => {
-        loadDashboard(cred.user);
-      }).catch(e => alert(e.message));
-    }
+</div>
 
-    function signup() {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      auth.createUserWithEmailAndPassword(email, password).then((cred) => {
-        return db.collection("users").doc(cred.user.uid).set({
-          email,
-          balance: 100,
-          created: Date.now()
-        });
-      }).then(() => login());
-    }
+<audio id="clickSound" src="https://www.soundjay.com/buttons/sounds/button-16.mp3" preload="auto"></audio>
 
-    function loadDashboard(user) {
-      currentUser = user;
-      db.collection("users").doc(user.uid).get().then(doc => {
-        const data = doc.data();
-        document.getElementById("username").textContent = data.email;
-        document.getElementById("balance").textContent = data.balance;
-        hide("authSection");
-        show("dashboard");
-      });
-    }
+<script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-database.js"></script>
+<script src="configuration.js"></script>
+<script>
+let user = null, gameCount = 0;
+const app = firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.database();
 
-    function updateBalance(change) {
-      const userRef = db.collection("users").doc(currentUser.uid);
-      return userRef.get().then(doc => {
-        const current = doc.data().balance || 0;
-        return userRef.update({ balance: current + change });
-      }).then(() => {
-        document.getElementById("balance").textContent = parseInt(document.getElementById("balance").textContent) + change;
-      });
-    }
+const $ = (id) => document.getElementById(id);
+const playSound = () => $('clickSound').play();
 
-    function playDice() {
-      const roll = Math.ceil(Math.random() * 6);
-      document.getElementById("diceResult").textContent = `You rolled a ${roll}`;
-      if (roll >= 4) updateBalance(10); else updateBalance(-5);
-    }
+function show(el) {
+  document.querySelectorAll('.auth, .dashboard, .game-section, .cpa-offer, .withdrawal-form, .admin-panel')
+    .forEach(d => d.style.display = 'none');
+  document.querySelector('.' + el).style.display = 'block';
+}
 
-    function flipCard() {
-      const card = Math.random() > 0.5 ? "Ace" : "Joker";
-      document.getElementById("cardResult").textContent = `You got a ${card}`;
-      if (card === "Ace") updateBalance(15); else updateBalance(-10);
-    }
-
-    function playTarget() {
-      const hit = Math.random() > 0.3;
-      document.getElementById("targetResult").textContent = hit ? "🎯 You hit the target!" : "💥 You missed!";
-      if (hit) updateBalance(20); else updateBalance(-15);
-    }
-
-    function requestWithdrawal() {
-      const bank = document.getElementById("bankName").value;
-      const account = document.getElementById("account").value;
-      const name = document.getElementById("accountName").value;
-      if (!bank || !account || !name) return alert("Fill all fields");
-      db.collection("withdrawals").add({
-        uid: currentUser.uid,
-        method: bank,
-        account,
-        name,
-        status: "pending",
-        time: Date.now()
-      }).then(() => {
-        document.getElementById("withdrawMsg").textContent = "Withdrawal requested.";
-      });
-    }
-
-    auth.onAuthStateChanged(user => {
-      if (user) loadDashboard(user);
+auth.onAuthStateChanged(u => {
+  if (u) {
+    user = u;
+    db.ref('users/' + user.uid).once('value').then(snap => {
+      if (!snap.exists()) {
+        db.ref('users/' + user.uid).set({balance: getRandom(20,30), plays: 0});
+      }
+      $('username').innerText = user.email;
+      updateBalance();
+      show('dashboard');
     });
-  </script>
+  } else {
+    show('auth');
+  }
+});
+
+function signup() {
+  const e = $('email').value, p = $('password').value;
+  auth.createUserWithEmailAndPassword(e, p).catch(err => alert(err.message));
+}
+function login() {
+  const e = $('email').value, p = $('password').value;
+  auth.signInWithEmailAndPassword(e, p).catch(err => alert(err.message));
+}
+function logout() {
+  auth.signOut();
+}
+function updateBalance() {
+  db.ref('users/' + user.uid + '/balance').on('value', snap => {
+    $('balance').innerText = snap.val();
+  });
+}
+
+function playGame(type) {
+  playSound();
+  db.ref('users/' + user.uid).once('value').then(snap => {
+    let data = snap.val();
+    if (!data) return;
+    let win = Math.random() < 0.5;
+    let delta = win ? getRandom(5, 10) : -getRandom(2, 5);
+    let newBal = Math.max(0, (data.balance || 0) + delta);
+    let newPlays = (data.plays || 0) + 1;
+    db.ref('users/' + user.uid).update({balance: newBal, plays: newPlays});
+    alert(win ? `You won ${delta} credits!` : `You lost ${-delta} credits.`);
+    if (newPlays >= 4) showCPA();
+  });
+}
+
+function showCPA() {
+  db.ref('admin/cpa').once('value').then(snap => {
+    $('cpaLink').href = snap.val() || '#';
+    show('cpa-offer');
+  });
+}
+
+function showGames() {
+  show('game-section');
+}
+function showWithdraw() {
+  show('withdrawal-form');
+}
+
+function requestWithdrawal() {
+  const m = $('method').value;
+  const name = $('accName').value;
+  const acc = $('accDetails').value;
+  if (!name || !acc) return alert('Please fill all fields');
+  db.ref('withdrawals').push({
+    uid: user.uid,
+    method: m,
+    name,
+    details: acc,
+    timestamp: Date.now()
+  });
+  alert('Request submitted!');
+  show('dashboard');
+}
+
+function saveCPA() {
+  const l = $('adminLink').value;
+  db.ref('admin/cpa').set(l);
+  alert('Saved.');
+}
+
+function getRandom(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+</script>
+
 </body>
 </html>
