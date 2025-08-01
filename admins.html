@@ -1,169 +1,159 @@
-<!DOCTYPE html>
-<html>
+    <!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Betting CPA Site</title>
+  <title>Betting Game Platform</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; background: #111; color: #fff; }
-    .container { padding: 20px; max-width: 500px; margin: auto; }
-    input, button, select { width: 100%; padding: 10px; margin: 10px 0; border: none; border-radius: 5px; }
-    .game { background: #222; padding: 20px; border-radius: 10px; margin-top: 20px; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #111; color: #fff; }
+    .container { padding: 20px; text-align: center; }
+    input, button { padding: 10px; margin: 10px; border: none; border-radius: 5px; }
+    button { background: #28a745; color: white; cursor: pointer; }
     .hidden { display: none; }
-    .balance { font-size: 20px; color: #0f0; }
-    #withdrawForm, #adminPanel { background: #333; padding: 15px; border-radius: 8px; margin-top: 15px; }
+    .game-card { background: #222; padding: 15px; margin: 10px auto; border-radius: 10px; max-width: 400px; }
   </style>
 </head>
 <body>
-<div class="container">
-  <h2>🎰 Betting CPA Platform</h2>
+  <div class="container">
+    <h1>🔥 Betting Game Hub</h1>
+    <div id="authSection">
+      <input id="email" placeholder="Email">
+      <input id="password" type="password" placeholder="Password">
+      <br>
+      <button onclick="login()">Login</button>
+      <button onclick="signup()">Sign Up</button>
+    </div>
 
-  <div id="authSection">
-    <input id="email" placeholder="Email">
-    <input id="password" type="password" placeholder="Password">
-    <button onclick="login()">Login</button>
-    <button onclick="signup()">Signup</button>
-  </div>
+    <div id="dashboard" class="hidden">
+      <h2>Welcome, <span id="username"></span></h2>
+      <p>Balance: <span id="balance">0</span> credits</p>
 
-  <div id="userPanel" class="hidden">
-    <div>Welcome <span id="userEmail"></span> | Balance: <span class="balance" id="balance">0</span> credits</div>
-    <button onclick="playSpin()">🎡 Spin</button>
-    <button onclick="playGuess()">🎁 Guess Box</button>
-    <button onclick="playLimbo()">🔥 Limbo</button>
-    <button onclick="playDodge()">⚡ Dodge</button>
+      <div class="game-card">
+        <h3>🎲 Dice Game</h3>
+        <button onclick="playDice()">Roll Dice</button>
+        <p id="diceResult"></p>
+      </div>
 
-    <div id="withdrawForm">
-      <h4>Withdraw</h4>
-      <select id="withdrawType">
-        <option value="bank">Bank</option>
-        <option value="usdt">USDT (TRC20)</option>
-      </select>
-      <input id="withdrawName" placeholder="Name">
-      <input id="withdrawDetail" placeholder="Account Number or Wallet">
-      <button onclick="submitWithdraw()">Submit</button>
+      <div class="game-card">
+        <h3>🃏 Card Flip</h3>
+        <button onclick="flipCard()">Flip Card</button>
+        <p id="cardResult"></p>
+      </div>
+
+      <div class="game-card">
+        <h3>🎯 Target Hit</h3>
+        <button onclick="playTarget()">Shoot</button>
+        <p id="targetResult"></p>
+      </div>
+
+      <div class="game-card">
+        <h3>💸 Withdrawal</h3>
+        <input id="bankName" placeholder="Bank or USDT">
+        <input id="account" placeholder="Account Number / Wallet">
+        <input id="accountName" placeholder="Account Name">
+        <button onclick="requestWithdrawal()">Request Withdrawal</button>
+        <p id="withdrawMsg"></p>
+      </div>
     </div>
   </div>
 
-  <div id="adminPanel" class="hidden">
-    <h3>Admin Dashboard</h3>
-    <input id="cpaLink" placeholder="CPA Offer Link">
-    <button onclick="updateCPA()">Save CPA Link</button>
-    <div id="withdrawList"></div>
-  </div>
-</div>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="configuration.js"></script>
+  <script>
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
 
-<audio id="clickSound" src="https://www.soundjay.com/buttons/sounds/button-16.mp3"></audio>
-<audio id="winSound" src="https://www.soundjay.com/human/sounds/applause-8.mp3"></audio>
+    let currentUser;
 
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
-<script src="configuration.js"></script>
-<script>
-  let user, db, gamesPlayed = 0, currentUserId;
-  const app = firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
-  db = firebase.firestore();
-
-  function playSound(id) { document.getElementById(id).play(); }
-
-  function signup() {
-    const email = email.value, pass = password.value;
-    auth.createUserWithEmailAndPassword(email, pass).then(() => {
-      db.collection('users').doc(auth.currentUser.uid).set({ balance: 100 });
-    });
-  }
-
-  function login() {
-    const emailVal = email.value, passVal = password.value;
-    auth.signInWithEmailAndPassword(emailVal, passVal).then(() => {
-      currentUserId = auth.currentUser.uid;
-      loadUser();
-    });
-  }
-
-  function loadUser() {
-    document.getElementById("authSection").classList.add("hidden");
-    document.getElementById("userPanel").classList.remove("hidden");
-    document.getElementById("userEmail").innerText = auth.currentUser.email;
-
-    if (auth.currentUser.email === 'admin@admin.com') {
-      document.getElementById("adminPanel").classList.remove("hidden");
-      loadWithdrawals();
+    function show(id) {
+      document.getElementById(id).classList.remove("hidden");
+    }
+    function hide(id) {
+      document.getElementById(id).classList.add("hidden");
     }
 
-    db.collection('users').doc(currentUserId).onSnapshot(doc => {
-      const data = doc.data();
-      document.getElementById("balance").innerText = data.balance;
-    });
-  }
-
-  function updateCPA() {
-    const link = document.getElementById("cpaLink").value;
-    db.collection('settings').doc('cpa').set({ link });
-  }
-
-  function showCPA() {
-    db.collection('settings').doc('cpa').get().then(doc => {
-      if (doc.exists) {
-        window.open(doc.data().link, '_blank');
-      }
-    });
-  }
-
-  function reward(win) {
-    const ref = db.collection('users').doc(currentUserId);
-    ref.get().then(doc => {
-      const newBal = doc.data().balance + win;
-      ref.update({ balance: newBal });
-      if (++gamesPlayed === 4) showCPA();
-    });
-  }
-
-  function playSpin() {
-    playSound('clickSound');
-    const win = Math.random() < 0.5 ? 10 : 0;
-    if (win) playSound('winSound');
-    reward(win);
-  }
-
-  function playGuess() {
-    const box = Math.floor(Math.random() * 3);
-    const guess = prompt("Guess which box (0, 1, 2)");
-    if (parseInt(guess) === box) reward(15);
-    else reward(0);
-  }
-
-  function playLimbo() {
-    const risk = confirm("Risk 20 to win 50?");
-    if (risk) {
-      const success = Math.random() < 0.4;
-      reward(success ? 50 : -20);
+    function login() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      auth.signInWithEmailAndPassword(email, password).then((cred) => {
+        loadDashboard(cred.user);
+      }).catch(e => alert(e.message));
     }
-  }
 
-  function playDodge() {
-    const num = Math.floor(Math.random() * 10);
-    const choice = prompt("Pick a number (0–9)");
-    reward(parseInt(choice) !== num ? 20 : 0);
-  }
+    function signup() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      auth.createUserWithEmailAndPassword(email, password).then((cred) => {
+        return db.collection("users").doc(cred.user.uid).set({
+          email,
+          balance: 100,
+          created: Date.now()
+        });
+      }).then(() => login());
+    }
 
-  function submitWithdraw() {
-    const type = withdrawType.value, name = withdrawName.value, detail = withdrawDetail.value;
-    db.collection("withdrawals").add({ uid: currentUserId, type, name, detail, time: Date.now() });
-    alert("Request sent");
-  }
-
-  function loadWithdrawals() {
-    db.collection("withdrawals").onSnapshot(snapshot => {
-      let html = '';
-      snapshot.forEach(doc => {
-        const w = doc.data();
-        html += `<p>${w.name} - ${w.type} - ${w.detail}</p>`;
+    function loadDashboard(user) {
+      currentUser = user;
+      db.collection("users").doc(user.uid).get().then(doc => {
+        const data = doc.data();
+        document.getElementById("username").textContent = data.email;
+        document.getElementById("balance").textContent = data.balance;
+        hide("authSection");
+        show("dashboard");
       });
-      document.getElementById("withdrawList").innerHTML = html;
+    }
+
+    function updateBalance(change) {
+      const userRef = db.collection("users").doc(currentUser.uid);
+      return userRef.get().then(doc => {
+        const current = doc.data().balance || 0;
+        return userRef.update({ balance: current + change });
+      }).then(() => {
+        document.getElementById("balance").textContent = parseInt(document.getElementById("balance").textContent) + change;
+      });
+    }
+
+    function playDice() {
+      const roll = Math.ceil(Math.random() * 6);
+      document.getElementById("diceResult").textContent = `You rolled a ${roll}`;
+      if (roll >= 4) updateBalance(10); else updateBalance(-5);
+    }
+
+    function flipCard() {
+      const card = Math.random() > 0.5 ? "Ace" : "Joker";
+      document.getElementById("cardResult").textContent = `You got a ${card}`;
+      if (card === "Ace") updateBalance(15); else updateBalance(-10);
+    }
+
+    function playTarget() {
+      const hit = Math.random() > 0.3;
+      document.getElementById("targetResult").textContent = hit ? "🎯 You hit the target!" : "💥 You missed!";
+      if (hit) updateBalance(20); else updateBalance(-15);
+    }
+
+    function requestWithdrawal() {
+      const bank = document.getElementById("bankName").value;
+      const account = document.getElementById("account").value;
+      const name = document.getElementById("accountName").value;
+      if (!bank || !account || !name) return alert("Fill all fields");
+      db.collection("withdrawals").add({
+        uid: currentUser.uid,
+        method: bank,
+        account,
+        name,
+        status: "pending",
+        time: Date.now()
+      }).then(() => {
+        document.getElementById("withdrawMsg").textContent = "Withdrawal requested.";
+      });
+    }
+
+    auth.onAuthStateChanged(user => {
+      if (user) loadDashboard(user);
     });
-  }
-</script>
+  </script>
 </body>
 </html>
