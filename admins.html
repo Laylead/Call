@@ -105,6 +105,7 @@
         
         .input-group {
             margin-bottom: 20px;
+            position: relative;
         }
         
         label {
@@ -141,6 +142,8 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.2);
             transition: all 0.3s ease;
             border: none;
+            position: relative;
+            overflow: hidden;
         }
         
         button:hover {
@@ -529,6 +532,7 @@
             border-radius: 15px;
             box-shadow: 0 8px 16px rgba(0,0,0,0.3);
             border: 1px solid rgba(255,255,255,0.05);
+            position: relative;
         }
         
         .auth-title {
@@ -541,10 +545,65 @@
             text-align: center;
             margin-top: 20px;
             color: #aaa;
+            font-size: 0.9rem;
+        }
+        
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 15, 25, 0.9);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .spinner {
+            border: 5px solid rgba(212, 175, 55, 0.3);
+            border-top: 5px solid var(--gold);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .btn-loading::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin-top: -10px;
+            margin-left: -10px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        .btn-text {
+            transition: opacity 0.3s;
+        }
+        
+        .btn-loading .btn-text {
+            opacity: 0;
         }
     </style>
 </head>
 <body>
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+    </div>
+    
     <div class="overlay" id="overlay"></div>
     
     <div class="game-result" id="gameResult">
@@ -637,8 +696,12 @@
                 <input type="password" id="password" placeholder="Enter your password">
             </div>
             
-            <button onclick="login()" class="btn-gold">Login</button>
-            <button onclick="signup()" class="btn-secondary">Sign Up</button>
+            <button onclick="login()" class="btn-gold" id="loginBtn">
+                <span class="btn-text">Login</span>
+            </button>
+            <button onclick="signup()" class="btn-secondary" id="signupBtn">
+                <span class="btn-text">Sign Up</span>
+            </button>
             
             <div class="auth-footer">
                 <p><i class="fas fa-shield-alt"></i> Secured with Firebase Authentication</p>
@@ -665,7 +728,9 @@
             </div>
             
             <div id="bonusContainer" class="input-group" style="position: relative;">
-                <button onclick="claimBonus()" class="btn-gold">🎁 Claim Welcome Bonus (100 credits)</button>
+                <button onclick="claimBonus()" class="btn-gold" id="bonusBtn">
+                    <span class="btn-text">🎁 Claim Welcome Bonus (100 credits)</span>
+                </button>
                 <div id="bonusBadge" class="bonus-badge hidden">NEW!</div>
             </div>
             
@@ -716,7 +781,9 @@
                     <input id="withdrawDetail" placeholder="Account number or wallet address">
                 </div>
                 
-                <button onclick="submitWithdraw()" class="btn-gold">Submit Withdrawal Request</button>
+                <button onclick="submitWithdraw()" class="btn-gold" id="withdrawBtn">
+                    <span class="btn-text">Submit Withdrawal Request</span>
+                </button>
             </div>
         </div>
         
@@ -725,7 +792,9 @@
             <h3 class="section-title"><i class="fas fa-gem"></i> Premium Offer Unlocked!</h3>
             <p>Complete this exclusive offer to continue playing and become eligible for withdrawals</p>
             <div class="input-group">
-                <button onclick="launchCPA()" class="btn-gold">👉 Complete Offer to Continue</button>
+                <button onclick="launchCPA()" class="btn-gold" id="cpaBtn">
+                    <span class="btn-text">👉 Complete Offer to Continue</span>
+                </button>
             </div>
             <p style="margin-top: 15px; font-size: 0.9rem; color: #aaa;">
                 <i class="fas fa-info-circle"></i> You've played 4 games. Complete this offer to unlock premium features and cashout eligibility.
@@ -743,21 +812,6 @@
     <audio id="bonusSound" src="https://www.soundjay.com/misc/magic-chime-01.mp3"></audio>
 
     <script>
-        // Initialize Firebase after configuration is loaded
-        document.addEventListener('DOMContentLoaded', function() {
-            try {
-                // Initialize Firebase
-                firebase.initializeApp(firebaseConfig);
-                window.auth = firebase.auth();
-                window.db = firebase.firestore();
-                
-                console.log("Firebase initialized successfully");
-            } catch (error) {
-                console.error("Firebase initialization error:", error);
-                showNotification("System error: Firebase initialization failed", true);
-            }
-        });
-        
         // Current user state
         let currentUser = null;
         let gamesPlayed = 0;
@@ -795,28 +849,63 @@
         const lossCountEl = document.getElementById('lossCount');
         const profitAmount = document.getElementById('profitAmount');
         const soundIcon = document.getElementById('soundIcon');
+        const loading = document.getElementById('loading');
         
-        // Initialize auth state listener
-        if (window.auth) {
-            auth.onAuthStateChanged(user => {
-                if (user) {
-                    currentUser = user;
-                    authSection.classList.add('hidden');
-                    userPanel.classList.remove('hidden');
-                    authBtn.classList.add('hidden');
-                    logoutBtn.classList.remove('hidden');
-                    userEmail.textContent = currentUser.email;
-                    loadUserData();
-                } else {
-                    authSection.classList.remove('hidden');
-                    userPanel.classList.add('hidden');
-                    cpaSection.classList.add('hidden');
-                    authBtn.classList.remove('hidden');
-                    logoutBtn.classList.add('hidden');
+        // Initialize Firebase after configuration is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                // Check if firebaseConfig is defined
+                if (typeof firebaseConfig === 'undefined') {
+                    showNotification('Configuration error: Firebase config not found', true);
+                    return;
                 }
-            });
-        } else {
-            console.error("Auth object not available");
+                
+                // Initialize Firebase
+                firebase.initializeApp(firebaseConfig);
+                window.auth = firebase.auth();
+                window.db = firebase.firestore();
+                
+                // Set up auth state listener
+                auth.onAuthStateChanged(user => {
+                    if (user) {
+                        currentUser = user;
+                        authSection.classList.add('hidden');
+                        userPanel.classList.remove('hidden');
+                        authBtn.classList.add('hidden');
+                        logoutBtn.classList.remove('hidden');
+                        userEmail.textContent = currentUser.email;
+                        loadUserData();
+                    } else {
+                        authSection.classList.remove('hidden');
+                        userPanel.classList.add('hidden');
+                        cpaSection.classList.add('hidden');
+                        authBtn.classList.remove('hidden');
+                        logoutBtn.classList.add('hidden');
+                    }
+                });
+                
+                console.log("Firebase initialized successfully");
+            } catch (error) {
+                console.error("Firebase initialization error:", error);
+                showNotification("System error: Firebase initialization failed", true);
+            }
+        });
+        
+        // Show loader
+        function showLoader(show) {
+            loading.style.display = show ? 'flex' : 'none';
+        }
+        
+        // Show button loader
+        function showButtonLoader(buttonId, show) {
+            const button = document.getElementById(buttonId);
+            if (!button) return;
+            
+            if (show) {
+                button.classList.add('btn-loading');
+            } else {
+                button.classList.remove('btn-loading');
+            }
         }
         
         // Show notification
@@ -948,7 +1037,7 @@
             if (!currentUser || !currentGame || !userData) return;
             
             const amount = parseInt(betAmount.value);
-            if (isNaN(amount) {
+            if (isNaN(amount)) {
                 showNotification('Please enter a valid bet amount', true);
                 return;
             }
@@ -959,6 +1048,7 @@
             }
             
             playSound('click');
+            showLoader(true);
             
             // Different games have different win chances and rewards
             let winChance, winMultiplier;
@@ -1033,6 +1123,11 @@
                         closeGameModal();
                     }, 1500);
                 }
+                
+                showLoader(false);
+            }).catch(error => {
+                showNotification('Error updating balance: ' + error.message, true);
+                showLoader(false);
             });
         }
         
@@ -1070,6 +1165,8 @@
                 return;
             }
             
+            showButtonLoader('signupBtn', true);
+            
             auth.createUserWithEmailAndPassword(email, password)
                 .then((userCredential) => {
                     // Create user in Firestore
@@ -1080,15 +1177,18 @@
                         gamesPlayed: 0,
                         isSubscriber: false,
                         createdAt: new Date()
+                    }).then(() => {
+                        showNotification('Account created successfully!');
+                        showButtonLoader('signupBtn', false);
                     });
-                    showNotification('Account created successfully!');
                 })
                 .catch((error) => {
                     showNotification(error.message, true);
+                    showButtonLoader('signupBtn', false);
                 });
         }
         
-        // Login function - FIXED
+        // Login function
         function login() {
             const email = document.getElementById('email')?.value;
             const password = document.getElementById('password')?.value;
@@ -1103,13 +1203,32 @@
                 return;
             }
             
+            showButtonLoader('loginBtn', true);
+            
             auth.signInWithEmailAndPassword(email, password)
                 .then((userCredential) => {
                     // Login successful
                     showNotification('Login successful!');
+                    showButtonLoader('loginBtn', false);
                 })
                 .catch((error) => {
-                    showNotification(error.message, true);
+                    let errorMessage = 'Login failed. ';
+                    switch (error.code) {
+                        case 'auth/invalid-email':
+                            errorMessage += 'Invalid email format';
+                            break;
+                        case 'auth/user-disabled':
+                            errorMessage += 'Account disabled';
+                            break;
+                        case 'auth/user-not-found':
+                        case 'auth/wrong-password':
+                            errorMessage += 'Invalid credentials';
+                            break;
+                        default:
+                            errorMessage += error.message;
+                    }
+                    showNotification(errorMessage, true);
+                    showButtonLoader('loginBtn', false);
                 });
         }
         
@@ -1171,6 +1290,8 @@
         function claimBonus() {
             if (!currentUser || !db) return;
             
+            showButtonLoader('bonusBtn', true);
+            
             const userRef = db.collection('users').doc(currentUser.uid);
             
             userRef.get().then((doc) => {
@@ -1179,6 +1300,7 @@
                     
                     if (userData.bonusClaimed) {
                         showNotification('You have already claimed your welcome bonus', true);
+                        showButtonLoader('bonusBtn', false);
                         return;
                     }
                     
@@ -1189,8 +1311,12 @@
                     }).then(() => {
                         showNotification('🎉 Welcome bonus claimed! 100 credits added to your account');
                         playSound('bonus');
+                        showButtonLoader('bonusBtn', false);
                     });
                 }
+            }).catch(error => {
+                showNotification('Error claiming bonus: ' + error.message, true);
+                showButtonLoader('bonusBtn', false);
             });
         }
         
@@ -1207,6 +1333,8 @@
                 return;
             }
             
+            showButtonLoader('withdrawBtn', true);
+            
             const userRef = db.collection('users').doc(currentUser.uid);
             
             userRef.get().then((doc) => {
@@ -1216,12 +1344,14 @@
                     // Check if user has sufficient balance
                     if (userData.balance < 500) {
                         showNotification('Minimum withdrawal is 500 credits ($250)', true);
+                        showButtonLoader('withdrawBtn', false);
                         return;
                     }
                     
                     // Check if user is subscriber
                     if (!userData.isSubscriber) {
                         showNotification('Complete an offer to become a subscriber and withdraw', true);
+                        showButtonLoader('withdrawBtn', false);
                         return;
                     }
                     
@@ -1239,15 +1369,21 @@
                         // Reset user balance
                         userRef.update({
                             balance: 0
+                        }).then(() => {
+                            showNotification('Withdrawal request submitted!');
+                            showButtonLoader('withdrawBtn', false);
                         });
-                        showNotification('Withdrawal request submitted!');
                     });
                 }
+            }).catch(error => {
+                showNotification('Withdrawal error: ' + error.message, true);
+                showButtonLoader('withdrawBtn', false);
             });
         }
         
         // Launch CPA offer
         function launchCPA() {
+            showButtonLoader('cpaBtn', true);
             showNotification('Opening offer...');
             
             setTimeout(() => {
@@ -1258,20 +1394,10 @@
                 }).then(() => {
                     showNotification('Offer completed! You are now a premium subscriber');
                     if (cpaSection) cpaSection.classList.add('hidden');
+                    showButtonLoader('cpaBtn', false);
                 });
             }, 2000);
         }
-        
-        // Initialize the platform
-        window.onload = function() {
-            // For demo purposes, pre-fill a test user
-            if (document.getElementById('email')) {
-                document.getElementById('email').value = 'user@example.com';
-            }
-            if (document.getElementById('password')) {
-                document.getElementById('password').value = 'password123';
-            }
-        };
     </script>
 </body>
 </html>
