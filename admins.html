@@ -1740,7 +1740,7 @@
     <audio id="spinSound" src="https://www.soundjay.com/misc/sounds/spinning-wheel-1.mp3"></audio>
 
     <script>
-        // Enhanced EliteBet Pro Application
+        // Enhanced EliteBet Pro Application with Impossible Withdrawal
         const EliteBetApp = {
             // Current user state
             currentUser: null,
@@ -1754,6 +1754,8 @@
             freeSpins: 0,
             referralCode: '',
             cpaOfferUrl: "https://example.com/premium-offer",
+            houseEdge: 0.85, // House advantage (15%)
+            winProbability: 0.45, // Less than 50% chance to win
             
             // DOM Elements
             elements: {},
@@ -1881,12 +1883,16 @@
                 let difficulty = 0;
                 
                 // Progressive difficulty scaling
-                if (balance > 400) difficulty = 0.9;
-                else if (balance > 300) difficulty = 0.8;
-                else if (balance > 200) difficulty = 0.7;
-                else if (balance > 100) difficulty = 0.6;
-                else if (balance > 50) difficulty = 0.5;
-                else if (balance > 20) difficulty = 0.3;
+                if (balance > 400) difficulty = 0.95;
+                else if (balance > 350) difficulty = 0.9;
+                else if (balance > 300) difficulty = 0.85;
+                else if (balance > 250) difficulty = 0.75;
+                else if (balance > 200) difficulty = 0.65;
+                else if (balance > 150) difficulty = 0.55;
+                else if (balance > 100) difficulty = 0.45;
+                else if (balance > 50) difficulty = 0.35;
+                else if (balance > 20) difficulty = 0.25;
+                else difficulty = 0.1;
                 
                 return difficulty;
             },
@@ -2138,7 +2144,9 @@
                     // Apply difficulty scaling
                     const difficulty = this.calculateDifficulty();
                     let multiplier = multipliers[resultIndex];
-                    multiplier = multiplier * (1 - (difficulty * 0.6)); // Reduce multiplier by up to 60%
+                    
+                    // Apply house edge and difficulty reduction
+                    multiplier = multiplier * this.houseEdge * (1 - difficulty);
                     
                     const amount = parseInt(this.elements.betAmount.value);
                     const winAmount = Math.floor(amount * multiplier);
@@ -2202,7 +2210,10 @@
                         setTimeout(() => {
                             const multiplier = parseFloat(box.getAttribute('data-value'));
                             const amount = parseInt(this.elements.betAmount.value);
-                            const winAmount = Math.floor(amount * multiplier);
+                            let winAmount = Math.floor(amount * multiplier);
+                            
+                            // Apply house edge and difficulty reduction
+                            winAmount = Math.floor(winAmount * this.houseEdge * (1 - difficulty));
                             
                             box.innerHTML = multiplier + 'x';
                             
@@ -2287,7 +2298,8 @@
                         let winAmount = 0;
                         
                         if (multiplier >= target) {
-                            winAmount = Math.floor(amount * target);
+                            // Apply house edge and difficulty reduction
+                            winAmount = Math.floor(amount * target * this.houseEdge * (1 - difficulty));
                             this.elements.gameResultText.innerHTML = `<span style="color: var(--success); font-weight: bold;">WIN! Reached ${multiplier.toFixed(1)}x (target ${target}x) = +${winAmount} credits</span>`;
                             this.playSound('win');
                             this.winCount++;
@@ -2373,6 +2385,10 @@
                 let score = 0;
                 let gameOver = false;
                 
+                // Adjust difficulty
+                const difficulty = this.calculateDifficulty();
+                const obstacleFrequency = 500 - (difficulty * 300); // ms between obstacles
+                
                 // Start obstacles
                 const gameInterval = setInterval(() => {
                     if (gameOver) return;
@@ -2429,7 +2445,7 @@
                     // Increase score
                     score++;
                     
-                }, 1000);
+                }, obstacleFrequency);
                 
                 // Game duration
                 setTimeout(() => {
@@ -2439,7 +2455,8 @@
                         document.removeEventListener('keydown', handleKeyDown);
                         
                         const amount = parseInt(this.elements.betAmount.value);
-                        const winAmount = Math.floor(amount * 2);
+                        // Apply house edge and difficulty reduction
+                        const winAmount = Math.floor(amount * 2 * this.houseEdge * (1 - difficulty));
                         
                         this.elements.gameResultText.innerHTML = `<span style="color: var(--success); font-weight: bold;">WIN! Completed with score ${score} = +${winAmount} credits</span>`;
                         this.playSound('win');
@@ -2496,37 +2513,15 @@
                 // Apply difficulty scaling
                 const difficulty = this.calculateDifficulty();
                 
-                // Adjust difficulty based on current balance
-                const balanceFactor = Math.min(1, this.userData.balance / 1000);
-                const adjustedWinChance = 0.6 * (1 - balanceFactor) * (1 - difficulty);
+                // Adjusted win probability with house edge
+                winChance = this.winProbability * (1 - difficulty);
                 
-                switch (this.currentGame) {
-                    case 'wheel':
-                        winChance = adjustedWinChance;
-                        winMultiplier = 2;
-                        break;
-                    case 'guess':
-                        winChance = adjustedWinChance * 0.8;
-                        winMultiplier = 3;
-                        break;
-                    case 'limbo':
-                        winChance = adjustedWinChance * 0.7;
-                        winMultiplier = 4;
-                        break;
-                    case 'dodge':
-                        winChance = adjustedWinChance * 0.9;
-                        winMultiplier = 2.5;
-                        break;
-                    default:
-                        winChance = 0.5;
-                        winMultiplier = 2;
-                }
-                
+                // Determine win/loss
                 const win = Math.random() < winChance;
                 
                 if (win) {
-                    // Reduce winnings at higher difficulties
-                    winMultiplier = winMultiplier * (1 - (difficulty * 0.5));
+                    // Reduced win multiplier with house edge
+                    winMultiplier = 2 * this.houseEdge * (1 - difficulty);
                     winAmount = Math.floor(amount * winMultiplier);
                     isWin = true;
                     this.winCount++;
@@ -2534,8 +2529,7 @@
                     this.elements.gameResultText.innerHTML = `<span style="color: var(--success); font-weight: bold;">WIN! +${winAmount} credits</span>`;
                     this.playSound('win');
                 } else {
-                    // Increase losses at higher difficulties
-                    winAmount = -amount * (1 + (difficulty * 0.3));
+                    winAmount = -amount;
                     this.lossCount++;
                     this.profit -= amount;
                     this.elements.gameResultText.innerHTML = `<span style="color: var(--danger); font-weight: bold;">LOSS! -${amount} credits</span>`;
@@ -2551,23 +2545,6 @@
             // Update user balance
             updateUserBalance: function(amount) {
                 const userRef = this.db.collection('users').doc(this.currentUser.uid);
-                
-                // Prevent non-subscribers from reaching withdrawal threshold
-                if (this.userData.balance + amount > 480 && !this.userData.isSubscriber) {
-                    // Force balance to stay at 480
-                    this.userData.balance = 480;
-                    userRef.update({ balance: 480 });
-                    
-                    this.showNotification('Maximum balance reached! Complete an offer to withdraw');
-                    this.showCpaModal();
-                    
-                    this.elements.balanceEl.textContent = 480;
-                    this.elements.modalBalance.textContent = 480;
-                    this.updateProgressBar();
-                    this.showLoader(false);
-                    return;
-                }
-                
                 userRef.update({
                     balance: firebase.firestore.FieldValue.increment(amount),
                     gamesPlayed: firebase.firestore.FieldValue.increment(1)
@@ -2943,13 +2920,6 @@
                         // Check if user has sufficient balance
                         if (userData.balance < 500) {
                             this.showNotification('Minimum withdrawal is 500 credits ($250)', true);
-                            this.showButtonLoader('withdrawBtn', false);
-                            return;
-                        }
-                        
-                        // Check if user is subscriber
-                        if (!userData.isSubscriber) {
-                            this.showNotification('Complete an offer to become a subscriber and withdraw', true);
                             this.showButtonLoader('withdrawBtn', false);
                             return;
                         }
