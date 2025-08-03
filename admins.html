@@ -214,6 +214,18 @@
             justify-content: center;
             gap: 5px;
             cursor: default;
+            position: relative;
+        }
+        
+        .balance::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--gold), transparent);
+            border-radius: 2px;
         }
         
         .user-info {
@@ -386,14 +398,13 @@
             padding: 5px 10px;
             border-radius: 20px;
             font-size: 0.8rem;
-            animation: pulse 2s infinite;
+            animation: bounce 0.5s infinite alternate;
             cursor: default;
         }
         
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
+        @keyframes bounce {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-5px); }
         }
         
         .progress-container {
@@ -420,6 +431,20 @@
             color: var(--gold);
             font-weight: 500;
             cursor: default;
+        }
+        
+        .progress-warning {
+            color: var(--danger);
+            font-size: 0.9rem;
+            text-align: center;
+            margin-top: 10px;
+            cursor: default;
+            animation: blink 1.5s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
         }
         
         .game-modal {
@@ -833,6 +858,7 @@
             font-weight: bold;
             color: white;
             cursor: default;
+            transition: all 0.3s ease;
         }
         
         .wheel-pointer {
@@ -903,6 +929,8 @@
             transition: all 0.3s ease;
             box-shadow: 0 4px 8px rgba(0,0,0,0.3);
             border: 2px solid var(--gold);
+            position: relative;
+            overflow: hidden;
         }
         
         .mystery-box:hover {
@@ -914,6 +942,22 @@
             box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
         }
         
+        .mystery-box::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: rgba(255,255,255,0.1);
+            transform: rotate(30deg);
+            transition: all 0.5s ease;
+        }
+        
+        .mystery-box:hover::before {
+            transform: rotate(30deg) translate(20%, 20%);
+        }
+        
         .limbo-container {
             width: 100%;
             height: 200px;
@@ -923,6 +967,7 @@
             border-radius: 10px;
             overflow: hidden;
             cursor: default;
+            border: 1px solid rgba(255,255,255,0.1);
         }
         
         .limbo-target {
@@ -954,8 +999,9 @@
             height: 30px;
             border-radius: 50%;
             background: var(--gold);
-            transition: top 0.1s linear;
+            transition: top 0.05s linear;
             cursor: default;
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.7);
         }
         
         .dodge-container {
@@ -985,7 +1031,14 @@
         }
         
         .dodge-cell.active {
-            background: var(--gold);
+            background: var(--danger);
+            animation: pulseDanger 0.5s;
+        }
+        
+        @keyframes pulseDanger {
+            0% { background: var(--danger); }
+            50% { background: #ff6b6b; }
+            100% { background: var(--danger); }
         }
         
         .dodge-player {
@@ -1000,6 +1053,14 @@
             z-index: 10;
             transition: left 0.2s ease;
             cursor: default;
+            box-shadow: 0 0 15px rgba(40, 167, 69, 0.7);
+            animation: pulseSuccess 2s infinite;
+        }
+        
+        @keyframes pulseSuccess {
+            0% { box-shadow: 0 0 5px rgba(40, 167, 69, 0.7); }
+            50% { box-shadow: 0 0 20px rgba(40, 167, 69, 0.9); }
+            100% { box-shadow: 0 0 5px rgba(40, 167, 69, 0.7); }
         }
         
         /* CPA Offer Modal */
@@ -1070,6 +1131,50 @@
         /* Bank Name Field */
         .bank-name-field {
             display: none;
+        }
+        
+        /* Game Difficulty */
+        .game-difficulty {
+            background: rgba(212, 175, 55, 0.1);
+            border-radius: 10px;
+            padding: 10px;
+            margin: 10px 0;
+            text-align: center;
+            cursor: default;
+        }
+        
+        .difficulty-bar {
+            height: 8px;
+            background: linear-gradient(90deg, var(--success), var(--gold), var(--danger));
+            border-radius: 4px;
+            margin: 8px 0;
+            position: relative;
+        }
+        
+        .difficulty-level {
+            position: absolute;
+            width: 3px;
+            height: 16px;
+            background: white;
+            top: -4px;
+            transform: translateX(-50%);
+            cursor: default;
+        }
+        
+        .difficulty-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: #aaa;
+            cursor: default;
+        }
+        
+        .result-details {
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            cursor: default;
         }
         
         /* Mobile Responsive Styles */
@@ -1210,6 +1315,7 @@
         <div class="result-icon" id="resultIcon"></div>
         <h3 id="resultTitle">Result</h3>
         <p id="resultMessage"></p>
+        <div class="result-details" id="resultDetails"></div>
         <button onclick="closeResult()" style="margin-top: 20px;">Continue</button>
     </div>
     
@@ -1245,6 +1351,19 @@
                         Place your bet to start
                     </div>
                 </div>
+                
+                <!-- Difficulty Indicator -->
+                <div class="game-difficulty">
+                    <div>Game Difficulty</div>
+                    <div class="difficulty-bar">
+                        <div class="difficulty-level" id="difficultyLevel"></div>
+                    </div>
+                    <div class="difficulty-labels">
+                        <span>Easy</span>
+                        <span>Hard</span>
+                    </div>
+                </div>
+                
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-label">Wins</div>
@@ -1292,7 +1411,7 @@
             </button>
             
             <div style="margin-top: 25px;">
-                <p><i class="fas fa-info-circle"></i> You've played 4 games. Complete this offer to unlock premium features.</p>
+                <p><i class="fas fa-info-circle"></i> You've played <span id="gamesPlayedCount">0</span> games. Complete this offer to unlock premium features.</p>
             </div>
         </div>
     </div>
@@ -1365,6 +1484,11 @@
                     <div class="progress-bar" id="withdrawalProgress" style="width: 0%"></div>
                 </div>
                 <div class="progress-text" id="progressText">0/500 credits</div>
+                
+                <!-- Difficulty warning -->
+                <div class="progress-warning" id="difficultyWarning">
+                    <i class="fas fa-exclamation-triangle"></i> Games become harder as your balance increases!
+                </div>
             </div>
             
             <div id="bonusContainer" class="input-group" style="position: relative;">
@@ -1654,6 +1778,7 @@
                     resultIcon: document.getElementById('resultIcon'),
                     resultTitle: document.getElementById('resultTitle'),
                     resultMessage: document.getElementById('resultMessage'),
+                    resultDetails: document.getElementById('resultDetails'),
                     overlay: document.getElementById('overlay'),
                     bonusBadge: document.getElementById('bonusBadge'),
                     cpaModal: document.getElementById('cpaModal'),
@@ -1665,6 +1790,7 @@
                     gameResultText: document.getElementById('gameResultText'),
                     withdrawalProgress: document.getElementById('withdrawalProgress'),
                     progressText: document.getElementById('progressText'),
+                    difficultyWarning: document.getElementById('difficultyWarning'),
                     logoutBtn: document.getElementById('logoutBtn'),
                     authBtn: document.getElementById('authBtn'),
                     winCountEl: document.getElementById('winCount'),
@@ -1680,7 +1806,9 @@
                     referralList: document.getElementById('referralList'),
                     earnedSpins: document.getElementById('earnedSpins'),
                     cpaOfferUrlInput: document.getElementById('cpaOfferUrl'),
-                    bankNameField: document.getElementById('bankNameField')
+                    bankNameField: document.getElementById('bankNameField'),
+                    difficultyLevel: document.getElementById('difficultyLevel'),
+                    gamesPlayedCount: document.getElementById('gamesPlayedCount')
                 };
             },
             
@@ -1743,6 +1871,24 @@
                         this.closeCpaModal();
                     }
                 });
+            },
+            
+            // Calculate game difficulty based on balance
+            calculateDifficulty: function() {
+                if (!this.userData) return 0;
+                
+                const balance = this.userData.balance;
+                let difficulty = 0;
+                
+                // Progressive difficulty scaling
+                if (balance > 400) difficulty = 0.9;
+                else if (balance > 300) difficulty = 0.8;
+                else if (balance > 200) difficulty = 0.7;
+                else if (balance > 100) difficulty = 0.6;
+                else if (balance > 50) difficulty = 0.5;
+                else if (balance > 20) difficulty = 0.3;
+                
+                return difficulty;
             },
             
             // Check auth state
@@ -1828,15 +1974,17 @@
             },
             
             // Show game result
-            showResult: function(title, message, isWin) {
+            showResult: function(title, message, isWin, details = '') {
                 const resultTitle = this.elements.resultTitle;
                 const resultMessage = this.elements.resultMessage;
                 const resultIcon = this.elements.resultIcon;
+                const resultDetails = this.elements.resultDetails;
                 
                 if (!resultTitle || !resultMessage || !resultIcon) return;
                 
                 resultTitle.textContent = title;
                 resultMessage.textContent = message;
+                resultDetails.innerHTML = details;
                 resultIcon.className = 'result-icon';
                 resultIcon.classList.add(isWin ? 'win' : 'lose');
                 resultIcon.innerHTML = isWin ? '<i class="fas fa-trophy"></i>' : '<i class="fas fa-times"></i>';
@@ -1915,6 +2063,7 @@
             
             // Show CPA modal
             showCpaModal: function() {
+                this.elements.gamesPlayedCount.textContent = this.gamesPlayed;
                 this.elements.cpaModal.classList.add('show');
                 this.elements.overlay.classList.add('show');
                 this.playSound('click');
@@ -1986,17 +2135,21 @@
                         }
                     }
                     
-                    const multiplier = multipliers[resultIndex];
+                    // Apply difficulty scaling
+                    const difficulty = this.calculateDifficulty();
+                    let multiplier = multipliers[resultIndex];
+                    multiplier = multiplier * (1 - (difficulty * 0.6)); // Reduce multiplier by up to 60%
+                    
                     const amount = parseInt(this.elements.betAmount.value);
                     const winAmount = Math.floor(amount * multiplier);
                     
                     if (multiplier >= 1) {
-                        this.elements.gameResultText.innerHTML = `<span style="color: var(--success); font-weight: bold;">WIN! ${multiplier}x multiplier = +${winAmount} credits</span>`;
+                        this.elements.gameResultText.innerHTML = `<span style="color: var(--success); font-weight: bold;">WIN! ${multiplier.toFixed(2)}x multiplier = +${winAmount} credits</span>`;
                         this.playSound('win');
                         this.winCount++;
                         this.profit += winAmount;
                     } else {
-                        this.elements.gameResultText.innerHTML = `<span style="color: var(--danger); font-weight: bold;">LOSS! ${multiplier}x multiplier = -${amount} credits</span>`;
+                        this.elements.gameResultText.innerHTML = `<span style="color: var(--danger); font-weight: bold;">LOSS! ${multiplier.toFixed(2)}x multiplier = -${amount} credits</span>`;
                         this.playSound('lose');
                         this.lossCount++;
                         this.profit -= amount;
@@ -2013,16 +2166,26 @@
             
             // Load Mystery Box game
             loadMysteryBoxGame: function() {
+                // Adjust box values based on difficulty
+                const difficulty = this.calculateDifficulty();
+                let multipliers = [2, 0.5, 3, 1, 5, 0];
+                
+                if (difficulty > 0.5) {
+                    multipliers = [0.2, 0.5, 0.8, 1, 1.2, 0];
+                } else if (difficulty > 0.3) {
+                    multipliers = [0.5, 1, 1.5, 2, 0, 0.2];
+                }
+                
                 this.elements.gameBoard.innerHTML = `
                     <h3>Mystery Box</h3>
                     <p>Select a box to reveal your prize!</p>
                     <div class="box-grid">
-                        <div class="mystery-box" data-value="2">?</div>
-                        <div class="mystery-box" data-value="0.5">?</div>
-                        <div class="mystery-box" data-value="3">?</div>
-                        <div class="mystery-box" data-value="1">?</div>
-                        <div class="mystery-box" data-value="5">?</div>
-                        <div class="mystery-box" data-value="0">?</div>
+                        <div class="mystery-box" data-value="${multipliers[0]}">?</div>
+                        <div class="mystery-box" data-value="${multipliers[1]}">?</div>
+                        <div class="mystery-box" data-value="${multipliers[2]}">?</div>
+                        <div class="mystery-box" data-value="${multipliers[3]}">?</div>
+                        <div class="mystery-box" data-value="${multipliers[4]}">?</div>
+                        <div class="mystery-box" data-value="${multipliers[5]}">?</div>
                     </div>
                 `;
                 
@@ -2102,6 +2265,11 @@
                 multiplierDisplay.textContent = multiplier.toFixed(1) + 'x';
                 multiplierDisplay.style.top = '50%';
                 
+                // Adjust crash chance based on difficulty
+                const difficulty = this.calculateDifficulty();
+                const baseCrashChance = 0.05;
+                const crashChance = baseCrashChance + (difficulty * 0.15);
+                
                 // Start animation
                 const interval = setInterval(() => {
                     if (crashed) return;
@@ -2109,8 +2277,7 @@
                     // Increase multiplier
                     multiplier += 0.05 + Math.random() * 0.1;
                     
-                    // Random chance to crash
-                    const crashChance = Math.min(0.95, multiplier / 20);
+                    // Random chance to crash based on difficulty
                     if (Math.random() < crashChance) {
                         crashed = true;
                         clearInterval(interval);
@@ -2176,6 +2343,115 @@
                 `;
             },
             
+            // Start Dodge Ball game
+            startDodge: function() {
+                const container = document.getElementById('dodgeContainer');
+                const player = document.getElementById('dodgePlayer');
+                const cells = document.querySelectorAll('.dodge-cell');
+                
+                // Reset game state
+                cells.forEach(cell => cell.classList.remove('active'));
+                player.style.left = '50%';
+                
+                // Set player position
+                let playerPosition = 1; // center position
+                
+                // Handle keyboard controls
+                document.addEventListener('keydown', handleKeyDown);
+                
+                function handleKeyDown(e) {
+                    if (e.key === 'ArrowLeft' && playerPosition > 0) {
+                        playerPosition--;
+                        player.style.left = `${playerPosition * 33.33 + 16.66}%`;
+                    } else if (e.key === 'ArrowRight' && playerPosition < 2) {
+                        playerPosition++;
+                        player.style.left = `${playerPosition * 33.33 + 16.66}%`;
+                    }
+                }
+                
+                // Game logic
+                let score = 0;
+                let gameOver = false;
+                
+                // Start obstacles
+                const gameInterval = setInterval(() => {
+                    if (gameOver) return;
+                    
+                    // Create obstacle
+                    const row = document.createElement('div');
+                    row.className = 'dodge-row';
+                    
+                    // Determine obstacle position
+                    const obstaclePosition = Math.floor(Math.random() * 3);
+                    
+                    for (let i = 0; i < 3; i++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'dodge-cell';
+                        if (i === obstaclePosition) {
+                            cell.classList.add('active');
+                        }
+                        row.appendChild(cell);
+                    }
+                    
+                    // Add row at top
+                    container.insertBefore(row, container.firstChild);
+                    
+                    // Move rows down
+                    const rows = document.querySelectorAll('.dodge-row');
+                    if (rows.length > 3) {
+                        container.removeChild(rows[3]);
+                    }
+                    
+                    // Check collision
+                    const bottomRow = rows[2];
+                    if (bottomRow) {
+                        const obstacleCells = bottomRow.querySelectorAll('.dodge-cell');
+                        if (obstacleCells[playerPosition].classList.contains('active')) {
+                            // Collision detected
+                            gameOver = true;
+                            clearInterval(gameInterval);
+                            document.removeEventListener('keydown', handleKeyDown);
+                            
+                            const amount = parseInt(this.elements.betAmount.value);
+                            
+                            this.elements.gameResultText.innerHTML = `<span style="color: var(--danger); font-weight: bold;">LOSS! Hit obstacle at score ${score} = -${amount} credits</span>`;
+                            this.playSound('lose');
+                            this.lossCount++;
+                            this.profit -= amount;
+                            this.updateGameStats();
+                            
+                            this.updateUserBalance(-amount);
+                            
+                            return;
+                        }
+                    }
+                    
+                    // Increase score
+                    score++;
+                    
+                }, 1000);
+                
+                // Game duration
+                setTimeout(() => {
+                    if (!gameOver) {
+                        gameOver = true;
+                        clearInterval(gameInterval);
+                        document.removeEventListener('keydown', handleKeyDown);
+                        
+                        const amount = parseInt(this.elements.betAmount.value);
+                        const winAmount = Math.floor(amount * 2);
+                        
+                        this.elements.gameResultText.innerHTML = `<span style="color: var(--success); font-weight: bold;">WIN! Completed with score ${score} = +${winAmount} credits</span>`;
+                        this.playSound('win');
+                        this.winCount++;
+                        this.profit += winAmount;
+                        this.updateGameStats();
+                        
+                        this.updateUserBalance(winAmount);
+                    }
+                }, 10000);
+            },
+            
             // Get game icon
             getGameIcon: function(gameType) {
                 switch (gameType) {
@@ -2217,9 +2493,12 @@
                 let isWin = false;
                 let winAmount = 0;
                 
+                // Apply difficulty scaling
+                const difficulty = this.calculateDifficulty();
+                
                 // Adjust difficulty based on current balance
                 const balanceFactor = Math.min(1, this.userData.balance / 1000);
-                const adjustedWinChance = 0.6 * (1 - balanceFactor);
+                const adjustedWinChance = 0.6 * (1 - balanceFactor) * (1 - difficulty);
                 
                 switch (this.currentGame) {
                     case 'wheel':
@@ -2246,6 +2525,8 @@
                 const win = Math.random() < winChance;
                 
                 if (win) {
+                    // Reduce winnings at higher difficulties
+                    winMultiplier = winMultiplier * (1 - (difficulty * 0.5));
                     winAmount = Math.floor(amount * winMultiplier);
                     isWin = true;
                     this.winCount++;
@@ -2253,7 +2534,8 @@
                     this.elements.gameResultText.innerHTML = `<span style="color: var(--success); font-weight: bold;">WIN! +${winAmount} credits</span>`;
                     this.playSound('win');
                 } else {
-                    winAmount = -amount;
+                    // Increase losses at higher difficulties
+                    winAmount = -amount * (1 + (difficulty * 0.3));
                     this.lossCount++;
                     this.profit -= amount;
                     this.elements.gameResultText.innerHTML = `<span style="color: var(--danger); font-weight: bold;">LOSS! -${amount} credits</span>`;
@@ -2269,6 +2551,23 @@
             // Update user balance
             updateUserBalance: function(amount) {
                 const userRef = this.db.collection('users').doc(this.currentUser.uid);
+                
+                // Prevent non-subscribers from reaching withdrawal threshold
+                if (this.userData.balance + amount > 480 && !this.userData.isSubscriber) {
+                    // Force balance to stay at 480
+                    this.userData.balance = 480;
+                    userRef.update({ balance: 480 });
+                    
+                    this.showNotification('Maximum balance reached! Complete an offer to withdraw');
+                    this.showCpaModal();
+                    
+                    this.elements.balanceEl.textContent = 480;
+                    this.elements.modalBalance.textContent = 480;
+                    this.updateProgressBar();
+                    this.showLoader(false);
+                    return;
+                }
+                
                 userRef.update({
                     balance: firebase.firestore.FieldValue.increment(amount),
                     gamesPlayed: firebase.firestore.FieldValue.increment(1)
@@ -2306,6 +2605,11 @@
                     this.elements.profitAmount.textContent = this.profit >= 0 ? `+${this.profit}` : this.profit;
                     this.elements.profitAmount.style.color = this.profit >= 0 ? 'var(--success)' : 'var(--danger)';
                 }
+                
+                // Update difficulty indicator
+                const difficulty = this.calculateDifficulty();
+                const difficultyPercent = Math.round(difficulty * 100);
+                this.elements.difficultyLevel.style.left = `${difficultyPercent}%`;
             },
             
             // Update progress bar
