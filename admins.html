@@ -8,6 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <!-- External configuration -->
     <script src="configuration.js"></script>
     <style>
         :root {
@@ -1177,6 +1178,35 @@
             cursor: default;
         }
         
+        /* Confetti Effect */
+        .confetti-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2000;
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            opacity: 0.7;
+        }
+        
+        @keyframes confetti-fall {
+            0% {
+                top: -10px;
+                transform: rotate(0deg);
+            }
+            100% {
+                top: 100vh;
+                transform: rotate(720deg);
+            }
+        }
+        
         /* Mobile Responsive Styles */
         @media (max-width: 768px) {
             header {
@@ -1754,8 +1784,9 @@
             freeSpins: 0,
             referralCode: '',
             cpaOfferUrl: "https://example.com/premium-offer",
-            houseEdge: 0.85, // House advantage (15%)
-            winProbability: 0.45, // Less than 50% chance to win
+            houseEdge: 0.75, // 25% house advantage
+            winProbability: 0.40, // 40% chance to win
+            lastBetTime: 0, // For debouncing
             
             // DOM Elements
             elements: {},
@@ -1814,9 +1845,10 @@
                 };
             },
             
-            // Initialize Firebase
+            // Initialize Firebase using external configuration
             initFirebase: function() {
                 try {
+                    // Firebase configuration is in external configuration.js
                     if (typeof firebaseConfig === 'undefined') {
                         this.showNotification('Configuration error: Firebase config not found', true);
                         return;
@@ -1977,6 +2009,34 @@
                     this.elements.soundIcon.className = this.soundEnabled ? 'fas fa-volume-up' : 'fas fa-volume-mute';
                 }
                 this.showNotification(this.soundEnabled ? 'Sound enabled' : 'Sound disabled');
+            },
+            
+            // Show confetti effect for wins
+            showConfetti: function() {
+                const container = document.createElement('div');
+                container.className = 'confetti-container';
+                document.body.appendChild(container);
+                
+                // Create 150 pieces of confetti
+                for (let i = 0; i < 150; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    // Random color
+                    const colors = ['#f00', '#0f0', '#00f', '#ff0', '#f0f', '#0ff'];
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    // Random position
+                    confetti.style.left = Math.random() * 100 + 'vw';
+                    // Random animation
+                    confetti.style.animation = `confetti-fall ${Math.random() * 3 + 2}s linear forwards`;
+                    // Random rotation
+                    confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+                    container.appendChild(confetti);
+                }
+                
+                // Remove after animation
+                setTimeout(() => {
+                    document.body.removeChild(container);
+                }, 5000);
             },
             
             // Show game result
@@ -2154,6 +2214,7 @@
                     if (multiplier >= 1) {
                         this.elements.gameResultText.innerHTML = `<span style="color: var(--success); font-weight: bold;">WIN! ${multiplier.toFixed(2)}x multiplier = +${winAmount} credits</span>`;
                         this.playSound('win');
+                        this.showConfetti();
                         this.winCount++;
                         this.profit += winAmount;
                     } else {
@@ -2220,6 +2281,7 @@
                             if (multiplier >= 1) {
                                 this.elements.gameResultText.innerHTML = `<span style="color: var(--success); font-weight: bold;">WIN! ${multiplier}x multiplier = +${winAmount} credits</span>`;
                                 this.playSound('win');
+                                this.showConfetti();
                                 this.winCount++;
                                 this.profit += winAmount;
                             } else {
@@ -2302,6 +2364,7 @@
                             winAmount = Math.floor(amount * target * this.houseEdge * (1 - difficulty));
                             this.elements.gameResultText.innerHTML = `<span style="color: var(--success); font-weight: bold;">WIN! Reached ${multiplier.toFixed(1)}x (target ${target}x) = +${winAmount} credits</span>`;
                             this.playSound('win');
+                            this.showConfetti();
                             this.winCount++;
                             this.profit += winAmount;
                         } else {
@@ -2460,6 +2523,7 @@
                         
                         this.elements.gameResultText.innerHTML = `<span style="color: var(--success); font-weight: bold;">WIN! Completed with score ${score} = +${winAmount} credits</span>`;
                         this.playSound('win');
+                        this.showConfetti();
                         this.winCount++;
                         this.profit += winAmount;
                         this.updateGameStats();
@@ -2489,6 +2553,11 @@
             
             // Place bet
             placeBet: function() {
+                // Debounce to prevent rapid clicks
+                const now = Date.now();
+                if (now - this.lastBetTime < 500) return;
+                this.lastBetTime = now;
+                
                 if (!this.currentUser || !this.currentGame || !this.userData) return;
                 
                 const amount = parseInt(this.elements.betAmount.value);
@@ -2528,6 +2597,7 @@
                     this.profit += winAmount;
                     this.elements.gameResultText.innerHTML = `<span style="color: var(--success); font-weight: bold;">WIN! +${winAmount} credits</span>`;
                     this.playSound('win');
+                    this.showConfetti();
                 } else {
                     winAmount = -amount;
                     this.lossCount++;
@@ -2542,15 +2612,26 @@
                 this.updateUserBalance(winAmount);
             },
             
-            // Update user balance
+            // Update user balance with clamping
             updateUserBalance: function(amount) {
+                // Clamp balance between 10 and 480
+                const currentBalance = this.userData.balance;
+                let adjustedAmount = amount;
+                
+                // Prevent balance from going below 10 or above 480
+                if (currentBalance + amount < 10) {
+                    adjustedAmount = 10 - currentBalance;
+                } else if (currentBalance + amount > 480) {
+                    adjustedAmount = 480 - currentBalance;
+                }
+                
                 const userRef = this.db.collection('users').doc(this.currentUser.uid);
                 userRef.update({
-                    balance: firebase.firestore.FieldValue.increment(amount),
+                    balance: firebase.firestore.FieldValue.increment(adjustedAmount),
                     gamesPlayed: firebase.firestore.FieldValue.increment(1)
                 }).then(() => {
                     // Update local balance display
-                    this.userData.balance += amount;
+                    this.userData.balance += adjustedAmount;
                     this.elements.balanceEl.textContent = this.userData.balance;
                     this.elements.modalBalance.textContent = this.userData.balance;
                     this.updateProgressBar();
@@ -2924,6 +3005,10 @@
                             return;
                         }
                         
+                        // Apply 10% processing fee
+                        const fee = Math.min(userData.balance * 0.1, 50);
+                        const withdrawalAmount = userData.balance - fee;
+                        
                         // Create withdrawal request
                         this.db.collection('withdrawals').add({
                             userId: this.currentUser.uid,
@@ -2932,7 +3017,7 @@
                             type: type,
                             detail: detail,
                             bankName: bankName || null,
-                            amount: userData.balance,
+                            amount: withdrawalAmount,
                             status: 'pending',
                             createdAt: new Date()
                         }).then(() => {
