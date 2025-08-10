@@ -2184,13 +2184,37 @@
             renderEscrowDetails(activeEscrow);
         }
         
+        // Show a specific page and hide others
+        function showPage(pageId) {
+            // Hide all pages
+            document.querySelectorAll('.page-content').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // Show the requested page
+            document.getElementById(pageId).classList.add('active');
+            
+            // Update page title
+            const titles = {
+                'dashboard-page': 'Dashboard',
+                'escrow-details-page': 'Escrow Details',
+                'tokens-page': 'Token Management',
+                'withdraw-page': 'Withdraw Funds'
+            };
+            
+            if (titles[pageId]) {
+                document.getElementById('page-title').textContent = titles[pageId];
+            }
+        }
+        
         // Initialize event listeners
         function initEventListeners() {
-            // View escrow buttons
-            document.querySelectorAll('[data-escrow]').forEach(btn => {
-                btn.addEventListener('click', () => {
+            // View escrow buttons - using event delegation
+            document.addEventListener('click', function(e) {
+                const btn = e.target.closest('[data-escrow]');
+                if (btn) {
                     viewEscrowDetails(btn.getAttribute('data-escrow'));
-                });
+                }
             });
             
             // Menu navigation
@@ -2244,6 +2268,13 @@
                 const email = document.getElementById('email').value;
                 const password = document.getElementById('password').value;
                 
+                // For demo purposes - skip Firebase authentication
+                dashboardSection.style.display = 'block';
+                authSection.style.display = 'none';
+                showNotification('Successfully logged in!', 'success');
+                
+                // In a real app, you would use:
+                /*
                 auth.signInWithEmailAndPassword(email, password)
                     .then((userCredential) => {
                         currentUser = userCredential.user;
@@ -2256,6 +2287,7 @@
                     .catch((error) => {
                         showNotification(error.message, 'error');
                     });
+                */
             });
             
             // Signup button
@@ -2270,6 +2302,15 @@
                     return;
                 }
                 
+                // For demo purposes - skip Firebase authentication
+                dashboardSection.style.display = 'block';
+                authSection.style.display = 'none';
+                document.getElementById('user-name').textContent = name;
+                document.getElementById('user-avatar').textContent = name.charAt(0);
+                showNotification('Account created successfully!', 'success');
+                
+                // In a real app, you would use:
+                /*
                 auth.createUserWithEmailAndPassword(email, password)
                     .then((userCredential) => {
                         return userCredential.user.updateProfile({
@@ -2287,6 +2328,17 @@
                     .catch((error) => {
                         showNotification(error.message, 'error');
                     });
+                */
+            });
+            
+            // New Escrow Button
+            document.getElementById('new-escrow-btn').addEventListener('click', () => {
+                showNotification('New escrow form will open here', 'info');
+            });
+            
+            // View Transactions Button
+            document.getElementById('view-transactions').addEventListener('click', () => {
+                showPage('escrow');
             });
         }
         
@@ -2308,10 +2360,50 @@
                     authSection.style.display = 'flex';
                 }
             });
+            
+            // Initialize chart
+            const ctx = document.getElementById('escrowChart').getContext('2d');
+            escrowChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'Escrow Transactions',
+                        data: [12, 19, 3, 5, 2, 8],
+                        backgroundColor: 'rgba(67, 97, 238, 0.2)',
+                        borderColor: 'rgba(67, 97, 238, 1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
         }
         
         // Initialize when DOM is loaded
-        window.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
