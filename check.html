@@ -1223,11 +1223,11 @@
                 <div class="login-form" id="login-form">
                     <div class="form-group">
                         <label for="email">Email Address</label>
-                        <input type="email" id="email" class="form-control" placeholder="Enter your email">
+                        <input type="email" id="email" class="form-control" placeholder="Enter your email" value="admin@example.com">
                     </div>
                     <div class="form-group">
                         <label for="password">Password</label>
-                        <input type="password" id="password" class="form-control" placeholder="Enter your password">
+                        <input type="password" id="password" class="form-control" placeholder="Enter your password" value="password123">
                     </div>
                     <button class="btn btn-primary" id="login-btn">
                         <i class="fas fa-sign-in-alt"></i> Sign In
@@ -1295,7 +1295,7 @@
                     <span class="menu-text">Withdraw Funds</span>
                 </div>
                 
-                <div id="admin-menu" style="display: none;">
+                <div id="admin-menu">
                     <div class="menu-title">Admin</div>
                     <div class="menu-item" data-page="users">
                         <i class="fas fa-users"></i>
@@ -1507,7 +1507,7 @@
                                     <td><span class="badge badge-primary">In Review</span></td>
                                     <td><div class="timer"><i class="fas fa-clock"></i> 14:32</div></td>
                                     <td>
-                                        <button class="btn-sm btn-outline" data-escrow="ESC-2023-0783"><i class="fas fa-eye"></i> View</button>
+                                        <button class="btn-sm btn-outline view-escrow-btn" data-escrow="ESC-2023-0783"><i class="fas fa-eye"></i> View</button>
                                     </td>
                                 </tr>
                                 <tr>
@@ -1521,7 +1521,7 @@
                                     <td><span class="badge badge-warning">Buyer Action Required</span></td>
                                     <td>Not Started</td>
                                     <td>
-                                        <button class="btn-sm btn-outline" data-escrow="ESC-2023-0784"><i class="fas fa-eye"></i> View</button>
+                                        <button class="btn-sm btn-outline view-escrow-btn" data-escrow="ESC-2023-0784"><i class="fas fa-eye"></i> View</button>
                                     </td>
                                 </tr>
                                 <tr>
@@ -1535,7 +1535,7 @@
                                     <td><span class="badge badge-info">Awaiting Inspection</span></td>
                                     <td><div class="timer"><i class="fas fa-clock"></i> 08:15:42</div></td>
                                     <td>
-                                        <button class="btn-sm btn-outline" data-escrow="ESC-2023-0785"><i class="fas fa-eye"></i> View</button>
+                                        <button class="btn-sm btn-outline view-escrow-btn" data-escrow="ESC-2023-0785"><i class="fas fa-eye"></i> View</button>
                                     </td>
                                 </tr>
                                 <tr>
@@ -1549,7 +1549,7 @@
                                     <td><span class="badge badge-danger">Refund Requested</span></td>
                                     <td>Admin Review</td>
                                     <td>
-                                        <button class="btn-sm btn-outline" data-escrow="ESC-2023-0786"><i class="fas fa-eye"></i> View</button>
+                                        <button class="btn-sm btn-outline view-escrow-btn" data-escrow="ESC-2023-0786"><i class="fas fa-eye"></i> View</button>
                                         <button class="btn-sm btn-primary-sm"><i class="fas fa-handshake"></i> Intervene</button>
                                     </td>
                                 </tr>
@@ -1613,7 +1613,7 @@
                         <div class="table-container">
                             <div class="table-header">
                                 <div class="table-title">Recent Token Transactions</div>
-                                <button class="btn-sm btn-primary-sm">
+                                <button class="btn-sm btn-primary-sm" id="buy-tokens-btn">
                                     <i class="fas fa-plus"></i> Buy Tokens
                                 </button>
                             </div>
@@ -1674,7 +1674,7 @@
                                     <option value="crypto">Cryptocurrency</option>
                                 </select>
                             </div>
-                            <button class="btn btn-primary">
+                            <button class="btn btn-primary" id="submit-withdraw-btn">
                                 <i class="fas fa-paper-plane"></i> Submit Request
                             </button>
                         </div>
@@ -2209,10 +2209,10 @@
         
         // Initialize event listeners
         function initEventListeners() {
-            // View escrow buttons - using event delegation
+            // View escrow buttons
             document.addEventListener('click', function(e) {
-                const btn = e.target.closest('[data-escrow]');
-                if (btn) {
+                if (e.target.classList.contains('view-escrow-btn') || e.target.closest('.view-escrow-btn')) {
+                    const btn = e.target.closest('.view-escrow-btn');
                     viewEscrowDetails(btn.getAttribute('data-escrow'));
                 }
             });
@@ -2252,7 +2252,7 @@
             });
             
             mobileToggle.addEventListener('click', function() {
-                sidebar.classList.add('active');
+                sidebar.classList.toggle('active');
             });
             
             // Logout button
@@ -2260,6 +2260,7 @@
                 auth.signOut().then(() => {
                     dashboardSection.style.display = 'none';
                     authSection.style.display = 'flex';
+                    showNotification('You have been logged out', 'info');
                 });
             });
             
@@ -2268,13 +2269,6 @@
                 const email = document.getElementById('email').value;
                 const password = document.getElementById('password').value;
                 
-                // For demo purposes - skip Firebase authentication
-                dashboardSection.style.display = 'block';
-                authSection.style.display = 'none';
-                showNotification('Successfully logged in!', 'success');
-                
-                // In a real app, you would use:
-                /*
                 auth.signInWithEmailAndPassword(email, password)
                     .then((userCredential) => {
                         currentUser = userCredential.user;
@@ -2283,11 +2277,11 @@
                         document.getElementById('user-name').textContent = currentUser.displayName || 'User';
                         document.getElementById('user-avatar').textContent = 
                             currentUser.displayName ? currentUser.displayName.charAt(0) : 'U';
+                        showNotification('Login successful!', 'success');
                     })
                     .catch((error) => {
                         showNotification(error.message, 'error');
                     });
-                */
             });
             
             // Signup button
@@ -2302,15 +2296,6 @@
                     return;
                 }
                 
-                // For demo purposes - skip Firebase authentication
-                dashboardSection.style.display = 'block';
-                authSection.style.display = 'none';
-                document.getElementById('user-name').textContent = name;
-                document.getElementById('user-avatar').textContent = name.charAt(0);
-                showNotification('Account created successfully!', 'success');
-                
-                // In a real app, you would use:
-                /*
                 auth.createUserWithEmailAndPassword(email, password)
                     .then((userCredential) => {
                         return userCredential.user.updateProfile({
@@ -2328,7 +2313,6 @@
                     .catch((error) => {
                         showNotification(error.message, 'error');
                     });
-                */
             });
             
             // New Escrow Button
@@ -2338,7 +2322,25 @@
             
             // View Transactions Button
             document.getElementById('view-transactions').addEventListener('click', () => {
-                showPage('escrow');
+                showPage('escrow-page');
+            });
+            
+            // Buy Tokens Button
+            document.getElementById('buy-tokens-btn').addEventListener('click', () => {
+                showNotification('Token purchase interface will open here', 'info');
+            });
+            
+            // Submit Withdraw Button
+            document.getElementById('submit-withdraw-btn').addEventListener('click', () => {
+                const amount = document.getElementById('withdraw-amount').value;
+                const method = document.getElementById('withdraw-method').value;
+                
+                if (!amount || !method) {
+                    showNotification('Please fill all fields', 'error');
+                    return;
+                }
+                
+                showNotification(`Withdrawal request for $${amount} via ${method} submitted`, 'success');
             });
         }
         
