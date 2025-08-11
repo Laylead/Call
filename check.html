@@ -6,6 +6,9 @@
     <title>SecureEscrow | Professional Escrow Platform</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -1290,6 +1293,34 @@
             margin-top: 25px;
             justify-content: center;
         }
+        
+        /* Create Escrow Modal */
+        .create-escrow-modal {
+            display: none;
+        }
+        
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-light);
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+        
+        /* Token redemption */
+        .token-redemption-form {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            margin-bottom: 25px;
+        }
     </style>
 </head>
 <body>
@@ -1434,6 +1465,7 @@
                     <div class="search-box">
                         <i class="fas fa-search"></i>
                         <input type="text" id="global-search" placeholder="Search transactions, users...">
+                        <div class="search-results" id="global-search-results"></div>
                     </div>
                     <div class="user-profile">
                         <div class="user-avatar" id="user-avatar">U</div>
@@ -1640,6 +1672,17 @@
                             </div>
                         </div>
                         
+                        <div class="token-redemption-form">
+                            <h3>Redeem Deposit Token</h3>
+                            <div class="form-group">
+                                <label for="deposit-token">Deposit Token</label>
+                                <input type="text" id="deposit-token" class="form-control" placeholder="Enter your deposit token">
+                            </div>
+                            <button class="btn btn-primary" id="redeem-token-btn">
+                                <i class="fas fa-key"></i> Redeem Token
+                            </button>
+                        </div>
+                        
                         <div class="table-container">
                             <div class="table-header">
                                 <div class="table-title">Recent Token Transactions</div>
@@ -1825,6 +1868,48 @@
         </div>
     </div>
     
+    <!-- Create Escrow Modal -->
+    <div class="modal create-escrow-modal" id="create-escrow-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Create New Escrow</div>
+                <button class="modal-close" id="close-escrow-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="escrow-counterparty">Counterparty</label>
+                    <input type="text" id="escrow-counterparty" class="form-control" placeholder="Search by email or username">
+                    <div class="search-results" id="counterparty-search-results"></div>
+                </div>
+                <div class="form-group">
+                    <label for="escrow-item">Item Description</label>
+                    <input type="text" id="escrow-item" class="form-control" placeholder="Item being exchanged">
+                </div>
+                <div class="form-group">
+                    <label for="escrow-amount">Amount ($)</label>
+                    <input type="number" id="escrow-amount" class="form-control" placeholder="Transaction amount">
+                </div>
+                <div class="form-group">
+                    <label for="escrow-type">Transaction Type</label>
+                    <select id="escrow-type" class="form-control">
+                        <option value="physical">Physical Product</option>
+                        <option value="digital">Digital Product</option>
+                        <option value="service">Service</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="escrow-details">Additional Details</label>
+                    <textarea id="escrow-details" class="form-control" rows="3" placeholder="Additional transaction details"></textarea>
+                </div>
+                <button class="btn btn-primary" id="create-escrow-confirm">
+                    <i class="fas fa-check"></i> Create Escrow
+                </button>
+            </div>
+        </div>
+    </div>
+    
     <!-- Notification -->
     <div class="notification" id="notification">
         <i class="fas fa-check-circle"></i>
@@ -1846,132 +1931,11 @@
         </div>
     </div>
     
+    <!-- External Firebase Configuration -->
+    <script src="configuration.js"></script>
+    
     <!-- Main Script -->
     <script>
-        // Mock database using localStorage
-        class SecureEscrowDB {
-            constructor() {
-                if (!localStorage.getItem('escrowUsers')) {
-                    localStorage.setItem('escrowUsers', JSON.stringify([]));
-                }
-                if (!localStorage.getItem('escrowTransactions')) {
-                    localStorage.setItem('escrowTransactions', JSON.stringify([]));
-                }
-                if (!localStorage.getItem('escrows')) {
-                    localStorage.setItem('escrows', JSON.stringify([]));
-                }
-                if (!localStorage.getItem('withdrawals')) {
-                    localStorage.setItem('withdrawals', JSON.stringify([]));
-                }
-                if (!localStorage.getItem('tokenGenerations')) {
-                    localStorage.setItem('tokenGenerations', JSON.stringify([]));
-                }
-            }
-            
-            // User methods
-            createUser(user) {
-                const users = JSON.parse(localStorage.getItem('escrowUsers'));
-                users.push(user);
-                localStorage.setItem('escrowUsers', JSON.stringify(users));
-                return user;
-            }
-            
-            getUserByEmail(email) {
-                const users = JSON.parse(localStorage.getItem('escrowUsers'));
-                return users.find(u => u.email === email);
-            }
-            
-            updateUser(id, updates) {
-                const users = JSON.parse(localStorage.getItem('escrowUsers'));
-                const index = users.findIndex(u => u.id === id);
-                if (index !== -1) {
-                    users[index] = { ...users[index], ...updates };
-                    localStorage.setItem('escrowUsers', JSON.stringify(users));
-                    return users[index];
-                }
-                return null;
-            }
-            
-            // Escrow methods
-            createEscrow(escrow) {
-                const escrows = JSON.parse(localStorage.getItem('escrows'));
-                escrows.push(escrow);
-                localStorage.setItem('escrows', JSON.stringify(escrows));
-                return escrow;
-            }
-            
-            getEscrowById(id) {
-                const escrows = JSON.parse(localStorage.getItem('escrows'));
-                return escrows.find(e => e.id === id);
-            }
-            
-            updateEscrow(id, updates) {
-                const escrows = JSON.parse(localStorage.getItem('escrows'));
-                const index = escrows.findIndex(e => e.id === id);
-                if (index !== -1) {
-                    escrows[index] = { ...escrows[index], ...updates };
-                    localStorage.setItem('escrows', JSON.stringify(escrows));
-                    return escrows[index];
-                }
-                return null;
-            }
-            
-            getEscrowsByUser(userId) {
-                const escrows = JSON.parse(localStorage.getItem('escrows'));
-                return escrows.filter(e => e.participants.includes(userId));
-            }
-            
-            // Transaction methods
-            createTransaction(transaction) {
-                const transactions = JSON.parse(localStorage.getItem('escrowTransactions'));
-                transactions.push(transaction);
-                localStorage.setItem('escrowTransactions', JSON.stringify(transactions));
-                return transaction;
-            }
-            
-            getTransactionsByUser(userId) {
-                const transactions = JSON.parse(localStorage.getItem('escrowTransactions'));
-                return transactions.filter(t => t.userId === userId);
-            }
-            
-            // Withdrawal methods
-            createWithdrawal(withdrawal) {
-                const withdrawals = JSON.parse(localStorage.getItem('withdrawals'));
-                withdrawals.push(withdrawal);
-                localStorage.setItem('withdrawals', JSON.stringify(withdrawals));
-                return withdrawal;
-            }
-            
-            getWithdrawalsByUser(userId) {
-                const withdrawals = JSON.parse(localStorage.getItem('withdrawals'));
-                return withdrawals.filter(w => w.userId === userId);
-            }
-            
-            // Token generation methods
-            createTokenGeneration(generation) {
-                const generations = JSON.parse(localStorage.getItem('tokenGenerations'));
-                generations.push(generation);
-                localStorage.setItem('tokenGenerations', JSON.stringify(generations));
-                return generation;
-            }
-            
-            getAllTokenGenerations() {
-                return JSON.parse(localStorage.getItem('tokenGenerations'));
-            }
-            
-            // User management
-            getAllUsers() {
-                return JSON.parse(localStorage.getItem('escrowUsers'));
-            }
-            
-            getAllWithdrawals() {
-                return JSON.parse(localStorage.getItem('withdrawals'));
-            }
-        }
-
-        // Initialize database
-        const db = new SecureEscrowDB();
-
         // DOM Elements
         const authSection = document.getElementById('auth-section');
         const dashboardSection = document.getElementById('dashboard-section');
@@ -1990,6 +1954,14 @@
         const withdrawBtn = document.getElementById('withdraw-btn');
         const generateTokensBtn = document.getElementById('generate-tokens-btn');
         const newEscrowBtn = document.getElementById('new-escrow-btn');
+        const createEscrowModal = document.getElementById('create-escrow-modal');
+        const closeEscrowModal = document.getElementById('close-escrow-modal');
+        const createEscrowConfirm = document.getElementById('create-escrow-confirm');
+        const counterpartySearch = document.getElementById('escrow-counterparty');
+        const counterpartyResults = document.getElementById('counterparty-search-results');
+        const globalSearch = document.getElementById('global-search');
+        const globalSearchResults = document.getElementById('global-search-results');
+        const redeemTokenBtn = document.getElementById('redeem-token-btn');
         
         // Current user data
         let currentUser = null;
@@ -1997,6 +1969,17 @@
         let escrowChart = null;
         let activeEscrow = null;
         let escrowTimers = {};
+        let userData = {};
+        let selectedCounterparty = null;
+        
+        // Firestore References
+        let userRef;
+        let escrowsRef;
+        let transactionsRef;
+        let usersRef;
+        let withdrawalsRef;
+        let tokenGenerationsRef;
+        let tokensRef;
         
         // Show notification
         function showNotification(message, type = 'success') {
@@ -2029,6 +2012,11 @@
         // Generate random ID
         function generateId(prefix) {
             return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+        }
+        
+        // Generate 6-digit product ID
+        function generateProductId() {
+            return Math.floor(100000 + Math.random() * 900000);
         }
         
         // Format time for display
@@ -2072,23 +2060,35 @@
             clearInterval(escrowTimers[escrowId]);
             
             try {
-                const escrowData = db.getEscrowById(escrowId);
-                if (!escrowData) {
+                const escrowDoc = await db.collection('escrows').doc(escrowId).get();
+                if (!escrowDoc.exists) {
                     showNotification('Escrow not found', 'error');
                     return;
                 }
                 
+                const escrowData = escrowDoc.data();
+                
                 if (isAccepted) {
+                    // Release funds to seller
+                    await db.collection('users').doc(escrowData.sellerId).update({
+                        balance: firebase.firestore.FieldValue.increment(escrowData.amount)
+                    });
+                    
                     // Update escrow status
-                    db.updateEscrow(escrowId, {
+                    await db.collection('escrows').doc(escrowId).update({
                         status: 'completed',
                         completedAt: new Date()
                     });
                     
                     showNotification(`Escrow ${escrowId} completed! Funds released to seller.`, 'success');
                 } else {
+                    // Refund buyer
+                    await db.collection('users').doc(escrowData.buyerId).update({
+                        balance: firebase.firestore.FieldValue.increment(escrowData.amount)
+                    });
+                    
                     // Update escrow status
-                    db.updateEscrow(escrowId, {
+                    await db.collection('escrows').doc(escrowId).update({
                         status: 'refunded',
                         refundReason: refundReason,
                         refundedAt: new Date()
@@ -2106,9 +2106,9 @@
         }
         
         // Update escrow status
-        function updateEscrowStatus(escrowId, status, data = {}) {
+        async function updateEscrowStatus(escrowId, status, data = {}) {
             try {
-                db.updateEscrow(escrowId, {
+                await db.collection('escrows').doc(escrowId).update({
                     status: status,
                     ...data,
                     updatedAt: new Date()
@@ -2122,12 +2122,12 @@
         }
         
         // Initiate refund process
-        function initiateRefund(escrowId, reason) {
+        async function initiateRefund(escrowId, reason) {
             try {
-                const returnProductId = generateId('RETURN');
+                const returnProductId = generateProductId();
                 
                 // Update escrow status to 'refund_requested'
-                updateEscrowStatus(escrowId, 'refund_requested', {
+                await updateEscrowStatus(escrowId, 'refund_requested', {
                     returnProductId: returnProductId,
                     refundReason: reason
                 });
@@ -2159,7 +2159,7 @@
                     </div>
                     <div class="detail-row">
                         <div class="detail-label">Created:</div>
-                        <div class="detail-value">${new Date(escrow.createdAt).toLocaleString()}</div>
+                        <div class="detail-value">${escrow.createdAt.toDate().toLocaleString()}</div>
                     </div>
                     ${escrow.physicalProduct ? `<div class="detail-row">
                         <div class="detail-label">Product Type:</div>
@@ -2401,26 +2401,62 @@
                 showPage('dashboard-page');
             });
             
-            document.getElementById('accept-shipment-btn')?.addEventListener('click', () => {
-                // Generate product ID
-                const productId = generateId('PROD');
-                escrow.productId = productId;
-                
-                // Update escrow status
-                updateEscrowStatus(escrow.id, 'shipment_requested', { productId });
-                
-                // Debit buyer account
-                showNotification('Account debited. Product ID generated. Seller notified to ship.', 'success');
-                
-                // Update UI
-                renderEscrowDetails(escrow);
+            document.getElementById('accept-shipment-btn')?.addEventListener('click', async () => {
+                try {
+                    // Generate product ID
+                    const productId = generateProductId();
+                    
+                    // Update escrow status
+                    await updateEscrowStatus(escrow.id, 'shipment_requested', { 
+                        productId: productId,
+                        shipmentRequestedAt: new Date()
+                    });
+                    
+                    // Debit buyer account
+                    await db.collection('users').doc(currentUser.uid).update({
+                        balance: firebase.firestore.FieldValue.increment(-(escrow.amount + escrow.fee))
+                    });
+                    
+                    // Notify seller
+                    showNotification('Account debited. Product ID generated. Seller notified to ship.', 'success');
+                    
+                    // Refresh escrow details
+                    const updatedEscrow = await db.collection('escrows').doc(escrow.id).get();
+                    activeEscrow = {
+                        id: escrow.id,
+                        ...updatedEscrow.data()
+                    };
+                    renderEscrowDetails(activeEscrow);
+                } catch (error) {
+                    console.error("Error accepting shipment: ", error);
+                    showNotification('Failed to process shipment request: ' + error.message, 'error');
+                }
             });
             
-            document.getElementById('reveal-id-btn')?.addEventListener('click', () => {
-                updateEscrowStatus(escrow.id, 'awaiting_inspection');
-                escrow.status = 'awaiting_inspection';
-                renderEscrowDetails(escrow);
-                startInspectionTimer(escrow.id);
+            document.getElementById('reveal-id-btn')?.addEventListener('click', async () => {
+                try {
+                    const now = new Date();
+                    const inspectionEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours from now
+                    
+                    await updateEscrowStatus(escrow.id, 'awaiting_inspection', {
+                        inspectionEnd: inspectionEnd
+                    });
+                    
+                    // Refresh escrow details
+                    const updatedEscrow = await db.collection('escrows').doc(escrow.id).get();
+                    activeEscrow = {
+                        id: escrow.id,
+                        ...updatedEscrow.data()
+                    };
+                    renderEscrowDetails(activeEscrow);
+                    
+                    // Start inspection timer
+                    const secondsLeft = Math.floor((inspectionEnd - now) / 1000);
+                    startInspectionTimer(escrow.id, secondsLeft);
+                } catch (error) {
+                    console.error("Error revealing product ID: ", error);
+                    showNotification('Failed to reveal product ID: ' + error.message, 'error');
+                }
             });
             
             document.getElementById('accept-product-btn')?.addEventListener('click', () => {
@@ -2434,41 +2470,205 @@
                 }
             });
             
-            document.getElementById('ship-return-btn')?.addEventListener('click', () => {
-                const returnProductId = generateId('RETURN');
-                showNotification(`Return shipment initiated. Product ID for return: ${returnProductId}`, 'info');
-                escrow.returnProductId = returnProductId;
-                updateEscrowStatus(escrow.id, 'return_shipped', { returnProductId });
-                escrow.status = 'return_shipped';
-                renderEscrowDetails(escrow);
+            document.getElementById('ship-return-btn')?.addEventListener('click', async () => {
+                try {
+                    const returnProductId = generateProductId();
+                    await updateEscrowStatus(escrow.id, 'return_shipped', { 
+                        returnProductId: returnProductId,
+                        returnShippedAt: new Date()
+                    });
+                    
+                    showNotification(`Return shipment initiated. Product ID for return: ${returnProductId}`, 'info');
+                    
+                    // Refresh escrow details
+                    const updatedEscrow = await db.collection('escrows').doc(escrow.id).get();
+                    activeEscrow = {
+                        id: escrow.id,
+                        ...updatedEscrow.data()
+                    };
+                    renderEscrowDetails(activeEscrow);
+                } catch (error) {
+                    console.error("Error initiating return shipment: ", error);
+                    showNotification('Failed to initiate return shipment: ' + error.message, 'error');
+                }
             });
         }
         
         // View escrow details
-        function viewEscrowDetails(escrowId) {
-            const escrowData = db.getEscrowById(escrowId);
-            if (!escrowData) {
-                showNotification('Escrow not found', 'error');
-                return;
+        async function viewEscrowDetails(escrowId) {
+            try {
+                const escrowDoc = await db.collection('escrows').doc(escrowId).get();
+                if (!escrowDoc.exists) {
+                    showNotification('Escrow not found', 'error');
+                    return;
+                }
+                
+                activeEscrow = {
+                    id: escrowId,
+                    ...escrowDoc.data()
+                };
+                
+                showPage('escrow-details-page');
+                renderEscrowDetails(activeEscrow);
+                
+                // Start timer if needed
+                if (activeEscrow.status === 'awaiting_inspection') {
+                    const now = new Date();
+                    const inspectionEnd = activeEscrow.inspectionEnd.toDate();
+                    const secondsLeft = Math.floor((inspectionEnd - now) / 1000);
+                    
+                    if (secondsLeft > 0) {
+                        startInspectionTimer(escrowId, secondsLeft);
+                    } else {
+                        // Auto-complete if time expired
+                        completeEscrow(escrowId, true);
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching escrow: ", error);
+                showNotification('Failed to load escrow details', 'error');
+            }
+        }
+        
+        // Search users by email or username
+        async function searchUsers(query) {
+            if (!query || query.length < 3) {
+                return [];
             }
             
-            activeEscrow = escrowData;
-            
-            showPage('escrow-details-page');
-            renderEscrowDetails(activeEscrow);
-            
-            // Start timer if needed
-            if (activeEscrow.status === 'awaiting_inspection') {
-                const now = new Date();
-                const inspectionEnd = new Date(activeEscrow.inspectionEnd);
-                const secondsLeft = Math.floor((inspectionEnd - now) / 1000);
+            try {
+                // Search by email
+                const emailResults = await db.collection('users')
+                    .where('email', '>=', query)
+                    .where('email', '<=', query + '\uf8ff')
+                    .limit(5)
+                    .get();
                 
-                if (secondsLeft > 0) {
-                    startInspectionTimer(escrowId, secondsLeft);
-                } else {
-                    // Auto-complete if time expired
-                    completeEscrow(escrowId, true);
+                // Search by name
+                const nameResults = await db.collection('users')
+                    .where('name', '>=', query)
+                    .where('name', '<=', query + '\uf8ff')
+                    .limit(5)
+                    .get();
+                
+                // Combine and deduplicate results
+                const results = [];
+                const seen = new Set();
+                
+                emailResults.forEach(doc => {
+                    if (!seen.has(doc.id)) {
+                        seen.add(doc.id);
+                        results.push({ id: doc.id, ...doc.data() });
+                    }
+                });
+                
+                nameResults.forEach(doc => {
+                    if (!seen.has(doc.id)) {
+                        seen.add(doc.id);
+                        results.push({ id: doc.id, ...doc.data() });
+                    }
+                });
+                
+                return results;
+            } catch (error) {
+                console.error("Error searching users: ", error);
+                return [];
+            }
+        }
+        
+        // Create new escrow
+        async function createEscrow(sellerId, item, amount, escrowType, details) {
+            try {
+                // Get seller data
+                const sellerDoc = await db.collection('users').doc(sellerId).get();
+                if (!sellerDoc.exists) {
+                    showNotification('Seller not found', 'error');
+                    return;
                 }
+                
+                const sellerData = sellerDoc.data();
+                
+                // Create escrow ID
+                const escrowId = generateId('ESC');
+                
+                // Calculate fee (1.5%)
+                const fee = amount * 0.015;
+                
+                // Create escrow
+                await db.collection('escrows').doc(escrowId).set({
+                    id: escrowId,
+                    sellerId: sellerId,
+                    sellerName: sellerData.name,
+                    sellerEmail: sellerData.email,
+                    buyerId: currentUser.uid,
+                    buyerName: currentUser.displayName,
+                    buyerEmail: currentUser.email,
+                    itemName: item,
+                    itemDescription: details,
+                    amount: amount,
+                    fee: fee,
+                    status: 'pending_buyer_acceptance',
+                    physicalProduct: escrowType === 'physical',
+                    createdAt: new Date(),
+                    participants: [currentUser.uid, sellerId]
+                });
+                
+                showNotification('Escrow created successfully!', 'success');
+                viewEscrowDetails(escrowId);
+                
+                // Close modal
+                createEscrowModal.style.display = 'none';
+            } catch (error) {
+                console.error("Error creating escrow: ", error);
+                showNotification('Failed to create escrow: ' + error.message, 'error');
+            }
+        }
+        
+        // Redeem deposit token
+        async function redeemToken(token) {
+            try {
+                // Get token document
+                const tokenDoc = await db.collection('tokens').doc(token).get();
+                if (!tokenDoc.exists) {
+                    showNotification('Invalid token', 'error');
+                    return;
+                }
+                
+                const tokenData = tokenDoc.data();
+                
+                if (tokenData.used) {
+                    showNotification('Token already used', 'error');
+                    return;
+                }
+                
+                // Update user balance
+                await db.collection('users').doc(currentUser.uid).update({
+                    balance: firebase.firestore.FieldValue.increment(tokenData.amount)
+                });
+                
+                // Mark token as used
+                await db.collection('tokens').doc(token).update({
+                    used: true,
+                    usedAt: new Date(),
+                    usedBy: currentUser.uid
+                });
+                
+                // Record transaction
+                const txId = generateId('TX');
+                await db.collection('transactions').doc(txId).set({
+                    id: txId,
+                    userId: currentUser.uid,
+                    type: 'deposit',
+                    amount: tokenData.amount,
+                    date: new Date(),
+                    status: 'completed'
+                });
+                
+                showNotification(`Successfully redeemed $${tokenData.amount.toFixed(2)}`, 'success');
+                document.getElementById('deposit-token').value = '';
+            } catch (error) {
+                console.error("Error redeeming token: ", error);
+                showNotification('Failed to redeem token: ' + error.message, 'error');
             }
         }
         
@@ -2522,9 +2722,10 @@
             
             // Logout button
             logoutBtn.addEventListener('click', function() {
-                currentUser = null;
-                dashboardSection.style.display = 'none';
-                authSection.style.display = 'flex';
+                auth.signOut().then(() => {
+                    dashboardSection.style.display = 'none';
+                    authSection.style.display = 'flex';
+                });
             });
             
             // Login button
@@ -2532,14 +2733,14 @@
                 const email = document.getElementById('email').value;
                 const password = document.getElementById('password').value;
                 
-                const user = db.getUserByEmail(email);
-                if (user && user.password === password) {
-                    currentUser = user;
-                    initUserData();
-                    showNotification('Login successful!', 'success');
-                } else {
-                    showNotification('Invalid email or password', 'error');
-                }
+                auth.signInWithEmailAndPassword(email, password)
+                    .then((userCredential) => {
+                        currentUser = userCredential.user;
+                        initUserData();
+                    })
+                    .catch((error) => {
+                        showNotification(error.message, 'error');
+                    });
             });
             
             // Signup button
@@ -2554,26 +2755,29 @@
                     return;
                 }
                 
-                if (db.getUserByEmail(email)) {
-                    showNotification('User with this email already exists', 'error');
-                    return;
-                }
-                
-                const newUser = {
-                    id: generateId('USER'),
-                    name: name,
-                    email: email,
-                    password: password,
-                    balance: 1000,
-                    tokens: 10,
-                    role: 'user',
-                    createdAt: new Date()
-                };
-                
-                db.createUser(newUser);
-                currentUser = newUser;
-                initUserData();
-                showNotification('Account created successfully!', 'success');
+                auth.createUserWithEmailAndPassword(email, password)
+                    .then((userCredential) => {
+                        return userCredential.user.updateProfile({
+                            displayName: name
+                        }).then(() => {
+                            return db.collection('users').doc(userCredential.user.uid).set({
+                                name: name,
+                                email: email,
+                                balance: 0,
+                                tokens: 0,
+                                role: 'user',
+                                createdAt: new Date()
+                            });
+                        });
+                    })
+                    .then(() => {
+                        currentUser = auth.currentUser;
+                        initUserData();
+                        showNotification('Account created successfully!', 'success');
+                    })
+                    .catch((error) => {
+                        showNotification(error.message, 'error');
+                    });
             });
             
             // Deposit funds button
@@ -2584,27 +2788,8 @@
                     return;
                 }
                 
-                // Update user balance
-                db.updateUser(currentUser.id, {
-                    tokens: currentUser.tokens + amount
-                });
-                
-                // Create transaction
-                db.createTransaction({
-                    id: generateId('TRX'),
-                    userId: currentUser.id,
-                    type: 'Deposit',
-                    amount: amount,
-                    status: 'completed',
-                    date: new Date()
-                });
-                
-                showNotification(`$${amount.toFixed(2)} deposited successfully!`, 'success');
-                document.getElementById('token-amount').value = '';
-                
-                // Refresh user data
-                currentUser = db.getUserByEmail(currentUser.email);
-                initUserData();
+                // Redirect to deposit page
+                window.location.href = `https://www.deposittoken.com/82828282828?userId=${currentUser.uid}&amount=${amount}`;
             });
             
             // Withdraw funds button
@@ -2622,37 +2807,29 @@
                     return;
                 }
                 
-                if (amount > currentUser.balance) {
+                if (amount > userData.balance) {
                     showNotification('Insufficient balance', 'error');
                     return;
                 }
                 
                 // Create withdrawal request
-                const withdrawal = {
-                    id: generateId('WD'),
-                    userId: currentUser.id,
-                    userName: currentUser.name,
+                const withdrawalId = generateId('WD');
+                db.collection('withdrawals').doc(withdrawalId).set({
+                    id: withdrawalId,
+                    userId: currentUser.uid,
+                    userName: userData.name,
                     userEmail: currentUser.email,
                     amount: amount,
                     method: method,
                     status: 'pending',
                     createdAt: new Date()
-                };
-                
-                db.createWithdrawal(withdrawal);
-                
-                // Update user balance
-                db.updateUser(currentUser.id, {
-                    balance: currentUser.balance - amount
+                }).then(() => {
+                    showNotification('Withdrawal request submitted successfully', 'success');
+                    document.getElementById('withdraw-amount').value = '';
+                    document.getElementById('withdraw-method').value = '';
+                }).catch(error => {
+                    showNotification('Failed to submit withdrawal request: ' + error.message, 'error');
                 });
-                
-                showNotification('Withdrawal request submitted successfully', 'success');
-                document.getElementById('withdraw-amount').value = '';
-                document.getElementById('withdraw-method').value = '';
-                
-                // Refresh user data
-                currentUser = db.getUserByEmail(currentUser.email);
-                initUserData();
             });
             
             // Generate tokens (admin)
@@ -2670,58 +2847,168 @@
                     return;
                 }
                 
-                const user = db.getUserByEmail(userEmail);
-                if (!user) {
-                    showNotification('User not found', 'error');
-                    return;
-                }
-                
-                // Update user tokens
-                db.updateUser(user.id, {
-                    tokens: user.tokens + tokenAmount
-                });
-                
-                // Record token generation
-                db.createTokenGeneration({
-                    id: generateId('TG'),
-                    userId: user.id,
-                    userEmail: user.email,
-                    tokens: tokenAmount,
-                    generatedBy: currentUser.id,
-                    generatedByName: currentUser.name,
-                    createdAt: new Date()
-                });
-                
-                showNotification(`${tokenAmount} tokens generated for ${userEmail}`, 'success');
-                document.getElementById('user-email').value = '';
-                document.getElementById('tokens-amount').value = '';
+                // Find user by email
+                db.collection('users').where('email', '==', userEmail).get()
+                    .then(snapshot => {
+                        if (snapshot.empty) {
+                            showNotification('User not found', 'error');
+                            return;
+                        }
+                        
+                        const userDoc = snapshot.docs[0];
+                        const userId = userDoc.id;
+                        const currentTokens = userDoc.data().tokens || 0;
+                        
+                        // Update user tokens
+                        return db.collection('users').doc(userId).update({
+                            tokens: currentTokens + tokenAmount
+                        }).then(() => {
+                            // Record token generation
+                            const generationId = generateId('TG');
+                            return db.collection('tokenGenerations').doc(generationId).set({
+                                id: generationId,
+                                userId: userId,
+                                userEmail: userEmail,
+                                tokens: tokenAmount,
+                                generatedBy: currentUser.uid,
+                                generatedByName: userData.name,
+                                createdAt: new Date()
+                            });
+                        });
+                    })
+                    .then(() => {
+                        showNotification(`${tokenAmount} tokens generated for ${userEmail}`, 'success');
+                        document.getElementById('user-email').value = '';
+                        document.getElementById('tokens-amount').value = '';
+                    })
+                    .catch(error => {
+                        showNotification('Failed to generate tokens: ' + error.message, 'error');
+                    });
             });
             
             // New escrow button
             newEscrowBtn.addEventListener('click', function() {
-                // Create a sample escrow
-                const newEscrow = {
-                    id: generateId('ESC'),
-                    sellerName: 'Tech Supplies Inc.',
-                    sellerEmail: 'seller@example.com',
-                    sellerId: 'seller-123',
-                    buyerName: currentUser.name,
-                    buyerEmail: currentUser.email,
-                    buyerId: currentUser.id,
-                    itemName: 'MacBook Pro 16"',
-                    itemDescription: '2023 model, 32GB RAM, 1TB SSD',
-                    itemCategory: 'Electronics',
-                    amount: 2499.99,
-                    fee: 37.50,
-                    status: 'pending_buyer_acceptance',
-                    physicalProduct: true,
-                    createdAt: new Date(),
-                    participants: [currentUser.id, 'seller-123']
-                };
+                createEscrowModal.style.display = 'flex';
+                counterpartySearch.value = '';
+                counterpartyResults.innerHTML = '';
+                document.getElementById('escrow-item').value = '';
+                document.getElementById('escrow-amount').value = '';
+                document.getElementById('escrow-details').value = '';
+                selectedCounterparty = null;
+            });
+            
+            // Close escrow modal
+            closeEscrowModal.addEventListener('click', function() {
+                createEscrowModal.style.display = 'none';
+            });
+            
+            // Counterparty search
+            counterpartySearch.addEventListener('input', async function() {
+                const query = this.value;
+                if (query.length < 3) {
+                    counterpartyResults.innerHTML = '';
+                    return;
+                }
                 
-                db.createEscrow(newEscrow);
-                showNotification('New escrow created successfully!', 'success');
-                viewEscrowDetails(newEscrow.id);
+                const results = await searchUsers(query);
+                counterpartyResults.innerHTML = '';
+                
+                if (results.length === 0) {
+                    counterpartyResults.innerHTML = '<div class="search-result">No users found</div>';
+                    return;
+                }
+                
+                results.forEach(user => {
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'search-result';
+                    resultDiv.innerHTML = `
+                        <div>${user.name}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-light);">${user.email}</div>
+                    `;
+                    
+                    resultDiv.addEventListener('click', function() {
+                        counterpartySearch.value = `${user.name} (${user.email})`;
+                        selectedCounterparty = user;
+                        counterpartyResults.innerHTML = '';
+                    });
+                    
+                    counterpartyResults.appendChild(resultDiv);
+                });
+                
+                counterpartyResults.style.display = 'block';
+            });
+            
+            // Create escrow confirmation
+            createEscrowConfirm.addEventListener('click', function() {
+                if (!selectedCounterparty) {
+                    showNotification('Please select a counterparty', 'error');
+                    return;
+                }
+                
+                const item = document.getElementById('escrow-item').value;
+                const amount = parseFloat(document.getElementById('escrow-amount').value);
+                const escrowType = document.getElementById('escrow-type').value;
+                const details = document.getElementById('escrow-details').value;
+                
+                if (!item) {
+                    showNotification('Please enter an item description', 'error');
+                    return;
+                }
+                
+                if (isNaN(amount) || amount <= 0) {
+                    showNotification('Please enter a valid amount', 'error');
+                    return;
+                }
+                
+                createEscrow(selectedCounterparty.id, item, amount, escrowType, details);
+            });
+            
+            // Global search
+            globalSearch.addEventListener('input', async function() {
+                const query = this.value;
+                if (query.length < 3) {
+                    globalSearchResults.innerHTML = '';
+                    return;
+                }
+                
+                const results = await searchUsers(query);
+                globalSearchResults.innerHTML = '';
+                
+                if (results.length === 0) {
+                    globalSearchResults.innerHTML = '<div class="search-result">No users found</div>';
+                    return;
+                }
+                
+                results.forEach(user => {
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'search-result';
+                    resultDiv.innerHTML = `
+                        <div>${user.name}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-light);">${user.email}</div>
+                    `;
+                    
+                    resultDiv.addEventListener('click', function() {
+                        // For demo, we'll just show a notification
+                        showNotification(`Selected user: ${user.name}`, 'info');
+                        globalSearch.value = '';
+                        globalSearchResults.innerHTML = '';
+                    });
+                    
+                    globalSearchResults.appendChild(resultDiv);
+                });
+                
+                globalSearchResults.style.display = 'block';
+            });
+            
+            // Redeem token button
+            redeemTokenBtn.addEventListener('click', function() {
+                const token = document.getElementById('deposit-token').value.trim();
+                if (!token) {
+                    showNotification('Please enter a token', 'error');
+                    return;
+                }
+                
+                redeemToken(token);
             });
         }
         
@@ -2734,323 +3021,217 @@
                     document.getElementById('page-title').textContent = pageId.replace('-page', '').replace(/-/g, ' ');
                 }
             });
-            
-            // If dashboard page, initialize chart
-            if (pageId === 'dashboard-page') {
-                initEscrowChart();
-            }
         }
         
-        // Initialize escrow chart
-        function initEscrowChart() {
-            const ctx = document.getElementById('escrowChart').getContext('2d');
-            
-            if (escrowChart) {
-                escrowChart.destroy();
-            }
-            
-            escrowChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
-                    datasets: [{
-                        label: 'Escrow Transactions',
-                        data: [12, 19, 15, 24, 22, 30, 28],
-                        backgroundColor: 'rgba(67, 97, 238, 0.1)',
-                        borderColor: '#4361ee',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        pointRadius: 4,
-                        pointBackgroundColor: '#4361ee'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    }
-                }
-            });
-        }
-        
-        // Initialize user data
+        // Initialize user data and listeners
         function initUserData() {
             if (!currentUser) return;
             
             dashboardSection.style.display = 'block';
             authSection.style.display = 'none';
             
-            document.getElementById('user-name').textContent = currentUser.name || 'User';
-            document.getElementById('username').textContent = currentUser.name || 'User';
-            document.getElementById('user-avatar').textContent = currentUser.name ? currentUser.name.charAt(0) : 'U';
-            document.getElementById('user-role').textContent = currentUser.role;
+            document.getElementById('user-name').textContent = currentUser.displayName || 'User';
+            document.getElementById('username').textContent = currentUser.displayName || 'User';
+            document.getElementById('user-avatar').textContent = currentUser.displayName ? currentUser.displayName.charAt(0) : 'U';
             
-            // Update stats
-            document.getElementById('user-balance').textContent = `$${currentUser.balance.toFixed(2)}`;
-            document.getElementById('available-tokens').textContent = currentUser.tokens;
-            document.getElementById('user-tokens').textContent = currentUser.tokens;
+            // Set up Firestore references
+            userRef = db.collection('users').doc(currentUser.uid);
+            escrowsRef = db.collection('escrows')
+                .where('participants', 'array-contains', currentUser.uid)
+                .where('status', 'in', ['pending', 'in_review', 'awaiting_inspection', 'shipment_requested', 'shipped', 'refund_requested']);
             
-            // Show admin menu if admin
-            if (currentUser.role === 'admin') {
-                adminMenu.style.display = 'block';
-                isAdmin = true;
-            } else {
-                adminMenu.style.display = 'none';
-                isAdmin = false;
+            transactionsRef = db.collection('transactions')
+                .where('userId', '==', currentUser.uid)
+                .orderBy('date', 'desc')
+                .limit(5);
+                
+            tokensRef = db.collection('tokens')
+                .where('userId', '==', currentUser.uid)
+                .orderBy('createdAt', 'desc');
+            
+            // Admin references
+            if (isAdmin) {
+                usersRef = db.collection('users');
+                withdrawalsRef = db.collection('withdrawals').orderBy('createdAt', 'desc');
+                tokenGenerationsRef = db.collection('tokenGenerations').orderBy('createdAt', 'desc');
             }
             
-            // Load escrows
-            const escrows = db.getEscrowsByUser(currentUser.id);
-            const activeCount = escrows.filter(e => 
-                ['pending', 'in_review', 'awaiting_inspection', 'shipment_requested', 'shipped', 'refund_requested'].includes(e.status)
-            ).length;
-            
-            document.getElementById('active-escrows').textContent = activeCount;
-            
-            // Update escrows table
-            const tableBody = document.getElementById('active-escrows-table');
-            tableBody.innerHTML = '';
-            
-            escrows.forEach(escrow => {
-                if (!['pending', 'in_review', 'awaiting_inspection', 'shipment_requested', 'shipped', 'refund_requested'].includes(escrow.status)) {
-                    return;
+            // Listen for user data changes
+            userRef.onSnapshot(doc => {
+                if (doc.exists) {
+                    userData = doc.data();
+                    document.getElementById('user-balance').textContent = `$${userData.balance.toFixed(2)}`;
+                    document.getElementById('available-tokens').textContent = userData.tokens;
+                    document.getElementById('user-tokens').textContent = userData.tokens;
+                    document.getElementById('user-role').textContent = userData.role;
+                    
+                    // Update progress bars
+                    document.getElementById('balance-progress').style.width = `${Math.min(100, userData.balance/1000*100)}%`;
+                    
+                    // Show admin menu if admin
+                    if (userData.role === 'admin') {
+                        adminMenu.style.display = 'block';
+                        isAdmin = true;
+                    } else {
+                        adminMenu.style.display = 'none';
+                        isAdmin = false;
+                    }
                 }
-                
-                const now = new Date();
-                const inspectionEnd = escrow.inspectionEnd ? new Date(escrow.inspectionEnd) : null;
-                const timeLeft = inspectionEnd ? Math.floor((inspectionEnd - now) / 1000) : 0;
-                const timeDisplay = timeLeft > 0 ? `<div class="timer"><i class="fas fa-clock"></i> ${formatTime(timeLeft)}</div>` : 'N/A';
-                
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${escrow.id}</td>
-                    <td>
-                        <div><i class="fas fa-user-tie"></i> Seller: ${escrow.sellerName}</div>
-                        <div><i class="fas fa-user"></i> Buyer: ${escrow.buyerName}</div>
-                    </td>
-                    <td>${escrow.itemName}</td>
-                    <td>$${escrow.amount.toFixed(2)}</td>
-                    <td><span class="badge ${getStatusBadgeClass(escrow.status)}">${getStatusText(escrow.status)}</span></td>
-                    <td>${timeDisplay}</td>
-                    <td>
-                        <button class="btn-sm btn-outline" data-escrow="${escrow.id}"><i class="fas fa-eye"></i> View</button>
-                    </td>
-                `;
-                tableBody.appendChild(row);
             });
             
-            // Load transactions
-            const transactions = db.getTransactionsByUser(currentUser.id).slice(0, 5);
-            const transactionsBody = document.getElementById('recent-transactions');
-            transactionsBody.innerHTML = '';
-            
-            transactions.forEach(transaction => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${transaction.id}</td>
-                    <td>${transaction.type}</td>
-                    <td>$${transaction.amount.toFixed(2)}</td>
-                    <td><span class="badge badge-success">Completed</span></td>
-                    <td>${new Date(transaction.date).toLocaleDateString()}</td>
-                `;
-                transactionsBody.appendChild(row);
-            });
-            
-            // Load withdrawal history
-            const withdrawals = db.getWithdrawalsByUser(currentUser.id);
-            const withdrawalBody = document.getElementById('withdrawal-history');
-            withdrawalBody.innerHTML = '';
-            
-            withdrawals.forEach(withdrawal => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${withdrawal.id}</td>
-                    <td>$${withdrawal.amount.toFixed(2)}</td>
-                    <td>${withdrawal.method}</td>
-                    <td>${new Date(withdrawal.createdAt).toLocaleDateString()}</td>
-                    <td><span class="badge badge-warning">${withdrawal.status}</span></td>
-                `;
-                withdrawalBody.appendChild(row);
-            });
-            
-            // Load token transactions
-            const tokenTransactions = db.getTransactionsByUser(currentUser.id)
-                .filter(t => t.type === 'Deposit')
-                .slice(0, 5);
+            // Listen for escrows
+            escrowsRef.onSnapshot(snapshot => {
+                const activeCount = snapshot.size;
+                document.getElementById('active-escrows').textContent = activeCount;
+                document.getElementById('escrows-progress').style.width = `${Math.min(100, activeCount/10*100)}%`;
                 
-            const tokenTransactionsBody = document.getElementById('token-transactions');
-            tokenTransactionsBody.innerHTML = '';
-            
-            tokenTransactions.forEach(transaction => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${transaction.id}</td>
-                    <td>${transaction.amount}</td>
-                    <td>$${transaction.amount.toFixed(2)}</td>
-                    <td>${new Date(transaction.date).toLocaleDateString()}</td>
-                    <td><span class="badge badge-success">Completed</span></td>
-                `;
-                tokenTransactionsBody.appendChild(row);
-            });
-            
-            // Admin data
-            if (isAdmin) {
-                // Users
-                const users = db.getAllUsers();
-                const usersTable = document.getElementById('users-table');
-                usersTable.innerHTML = '';
+                // Update escrows table
+                const tableBody = document.getElementById('active-escrows-table');
+                tableBody.innerHTML = '';
                 
-                users.forEach(user => {
+                snapshot.forEach(doc => {
+                    const escrow = doc.data();
                     const row = document.createElement('tr');
+                    
+                    const now = new Date();
+                    const inspectionEnd = escrow.inspectionEnd ? escrow.inspectionEnd.toDate() : null;
+                    const timeLeft = inspectionEnd ? Math.floor((inspectionEnd - now) / 1000) : 0;
+                    const timeDisplay = timeLeft > 0 ? `<div class="timer"><i class="fas fa-clock"></i> ${formatTime(timeLeft)}</div>` : 'N/A';
+                    
                     row.innerHTML = `
+                        <td>${escrow.id}</td>
                         <td>
-                            <div class="user-info">
-                                <div class="user-avatar-sm">${user.name.charAt(0)}</div>
-                                <div>${user.name}</div>
-                            </div>
+                            <div><i class="fas fa-user-tie"></i> Seller: ${escrow.sellerName}</div>
+                            <div><i class="fas fa-user"></i> Buyer: ${escrow.buyerName}</div>
                         </td>
-                        <td>${user.email}</td>
-                        <td>${user.role}</td>
-                        <td>Active</td>
-                        <td>$${user.balance.toFixed(2)}</td>
+                        <td>${escrow.itemName}</td>
+                        <td>$${escrow.amount.toFixed(2)}</td>
+                        <td><span class="badge ${getStatusBadgeClass(escrow.status)}">${getStatusText(escrow.status)}</span></td>
+                        <td>${timeDisplay}</td>
                         <td>
-                            <button class="btn-sm btn-outline">View</button>
+                            <button class="btn-sm btn-outline" data-escrow="${escrow.id}"><i class="fas fa-eye"></i> View</button>
                         </td>
                     `;
-                    usersTable.appendChild(row);
+                    tableBody.appendChild(row);
+                });
+            });
+            
+            // Listen for transactions
+            transactionsRef.onSnapshot(snapshot => {
+                const tableBody = document.getElementById('recent-transactions');
+                tableBody.innerHTML = '';
+                
+                snapshot.forEach(doc => {
+                    const transaction = doc.data();
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>${transaction.id}</td>
+                        <td>${transaction.type}</td>
+                        <td>$${transaction.amount.toFixed(2)}</td>
+                        <td><span class="badge badge-success">Completed</span></td>
+                        <td>${transaction.date.toDate().toLocaleDateString()}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            });
+            
+            // Admin listeners
+            if (isAdmin) {
+                // Users
+                usersRef.onSnapshot(snapshot => {
+                    const tableBody = document.getElementById('users-table');
+                    tableBody.innerHTML = '';
+                    
+                    snapshot.forEach(doc => {
+                        const user = doc.data();
+                        const row = document.createElement('tr');
+                        
+                        row.innerHTML = `
+                            <td>
+                                <div class="user-info">
+                                    <div class="user-avatar-sm">${user.name.charAt(0)}</div>
+                                    <div>${user.name}</div>
+                                </div>
+                            </td>
+                            <td>${user.email}</td>
+                            <td>${user.role}</td>
+                            <td>Active</td>
+                            <td>$${user.balance.toFixed(2)}</td>
+                            <td>
+                                <button class="btn-sm btn-outline">View</button>
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
                 });
                 
                 // Withdrawals
-                const withdrawalsAdmin = db.getAllWithdrawals();
-                const withdrawalsTable = document.getElementById('withdrawal-requests');
-                withdrawalsTable.innerHTML = '';
-                
-                withdrawalsAdmin.forEach(withdrawal => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${withdrawal.id}</td>
-                        <td>
-                            <div class="user-info">
-                                <div class="user-avatar-sm">${withdrawal.userName.charAt(0)}</div>
-                                <div>${withdrawal.userName}</div>
-                            </div>
-                        </td>
-                        <td>$${withdrawal.amount.toFixed(2)}</td>
-                        <td>${withdrawal.method}</td>
-                        <td>${new Date(withdrawal.createdAt).toLocaleDateString()}</td>
-                        <td><span class="badge badge-warning">${withdrawal.status}</span></td>
-                        <td>
-                            <button class="btn-sm btn-success-sm">Approve</button>
-                            <button class="btn-sm btn-danger-sm">Reject</button>
-                        </td>
-                    `;
-                    withdrawalsTable.appendChild(row);
+                withdrawalsRef.onSnapshot(snapshot => {
+                    const tableBody = document.getElementById('withdrawal-requests');
+                    tableBody.innerHTML = '';
+                    
+                    snapshot.forEach(doc => {
+                        const withdrawal = doc.data();
+                        const row = document.createElement('tr');
+                        
+                        row.innerHTML = `
+                            <td>${withdrawal.id}</td>
+                            <td>
+                                <div class="user-info">
+                                    <div class="user-avatar-sm">${withdrawal.userName.charAt(0)}</div>
+                                    <div>${withdrawal.userName}</div>
+                                </div>
+                            </td>
+                            <td>$${withdrawal.amount.toFixed(2)}</td>
+                            <td>${withdrawal.method}</td>
+                            <td>${withdrawal.createdAt.toDate().toLocaleDateString()}</td>
+                            <td><span class="badge badge-warning">${withdrawal.status}</span></td>
+                            <td>
+                                <button class="btn-sm btn-success-sm">Approve</button>
+                                <button class="btn-sm btn-danger-sm">Reject</button>
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
                 });
                 
                 // Token generations
-                const tokenGenerations = db.getAllTokenGenerations();
-                const tokenGenerationsTable = document.getElementById('token-generations');
-                tokenGenerationsTable.innerHTML = '';
-                
-                tokenGenerations.forEach(gen => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${gen.id}</td>
-                        <td>${gen.userEmail}</td>
-                        <td>${gen.tokens}</td>
-                        <td>${new Date(gen.createdAt).toLocaleDateString()}</td>
-                        <td>${gen.generatedByName}</td>
-                    `;
-                    tokenGenerationsTable.appendChild(row);
+                tokenGenerationsRef.onSnapshot(snapshot => {
+                    const tableBody = document.getElementById('token-generations');
+                    tableBody.innerHTML = '';
+                    
+                    snapshot.forEach(doc => {
+                        const generation = doc.data();
+                        const row = document.createElement('tr');
+                        
+                        row.innerHTML = `
+                            <td>${generation.id}</td>
+                            <td>${generation.userEmail}</td>
+                            <td>${generation.tokens}</td>
+                            <td>${generation.createdAt.toDate().toLocaleDateString()}</td>
+                            <td>${generation.generatedByName}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
                 });
             }
-            
-            // Initialize escrow chart
-            initEscrowChart();
         }
         
         // Initialize the application
         function init() {
-            // Create admin user if not exists
-            if (!db.getUserByEmail('admin@secureescrow.com')) {
-                db.createUser({
-                    id: 'admin-001',
-                    name: 'Admin User',
-                    email: 'admin@secureescrow.com',
-                    password: 'admin123',
-                    balance: 10000,
-                    tokens: 100,
-                    role: 'admin',
-                    createdAt: new Date()
-                });
-            }
-            
-            // Create sample user if not exists
-            if (!db.getUserByEmail('user@example.com')) {
-                db.createUser({
-                    id: 'user-001',
-                    name: 'John Doe',
-                    email: 'user@example.com',
-                    password: 'user123',
-                    balance: 5000,
-                    tokens: 50,
-                    role: 'user',
-                    createdAt: new Date()
-                });
-            }
-            
-            // Create sample escrows if none exist
-            if (JSON.parse(localStorage.getItem('escrows')).length === 0) {
-                const sampleEscrow = {
-                    id: 'ESC-001',
-                    sellerName: 'Tech Supplies Inc.',
-                    sellerEmail: 'seller@example.com',
-                    sellerId: 'seller-123',
-                    buyerName: 'John Doe',
-                    buyerEmail: 'user@example.com',
-                    buyerId: 'user-001',
-                    itemName: 'MacBook Pro 16"',
-                    itemDescription: '2023 model, 32GB RAM, 1TB SSD',
-                    itemCategory: 'Electronics',
-                    amount: 2499.99,
-                    fee: 37.50,
-                    status: 'pending_buyer_acceptance',
-                    physicalProduct: true,
-                    createdAt: new Date(),
-                    participants: ['user-001', 'seller-123']
-                };
-                
-                db.createEscrow(sampleEscrow);
-            }
-            
             initEventListeners();
             
-            // Check if user is already logged in
-            const urlParams = new URLSearchParams(window.location.search);
-            const userEmail = urlParams.get('user');
-            if (userEmail) {
-                const user = db.getUserByEmail(userEmail);
+            // Initialize Firebase auth state observer
+            auth.onAuthStateChanged((user) => {
                 if (user) {
                     currentUser = user;
                     initUserData();
+                } else {
+                    dashboardSection.style.display = 'none';
+                    authSection.style.display = 'flex';
                 }
-            }
+            });
         }
         
         // Initialize when DOM is loaded
