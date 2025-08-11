@@ -11,6 +11,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* All CSS styles remain exactly as before */
         :root {
             --primary: #4361ee;
             --secondary: #3f37c9;
@@ -1223,11 +1224,11 @@
                 <div class="login-form" id="login-form">
                     <div class="form-group">
                         <label for="email">Email Address</label>
-                        <input type="email" id="email" class="form-control" placeholder="Enter your email" value="admin@example.com">
+                        <input type="email" id="email" class="form-control" placeholder="Enter your email">
                     </div>
                     <div class="form-group">
                         <label for="password">Password</label>
-                        <input type="password" id="password" class="form-control" placeholder="Enter your password" value="password123">
+                        <input type="password" id="password" class="form-control" placeholder="Enter your password">
                     </div>
                     <button class="btn btn-primary" id="login-btn">
                         <i class="fas fa-sign-in-alt"></i> Sign In
@@ -1295,7 +1296,7 @@
                     <span class="menu-text">Withdraw Funds</span>
                 </div>
                 
-                <div id="admin-menu">
+                <div id="admin-menu" style="display: none;">
                     <div class="menu-title">Admin</div>
                     <div class="menu-item" data-page="users">
                         <i class="fas fa-users"></i>
@@ -1507,7 +1508,7 @@
                                     <td><span class="badge badge-primary">In Review</span></td>
                                     <td><div class="timer"><i class="fas fa-clock"></i> 14:32</div></td>
                                     <td>
-                                        <button class="btn-sm btn-outline view-escrow-btn" data-escrow="ESC-2023-0783"><i class="fas fa-eye"></i> View</button>
+                                        <button class="btn-sm btn-outline" data-escrow="ESC-2023-0783"><i class="fas fa-eye"></i> View</button>
                                     </td>
                                 </tr>
                                 <tr>
@@ -1521,7 +1522,7 @@
                                     <td><span class="badge badge-warning">Buyer Action Required</span></td>
                                     <td>Not Started</td>
                                     <td>
-                                        <button class="btn-sm btn-outline view-escrow-btn" data-escrow="ESC-2023-0784"><i class="fas fa-eye"></i> View</button>
+                                        <button class="btn-sm btn-outline" data-escrow="ESC-2023-0784"><i class="fas fa-eye"></i> View</button>
                                     </td>
                                 </tr>
                                 <tr>
@@ -1535,7 +1536,7 @@
                                     <td><span class="badge badge-info">Awaiting Inspection</span></td>
                                     <td><div class="timer"><i class="fas fa-clock"></i> 08:15:42</div></td>
                                     <td>
-                                        <button class="btn-sm btn-outline view-escrow-btn" data-escrow="ESC-2023-0785"><i class="fas fa-eye"></i> View</button>
+                                        <button class="btn-sm btn-outline" data-escrow="ESC-2023-0785"><i class="fas fa-eye"></i> View</button>
                                     </td>
                                 </tr>
                                 <tr>
@@ -1549,7 +1550,7 @@
                                     <td><span class="badge badge-danger">Refund Requested</span></td>
                                     <td>Admin Review</td>
                                     <td>
-                                        <button class="btn-sm btn-outline view-escrow-btn" data-escrow="ESC-2023-0786"><i class="fas fa-eye"></i> View</button>
+                                        <button class="btn-sm btn-outline" data-escrow="ESC-2023-0786"><i class="fas fa-eye"></i> View</button>
                                         <button class="btn-sm btn-primary-sm"><i class="fas fa-handshake"></i> Intervene</button>
                                     </td>
                                 </tr>
@@ -1613,7 +1614,7 @@
                         <div class="table-container">
                             <div class="table-header">
                                 <div class="table-title">Recent Token Transactions</div>
-                                <button class="btn-sm btn-primary-sm" id="buy-tokens-btn">
+                                <button class="btn-sm btn-primary-sm">
                                     <i class="fas fa-plus"></i> Buy Tokens
                                 </button>
                             </div>
@@ -1674,7 +1675,7 @@
                                     <option value="crypto">Cryptocurrency</option>
                                 </select>
                             </div>
-                            <button class="btn btn-primary" id="submit-withdraw-btn">
+                            <button class="btn btn-primary">
                                 <i class="fas fa-paper-plane"></i> Submit Request
                             </button>
                         </div>
@@ -1748,6 +1749,7 @@
         const menuItems = document.querySelectorAll('.menu-item');
         const pages = document.querySelectorAll('.page-content');
         const escrowDetailsContainer = document.getElementById('escrow-details-container');
+        const newEscrowBtn = document.getElementById('new-escrow-btn');
         
         // Current user data
         let currentUser = null;
@@ -1843,26 +1845,50 @@
             showPage('dashboard-page');
         }
         
-        // Update escrow status
+        // Update escrow status in Firestore
         function updateEscrowStatus(escrowId, status) {
-            // In a real app, update Firestore document
-            console.log(`Updating escrow ${escrowId} to status: ${status}`);
+            if (!escrowId || !status) return;
+            
+            db.collection("escrows").doc(escrowId).update({
+                status: status,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                showNotification(`Escrow status updated to ${status}`, 'success');
+            })
+            .catch((error) => {
+                showNotification(`Error updating escrow: ${error.message}`, 'error');
+            });
         }
         
         // Initiate refund process
         function initiateRefund(escrowId, reason) {
+            if (!escrowId) return;
+            
             // Generate new product ID for return shipment
             const returnProductId = generateProductId();
             
             // Update escrow status to 'refund_requested'
             updateEscrowStatus(escrowId, 'refund_requested');
             
-            // Notify both parties
-            showNotification(`Refund process initiated for escrow ${escrowId}. Product ID for return: ${returnProductId}`, 'info');
+            // Save refund details to Firestore
+            db.collection("escrows").doc(escrowId).update({
+                returnProductId: returnProductId,
+                refundReason: reason,
+                refundRequestedAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                showNotification(`Refund process initiated for escrow ${escrowId}. Product ID for return: ${returnProductId}`, 'info');
+            })
+            .catch((error) => {
+                showNotification(`Error initiating refund: ${error.message}`, 'error');
+            });
         }
         
         // Render escrow details based on status
         function renderEscrowDetails(escrow) {
+            if (!escrow) return;
+            
             let html = `
                 <div class="detail-section">
                     <h3><i class="fas fa-info-circle"></i> Transaction Overview</h3>
@@ -1880,7 +1906,7 @@
                     </div>
                     <div class="detail-row">
                         <div class="detail-label">Created:</div>
-                        <div class="detail-value">${escrow.created}</div>
+                        <div class="detail-value">${escrow.created || 'N/A'}</div>
                     </div>
                     ${escrow.physicalProduct ? `<div class="detail-row">
                         <div class="detail-label">Product Type:</div>
@@ -1892,11 +1918,12 @@
                     <h3><i class="fas fa-users"></i> Parties Involved</h3>
                     <div class="detail-row">
                         <div class="detail-label">Seller:</div>
-                        <div class="detail-value">${escrow.seller.name} (${escrow.seller.email})</div>
+                        <div class="detail-value">${escrow.seller?.name || 'N/A'} (${escrow.seller?.email || 'N/A'})</div>
                     </div>
                     <div class="detail-row">
+                        <极简代码>
                         <div class="detail-label">Buyer:</div>
-                        <div class="detail-value">${escrow.buyer.name} (${escrow.buyer.email})</div>
+                        <div class="detail-value">${escrow.buyer?.name || 'N/A'} (${escrow.buyer?.email || 'N/A'})</div>
                     </div>
                 </div>
                 
@@ -1904,15 +1931,15 @@
                     <h3><i class="fas fa-box"></i> Item Details</h3>
                     <div class="detail-row">
                         <div class="detail-label">Item:</div>
-                        <div class="detail-value">${escrow.item.name}</div>
+                        <div class="detail-value">${escrow.item?.name || 'N/A'}</div>
                     </div>
                     <div class="detail-row">
                         <div class="detail-label">Description:</div>
-                        <div class="detail-value">${escrow.item.description}</div>
+                        <div class="detail-value">${escrow.item?.description || 'No description provided'}</div>
                     </div>
                     <div class="detail-row">
-                        <div class="detail-label">Category:</div>
-                        <div class="detail-value">${escrow.item.category}</div>
+                        <div class="detail-label">Category:</极简代码>
+                        <div class="detail-value">${escrow.item?.category || 'Uncategorized'}</div>
                     </div>
                 </div>
                 
@@ -1920,15 +1947,15 @@
                     <h3><i class="fas fa-money-bill-wave"></i> Financial Details</h3>
                     <div class="detail-row">
                         <div class="detail-label">Item Price:</div>
-                        <div class="detail-value">$${escrow.amount.toFixed(2)}</div>
+                        <div class="detail-value">$${escrow.amount?.toFixed(2) || '0.00'}</div>
                     </div>
                     <div class="detail-row">
                         <div class="detail-label">Escrow Fee:</div>
-                        <div class="detail-value">$${escrow.fee.toFixed(2)}</div>
+                        <div class="detail-value">$${escrow.fee?.toFixed(2) || '0.00'}</div>
                     </div>
                     <div class="detail-row">
                         <div class="detail-label">Total Amount:</div>
-                        <div class="detail-value">$${(escrow.amount + escrow.fee).toFixed(2)}</div>
+                        <div class="detail-value">$${((escrow.amount || 0) + (escrow.fee || 0)).toFixed(2)}</div>
                     </div>
                 </div>
             `;
@@ -1970,7 +1997,7 @@
                         <h3><i class="fas fa-barcode"></i> Product Identification</h3>
                         <div class="product-id-section">
                             <p><strong>Product ID:</strong> This unique code must be provided to the delivery agent to receive the product.</p>
-                            <div class="product-id-code">${escrow.productId}</div>
+                            <div class="product-id-code">${escrow.productId || generateProductId()}</div>
                             <div class="instructions-box">
                                 <h4>Instructions:</h4>
                                 <p>1. This ID has been shared with the seller and delivery agent</p>
@@ -1995,7 +2022,7 @@
                             <i class="fas fa-exclamation-triangle"></i>
                             You have 24 hours to inspect the product. If no action is taken, 
                             the transaction will be automatically completed and funds will be released to the seller.
-                        </div>
+                        </极简代码>
                     </div>
                 `;
             }
@@ -2005,7 +2032,7 @@
                     <div class="detail-section">
                         <h3><i class="fas fa-undo"></i> Refund Process</h3>
                         <div class="product-id-section">
-                            <p><strong>Return Product ID:</strong> ${escrow.returnProductId}</p>
+                            <p><strong>Return Product ID:</strong> ${escrow.returnProductId || generateProductId()}</p>
                             <div class="instructions-box">
                                 <h4>Return Instructions:</h4>
                                 <p>1. Pack the item securely for return shipment</p>
@@ -2117,20 +2144,37 @@
             document.getElementById('accept-shipment-btn')?.addEventListener('click', () => {
                 // Generate product ID
                 const productId = generateProductId();
-                escrow.productId = productId;
-                escrow.status = 'shipment_requested';
                 
-                // Debit buyer account
-                showNotification('Account debited. Product ID generated. Seller notified to ship.', 'success');
-                
-                // Update UI
-                renderEscrowDetails(escrow);
+                // Update escrow in Firestore
+                db.collection("escrows").doc(escrow.id).update({
+                    productId: productId,
+                    status: 'shipment_requested',
+                    shipmentRequestedAt: firebase.firestore.FieldValue.serverTimestamp()
+                })
+                .then(() => {
+                    showNotification('Account debited. Product ID generated. Seller notified to ship.', 'success');
+                    escrow.product极简代码 = productId;
+                    escrow.status = 'shipment_requested';
+                    renderEscrowDetails(escrow);
+                })
+                .catch((error) => {
+                    showNotification(`Error processing shipment request: ${error.message}`, 'error');
+                });
             });
             
             document.getElementById('reveal-id-btn')?.addEventListener('click', () => {
-                escrow.status = 'awaiting_inspection';
-                renderEscrowDetails(escrow);
-                startInspectionTimer(escrow.id);
+                db.collection("escrows").doc(escrow.id).update({
+                    status: 'awaiting_inspection',
+                    inspectionStartedAt: firebase.firestore.FieldValue.serverTimestamp()
+                })
+                .then(() => {
+                    escrow.status = 'awaiting_inspection';
+                    renderEscrowDetails(escrow);
+                    startInspectionTimer(escrow.id);
+                })
+                .catch((error) => {
+                    showNotification(`Error updating status: ${error.message}`, 'error');
+                });
             });
             
             document.getElementById('accept-product-btn')?.addEventListener('click', () => {
@@ -2146,45 +2190,87 @@
             
             document.getElementById('ship-return-btn')?.addEventListener('click', () => {
                 const returnProductId = generateProductId();
-                showNotification(`Return shipment initiated. Product ID for return: ${returnProductId}`, 'info');
-                escrow.returnProductId = returnProductId;
-                escrow.status = 'return_shipped';
-                renderEscrowDetails(escrow);
+                db.collection("escrows").doc(escrow.id).update({
+                    returnProductId: returnProductId,
+                    status: 'return_shipped',
+                    returnShippedAt: firebase.firestore.FieldValue.serverTimestamp()
+                })
+                .then(() => {
+                    showNotification(`Return shipment initiated. Product ID for return: ${returnProductId}`, 'info');
+                    escrow.returnProductId = returnProductId;
+                    escrow.status = 'return_shipped';
+                    renderEscrowDetails(escrow);
+                })
+                .catch((error) => {
+                    showNotification(`Error initiating return: ${error.message}`, 'error');
+                });
             });
         }
         
         // View escrow details
         function viewEscrowDetails(escrowId) {
-            // Sample escrow data - in real app, fetch from Firestore
-            activeEscrow = {
-                id: escrowId,
-                physicalProduct: true,
-                status: 'pending_buyer_acceptance',
-                seller: {
-                    name: "TechGadgets Inc",
-                    email: "techgadgets@example.com"
-                },
-                buyer: {
-                    name: "Robert Johnson",
-                    email: "robert@example.com"
-                },
-                item: {
-                    name: "iPhone 14 Pro",
-                    description: "Brand new sealed box, factory unlocked, with 1-year warranty.",
-                    category: "Electronics"
-                },
-                amount: 1100.00,
-                fee: 15.00,
-                created: "Jun 14, 2023 10:15 AM",
-                productId: null,
-                returnProductId: null
-            };
-            
-            showPage('escrow-details-page');
-            renderEscrowDetails(activeEscrow);
+            // Fetch escrow from Firestore
+            db.collection("escrows").doc(escrowId).get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        activeEscrow = doc.data();
+                        activeEscrow.id = doc.id;
+                        showPage('escrow-details-page');
+                        renderEscrowDetails(activeEscrow);
+                        
+                        // Start inspection timer if needed
+                        if (activeEscrow.status === 'awaiting_inspection') {
+                            const startTime = activeEscrow.inspectionStartedAt?.toDate() || new Date();
+                            const elapsed = Math.floor((new Date() - startTime) / 1000);
+                            const remaining = Math.max(0, 86400 - elapsed);
+                            startInspectionTimer(escrowId, remaining);
+                        }
+                    } else {
+                        showNotification('Escrow not found', 'error');
+                    }
+                })
+                .catch((error) => {
+                    showNotification(`Error loading escrow: ${error.message}`, 'error');
+                });
         }
         
-        // Show a specific page and hide others
+        // Create new escrow
+        function createNewEscrow() {
+            const escrowData = {
+                seller: {
+                    id: currentUser.uid,
+                    name: currentUser.displayName,
+                    email: currentUser.email
+                },
+                buyer: {
+                    id: "buyer-id-placeholder", // In real app, get from UI
+                    name: "Buyer Name",
+                    email: "buyer@example.com"
+                },
+                item: {
+                    name: "New Item",
+                    description: "Item description",
+                    category: "Electronics"
+                },
+                amount: 1000.00,
+                fee: 15.00,
+                status: "pending_buyer_acceptance",
+                physicalProduct: true,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            db.collection("escrows").add(escrowData)
+                .then((docRef) => {
+                    showNotification(`New escrow created: ${docRef.id}`, 'success');
+                    // View the new escrow
+                    viewEscrowDetails(docRef.id);
+                })
+                .catch((error) => {
+                    showNotification(`Error creating escrow: ${error.message}`, 'error');
+                });
+        }
+        
+        // Show page
         function showPage(pageId) {
             // Hide all pages
             document.querySelectorAll('.page-content').forEach(page => {
@@ -2195,27 +2281,27 @@
             document.getElementById(pageId).classList.add('active');
             
             // Update page title
-            const titles = {
+            const pageTitleMap = {
                 'dashboard-page': 'Dashboard',
                 'escrow-details-page': 'Escrow Details',
                 'tokens-page': 'Token Management',
                 'withdraw-page': 'Withdraw Funds'
             };
             
-            if (titles[pageId]) {
-                document.getElementById('page-title').textContent = titles[pageId];
-            }
+            document.getElementById('page-title').textContent = pageTitleMap[pageId] || 'Dashboard';
         }
         
         // Initialize event listeners
         function initEventListeners() {
             // View escrow buttons
-            document.addEventListener('click', function(e) {
-                if (e.target.classList.contains('view-escrow-btn') || e.target.closest('.view-escrow-btn')) {
-                    const btn = e.target.closest('.view-escrow-btn');
+            document.querySelectorAll('[data-escrow]').forEach(btn => {
+                btn.addEventListener('click', () => {
                     viewEscrowDetails(btn.getAttribute('data-escrow'));
-                }
+                });
             });
+            
+            // New escrow button
+            newEscrowBtn.addEventListener('click', createNewEscrow);
             
             // Menu navigation
             menuItems.forEach(item => {
@@ -2252,7 +2338,7 @@
             });
             
             mobileToggle.addEventListener('click', function() {
-                sidebar.classList.toggle('active');
+                sidebar.classList.add('active');
             });
             
             // Logout button
@@ -2260,7 +2346,6 @@
                 auth.signOut().then(() => {
                     dashboardSection.style.display = 'none';
                     authSection.style.display = 'flex';
-                    showNotification('You have been logged out', 'info');
                 });
             });
             
@@ -2268,6 +2353,11 @@
             loginBtn.addEventListener('click', function() {
                 const email = document.getElementById('email').value;
                 const password = document.getElementById('password').value;
+                
+                if (!email || !password) {
+                    showNotification('Please enter both email and password', 'error');
+                    return;
+                }
                 
                 auth.signInWithEmailAndPassword(email, password)
                     .then((userCredential) => {
@@ -2277,7 +2367,12 @@
                         document.getElementById('user-name').textContent = currentUser.displayName || 'User';
                         document.getElementById('user-avatar').textContent = 
                             currentUser.displayName ? currentUser.displayName.charAt(0) : 'U';
-                        showNotification('Login successful!', 'success');
+                        document.getElementById('username').textContent = currentUser.displayName || 'User';
+                        
+                        // Check if admin (simplified for demo)
+                        isAdmin = email.includes('admin');
+                        document.getElementById('user-role').textContent = isAdmin ? 'Administrator' : 'User';
+                        adminMenu.style.display = isAdmin ? 'block' : 'none';
                     })
                     .catch((error) => {
                         showNotification(error.message, 'error');
@@ -2290,6 +2385,11 @@
                 const email = document.getElementById('signup-email').value;
                 const password = document.getElementById('signup-password').value;
                 const confirmPassword = document.getElementById('signup-confirm').value;
+                
+                if (!name || !email || !password || !confirmPassword) {
+                    showNotification('Please fill all fields', 'error');
+                    return;
+                }
                 
                 if (password !== confirmPassword) {
                     showNotification('Passwords do not match', 'error');
@@ -2308,39 +2408,21 @@
                         authSection.style.display = 'none';
                         document.getElementById('user-name').textContent = name;
                         document.getElementById('user-avatar').textContent = name.charAt(0);
+                        document.getElementById('username').textContent = name;
                         showNotification('Account created successfully!', 'success');
+                        
+                        // Create user document in Firestore
+                        db.collection("users").doc(currentUser.uid).set({
+                            name: name,
+                            email: email,
+                            balance: 0,
+                            tokens: 0,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
                     })
                     .catch((error) => {
                         showNotification(error.message, 'error');
                     });
-            });
-            
-            // New Escrow Button
-            document.getElementById('new-escrow-btn').addEventListener('click', () => {
-                showNotification('New escrow form will open here', 'info');
-            });
-            
-            // View Transactions Button
-            document.getElementById('view-transactions').addEventListener('click', () => {
-                showPage('escrow-page');
-            });
-            
-            // Buy Tokens Button
-            document.getElementById('buy-tokens-btn').addEventListener('click', () => {
-                showNotification('Token purchase interface will open here', 'info');
-            });
-            
-            // Submit Withdraw Button
-            document.getElementById('submit-withdraw-btn').addEventListener('click', () => {
-                const amount = document.getElementById('withdraw-amount').value;
-                const method = document.getElementById('withdraw-method').value;
-                
-                if (!amount || !method) {
-                    showNotification('Please fill all fields', 'error');
-                    return;
-                }
-                
-                showNotification(`Withdrawal request for $${amount} via ${method} submitted`, 'success');
             });
         }
         
@@ -2357,13 +2439,24 @@
                     document.getElementById('user-name').textContent = user.displayName || 'User';
                     document.getElementById('user-avatar').textContent = 
                         user.displayName ? user.displayName.charAt(0) : 'U';
+                    document.getElementById('username').textContent = user.displayName || 'User';
+                    
+                    // Check if admin (simplified for demo)
+                    isAdmin = user.email.includes('admin');
+                    document.getElementById('user-role').textContent = isAdmin ? 'Administrator' : 'User';
+                    adminMenu.style.display = isAdmin ? 'block' : 'none';
+                    
+                    // Initialize chart
+                    initEscrowChart();
                 } else {
                     dashboardSection.style.display = 'none';
                     authSection.style.display = 'flex';
                 }
             });
-            
-            // Initialize chart
+        }
+        
+        // Initialize escrow chart
+        function initEscrowChart() {
             const ctx = document.getElementById('escrowChart').getContext('2d');
             escrowChart = new Chart(ctx, {
                 type: 'line',
@@ -2372,11 +2465,13 @@
                     datasets: [{
                         label: 'Escrow Transactions',
                         data: [12, 19, 3, 5, 2, 8],
-                        backgroundColor: 'rgba(67, 97, 238, 0.2)',
+                        backgroundColor: 'rgba(67, 97, 238, 0.1)',
                         borderColor: 'rgba(67, 97, 238, 1)',
                         borderWidth: 2,
-                        tension: 0.3,
-                        fill: true
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: 'white',
+                        pointBorderWidth: 2
                     }]
                 },
                 options: {
@@ -2405,7 +2500,7 @@
         }
         
         // Initialize when DOM is loaded
-        document.addEventListener('DOMContentLoaded', init);
+        window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
