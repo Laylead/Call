@@ -12,6 +12,7 @@
     <script src="configuration.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* Full CSS from original file */
         :root {
             --primary: #4361ee;
             --secondary: #3f37c9;
@@ -1357,6 +1358,16 @@
             box-shadow: var(--shadow);
             margin-bottom: 25px;
         }
+
+        /* Payment Details Modal */
+        #payment-modal {
+            display: none;
+        }
+
+        /* Affiliate Management Page */
+        #affiliate-page {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -1419,6 +1430,10 @@
                         <label for="signup-confirm">Confirm Password</label>
                         <input type="password" id="signup-confirm" class="form-control" placeholder="Confirm your password">
                     </div>
+                    <div class="form-group">
+                        <label for="signup-referral">Referral Code (optional)</label>
+                        <input type="text" id="signup-referral" class="form-control" placeholder="Enter referral code">
+                    </div>
                     <button class="btn btn-primary" id="signup-btn">
                         <i class="fas fa-user-plus"></i> Create Account
                     </button>
@@ -1426,6 +1441,58 @@
                         <p>Already have an account? <a id="show-login">Sign In</a></p>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Details Modal -->
+    <div class="modal" id="payment-modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Set Up Payment Method</div>
+            </div>
+            <div class="modal-body">
+                <p>You must set up a payment method to use our platform. This cannot be changed later.</p>
+                <div class="form-group">
+                    <label for="payment-method">Payment Method</label>
+                    <select id="payment-method" class="form-control">
+                        <option value="">Select method</option>
+                        <option value="bank">Bank Transfer</option>
+                        <option value="crypto">Cryptocurrency</option>
+                        <option value="paypal">PayPal</option>
+                    </select>
+                </div>
+                <div id="bank-details" style="display: none;">
+                    <div class="form-group">
+                        <label for="account-name">Account Name</label>
+                        <input type="text" id="account-name" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="account-number">Account Number</label>
+                        <input type="text" id="account-number" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="bank-name">Bank Name</label>
+                        <input type="text" id="bank-name" class="form-control">
+                    </div>
+                </div>
+                <div id="crypto-details" style="display: none;">
+                    <div class="form-group">
+                        <label for="wallet-address">Wallet Address</label>
+                        <input type="text" id="wallet-address" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="network">Network</label>
+                        <input type="text" id="network" class="form-control" placeholder="e.g., Ethereum, Bitcoin">
+                    </div>
+                </div>
+                <div id="paypal-details" style="display: none;">
+                    <div class="form-group">
+                        <label for="paypal-email">PayPal Email</label>
+                        <input type="email" id="paypal-email" class="form-control">
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="save-payment-btn">Save Payment Method</button>
             </div>
         </div>
     </div>
@@ -1468,6 +1535,10 @@
                     <div class="menu-item" data-page="tokens-admin">
                         <i class="fas fa-key"></i>
                         <span class="menu-text">Generate Tokens</span>
+                    </div>
+                    <div class="menu-item" data-page="affiliate">
+                        <i class="fas fa-handshake"></i>
+                        <span class="menu-text">Affiliate Management</span>
                     </div>
                     <div class="menu-item" data-page="intervention">
                         <i class="fas fa-gavel"></i>
@@ -1841,12 +1912,16 @@
                         <div class="token-generation-form">
                             <h3>Generate Tokens</h3>
                             <div class="form-group">
-                                <label for="user-email">User Email</label>
+                                <label for="user-email">User Email (optional)</label>
                                 <input type="email" id="user-email" class="form-control" placeholder="Enter user email">
                             </div>
                             <div class="form-group">
                                 <label for="tokens-amount">Token Amount</label>
                                 <input type="number" id="tokens-amount" class="form-control" placeholder="Enter token amount">
+                            </div>
+                            <div class="form-group">
+                                <label for="tokens-quantity">Quantity</label>
+                                <input type="number" id="tokens-quantity" class="form-control" placeholder="Enter quantity" value="1" min="1">
                             </div>
                             <button class="btn btn-primary" id="generate-tokens-btn">
                                 <i class="fas fa-plus-circle"></i> Generate Tokens
@@ -1900,6 +1975,51 @@
                                 </thead>
                                 <tbody id="withdrawal-requests">
                                     <!-- Withdrawal requests will be loaded dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Affiliate Management Page -->
+            <div class="page-content" id="affiliate-page">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Affiliate Management</div>
+                        <div class="card-icon bg-primary-light">
+                            <i class="fas fa-handshake"></i>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="affiliate-email">User Email</label>
+                            <input type="email" id="affiliate-email" class="form-control" placeholder="Enter user email">
+                        </div>
+                        <div class="form-group">
+                            <label for="affiliate-percentage">Commission Percentage</label>
+                            <input type="number" id="affiliate-percentage" class="form-control" placeholder="Enter percentage" min="0" max="100" step="0.1">
+                        </div>
+                        <button class="btn btn-primary" id="enable-affiliate-btn">
+                            <i class="fas fa-check"></i> Enable Affiliate
+                        </button>
+                        
+                        <div class="table-container" style="margin-top: 30px;">
+                            <div class="table-header">
+                                <div class="table-title">Active Affiliates</div>
+                            </div>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Email</th>
+                                        <th>Commission Rate</th>
+                                        <th>Total Earnings</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="affiliates-table">
+                                    <!-- Affiliates will be loaded dynamically -->
                                 </tbody>
                             </table>
                         </div>
@@ -2010,6 +2130,10 @@
         const globalSearchResults = document.getElementById('global-search-results');
         const redeemTokenBtn = document.getElementById('redeem-token-btn');
         const loading = document.getElementById('loading');
+        const paymentModal = document.getElementById('payment-modal');
+        const savePaymentBtn = document.getElementById('save-payment-btn');
+        const paymentMethodSelect = document.getElementById('payment-method');
+        const enableAffiliateBtn = document.getElementById('enable-affiliate-btn');
         
         // Initialize Firebase after configuration is loaded
         document.addEventListener('DOMContentLoaded', function() {
@@ -2144,6 +2268,9 @@
                         balance: firebase.firestore.FieldValue.increment(escrowData.amount)
                     });
                     
+                    // Apply affiliate commission
+                    await applyAffiliateCommission(escrowId, escrowData);
+                    
                     // Update escrow status
                     await db.collection('escrows').doc(escrowId).update({
                         status: 'completed',
@@ -2172,6 +2299,53 @@
             } catch (error) {
                 console.error("Error completing escrow: ", error);
                 showNotification('Failed to complete escrow: ' + error.message, 'error');
+            }
+        }
+        
+        // Apply affiliate commission on escrow completion
+        async function applyAffiliateCommission(escrowId, escrowData) {
+            try {
+                // Get buyer data
+                const buyerDoc = await db.collection('users').doc(escrowData.buyerId).get();
+                if (!buyerDoc.exists) return;
+                
+                const buyerData = buyerDoc.data();
+                
+                // Check if buyer has referrer
+                if (buyerData.referrerId) {
+                    const affiliateId = buyerData.referrerId;
+                    const affiliateDoc = await db.collection('users').doc(affiliateId).get();
+                    
+                    if (affiliateDoc.exists) {
+                        const affiliateData = affiliateDoc.data();
+                        
+                        // Check if affiliate is active
+                        if (affiliateData.isAffiliate) {
+                            const commission = escrowData.fee * affiliateData.commissionRate;
+                            
+                            // Update affiliate balance
+                            await db.collection('users').doc(affiliateId).update({
+                                balance: firebase.firestore.FieldValue.increment(commission)
+                            });
+                            
+                            // Record commission transaction
+                            const txId = generateId('TX');
+                            await db.collection('transactions').doc(txId).set({
+                                id: txId,
+                                userId: affiliateId,
+                                type: 'commission',
+                                amount: commission,
+                                date: new Date(),
+                                status: 'completed',
+                                escrowId: escrowId
+                            });
+                            
+                            showNotification(`Commission paid to affiliate: $${commission.toFixed(2)}`, 'info');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Error applying affiliate commission: ", error);
             }
         }
         
@@ -2207,6 +2381,67 @@
             } catch (error) {
                 console.error("Error initiating refund: ", error);
                 showNotification('Failed to initiate refund: ' + error.message, 'error');
+            }
+        }
+        
+        // Generate token string
+        function generateTokenString(length = 16) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let token = '';
+            for (let i = 0; i < length; i++) {
+                token += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return token;
+        }
+        
+        // Redeem deposit token
+        async function redeemToken(token) {
+            try {
+                showLoader(true);
+                // Get token document
+                const tokenDoc = await db.collection('tokens').doc(token).get();
+                if (!tokenDoc.exists) {
+                    showNotification('Invalid token', 'error');
+                    return;
+                }
+                
+                const tokenData = tokenDoc.data();
+                
+                if (tokenData.used) {
+                    showNotification('Token already used', 'error');
+                    return;
+                }
+                
+                // Update user balance
+                await db.collection('users').doc(currentUser.uid).update({
+                    balance: firebase.firestore.FieldValue.increment(tokenData.amount)
+                });
+                
+                // Mark token as used
+                await db.collection('tokens').doc(token).update({
+                    used: true,
+                    usedAt: new Date(),
+                    usedBy: currentUser.uid
+                });
+                
+                // Record transaction
+                const txId = generateId('TX');
+                await db.collection('transactions').doc(txId).set({
+                    id: txId,
+                    userId: currentUser.uid,
+                    type: 'deposit',
+                    amount: tokenData.amount,
+                    date: new Date(),
+                    status: 'completed'
+                });
+                
+                showNotification(`Successfully redeemed $${tokenData.amount.toFixed(2)}`, 'success');
+                document.getElementById('deposit-token').value = '';
+            } catch (error) {
+                console.error("Error redeeming token: ", error);
+                showNotification('Failed to redeem token: ' + error.message, 'error');
+            } finally {
+                showLoader(false);
             }
         }
         
@@ -2285,6 +2520,28 @@
             // Physical Product Specific Sections
             if (escrow.physicalProduct) {
                 html += renderPhysicalProductDetails(escrow);
+            }
+            // Digital Product Details (only show after inspection starts)
+            else if (escrow.status === 'awaiting_inspection' || 
+                     escrow.status === 'completed' || 
+                     escrow.status === 'refunded') {
+                html += `
+                    <div class="detail-section">
+                        <h3><i class="fas fa-info-circle"></i> Digital Product Details</h3>
+                        <div class="terms-box">
+                            <p>${escrow.itemDescription}</p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="detail-section">
+                        <h3><i class="fas fa-info-circle"></i> Digital Product Details</h3>
+                        <div class="terms-box">
+                            <p>Details will be revealed after the inspection period begins</p>
+                        </div>
+                    </div>
+                `;
             }
             
             // Terms & Conditions
@@ -2684,7 +2941,7 @@
                     status: 'pending_buyer_acceptance',
                     physicalProduct: escrowType === 'physical',
                     createdAt: new Date(),
-                    participants: [currentUser.uid, sellerId]
+                    participants: [currentUser.uid, sellerId]  // Both parties
                 });
                 
                 showNotification('Escrow created successfully!', 'success');
@@ -2700,55 +2957,132 @@
             }
         }
         
-        // Redeem deposit token
-        async function redeemToken(token) {
+        // Enable affiliate for user
+        async function enableAffiliate() {
+            const email = document.getElementById('affiliate-email').value;
+            const percentage = parseFloat(document.getElementById('affiliate-percentage').value);
+            
+            if (!email || isNaN(percentage) || percentage < 0 || percentage > 100) {
+                showNotification('Please enter valid email and commission percentage', 'error');
+                return;
+            }
+            
+            showLoader(true);
+            
             try {
-                showLoader(true);
-                // Get token document
-                const tokenDoc = await db.collection('tokens').doc(token).get();
-                if (!tokenDoc.exists) {
-                    showNotification('Invalid token', 'error');
+                // Find user by email
+                const userSnapshot = await db.collection('users').where('email', '==', email).get();
+                if (userSnapshot.empty) {
+                    showNotification('User not found', 'error');
                     return;
                 }
                 
-                const tokenData = tokenDoc.data();
+                const userDoc = userSnapshot.docs[0];
+                const userId = userDoc.id;
                 
-                if (tokenData.used) {
-                    showNotification('Token already used', 'error');
-                    return;
-                }
+                // Generate unique referral code
+                const referralCode = generateTokenString(8).toUpperCase();
                 
-                // Update user balance
-                await db.collection('users').doc(currentUser.uid).update({
-                    balance: firebase.firestore.FieldValue.increment(tokenData.amount)
+                // Update user as affiliate
+                await db.collection('users').doc(userId).update({
+                    isAffiliate: true,
+                    commissionRate: percentage / 100,  // Store as decimal
+                    referralCode: referralCode
                 });
                 
-                // Mark token as used
-                await db.collection('tokens').doc(token).update({
-                    used: true,
-                    usedAt: new Date(),
-                    usedBy: currentUser.uid
-                });
-                
-                // Record transaction
-                const txId = generateId('TX');
-                await db.collection('transactions').doc(txId).set({
-                    id: txId,
-                    userId: currentUser.uid,
-                    type: 'deposit',
-                    amount: tokenData.amount,
-                    date: new Date(),
-                    status: 'completed'
-                });
-                
-                showNotification(`Successfully redeemed $${tokenData.amount.toFixed(2)}`, 'success');
-                document.getElementById('deposit-token').value = '';
+                showNotification(`Affiliate enabled for ${email} with ${percentage}% commission`, 'success');
             } catch (error) {
-                console.error("Error redeeming token: ", error);
-                showNotification('Failed to redeem token: ' + error.message, 'error');
+                console.error("Error enabling affiliate: ", error);
+                showNotification('Failed to enable affiliate: ' + error.message, 'error');
             } finally {
                 showLoader(false);
             }
+        }
+        
+        // Setup payment method modal
+        function setupPaymentModal() {
+            paymentMethodSelect.addEventListener('change', function() {
+                document.getElementById('bank-details').style.display = 'none';
+                document.getElementById('crypto-details').style.display = 'none';
+                document.getElementById('paypal-details').style.display = 'none';
+                
+                if (this.value === 'bank') {
+                    document.getElementById('bank-details').style.display = 'block';
+                } else if (this.value === 'crypto') {
+                    document.getElementById('crypto-details').style.display = 'block';
+                } else if (this.value === 'paypal') {
+                    document.getElementById('paypal-details').style.display = 'block';
+                }
+            });
+            
+            savePaymentBtn.addEventListener('click', async function() {
+                const method = paymentMethodSelect.value;
+                if (!method) {
+                    showNotification('Please select a payment method', 'error');
+                    return;
+                }
+                
+                let paymentDetails = {};
+                if (method === 'bank') {
+                    const accountName = document.getElementById('account-name').value;
+                    const accountNumber = document.getElementById('account-number').value;
+                    const bankName = document.getElementById('bank-name').value;
+                    
+                    if (!accountName || !accountNumber || !bankName) {
+                        showNotification('Please fill all bank details', 'error');
+                        return;
+                    }
+                    
+                    paymentDetails = {
+                        type: 'bank',
+                        accountName,
+                        accountNumber,
+                        bankName
+                    };
+                } else if (method === 'crypto') {
+                    const walletAddress = document.getElementById('wallet-address').value;
+                    const network = document.getElementById('network').value;
+                    
+                    if (!walletAddress || !network) {
+                        showNotification('Please fill all crypto details', 'error');
+                        return;
+                    }
+                    
+                    paymentDetails = {
+                        type: 'crypto',
+                        walletAddress,
+                        network
+                    };
+                } else if (method === 'paypal') {
+                    const email = document.getElementById('paypal-email').value;
+                    
+                    if (!email) {
+                        showNotification('Please enter PayPal email', 'error');
+                        return;
+                    }
+                    
+                    paymentDetails = {
+                        type: 'paypal',
+                        email
+                    };
+                }
+                
+                try {
+                    showLoader(true);
+                    await db.collection('users').doc(currentUser.uid).update({
+                        paymentMethod: paymentDetails,
+                        paymentMethodSet: true
+                    });
+                    
+                    showNotification('Payment method saved successfully', 'success');
+                    paymentModal.style.display = 'none';
+                } catch (error) {
+                    console.error("Error saving payment method: ", error);
+                    showNotification('Failed to save payment method', 'error');
+                } finally {
+                    showLoader(false);
+                }
+            });
         }
         
         // Initialize event listeners
@@ -2852,6 +3186,7 @@
                 const email = document.getElementById('signup-email').value;
                 const password = document.getElementById('signup-password').value;
                 const confirmPassword = document.getElementById('signup-confirm').value;
+                const referralCode = document.getElementById('signup-referral').value;
                 
                 if (password !== confirmPassword) {
                     showNotification('Passwords do not match', 'error');
@@ -2865,19 +3200,29 @@
                         return userCredential.user.updateProfile({
                             displayName: name
                         }).then(() => {
-                            return db.collection('users').doc(userCredential.user.uid).set({
+                            const userData = {
                                 name: name,
                                 email: email,
                                 balance: 0,
                                 tokens: 0,
                                 role: 'user',
-                                createdAt: new Date()
-                            });
+                                createdAt: new Date(),
+                                paymentMethodSet: false
+                            };
+                            
+                            // Process referral code if exists
+                            if (referralCode) {
+                                userData.referralCode = referralCode;
+                            }
+                            
+                            return db.collection('users').doc(userCredential.user.uid).set(userData);
                         });
                     })
                     .then(() => {
                         currentUser = auth.currentUser;
                         showNotification('Account created successfully!', 'success');
+                        // Show payment modal
+                        paymentModal.style.display = 'flex';
                     })
                     .catch((error) => {
                         showNotification(error.message, 'error');
@@ -2945,62 +3290,55 @@
             });
             
             // Generate tokens (admin)
-            generateTokensBtn.addEventListener('click', function() {
+            generateTokensBtn.addEventListener('click', async function() {
+                const amountPerToken = parseFloat(document.getElementById('tokens-amount').value);
+                const quantity = parseInt(document.getElementById('tokens-quantity').value) || 1;
                 const userEmail = document.getElementById('user-email').value;
-                const tokenAmount = parseInt(document.getElementById('tokens-amount').value);
                 
-                if (!userEmail) {
-                    showNotification('Please enter user email', 'error');
+                if (isNaN(amountPerToken) || amountPerToken <= 0) {
+                    showNotification('Please enter a valid token amount', 'error');
                     return;
                 }
                 
-                if (isNaN(tokenAmount) || tokenAmount <= 0) {
-                    showNotification('Please enter a valid token amount', 'error');
+                if (isNaN(quantity) || quantity <= 0) {
+                    showNotification('Please enter a valid quantity', 'error');
                     return;
                 }
                 
                 showLoader(true);
                 
-                // Find user by email
-                db.collection('users').where('email', '==', userEmail).get()
-                    .then(snapshot => {
-                        if (snapshot.empty) {
-                            showNotification('User not found', 'error');
-                            return;
-                        }
-                        
-                        const userDoc = snapshot.docs[0];
-                        const userId = userDoc.id;
-                        const currentTokens = userDoc.data().tokens || 0;
-                        
-                        // Update user tokens
-                        return db.collection('users').doc(userId).update({
-                            tokens: currentTokens + tokenAmount
-                        }).then(() => {
-                            // Record token generation
-                            const generationId = generateId('TG');
-                            return db.collection('tokenGenerations').doc(generationId).set({
-                                id: generationId,
-                                userId: userId,
-                                userEmail: userEmail,
-                                tokens: tokenAmount,
-                                generatedBy: currentUser.uid,
-                                generatedByName: userData.name,
-                                createdAt: new Date()
-                            });
+                let userId = null;
+                if (userEmail) {
+                    // Look up user by email
+                    const userSnapshot = await db.collection('users').where('email', '==', userEmail).get();
+                    if (!userSnapshot.empty) {
+                        userId = userSnapshot.docs[0].id;
+                    } else {
+                        showNotification(`User with email ${userEmail} not found. Tokens will be generated without assignment.`, 'warning');
+                    }
+                }
+                
+                try {
+                    // Generate tokens
+                    for (let i = 0; i < quantity; i++) {
+                        const token = generateTokenString();
+                        await db.collection('tokens').doc(token).set({
+                            token: token,
+                            amount: amountPerToken,
+                            createdBy: currentUser.uid,
+                            createdAt: new Date(),
+                            used: false,
+                            userId: userId || null
                         });
-                    })
-                    .then(() => {
-                        showNotification(`${tokenAmount} tokens generated for ${userEmail}`, 'success');
-                        document.getElementById('user-email').value = '';
-                        document.getElementById('tokens-amount').value = '';
-                    })
-                    .catch(error => {
-                        showNotification('Failed to generate tokens: ' + error.message, 'error');
-                    })
-                    .finally(() => {
-                        showLoader(false);
-                    });
+                    }
+                    
+                    showNotification(`Successfully generated ${quantity} tokens of $${amountPerToken} each`, 'success');
+                } catch (error) {
+                    console.error("Error generating tokens: ", error);
+                    showNotification('Failed to generate tokens: ' + error.message, 'error');
+                } finally {
+                    showLoader(false);
+                }
             });
             
             // New escrow button
@@ -3127,6 +3465,12 @@
                 
                 redeemToken(token);
             });
+            
+            // Enable affiliate button
+            enableAffiliateBtn.addEventListener('click', enableAffiliate);
+            
+            // Setup payment method modal
+            setupPaymentModal();
         }
         
         // Show page
@@ -3192,6 +3536,11 @@
                     } else {
                         adminMenu.style.display = 'none';
                         isAdmin = false;
+                    }
+                    
+                    // Show payment modal if not set
+                    if (!userData.paymentMethodSet) {
+                        paymentModal.style.display = 'flex';
                     }
                 }
             });
