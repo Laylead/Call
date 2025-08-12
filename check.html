@@ -12,7 +12,6 @@
     <script src="configuration.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Full CSS from original file */
         :root {
             --primary: #4361ee;
             --secondary: #3f37c9;
@@ -1358,15 +1357,63 @@
             box-shadow: var(--shadow);
             margin-bottom: 25px;
         }
-
+        
         /* Payment Details Modal */
-        #payment-modal {
+        .payment-details-modal {
             display: none;
         }
-
-        /* Affiliate Management Page */
-        #affiliate-page {
+        
+        .payment-details-form {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+        }
+        
+        .payment-method-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .payment-method-tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+        
+        .payment-method-tab.active {
+            border-bottom: 2px solid var(--primary);
+            color: var(--primary);
+        }
+        
+        .payment-method-content {
             display: none;
+        }
+        
+        .payment-method-content.active {
+            display: block;
+        }
+        
+        /* Affiliate Section */
+        .affiliate-section {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border-left: 4px solid var(--success);
+        }
+        
+        .affiliate-code {
+            font-size: 1.5rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-align: center;
+            margin: 15px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            border: 1px dashed var(--success);
         }
     </style>
 </head>
@@ -1404,6 +1451,10 @@
                         <label for="password">Password</label>
                         <input type="password" id="password" class="form-control" placeholder="Enter your password">
                     </div>
+                    <div class="form-group">
+                        <label for="referral-code">Referral Code (Optional)</label>
+                        <input type="text" id="referral-code" class="form-control" placeholder="Enter referral code if any">
+                    </div>
                     <button class="btn btn-primary" id="login-btn">
                         <i class="fas fa-sign-in-alt"></i> Sign In
                     </button>
@@ -1431,8 +1482,8 @@
                         <input type="password" id="signup-confirm" class="form-control" placeholder="Confirm your password">
                     </div>
                     <div class="form-group">
-                        <label for="signup-referral">Referral Code (optional)</label>
-                        <input type="text" id="signup-referral" class="form-control" placeholder="Enter referral code">
+                        <label for="signup-referral">Referral Code (Optional)</label>
+                        <input type="text" id="signup-referral" class="form-control" placeholder="Enter referral code if any">
                     </div>
                     <button class="btn btn-primary" id="signup-btn">
                         <i class="fas fa-user-plus"></i> Create Account
@@ -1446,53 +1497,73 @@
     </div>
 
     <!-- Payment Details Modal -->
-    <div class="modal" id="payment-modal" style="display: none;">
+    <div class="modal payment-details-modal" id="payment-details-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <div class="modal-title">Set Up Payment Method</div>
+                <div class="modal-title">Payment Details</div>
+                <button class="modal-close" id="close-payment-modal">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
             <div class="modal-body">
-                <p>You must set up a payment method to use our platform. This cannot be changed later.</p>
-                <div class="form-group">
-                    <label for="payment-method">Payment Method</label>
-                    <select id="payment-method" class="form-control">
-                        <option value="">Select method</option>
-                        <option value="bank">Bank Transfer</option>
-                        <option value="crypto">Cryptocurrency</option>
-                        <option value="paypal">PayPal</option>
-                    </select>
+                <div class="payment-details-form">
+                    <p style="margin-bottom: 20px; color: var(--danger);">Please provide your payment details. This information is required and cannot be changed later without admin approval.</p>
+                    
+                    <div class="payment-method-tabs">
+                        <div class="payment-method-tab active" data-method="bank">Bank Transfer</div>
+                        <div class="payment-method-tab" data-method="crypto">Cryptocurrency</div>
+                        <div class="payment-method-tab" data-method="other">Other</div>
+                    </div>
+                    
+                    <div class="payment-method-content active" id="bank-method">
+                        <div class="form-group">
+                            <label for="account-name">Account Name</label>
+                            <input type="text" id="account-name" class="form-control" placeholder="Enter account name">
+                        </div>
+                        <div class="form-group">
+                            <label for="account-number">Account Number</label>
+                            <input type="text" id="account-number" class="form-control" placeholder="Enter account number">
+                        </div>
+                        <div class="form-group">
+                            <label for="bank-name">Bank Name</label>
+                            <input type="text" id="bank-name" class="form-control" placeholder="Enter bank name">
+                        </div>
+                        <div class="form-group">
+                            <label for="bank-branch">Branch Name (Optional)</label>
+                            <input type="text" id="bank-branch" class="form-control" placeholder="Enter branch name">
+                        </div>
+                    </div>
+                    
+                    <div class="payment-method-content" id="crypto-method">
+                        <div class="form-group">
+                            <label for="crypto-wallet">Wallet Address</label>
+                            <input type="text" id="crypto-wallet" class="form-control" placeholder="Enter wallet address">
+                        </div>
+                        <div class="form-group">
+                            <label for="crypto-network">Network</label>
+                            <select id="crypto-network" class="form-control">
+                                <option value="BTC">Bitcoin (BTC)</option>
+                                <option value="ETH">Ethereum (ETH)</option>
+                                <option value="USDT">Tether (USDT)</option>
+                                <option value="USDC">USD Coin (USDC)</option>
+                                <option value="BCH">Bitcoin Cash (BCH)</option>
+                                <option value="LTC">Litecoin (LTC)</option>
+                                <option value="XRP">Ripple (XRP)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="payment-method-content" id="other-method">
+                        <div class="form-group">
+                            <label for="other-details">Payment Details</label>
+                            <textarea id="other-details" class="form-control" rows="4" placeholder="Provide details of your preferred payment method"></textarea>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" id="save-payment-btn">
+                        <i class="fas fa-save"></i> Save Payment Details
+                    </button>
                 </div>
-                <div id="bank-details" style="display: none;">
-                    <div class="form-group">
-                        <label for="account-name">Account Name</label>
-                        <input type="text" id="account-name" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label for="account-number">Account Number</label>
-                        <input type="text" id="account-number" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label for="bank-name">Bank Name</label>
-                        <input type="text" id="bank-name" class="form-control">
-                    </div>
-                </div>
-                <div id="crypto-details" style="display: none;">
-                    <div class="form-group">
-                        <label for="wallet-address">Wallet Address</label>
-                        <input type="text" id="wallet-address" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label for="network">Network</label>
-                        <input type="text" id="network" class="form-control" placeholder="e.g., Ethereum, Bitcoin">
-                    </div>
-                </div>
-                <div id="paypal-details" style="display: none;">
-                    <div class="form-group">
-                        <label for="paypal-email">PayPal Email</label>
-                        <input type="email" id="paypal-email" class="form-control">
-                    </div>
-                </div>
-                <button class="btn btn-primary" id="save-payment-btn">Save Payment Method</button>
             </div>
         </div>
     </div>
@@ -1536,9 +1607,9 @@
                         <i class="fas fa-key"></i>
                         <span class="menu-text">Generate Tokens</span>
                     </div>
-                    <div class="menu-item" data-page="affiliate">
+                    <div class="menu-item" data-page="affiliates">
                         <i class="fas fa-handshake"></i>
-                        <span class="menu-text">Affiliate Management</span>
+                        <span class="menu-text">Affiliate Program</span>
                     </div>
                     <div class="menu-item" data-page="intervention">
                         <i class="fas fa-gavel"></i>
@@ -1912,16 +1983,16 @@
                         <div class="token-generation-form">
                             <h3>Generate Tokens</h3>
                             <div class="form-group">
-                                <label for="user-email">User Email (optional)</label>
-                                <input type="email" id="user-email" class="form-control" placeholder="Enter user email">
+                                <label for="user-email">User Email (Optional)</label>
+                                <input type="email" id="user-email" class="form-control" placeholder="Enter user email (leave blank for bulk)">
                             </div>
                             <div class="form-group">
                                 <label for="tokens-amount">Token Amount</label>
                                 <input type="number" id="tokens-amount" class="form-control" placeholder="Enter token amount">
                             </div>
                             <div class="form-group">
-                                <label for="tokens-quantity">Quantity</label>
-                                <input type="number" id="tokens-quantity" class="form-control" placeholder="Enter quantity" value="1" min="1">
+                                <label for="tokens-count">Number of Tokens (For Bulk)</label>
+                                <input type="number" id="tokens-count" class="form-control" placeholder="Enter number of tokens to generate" value="1">
                             </div>
                             <button class="btn btn-primary" id="generate-tokens-btn">
                                 <i class="fas fa-plus-circle"></i> Generate Tokens
@@ -1935,15 +2006,74 @@
                             <table class="table">
                                 <thead>
                                     <tr>
-                                        <th>Transaction ID</th>
+                                        <th>Token</th>
                                         <th>User</th>
-                                        <th>Tokens</th>
+                                        <th>Amount</th>
                                         <th>Date</th>
-                                        <th>Generated By</th>
+                                        <th>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody id="token-generations">
                                     <!-- Token generations will be loaded dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="page-content" id="affiliates-page">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Affiliate Program</div>
+                        <div class="card-icon bg-success-light">
+                            <i class="fas fa-handshake"></i>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="affiliate-section">
+                            <h3>Your Affiliate Program</h3>
+                            <p>Share your referral code with others and earn commissions on their transactions.</p>
+                            <div class="affiliate-code" id="affiliate-code">Loading...</div>
+                            <p style="text-align: center;">Your commission rate: <span id="commission-rate">0</span>%</p>
+                        </div>
+                        
+                        <div class="table-container">
+                            <div class="table-header">
+                                <div class="table-title">Add New Affiliate</div>
+                            </div>
+                            <div class="admin-card">
+                                <div class="form-group">
+                                    <label for="affiliate-email">User Email</label>
+                                    <input type="email" id="affiliate-email" class="form-control" placeholder="Enter user email">
+                                </div>
+                                <div class="form-group">
+                                    <label for="affiliate-percentage">Commission Percentage</label>
+                                    <input type="number" id="affiliate-percentage" class="form-control" placeholder="Enter commission percentage">
+                                </div>
+                                <button class="btn btn-primary" id="add-affiliate-btn">
+                                    <i class="fas fa-user-plus"></i> Add Affiliate
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="table-container" style="margin-top: 30px;">
+                            <div class="table-header">
+                                <div class="table-title">Affiliate Commissions</div>
+                            </div>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Affiliate</th>
+                                        <th>Referred User</th>
+                                        <th>Transaction</th>
+                                        <th>Amount</th>
+                                        <th>Commission</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="affiliate-commissions">
+                                    <!-- Affiliate commissions will be loaded dynamically -->
                                 </tbody>
                             </table>
                         </div>
@@ -1982,46 +2112,82 @@
                 </div>
             </div>
             
-            <!-- Affiliate Management Page -->
-            <div class="page-content" id="affiliate-page">
+            <!-- Profile Page -->
+            <div class="page-content" id="profile-page">
                 <div class="card">
                     <div class="card-header">
-                        <div class="card-title">Affiliate Management</div>
+                        <div class="card-title">My Profile</div>
                         <div class="card-icon bg-primary-light">
-                            <i class="fas fa-handshake"></i>
+                            <i class="fas fa-user"></i>
                         </div>
                     </div>
                     <div class="card-body">
-                        <div class="form-group">
-                            <label for="affiliate-email">User Email</label>
-                            <input type="email" id="affiliate-email" class="form-control" placeholder="Enter user email">
-                        </div>
-                        <div class="form-group">
-                            <label for="affiliate-percentage">Commission Percentage</label>
-                            <input type="number" id="affiliate-percentage" class="form-control" placeholder="Enter percentage" min="0" max="100" step="0.1">
-                        </div>
-                        <button class="btn btn-primary" id="enable-affiliate-btn">
-                            <i class="fas fa-check"></i> Enable Affiliate
-                        </button>
-                        
-                        <div class="table-container" style="margin-top: 30px;">
-                            <div class="table-header">
-                                <div class="table-title">Active Affiliates</div>
+                        <div class="dashboard-grid">
+                            <div class="card">
+                                <div class="card-header">
+                                    <div class="card-title">Account Information</div>
+                                    <div class="card-icon bg-info">
+                                        <i class="fas fa-info-circle"></i>
+                                    </div>
+                                </div>
+                                <div class="detail-section">
+                                    <div class="detail-row">
+                                        <div class="detail-label">Name:</div>
+                                        <div class="detail-value" id="profile-name">Loading...</div>
+                                    </div>
+                                    <div class="detail-row">
+                                        <div class="detail-label">Email:</div>
+                                        <div class="detail-value" id="profile-email">Loading...</div>
+                                    </div>
+                                    <div class="detail-row">
+                                        <div class="detail-label">Role:</div>
+                                        <div class="detail-value" id="profile-role">Loading...</div>
+                                    </div>
+                                    <div class="detail-row">
+                                        <div class="detail-label">Joined:</div>
+                                        <div class="detail-value" id="profile-joined">Loading...</div>
+                                    </div>
+                                </div>
                             </div>
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>User</th>
-                                        <th>Email</th>
-                                        <th>Commission Rate</th>
-                                        <th>Total Earnings</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="affiliates-table">
-                                    <!-- Affiliates will be loaded dynamically -->
-                                </tbody>
-                            </table>
+                            
+                            <div class="card">
+                                <div class="card-header">
+                                    <div class="card-title">Payment Information</div>
+                                    <div class="card-icon bg-warning-light">
+                                        <i class="fas fa-money-bill-wave"></i>
+                                    </div>
+                                </div>
+                                <div class="detail-section">
+                                    <div class="detail-row">
+                                        <div class="detail-label">Payment Method:</div>
+                                        <div class="detail-value" id="profile-method">Loading...</div>
+                                    </div>
+                                    <div class="detail-row">
+                                        <div class="detail-label">Account Details:</div>
+                                        <div class="detail-value" id="profile-details">Loading...</div>
+                                    </div>
+                                    <div class="detail-row">
+                                        <div class="detail-label">Last Updated:</div>
+                                        <div class="detail-value" id="profile-updated">Loading...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="affiliate-section" id="user-affiliate-section" style="display: none;">
+                            <h3>Affiliate Information</h3>
+                            <div class="detail-row">
+                                <div class="detail-label">Referral Code:</div>
+                                <div class="detail-value" id="profile-referral-code">Loading...</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Commission Rate:</div>
+                                <div class="detail-value" id="profile-commission-rate">Loading...</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Total Earnings:</div>
+                                <div class="detail-value" id="profile-total-earnings">Loading...</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2130,10 +2296,12 @@
         const globalSearchResults = document.getElementById('global-search-results');
         const redeemTokenBtn = document.getElementById('redeem-token-btn');
         const loading = document.getElementById('loading');
-        const paymentModal = document.getElementById('payment-modal');
+        const paymentDetailsModal = document.getElementById('payment-details-modal');
+        const closePaymentModal = document.getElementById('close-payment-modal');
         const savePaymentBtn = document.getElementById('save-payment-btn');
-        const paymentMethodSelect = document.getElementById('payment-method');
-        const enableAffiliateBtn = document.getElementById('enable-affiliate-btn');
+        const paymentMethodTabs = document.querySelectorAll('.payment-method-tab');
+        const paymentMethodContents = document.querySelectorAll('.payment-method-content');
+        const addAffiliateBtn = document.getElementById('add-affiliate-btn');
         
         // Initialize Firebase after configuration is loaded
         document.addEventListener('DOMContentLoaded', function() {
@@ -2155,7 +2323,7 @@
                         currentUser = user;
                         authSection.classList.add('hidden');
                         dashboardSection.style.display = 'block';
-                        initUserData();
+                        checkPaymentDetails(user.uid);
                     } else {
                         authSection.classList.remove('hidden');
                         dashboardSection.style.display = 'none';
@@ -2169,6 +2337,25 @@
                 showNotification("System error: Firebase initialization failed", 'error');
             }
         });
+        
+        // Check if user has payment details
+        async function checkPaymentDetails(userId) {
+            try {
+                const userDoc = await db.collection('users').doc(userId).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    if (!userData.paymentDetails) {
+                        // Show payment details modal if not set
+                        paymentDetailsModal.style.display = 'flex';
+                    } else {
+                        initUserData();
+                    }
+                }
+            } catch (error) {
+                console.error("Error checking payment details:", error);
+                showNotification("Error checking payment details", 'error');
+            }
+        }
         
         // Show loader
         function showLoader(show) {
@@ -2211,6 +2398,16 @@
         // Generate 6-digit product ID
         function generateProductId() {
             return Math.floor(100000 + Math.random() * 900000);
+        }
+        
+        // Generate random token
+        function generateToken() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let token = '';
+            for (let i = 0; i < 12; i++) {
+                token += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return token;
         }
         
         // Format time for display
@@ -2263,18 +2460,44 @@
                 const escrowData = escrowDoc.data();
                 
                 if (isAccepted) {
-                    // Release funds to seller
-                    await db.collection('users').doc(escrowData.sellerId).update({
-                        balance: firebase.firestore.FieldValue.increment(escrowData.amount)
-                    });
+                    // Calculate commission if there's an affiliate
+                    let commission = 0;
+                    if (escrowData.affiliateId) {
+                        const affiliateDoc = await db.collection('users').doc(escrowData.affiliateId).get();
+                        if (affiliateDoc.exists) {
+                            const affiliateData = affiliateDoc.data();
+                            commission = escrowData.amount * (affiliateData.commissionRate / 100);
+                            
+                            // Pay affiliate commission
+                            await db.collection('users').doc(escrowData.affiliateId).update({
+                                balance: firebase.firestore.FieldValue.increment(commission)
+                            });
+                            
+                            // Record commission transaction
+                            const txId = generateId('COM');
+                            await db.collection('transactions').doc(txId).set({
+                                id: txId,
+                                userId: escrowData.affiliateId,
+                                type: 'commission',
+                                amount: commission,
+                                date: new Date(),
+                                status: 'completed',
+                                escrowId: escrowId,
+                                referredUserId: escrowData.buyerId
+                            });
+                        }
+                    }
                     
-                    // Apply affiliate commission
-                    await applyAffiliateCommission(escrowId, escrowData);
+                    // Release funds to seller (minus commission)
+                    await db.collection('users').doc(escrowData.sellerId).update({
+                        balance: firebase.firestore.FieldValue.increment(escrowData.amount - commission)
+                    });
                     
                     // Update escrow status
                     await db.collection('escrows').doc(escrowId).update({
                         status: 'completed',
-                        completedAt: new Date()
+                        completedAt: new Date(),
+                        commissionPaid: commission
                     });
                     
                     showNotification(`Escrow ${escrowId} completed! Funds released to seller.`, 'success');
@@ -2299,53 +2522,6 @@
             } catch (error) {
                 console.error("Error completing escrow: ", error);
                 showNotification('Failed to complete escrow: ' + error.message, 'error');
-            }
-        }
-        
-        // Apply affiliate commission on escrow completion
-        async function applyAffiliateCommission(escrowId, escrowData) {
-            try {
-                // Get buyer data
-                const buyerDoc = await db.collection('users').doc(escrowData.buyerId).get();
-                if (!buyerDoc.exists) return;
-                
-                const buyerData = buyerDoc.data();
-                
-                // Check if buyer has referrer
-                if (buyerData.referrerId) {
-                    const affiliateId = buyerData.referrerId;
-                    const affiliateDoc = await db.collection('users').doc(affiliateId).get();
-                    
-                    if (affiliateDoc.exists) {
-                        const affiliateData = affiliateDoc.data();
-                        
-                        // Check if affiliate is active
-                        if (affiliateData.isAffiliate) {
-                            const commission = escrowData.fee * affiliateData.commissionRate;
-                            
-                            // Update affiliate balance
-                            await db.collection('users').doc(affiliateId).update({
-                                balance: firebase.firestore.FieldValue.increment(commission)
-                            });
-                            
-                            // Record commission transaction
-                            const txId = generateId('TX');
-                            await db.collection('transactions').doc(txId).set({
-                                id: txId,
-                                userId: affiliateId,
-                                type: 'commission',
-                                amount: commission,
-                                date: new Date(),
-                                status: 'completed',
-                                escrowId: escrowId
-                            });
-                            
-                            showNotification(`Commission paid to affiliate: $${commission.toFixed(2)}`, 'info');
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error("Error applying affiliate commission: ", error);
             }
         }
         
@@ -2381,67 +2557,6 @@
             } catch (error) {
                 console.error("Error initiating refund: ", error);
                 showNotification('Failed to initiate refund: ' + error.message, 'error');
-            }
-        }
-        
-        // Generate token string
-        function generateTokenString(length = 16) {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-            let token = '';
-            for (let i = 0; i < length; i++) {
-                token += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return token;
-        }
-        
-        // Redeem deposit token
-        async function redeemToken(token) {
-            try {
-                showLoader(true);
-                // Get token document
-                const tokenDoc = await db.collection('tokens').doc(token).get();
-                if (!tokenDoc.exists) {
-                    showNotification('Invalid token', 'error');
-                    return;
-                }
-                
-                const tokenData = tokenDoc.data();
-                
-                if (tokenData.used) {
-                    showNotification('Token already used', 'error');
-                    return;
-                }
-                
-                // Update user balance
-                await db.collection('users').doc(currentUser.uid).update({
-                    balance: firebase.firestore.FieldValue.increment(tokenData.amount)
-                });
-                
-                // Mark token as used
-                await db.collection('tokens').doc(token).update({
-                    used: true,
-                    usedAt: new Date(),
-                    usedBy: currentUser.uid
-                });
-                
-                // Record transaction
-                const txId = generateId('TX');
-                await db.collection('transactions').doc(txId).set({
-                    id: txId,
-                    userId: currentUser.uid,
-                    type: 'deposit',
-                    amount: tokenData.amount,
-                    date: new Date(),
-                    status: 'completed'
-                });
-                
-                showNotification(`Successfully redeemed $${tokenData.amount.toFixed(2)}`, 'success');
-                document.getElementById('deposit-token').value = '';
-            } catch (error) {
-                console.error("Error redeeming token: ", error);
-                showNotification('Failed to redeem token: ' + error.message, 'error');
-            } finally {
-                showLoader(false);
             }
         }
         
@@ -2492,11 +2607,11 @@
                     </div>
                     <div class="detail-row">
                         <div class="detail-label">Description:</div>
-                        <div class="detail-value">${escrow.itemDescription}</div>
+                        <div class="detail-value">${escrow.itemDescription || 'No additional details'}</div>
                     </div>
                     <div class="detail-row">
                         <div class="detail-label">Category:</div>
-                        <div class="detail-value">${escrow.itemCategory}</div>
+                        <div class="detail-value">${escrow.itemCategory || 'Not specified'}</div>
                     </div>
                 </div>
                 
@@ -2520,25 +2635,13 @@
             // Physical Product Specific Sections
             if (escrow.physicalProduct) {
                 html += renderPhysicalProductDetails(escrow);
-            }
-            // Digital Product Details (only show after inspection starts)
-            else if (escrow.status === 'awaiting_inspection' || 
-                     escrow.status === 'completed' || 
-                     escrow.status === 'refunded') {
+            } else if (escrow.status === 'awaiting_inspection') {
+                // Show digital product/service details only after inspection starts
                 html += `
                     <div class="detail-section">
-                        <h3><i class="fas fa-info-circle"></i> Digital Product Details</h3>
+                        <h3><i class="fas fa-info-circle"></i> Product/Service Details</h3>
                         <div class="terms-box">
-                            <p>${escrow.itemDescription}</p>
-                        </div>
-                    </div>
-                `;
-            } else {
-                html += `
-                    <div class="detail-section">
-                        <h3><i class="fas fa-info-circle"></i> Digital Product Details</h3>
-                        <div class="terms-box">
-                            <p>Details will be revealed after the inspection period begins</p>
+                            ${escrow.itemDescription || 'No additional details provided'}
                         </div>
                     </div>
                 `;
@@ -2925,6 +3028,19 @@
                 // Calculate fee (1.5%)
                 const fee = amount * 0.015;
                 
+                // Check for referral code
+                let affiliateId = null;
+                let affiliateName = null;
+                const referralCode = document.getElementById('referral-code').value || document.getElementById('signup-referral').value;
+                if (referralCode) {
+                    const affiliateQuery = await db.collection('users').where('referralCode', '==', referralCode).get();
+                    if (!affiliateQuery.empty) {
+                        const affiliateDoc = affiliateQuery.docs[0];
+                        affiliateId = affiliateDoc.id;
+                        affiliateName = affiliateDoc.data().name;
+                    }
+                }
+                
                 // Create escrow
                 await db.collection('escrows').doc(escrowId).set({
                     id: escrowId,
@@ -2936,12 +3052,15 @@
                     buyerEmail: currentUser.email,
                     itemName: item,
                     itemDescription: details,
+                    itemCategory: escrowType,
                     amount: amount,
                     fee: fee,
                     status: 'pending_buyer_acceptance',
                     physicalProduct: escrowType === 'physical',
                     createdAt: new Date(),
-                    participants: [currentUser.uid, sellerId]  // Both parties
+                    participants: [currentUser.uid, sellerId],
+                    affiliateId: affiliateId,
+                    affiliateName: affiliateName
                 });
                 
                 showNotification('Escrow created successfully!', 'success');
@@ -2957,13 +3076,157 @@
             }
         }
         
-        // Enable affiliate for user
-        async function enableAffiliate() {
+        // Redeem deposit token
+        async function redeemToken(token) {
+            try {
+                showLoader(true);
+                // Get token document
+                const tokenDoc = await db.collection('tokens').doc(token).get();
+                if (!tokenDoc.exists) {
+                    showNotification('Invalid token', 'error');
+                    return;
+                }
+                
+                const tokenData = tokenDoc.data();
+                
+                if (tokenData.used) {
+                    showNotification('Token already used', 'error');
+                    return;
+                }
+                
+                // Update user balance
+                await db.collection('users').doc(currentUser.uid).update({
+                    balance: firebase.firestore.FieldValue.increment(tokenData.amount)
+                });
+                
+                // Mark token as used
+                await db.collection('tokens').doc(token).update({
+                    used: true,
+                    usedAt: new Date(),
+                    usedBy: currentUser.uid
+                });
+                
+                // Record transaction
+                const txId = generateId('TX');
+                await db.collection('transactions').doc(txId).set({
+                    id: txId,
+                    userId: currentUser.uid,
+                    type: 'deposit',
+                    amount: tokenData.amount,
+                    date: new Date(),
+                    status: 'completed',
+                    token: token
+                });
+                
+                showNotification(`Successfully redeemed $${tokenData.amount.toFixed(2)}`, 'success');
+                document.getElementById('deposit-token').value = '';
+                
+                // Refresh user data
+                initUserData();
+            } catch (error) {
+                console.error("Error redeeming token: ", error);
+                showNotification('Failed to redeem token: ' + error.message, 'error');
+            } finally {
+                showLoader(false);
+            }
+        }
+        
+        // Generate tokens (admin)
+        async function generateTokens() {
+            const userEmail = document.getElementById('user-email').value;
+            const tokenAmount = parseFloat(document.getElementById('tokens-amount').value);
+            const tokenCount = parseInt(document.getElementById('tokens-count').value) || 1;
+            
+            if (isNaN(tokenAmount) || tokenAmount <= 0) {
+                showNotification('Please enter a valid token amount', 'error');
+                return;
+            }
+            
+            if (tokenCount <= 0) {
+                showNotification('Please enter a valid number of tokens', 'error');
+                return;
+            }
+            
+            showLoader(true);
+            
+            try {
+                let userId = null;
+                let userName = null;
+                
+                if (userEmail) {
+                    // Find user by email
+                    const userQuery = await db.collection('users').where('email', '==', userEmail).get();
+                    if (userQuery.empty) {
+                        showNotification('User not found', 'error');
+                        return;
+                    }
+                    
+                    const userDoc = userQuery.docs[0];
+                    userId = userDoc.id;
+                    userName = userDoc.data().name;
+                }
+                
+                // Generate tokens
+                const tokens = [];
+                for (let i = 0; i < tokenCount; i++) {
+                    const token = generateToken();
+                    tokens.push(token);
+                    
+                    await db.collection('tokens').doc(token).set({
+                        token: token,
+                        amount: tokenAmount,
+                        generatedBy: currentUser.uid,
+                        generatedByName: userData.name,
+                        createdAt: new Date(),
+                        used: false,
+                        userId: userId,
+                        userEmail: userEmail
+                    });
+                }
+                
+                if (userId) {
+                    // Update user's token count if specific user was specified
+                    await db.collection('users').doc(userId).update({
+                        tokens: firebase.firestore.FieldValue.increment(tokenCount)
+                    });
+                }
+                
+                // Show success message with tokens
+                let message = `${tokenCount} token(s) generated successfully!`;
+                if (tokenCount === 1) {
+                    message += ` Token: ${tokens[0]}`;
+                } else {
+                    message += ` First token: ${tokens[0]}`;
+                }
+                
+                showNotification(message, 'success');
+                
+                // Clear form
+                document.getElementById('tokens-amount').value = '';
+                document.getElementById('tokens-count').value = '1';
+                
+                // Refresh token list
+                loadTokenGenerations();
+            } catch (error) {
+                console.error("Error generating tokens: ", error);
+                showNotification('Failed to generate tokens: ' + error.message, 'error');
+            } finally {
+                showLoader(false);
+            }
+        }
+        
+        // Add affiliate
+        async function addAffiliate() {
             const email = document.getElementById('affiliate-email').value;
             const percentage = parseFloat(document.getElementById('affiliate-percentage').value);
             
-            if (!email || isNaN(percentage) || percentage < 0 || percentage > 100) {
-                showNotification('Please enter valid email and commission percentage', 'error');
+            if (!email) {
+                showNotification('Please enter user email', 'error');
+                return;
+            }
+            
+            if (isNaN(percentage) || percentage <= 0 || percentage > 50) {
+                showNotification('Please enter a valid percentage (1-50)', 'error');
                 return;
             }
             
@@ -2971,118 +3234,189 @@
             
             try {
                 // Find user by email
-                const userSnapshot = await db.collection('users').where('email', '==', email).get();
-                if (userSnapshot.empty) {
+                const userQuery = await db.collection('users').where('email', '==', email).get();
+                if (userQuery.empty) {
                     showNotification('User not found', 'error');
                     return;
                 }
                 
-                const userDoc = userSnapshot.docs[0];
+                const userDoc = userQuery.docs[0];
                 const userId = userDoc.id;
                 
-                // Generate unique referral code
-                const referralCode = generateTokenString(8).toUpperCase();
+                // Generate referral code if not exists
+                let referralCode = userDoc.data().referralCode;
+                if (!referralCode) {
+                    referralCode = generateToken().substring(0, 8);
+                    await db.collection('users').doc(userId).update({
+                        referralCode: referralCode
+                    });
+                }
                 
                 // Update user as affiliate
                 await db.collection('users').doc(userId).update({
                     isAffiliate: true,
-                    commissionRate: percentage / 100,  // Store as decimal
-                    referralCode: referralCode
+                    commissionRate: percentage
                 });
                 
-                showNotification(`Affiliate enabled for ${email} with ${percentage}% commission`, 'success');
+                showNotification(`User ${email} added as affiliate with ${percentage}% commission`, 'success');
+                
+                // Clear form
+                document.getElementById('affiliate-email').value = '';
+                document.getElementById('affiliate-percentage').value = '';
+                
+                // Refresh affiliate list
+                loadAffiliateCommissions();
             } catch (error) {
-                console.error("Error enabling affiliate: ", error);
-                showNotification('Failed to enable affiliate: ' + error.message, 'error');
+                console.error("Error adding affiliate: ", error);
+                showNotification('Failed to add affiliate: ' + error.message, 'error');
             } finally {
                 showLoader(false);
             }
         }
         
-        // Setup payment method modal
-        function setupPaymentModal() {
-            paymentMethodSelect.addEventListener('change', function() {
-                document.getElementById('bank-details').style.display = 'none';
-                document.getElementById('crypto-details').style.display = 'none';
-                document.getElementById('paypal-details').style.display = 'none';
-                
-                if (this.value === 'bank') {
-                    document.getElementById('bank-details').style.display = 'block';
-                } else if (this.value === 'crypto') {
-                    document.getElementById('crypto-details').style.display = 'block';
-                } else if (this.value === 'paypal') {
-                    document.getElementById('paypal-details').style.display = 'block';
-                }
-            });
+        // Save payment details
+        async function savePaymentDetails() {
+            const methodTab = document.querySelector('.payment-method-tab.active');
+            const method = methodTab ? methodTab.getAttribute('data-method') : 'bank';
             
-            savePaymentBtn.addEventListener('click', async function() {
-                const method = paymentMethodSelect.value;
-                if (!method) {
-                    showNotification('Please select a payment method', 'error');
-                    return;
-                }
-                
-                let paymentDetails = {};
-                if (method === 'bank') {
+            let paymentDetails = {};
+            
+            switch(method) {
+                case 'bank':
                     const accountName = document.getElementById('account-name').value;
                     const accountNumber = document.getElementById('account-number').value;
                     const bankName = document.getElementById('bank-name').value;
+                    const bankBranch = document.getElementById('bank-branch').value;
                     
                     if (!accountName || !accountNumber || !bankName) {
-                        showNotification('Please fill all bank details', 'error');
+                        showNotification('Please fill all required fields', 'error');
                         return;
                     }
                     
                     paymentDetails = {
-                        type: 'bank',
-                        accountName,
-                        accountNumber,
-                        bankName
+                        method: 'bank',
+                        accountName: accountName,
+                        accountNumber: accountNumber,
+                        bankName: bankName,
+                        bankBranch: bankBranch || '',
+                        updatedAt: new Date()
                     };
-                } else if (method === 'crypto') {
-                    const walletAddress = document.getElementById('wallet-address').value;
-                    const network = document.getElementById('network').value;
+                    break;
                     
-                    if (!walletAddress || !network) {
-                        showNotification('Please fill all crypto details', 'error');
+                case 'crypto':
+                    const wallet = document.getElementById('crypto-wallet').value;
+                    const network = document.getElementById('crypto-network').value;
+                    
+                    if (!wallet) {
+                        showNotification('Please enter wallet address', 'error');
                         return;
                     }
                     
                     paymentDetails = {
-                        type: 'crypto',
-                        walletAddress,
-                        network
+                        method: 'crypto',
+                        wallet: wallet,
+                        network: network,
+                        updatedAt: new Date()
                     };
-                } else if (method === 'paypal') {
-                    const email = document.getElementById('paypal-email').value;
+                    break;
                     
-                    if (!email) {
-                        showNotification('Please enter PayPal email', 'error');
+                case 'other':
+                    const details = document.getElementById('other-details').value;
+                    
+                    if (!details) {
+                        showNotification('Please enter payment details', 'error');
                         return;
                     }
                     
                     paymentDetails = {
-                        type: 'paypal',
-                        email
+                        method: 'other',
+                        details: details,
+                        updatedAt: new Date()
                     };
-                }
+                    break;
+            }
+            
+            try {
+                showLoader(true);
                 
-                try {
-                    showLoader(true);
-                    await db.collection('users').doc(currentUser.uid).update({
-                        paymentMethod: paymentDetails,
-                        paymentMethodSet: true
-                    });
+                // Save payment details
+                await db.collection('users').doc(currentUser.uid).update({
+                    paymentDetails: paymentDetails
+                });
+                
+                showNotification('Payment details saved successfully', 'success');
+                paymentDetailsModal.style.display = 'none';
+                
+                // Initialize user data
+                initUserData();
+            } catch (error) {
+                console.error("Error saving payment details: ", error);
+                showNotification('Failed to save payment details: ' + error.message, 'error');
+            } finally {
+                showLoader(false);
+            }
+        }
+        
+        // Load token generations
+        async function loadTokenGenerations() {
+            try {
+                const snapshot = await db.collection('tokens')
+                    .orderBy('createdAt', 'desc')
+                    .limit(10)
+                    .get();
+                
+                const tableBody = document.getElementById('token-generations');
+                tableBody.innerHTML = '';
+                
+                snapshot.forEach(doc => {
+                    const token = doc.data();
+                    const row = document.createElement('tr');
                     
-                    showNotification('Payment method saved successfully', 'success');
-                    paymentModal.style.display = 'none';
-                } catch (error) {
-                    console.error("Error saving payment method: ", error);
-                    showNotification('Failed to save payment method', 'error');
-                } finally {
-                    showLoader(false);
-                }
-            });
+                    row.innerHTML = `
+                        <td>${token.token}</td>
+                        <td>${token.userEmail || 'Bulk Generation'}</td>
+                        <td>$${token.amount.toFixed(2)}</td>
+                        <td>${token.createdAt.toDate().toLocaleDateString()}</td>
+                        <td><span class="badge ${token.used ? 'badge-success' : 'badge-warning'}">
+                            ${token.used ? 'Used' : 'Active'}
+                        </span></td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error("Error loading token generations: ", error);
+            }
+        }
+        
+        // Load affiliate commissions
+        async function loadAffiliateCommissions() {
+            try {
+                const snapshot = await db.collection('transactions')
+                    .where('type', '==', 'commission')
+                    .orderBy('date', 'desc')
+                    .limit(10)
+                    .get();
+                
+                const tableBody = document.getElementById('affiliate-commissions');
+                tableBody.innerHTML = '';
+                
+                snapshot.forEach(doc => {
+                    const commission = doc.data();
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>${commission.userId}</td>
+                        <td>${commission.referredUserId}</td>
+                        <td>${commission.escrowId}</td>
+                        <td>$${commission.amount.toFixed(2)}</td>
+                        <td>$${commission.amount.toFixed(2)}</td>
+                        <td>${commission.date.toDate().toLocaleDateString()}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error("Error loading affiliate commissions: ", error);
+            }
         }
         
         // Initialize event listeners
@@ -3206,13 +3540,12 @@
                                 balance: 0,
                                 tokens: 0,
                                 role: 'user',
-                                createdAt: new Date(),
-                                paymentMethodSet: false
+                                createdAt: new Date()
                             };
                             
-                            // Process referral code if exists
+                            // Add referral code if provided
                             if (referralCode) {
-                                userData.referralCode = referralCode;
+                                userData.referredBy = referralCode;
                             }
                             
                             return db.collection('users').doc(userCredential.user.uid).set(userData);
@@ -3221,8 +3554,6 @@
                     .then(() => {
                         currentUser = auth.currentUser;
                         showNotification('Account created successfully!', 'success');
-                        // Show payment modal
-                        paymentModal.style.display = 'flex';
                     })
                     .catch((error) => {
                         showNotification(error.message, 'error');
@@ -3290,56 +3621,10 @@
             });
             
             // Generate tokens (admin)
-            generateTokensBtn.addEventListener('click', async function() {
-                const amountPerToken = parseFloat(document.getElementById('tokens-amount').value);
-                const quantity = parseInt(document.getElementById('tokens-quantity').value) || 1;
-                const userEmail = document.getElementById('user-email').value;
-                
-                if (isNaN(amountPerToken) || amountPerToken <= 0) {
-                    showNotification('Please enter a valid token amount', 'error');
-                    return;
-                }
-                
-                if (isNaN(quantity) || quantity <= 0) {
-                    showNotification('Please enter a valid quantity', 'error');
-                    return;
-                }
-                
-                showLoader(true);
-                
-                let userId = null;
-                if (userEmail) {
-                    // Look up user by email
-                    const userSnapshot = await db.collection('users').where('email', '==', userEmail).get();
-                    if (!userSnapshot.empty) {
-                        userId = userSnapshot.docs[0].id;
-                    } else {
-                        showNotification(`User with email ${userEmail} not found. Tokens will be generated without assignment.`, 'warning');
-                    }
-                }
-                
-                try {
-                    // Generate tokens
-                    for (let i = 0; i < quantity; i++) {
-                        const token = generateTokenString();
-                        await db.collection('tokens').doc(token).set({
-                            token: token,
-                            amount: amountPerToken,
-                            createdBy: currentUser.uid,
-                            createdAt: new Date(),
-                            used: false,
-                            userId: userId || null
-                        });
-                    }
-                    
-                    showNotification(`Successfully generated ${quantity} tokens of $${amountPerToken} each`, 'success');
-                } catch (error) {
-                    console.error("Error generating tokens: ", error);
-                    showNotification('Failed to generate tokens: ' + error.message, 'error');
-                } finally {
-                    showLoader(false);
-                }
-            });
+            generateTokensBtn.addEventListener('click', generateTokens);
+            
+            // Add affiliate (admin)
+            addAffiliateBtn.addEventListener('click', addAffiliate);
             
             // New escrow button
             newEscrowBtn.addEventListener('click', function() {
@@ -3355,6 +3640,33 @@
             // Close escrow modal
             closeEscrowModal.addEventListener('click', function() {
                 createEscrowModal.style.display = 'none';
+            });
+            
+            // Close payment modal
+            closePaymentModal.addEventListener('click', function() {
+                paymentDetailsModal.style.display = 'none';
+            });
+            
+            // Save payment details
+            savePaymentBtn.addEventListener('click', savePaymentDetails);
+            
+            // Payment method tabs
+            paymentMethodTabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const method = this.getAttribute('data-method');
+                    
+                    // Update active tab
+                    paymentMethodTabs.forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Show corresponding content
+                    paymentMethodContents.forEach(content => {
+                        content.classList.remove('active');
+                        if (content.id === `${method}-method`) {
+                            content.classList.add('active');
+                        }
+                    });
+                });
             });
             
             // Counterparty search
@@ -3465,12 +3777,6 @@
                 
                 redeemToken(token);
             });
-            
-            // Enable affiliate button
-            enableAffiliateBtn.addEventListener('click', enableAffiliate);
-            
-            // Setup payment method modal
-            setupPaymentModal();
         }
         
         // Show page
@@ -3514,7 +3820,11 @@
             if (isAdmin) {
                 usersRef = db.collection('users');
                 withdrawalsRef = db.collection('withdrawals').orderBy('createdAt', 'desc');
-                tokenGenerationsRef = db.collection('tokenGenerations').orderBy('createdAt', 'desc');
+                tokenGenerationsRef = db.collection('tokens').orderBy('createdAt', 'desc').limit(50);
+                affiliateCommissionsRef = db.collection('transactions')
+                    .where('type', '==', 'commission')
+                    .orderBy('date', 'desc')
+                    .limit(10);
             }
             
             // Listen for user data changes
@@ -3538,9 +3848,30 @@
                         isAdmin = false;
                     }
                     
-                    // Show payment modal if not set
-                    if (!userData.paymentMethodSet) {
-                        paymentModal.style.display = 'flex';
+                    // Show affiliate section if affiliate
+                    if (userData.isAffiliate) {
+                        document.getElementById('affiliate-code').textContent = userData.referralCode || 'Not set';
+                        document.getElementById('commission-rate').textContent = userData.commissionRate || 0;
+                        document.getElementById('user-affiliate-section').style.display = 'block';
+                    }
+                    
+                    // Update profile page
+                    document.getElementById('profile-name').textContent = userData.name;
+                    document.getElementById('profile-email').textContent = userData.email;
+                    document.getElementById('profile-role').textContent = userData.role;
+                    document.getElementById('profile-joined').textContent = userData.createdAt.toDate().toLocaleDateString();
+                    
+                    if (userData.paymentDetails) {
+                        document.getElementById('profile-method').textContent = userData.paymentDetails.method;
+                        document.getElementById('profile-updated').textContent = userData.paymentDetails.updatedAt.toDate().toLocaleDateString();
+                        
+                        if (userData.paymentDetails.method === 'bank') {
+                            document.getElementById('profile-details').textContent = `${userData.paymentDetails.accountName} - ${userData.paymentDetails.accountNumber} (${userData.paymentDetails.bankName})`;
+                        } else if (userData.paymentDetails.method === 'crypto') {
+                            document.getElementById('profile-details').textContent = `${userData.paymentDetails.wallet} (${userData.paymentDetails.network})`;
+                        } else {
+                            document.getElementById('profile-details').textContent = userData.paymentDetails.details || 'Not specified';
+                        }
                     }
                 }
             });
@@ -3663,24 +3994,10 @@
                 });
                 
                 // Token generations
-                tokenGenerationsRef.onSnapshot(snapshot => {
-                    const tableBody = document.getElementById('token-generations');
-                    tableBody.innerHTML = '';
-                    
-                    snapshot.forEach(doc => {
-                        const generation = doc.data();
-                        const row = document.createElement('tr');
-                        
-                        row.innerHTML = `
-                            <td>${generation.id}</td>
-                            <td>${generation.userEmail}</td>
-                            <td>${generation.tokens}</td>
-                            <td>${generation.createdAt.toDate().toLocaleDateString()}</td>
-                            <td>${generation.generatedByName}</td>
-                        `;
-                        tableBody.appendChild(row);
-                    });
-                });
+                tokenGenerationsRef.onSnapshot(loadTokenGenerations);
+                
+                // Affiliate commissions
+                affiliateCommissionsRef.onSnapshot(loadAffiliateCommissions);
             }
         }
         
