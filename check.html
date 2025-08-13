@@ -1855,6 +1855,52 @@
                 </div>
             </div>
             
+            <!-- Escrow Transactions Page -->
+            <div class="page-content" id="escrow-page">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Escrow Transactions</div>
+                        <div class="card-icon bg-primary-light">
+                            <i class="fas fa-exchange-alt"></i>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-container">
+                            <div class="table-header">
+                                <div class="table-title">All Escrow Transactions</div>
+                                <div class="filters">
+                                    <select id="escrow-status-filter" class="form-control">
+                                        <option value="all">All Statuses</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="active">Active</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="cancelled">Cancelled</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Escrow ID</th>
+                                            <th>Parties</th>
+                                            <th>Item</th>
+                                            <th>Amount</th>
+                                            <th>Status</th>
+                                            <th>Created At</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="all-escrows-table">
+                                        <!-- Escrows will be loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Tokens Page -->
             <div class="page-content" id="tokens-page">
                 <div class="card">
@@ -2039,6 +2085,10 @@
                         </div>
                     </div>
                     <div class="card-body">
+                        <div class="search-box" style="margin-bottom: 20px;">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="user-search" placeholder="Search users...">
+                        </div>
                         <div class="table-container">
                             <table class="table">
                                 <thead>
@@ -2205,7 +2255,7 @@
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label for="escrow-counterparty">Counterparty</label>
+                    <label for="escrow-counterparty">Buyer</label>
                     <input type="text" id="escrow-counterparty" class="form-control" placeholder="Search by email or username">
                     <div class="search-results" id="counterparty-search-results"></div>
                 </div>
@@ -2273,7 +2323,8 @@
         let escrowTimers = {};
         let userData = {};
         let selectedCounterparty = null;
-        let referralCode = '';
+        let domain = window.location.hostname;
+        let userRef, escrowsRef, transactionsRef, tokensRef, withdrawalsRef;
         
         // DOM Elements
         const authSection = document.getElementById('auth-section');
@@ -2313,6 +2364,7 @@
         const escrowTypeSelect = document.getElementById('escrow-type');
         const sensitiveInfoGroup = document.getElementById('sensitive-info-group');
         const contactUsLink = document.getElementById('contact-us-link');
+        const userSearch = document.getElementById('user-search');
         
         // Initialize Firebase after configuration is loaded
         document.addEventListener('DOMContentLoaded', function() {
@@ -2454,24 +2506,36 @@
                     });
                     
                     // Pay affiliate commission if applicable
-                    if (escrowData.affiliateId && escrowData.affiliateCommission) {
+                    if (escrowData.affiliateId) {
                         const commission = escrowData.amount * (escrowData.affiliateCommission / 100);
-                        await db.collection('users').doc(escrowData.affiliateId).update({
-                            affiliateEarnings: firebase.firestore.FieldValue.increment(commission),
-                            balance: firebase.firestore.FieldValue.increment(commission)
-                        });
                         
-                        // Record affiliate transaction
-                        const txId = generateId('AF');
-                        await db.collection('transactions').doc(txId).set({
-                            id: txId,
-                            userId: escrowData.affiliateId,
-                            type: 'affiliate',
-                            amount: commission,
-                            date: new Date(),
-                            status: 'completed',
-                            reference: `Commission for escrow ${escrowId}`
-                        });
+                        // Find affiliate user by their affiliate ID
+                        const affiliateSnapshot = await db.collection('users')
+                            .where('affiliateId', '==', escrowData.affiliateId)
+                            .limit(1)
+                            .get();
+                        
+                        if (!affiliateSnapshot.empty) {
+                            const affiliateDoc = affiliateSnapshot.docs[0];
+                            const affiliateId = affiliateDoc.id;
+                            
+                            await db.collection('users').doc(affiliateId).update({
+                                affiliateEarnings: firebase.firestore.FieldValue.increment(commission),
+                                balance: firebase.firestore.FieldValue.increment(commission)
+                            });
+                            
+                            // Record affiliate transaction
+                            const txId = generateId('AF');
+                            await db.collection('transactions').doc(txId).set({
+                                id: txId,
+                                userId: affiliateId,
+                                type: 'affiliate',
+                                amount: commission,
+                                date: new Date(),
+                                status: 'completed',
+                                reference: `Commission for escrow ${escrowId}`
+                            });
+                        }
                     }
                     
                     showNotification(`Escrow ${escrowId} completed! Funds released to seller.`, 'success');
@@ -3050,17 +3114,17 @@
         }
         
         // Create new escrow
-        async function createEscrow(sellerId, item, amount, escrowType, details, sensitiveInfo) {
+        async function createEscrow(buyerId, item, amount, escrowType, details, sensitiveInfo) {
             try {
                 showLoader(true);
-                // Get seller data
-                const sellerDoc = await db.collection('users').doc(sellerId).get();
-                if (!sellerDoc.exists) {
-                    showNotification('Seller not found', 'error');
+                // Get buyer data
+                const buyerDoc = await db.collection('users').doc(buyerId).get();
+                if (!buyerDoc.exists) {
+                    showNotification('Buyer not found', 'error');
                     return;
                 }
                 
-                const sellerData = sellerDoc.data();
+                const buyerData = buyerDoc.data();
                 
                 // Create escrow ID
                 const escrowId = generateId('ESC');
@@ -3068,15 +3132,24 @@
                 // Calculate fee (1.5%)
                 const fee = amount * 0.015;
                 
+                // Get affiliate info if seller was referred
+                let affiliateId = null;
+                let affiliateCommission = 0;
+                
+                if (userData.referredBy) {
+                    affiliateId = userData.referredBy;
+                    affiliateCommission = userData.affiliateCommission || 0;
+                }
+                
                 // Create escrow
                 await db.collection('escrows').doc(escrowId).set({
                     id: escrowId,
-                    sellerId: sellerId,
-                    sellerName: sellerData.name,
-                    sellerEmail: sellerData.email,
-                    buyerId: currentUser.uid,
-                    buyerName: currentUser.displayName,
-                    buyerEmail: currentUser.email,
+                    sellerId: currentUser.uid,
+                    sellerName: currentUser.displayName,
+                    sellerEmail: currentUser.email,
+                    buyerId: buyerId,
+                    buyerName: buyerData.name,
+                    buyerEmail: buyerData.email,
                     itemName: item,
                     itemDescription: details,
                     amount: amount,
@@ -3084,9 +3157,9 @@
                     status: 'pending_buyer_acceptance',
                     physicalProduct: escrowType === 'physical',
                     createdAt: new Date(),
-                    participants: [currentUser.uid, sellerId],
-                    affiliateId: userData.affiliateId || null,
-                    affiliateCommission: userData.affiliateCommission || 0,
+                    participants: [currentUser.uid, buyerId],
+                    affiliateId: affiliateId,
+                    affiliateCommission: affiliateCommission,
                     sensitiveInfo: sensitiveInfo || ''
                 });
                 
@@ -3521,15 +3594,24 @@
                         return userCredential.user.updateProfile({
                             displayName: name
                         }).then(() => {
-                            return db.collection('users').doc(userCredential.user.uid).set({
+                            // Generate affiliate ID
+                            const affiliateId = generateId('REF');
+                            
+                            // Create user data
+                            const userData = {
                                 name: name,
                                 email: email,
                                 balance: 0,
                                 tokens: 0,
                                 role: 'user',
                                 createdAt: new Date(),
-                                referralCode: referralCode || null
-                            });
+                                referralCode: affiliateId,
+                                referredBy: referralCode || null,
+                                affiliateCommission: 0,
+                                affiliateEarnings: 0
+                            };
+                            
+                            return db.collection('users').doc(userCredential.user.uid).set(userData);
                         });
                     })
                     .then(() => {
@@ -3598,32 +3680,6 @@
                 });
                 
                 counterpartyResults.style.display = 'block';
-            });
-            
-            // Create escrow confirmation
-            createEscrowConfirm.addEventListener('click', function() {
-                if (!selectedCounterparty) {
-                    showNotification('Please select a counterparty', 'error');
-                    return;
-                }
-                
-                const item = document.getElementById('escrow-item').value;
-                const amount = parseFloat(document.getElementById('escrow-amount').value);
-                const escrowType = document.getElementById('escrow-type').value;
-                const details = document.getElementById('escrow-details').value;
-                const sensitiveInfo = document.getElementById('sensitive-info').value;
-                
-                if (!item) {
-                    showNotification('Please enter an item description', 'error');
-                    return;
-                }
-                
-                if (isNaN(amount) || amount <= 0) {
-                    showNotification('Please enter a valid amount', 'error');
-                    return;
-                }
-                
-                createEscrow(selectedCounterparty.id, item, amount, escrowType, details, sensitiveInfo);
             });
             
             // Global search
@@ -3774,6 +3830,44 @@
                     approveWithdrawal(withdrawalId);
                 }
             });
+            
+            // User search in admin panel
+            userSearch.addEventListener('input', async function() {
+                const query = this.value;
+                if (query.length < 3) {
+                    // Reset to show all users
+                    loadUsers();
+                    return;
+                }
+                
+                try {
+                    const results = await searchUsers(query);
+                    const tableBody = document.getElementById('users-table');
+                    tableBody.innerHTML = '';
+                    
+                    results.forEach(user => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>
+                                <div class="user-info">
+                                    <div class="user-avatar-sm">${user.name.charAt(0)}</div>
+                                    <div>${user.name}</div>
+                                </div>
+                            </td>
+                            <td>${user.email}</td>
+                            <td>${user.role}</td>
+                            <td>Active</td>
+                            <td>$${user.balance.toFixed(2)}</td>
+                            <td>
+                                <button class="btn-sm btn-outline">View</button>
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                } catch (error) {
+                    console.error("Error searching users: ", error);
+                }
+            });
         }
         
         // Show page
@@ -3785,6 +3879,39 @@
                     document.getElementById('page-title').textContent = pageId.replace('-page', '').replace(/-/g, ' ');
                 }
             });
+        }
+        
+        // Load users for admin
+        async function loadUsers() {
+            try {
+                const snapshot = await db.collection('users').get();
+                const tableBody = document.getElementById('users-table');
+                tableBody.innerHTML = '';
+                
+                snapshot.forEach(doc => {
+                    const user = doc.data();
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>
+                            <div class="user-info">
+                                <div class="user-avatar-sm">${user.name.charAt(0)}</div>
+                                <div>${user.name}</div>
+                            </div>
+                        </td>
+                        <td>${user.email}</td>
+                        <td>${user.role}</td>
+                        <td>Active</td>
+                        <td>$${user.balance.toFixed(2)}</td>
+                        <td>
+                            <button class="btn-sm btn-outline">View</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error("Error loading users: ", error);
+            }
         }
         
         // Load token generations
@@ -3914,7 +4041,7 @@
                         document.getElementById('commission-rate').textContent = `${userData.affiliateCommission}%`;
                         document.getElementById('total-earnings').textContent = `$${userData.affiliateEarnings || 0}`;
                         document.getElementById('pending-payouts').textContent = `$${userData.affiliatePending || 0}`;
-                        referralLink.value = `https://secureescrow.com/signup?ref=${userData.affiliateId}`;
+                        referralLink.value = `https://${domain}/signup?ref=${userData.affiliateId}`;
                     }
                     
                     // Update progress bars
@@ -3924,6 +4051,7 @@
                     if (userData.role === 'admin') {
                         adminMenu.style.display = 'block';
                         isAdmin = true;
+                        loadUsers();
                     } else {
                         adminMenu.style.display = 'none';
                         isAdmin = false;
