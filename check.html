@@ -1451,6 +1451,14 @@
             color: var(--text-dark);
             font-weight: 500;
         }
+        
+        /* Empty state */
+        .empty-state {
+            padding: 20px;
+            text-align: center;
+            color: var(--text-light);
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -1802,7 +1810,9 @@
                                     </tr>
                                 </thead>
                                 <tbody id="recent-transactions">
-                                    <!-- Transactions will be loaded dynamically -->
+                                    <tr>
+                                        <td colspan="5" class="empty-state">No recent transactions</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -1831,7 +1841,9 @@
                                 </tr>
                             </thead>
                             <tbody id="active-escrows-table">
-                                <!-- Escrows will be loaded dynamically -->
+                                <tr>
+                                    <td colspan="7" class="empty-state">No active escrow transactions</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -1892,7 +1904,9 @@
                                         </tr>
                                     </thead>
                                     <tbody id="all-escrows-table">
-                                        <!-- Escrows will be loaded dynamically -->
+                                        <tr>
+                                            <td colspan="7" class="empty-state">No escrow transactions found</td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -1960,7 +1974,9 @@
                                     </tr>
                                 </thead>
                                 <tbody id="token-transactions">
-                                    <!-- Token transactions will be loaded dynamically -->
+                                    <tr>
+                                        <td colspan="4" class="empty-state">No token transactions</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -2023,7 +2039,9 @@
                                     </tr>
                                 </thead>
                                 <tbody id="referral-activity">
-                                    <!-- Referrals will be loaded dynamically -->
+                                    <tr>
+                                        <td colspan="4" class="empty-state">No referral activity</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -2067,7 +2085,9 @@
                                     </tr>
                                 </thead>
                                 <tbody id="withdrawal-history">
-                                    <!-- Withdrawal history will be loaded dynamically -->
+                                    <tr>
+                                        <td colspan="4" class="empty-state">No withdrawal history</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -2102,7 +2122,9 @@
                                     </tr>
                                 </thead>
                                 <tbody id="users-table">
-                                    <!-- Users will be loaded dynamically -->
+                                    <tr>
+                                        <td colspan="6" class="empty-state">No users found</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -2153,7 +2175,9 @@
                                     </tr>
                                 </thead>
                                 <tbody id="token-generations">
-                                    <!-- Token generations will be loaded dynamically -->
+                                    <tr>
+                                        <td colspan="5" class="empty-state">No tokens generated</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -2203,7 +2227,9 @@
                                     </tr>
                                 </thead>
                                 <tbody id="affiliate-users">
-                                    <!-- Affiliate users will be loaded dynamically -->
+                                    <tr>
+                                        <td colspan="6" class="empty-state">No affiliate users</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -2234,7 +2260,9 @@
                                     </tr>
                                 </thead>
                                 <tbody id="withdrawal-requests">
-                                    <!-- Withdrawal requests will be loaded dynamically -->
+                                    <tr>
+                                        <td colspan="7" class="empty-state">No withdrawal requests</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -2380,15 +2408,20 @@
                 window.auth = firebase.auth();
                 window.db = firebase.firestore();
                 
+                // Enable persistence
+                db.enablePersistence().catch((err) => {
+                    console.error('Firebase persistence error: ', err);
+                });
+                
                 // Set up auth state listener
                 auth.onAuthStateChanged(user => {
                     if (user) {
                         currentUser = user;
-                        authSection.classList.add('hidden');
+                        authSection.style.display = 'none';
                         dashboardSection.style.display = 'block';
                         initUserData();
                     } else {
-                        authSection.classList.remove('hidden');
+                        authSection.style.display = 'flex';
                         dashboardSection.style.display = 'none';
                     }
                 });
@@ -3888,6 +3921,15 @@
                 const tableBody = document.getElementById('users-table');
                 tableBody.innerHTML = '';
                 
+                if (snapshot.empty) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="empty-state">No users found</td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
                 snapshot.forEach(doc => {
                     const user = doc.data();
                     const row = document.createElement('tr');
@@ -3900,7 +3942,7 @@
                             </div>
                         </td>
                         <td>${user.email}</td>
-                        <td>${user.role}</td>
+                        <td>${user.role || 'user'}</td>
                         <td>Active</td>
                         <td>$${user.balance.toFixed(2)}</td>
                         <td>
@@ -3925,6 +3967,15 @@
                 
                 const tableBody = document.getElementById('token-generations');
                 tableBody.innerHTML = '';
+                
+                if (snapshot.empty) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="empty-state">No tokens generated yet</td>
+                        </tr>
+                    `;
+                    return;
+                }
                 
                 snapshot.forEach(doc => {
                     const token = doc.data();
@@ -3953,6 +4004,15 @@
                 
                 const tableBody = document.getElementById('affiliate-users');
                 tableBody.innerHTML = '';
+                
+                if (snapshot.empty) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="empty-state">No affiliate users found</td>
+                        </tr>
+                    `;
+                    return;
+                }
                 
                 snapshot.forEach(doc => {
                     const user = doc.data();
@@ -4023,7 +4083,7 @@
             if (isAdmin) {
                 usersRef = db.collection('users');
                 adminWithdrawalsRef = db.collection('withdrawals').orderBy('createdAt', 'desc');
-                tokenGenerationsRef = db.collection('tokenGenerations').orderBy('createdAt', 'desc');
+                tokenGenerationsRef = db.collection('tokens').orderBy('createdAt', 'desc');
             }
             
             // Listen for user data changes
@@ -4082,6 +4142,15 @@
                 const tableBody = document.getElementById('active-escrows-table');
                 tableBody.innerHTML = '';
                 
+                if (snapshot.empty) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="empty-state">No active escrow transactions</td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
                 snapshot.forEach(doc => {
                     const escrow = doc.data();
                     const row = document.createElement('tr');
@@ -4114,6 +4183,15 @@
                 const tableBody = document.getElementById('recent-transactions');
                 tableBody.innerHTML = '';
                 
+                if (snapshot.empty) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="empty-state">No recent transactions</td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
                 snapshot.forEach(doc => {
                     const transaction = doc.data();
                     const row = document.createElement('tr');
@@ -4133,6 +4211,15 @@
             withdrawalsRef.onSnapshot(snapshot => {
                 const tableBody = document.getElementById('withdrawal-history');
                 tableBody.innerHTML = '';
+                
+                if (snapshot.empty) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="empty-state">No withdrawal history</td>
+                        </tr>
+                    `;
+                    return;
+                }
                 
                 snapshot.forEach(doc => {
                     const withdrawal = doc.data();
@@ -4155,6 +4242,15 @@
                     const tableBody = document.getElementById('users-table');
                     tableBody.innerHTML = '';
                     
+                    if (snapshot.empty) {
+                        tableBody.innerHTML = `
+                            <tr>
+                                <td colspan="6" class="empty-state">No users found</td>
+                            </tr>
+                        `;
+                        return;
+                    }
+                    
                     snapshot.forEach(doc => {
                         const user = doc.data();
                         const row = document.createElement('tr');
@@ -4167,7 +4263,7 @@
                                 </div>
                             </td>
                             <td>${user.email}</td>
-                            <td>${user.role}</td>
+                            <td>${user.role || 'user'}</td>
                             <td>Active</td>
                             <td>$${user.balance.toFixed(2)}</td>
                             <td>
@@ -4182,6 +4278,15 @@
                 adminWithdrawalsRef.onSnapshot(snapshot => {
                     const tableBody = document.getElementById('withdrawal-requests');
                     tableBody.innerHTML = '';
+                    
+                    if (snapshot.empty) {
+                        tableBody.innerHTML = `
+                            <tr>
+                                <td colspan="7" class="empty-state">No withdrawal requests</td>
+                            </tr>
+                        `;
+                        return;
+                    }
                     
                     snapshot.forEach(doc => {
                         const withdrawal = doc.data();
@@ -4224,16 +4329,25 @@
                     const tableBody = document.getElementById('token-generations');
                     tableBody.innerHTML = '';
                     
+                    if (snapshot.empty) {
+                        tableBody.innerHTML = `
+                            <tr>
+                                <td colspan="5" class="empty-state">No tokens generated</td>
+                            </tr>
+                        `;
+                        return;
+                    }
+                    
                     snapshot.forEach(doc => {
                         const generation = doc.data();
                         const row = document.createElement('tr');
                         
                         row.innerHTML = `
                             <td>${generation.id}</td>
-                            <td>${generation.tokens}</td>
+                            <td>$${generation.value.toFixed(2)}</td>
                             <td>${generation.userEmail || 'Generic'}</td>
                             <td>${generation.createdAt.toDate().toLocaleDateString()}</td>
-                            <td>${generation.generatedByName}</td>
+                            <td>${generation.used ? 'Used' : 'Available'}</td>
                         `;
                         tableBody.appendChild(row);
                     });
