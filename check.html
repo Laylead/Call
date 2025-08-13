@@ -636,6 +636,7 @@
             cursor: pointer;
             border-bottom: 2px solid transparent;
             transition: var(--transition);
+            font-weight: 500;
         }
         
         .tab.active {
@@ -1408,6 +1409,48 @@
             font-size: 0.8rem;
             display: inline-block;
         }
+        
+        /* Sensitive info box */
+        .sensitive-info-box {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .sensitive-info-box.locked {
+            filter: blur(5px);
+            pointer-events: none;
+        }
+        
+        .lock-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        .lock-overlay i {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        
+        .lock-overlay p {
+            text-align: center;
+            color: var(--text-dark);
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -2174,6 +2217,12 @@
                         <option value="service">Service</option>
                     </select>
                 </div>
+                <div id="sensitive-info-group" style="display: none;">
+                    <div class="form-group">
+                        <label for="sensitive-info">Sensitive Information</label>
+                        <textarea id="sensitive-info" class="form-control" rows="3" placeholder="Information that will be revealed after payment"></textarea>
+                    </div>
+                </div>
                 <div class="form-group">
                     <label for="escrow-details">Additional Details</label>
                     <textarea id="escrow-details" class="form-control" rows="3" placeholder="Additional transaction details"></textarea>
@@ -2253,6 +2302,8 @@
         const enableAffiliateBtn = document.getElementById('enable-affiliate-btn');
         const copyLinkBtn = document.getElementById('copy-link-btn');
         const referralLink = document.getElementById('referral-link');
+        const escrowTypeSelect = document.getElementById('escrow-type');
+        const sensitiveInfoGroup = document.getElementById('sensitive-info-group');
         
         // Initialize Firebase after configuration is loaded
         document.addEventListener('DOMContentLoaded', function() {
@@ -2566,13 +2617,20 @@
                 </div>
             `;
             
-            // Additional details for digital products/services (revealed after timer starts)
-            if (!escrow.physicalProduct && escrow.status === 'awaiting_inspection') {
+            // Sensitive information for digital products/services
+            if (!escrow.physicalProduct && escrow.sensitiveInfo) {
+                const isLocked = escrow.status !== 'awaiting_inspection' && escrow.status !== 'completed';
                 html += `
                     <div class="detail-section">
-                        <h3><i class="fas fa-info-circle"></i> Additional Details</h3>
-                        <div class="terms-box">
-                            ${escrow.itemDetails}
+                        <h3><i class="fas fa-lock"></i> Sensitive Information</h3>
+                        <div class="sensitive-info-box ${isLocked ? 'locked' : ''}">
+                            ${isLocked ? `
+                                <div class="lock-overlay">
+                                    <i class="fas fa-lock"></i>
+                                    <p>This information will be revealed after the buyer accepts the escrow and funds are secured</p>
+                                </div>
+                            ` : ''}
+                            ${escrow.sensitiveInfo}
                         </div>
                     </div>
                 `;
@@ -2685,56 +2743,68 @@
             const actionsDiv = document.createElement('div');
             actionsDiv.className = 'action-buttons';
             
-            switch (escrow.status) {
-                case 'pending_buyer_acceptance':
-                    if (escrow.physicalProduct) {
+            // Show delete button for seller in pending state
+            if (currentUser.uid === escrow.sellerId && escrow.status === 'pending_buyer_acceptance') {
+                actionsDiv.innerHTML = `
+                    <button class="action-btn action-danger" id="delete-escrow-btn">
+                        <i class="fas fa-trash"></i> Delete Escrow
+                    </button>
+                `;
+            }
+            
+            // Buyer actions
+            if (currentUser.uid === escrow.buyerId) {
+                switch (escrow.status) {
+                    case 'pending_buyer_acceptance':
+                        if (escrow.physicalProduct) {
+                            actionsDiv.innerHTML = `
+                                <button class="action-btn action-danger" id="decline-shipment-btn">
+                                    <i class="fas fa-times"></i> I Didn't Ask For This
+                                </button>
+                                <button class="action-btn action-success" id="accept-shipment-btn">
+                                    <i class="fas fa-shipping-fast"></i> Ship Me the Product
+                                </button>
+                            `;
+                        } else {
+                            // Non-physical product flow
+                            actionsDiv.innerHTML = `
+                                <button class="action-btn action-success" id="confirm-escrow-btn">
+                                    <i class="fas fa-check"></i> Confirm Transaction
+                                </button>
+                                <button class="action-btn action-danger" id="decline-escrow-btn">
+                                    <i class="fas fa-times"></i> Decline
+                                </button>
+                            `;
+                        }
+                        break;
+                        
+                    case 'shipment_requested':
                         actionsDiv.innerHTML = `
-                            <button class="action-btn action-danger" id="decline-shipment-btn">
-                                <i class="fas fa-times"></i> I Didn't Ask For This
-                            </button>
-                            <button class="action-btn action-success" id="accept-shipment-btn">
-                                <i class="fas fa-shipping-fast"></i> Ship Me the Product
+                            <button class="action-btn action-primary" id="reveal-id-btn">
+                                <i class="fas fa-eye"></i> Reveal Product ID
                             </button>
                         `;
-                    } else {
-                        // Non-physical product flow
+                        break;
+                        
+                    case 'awaiting_inspection':
                         actionsDiv.innerHTML = `
-                            <button class="action-btn action-success" id="confirm-escrow-btn">
-                                <i class="fas fa-check"></i> Confirm Transaction
+                            <button class="action-btn action-success" id="accept-product-btn">
+                                <i class="fas fa-check"></i> This Is What I Wanted
                             </button>
-                            <button class="action-btn action-danger" id="decline-escrow-btn">
-                                <i class="fas fa-times"></i> Decline
+                            <button class="action-btn action-danger" id="request-refund-btn">
+                                <i class="fas fa-undo"></i> I Want a Refund
                             </button>
                         `;
-                    }
-                    break;
-                    
-                case 'shipment_requested':
-                    actionsDiv.innerHTML = `
-                        <button class="action-btn action-primary" id="reveal-id-btn">
-                            <i class="fas fa-eye"></i> Reveal Product ID
-                        </button>
-                    `;
-                    break;
-                    
-                case 'awaiting_inspection':
-                    actionsDiv.innerHTML = `
-                        <button class="action-btn action-success" id="accept-product-btn">
-                            <i class="fas fa-check"></i> This Is What I Wanted
-                        </button>
-                        <button class="action-btn action-danger" id="request-refund-btn">
-                            <i class="fas fa-undo"></i> I Want a Refund
-                        </button>
-                    `;
-                    break;
-                    
-                case 'refund_requested':
-                    actionsDiv.innerHTML = `
-                        <button class="action-btn action-primary" id="ship-return-btn">
-                            <i class="fas fa-truck-loading"></i> Initiate Return Shipment
-                        </button>
-                    `;
-                    break;
+                        break;
+                        
+                    case 'refund_requested':
+                        actionsDiv.innerHTML = `
+                            <button class="action-btn action-primary" id="ship-return-btn">
+                                <i class="fas fa-truck-loading"></i> Initiate Return Shipment
+                            </button>
+                        `;
+                        break;
+                }
             }
             
             escrowDetailsContainer.appendChild(actionsDiv);
@@ -2775,6 +2845,40 @@
                 } catch (error) {
                     console.error("Error accepting shipment: ", error);
                     showNotification('Failed to process shipment request: ' + error.message, 'error');
+                }
+            });
+            
+            document.getElementById('confirm-escrow-btn')?.addEventListener('click', async () => {
+                try {
+                    // For digital products, debit immediately
+                    if (!escrow.physicalProduct) {
+                        // Debit buyer account
+                        await db.collection('users').doc(currentUser.uid).update({
+                            balance: firebase.firestore.FieldValue.increment(-(escrow.amount + escrow.fee))
+                        });
+                    }
+                    
+                    const now = new Date();
+                    const inspectionEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours from now
+                    
+                    await updateEscrowStatus(escrow.id, 'awaiting_inspection', {
+                        inspectionEnd: inspectionEnd
+                    });
+                    
+                    // Refresh escrow details
+                    const updatedEscrow = await db.collection('escrows').doc(escrow.id).get();
+                    activeEscrow = {
+                        id: escrow.id,
+                        ...updatedEscrow.data()
+                    };
+                    renderEscrowDetails(activeEscrow);
+                    
+                    // Start inspection timer
+                    const secondsLeft = Math.floor((inspectionEnd - now) / 1000);
+                    startInspectionTimer(escrow.id, secondsLeft);
+                } catch (error) {
+                    console.error("Error confirming escrow: ", error);
+                    showNotification('Failed to confirm escrow: ' + error.message, 'error');
                 }
             });
             
@@ -2835,6 +2939,17 @@
                 } catch (error) {
                     console.error("Error initiating return shipment: ", error);
                     showNotification('Failed to initiate return shipment: ' + error.message, 'error');
+                }
+            });
+            
+            document.getElementById('delete-escrow-btn')?.addEventListener('click', async () => {
+                try {
+                    await db.collection('escrows').doc(escrow.id).delete();
+                    showNotification('Escrow deleted successfully', 'success');
+                    showPage('dashboard-page');
+                } catch (error) {
+                    console.error("Error deleting escrow: ", error);
+                    showNotification('Failed to delete escrow: ' + error.message, 'error');
                 }
             });
         }
@@ -2925,7 +3040,7 @@
         }
         
         // Create new escrow
-        async function createEscrow(sellerId, item, amount, escrowType, details) {
+        async function createEscrow(sellerId, item, amount, escrowType, details, sensitiveInfo) {
             try {
                 showLoader(true);
                 // Get seller data
@@ -2954,7 +3069,6 @@
                     buyerEmail: currentUser.email,
                     itemName: item,
                     itemDescription: details,
-                    itemDetails: details, // For digital products
                     amount: amount,
                     fee: fee,
                     status: 'pending_buyer_acceptance',
@@ -2962,7 +3076,8 @@
                     createdAt: new Date(),
                     participants: [currentUser.uid, sellerId],
                     affiliateId: userData.affiliateId || null,
-                    affiliateCommission: userData.affiliateCommission || 0
+                    affiliateCommission: userData.affiliateCommission || 0,
+                    sensitiveInfo: sensitiveInfo || ''
                 });
                 
                 showNotification('Escrow created successfully!', 'success');
@@ -3338,6 +3453,7 @@
                 document.getElementById('escrow-item').value = '';
                 document.getElementById('escrow-amount').value = '';
                 document.getElementById('escrow-details').value = '';
+                document.getElementById('sensitive-info').value = '';
                 selectedCounterparty = null;
             });
             
@@ -3393,6 +3509,7 @@
                 const amount = parseFloat(document.getElementById('escrow-amount').value);
                 const escrowType = document.getElementById('escrow-type').value;
                 const details = document.getElementById('escrow-details').value;
+                const sensitiveInfo = document.getElementById('sensitive-info').value;
                 
                 if (!item) {
                     showNotification('Please enter an item description', 'error');
@@ -3404,7 +3521,7 @@
                     return;
                 }
                 
-                createEscrow(selectedCounterparty.id, item, amount, escrowType, details);
+                createEscrow(selectedCounterparty.id, item, amount, escrowType, details, sensitiveInfo);
             });
             
             // Global search
@@ -3561,6 +3678,16 @@
                 referralLink.select();
                 document.execCommand('copy');
                 showNotification('Referral link copied to clipboard', 'success');
+            });
+            
+            // Show/hide sensitive info field based on escrow type
+            escrowTypeSelect.addEventListener('change', function() {
+                const type = this.value;
+                if (type === 'digital' || type === 'service') {
+                    sensitiveInfoGroup.style.display = 'block';
+                } else {
+                    sensitiveInfoGroup.style.display = 'none';
+                }
             });
         }
         
