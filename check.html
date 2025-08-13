@@ -1640,6 +1640,10 @@
                     <i class="fas fa-handshake"></i>
                     <span class="menu-text">Affiliate Program</span>
                 </div>
+                <div class="menu-item" id="contact-us-link">
+                    <i class="fas fa-headset"></i>
+                    <span class="menu-text">Contact Us</span>
+                </div>
                 
                 <div id="admin-menu" style="display: none;">
                     <div class="menu-title">Admin</div>
@@ -1997,6 +2001,9 @@
                                 <label for="withdraw-amount">Amount</label>
                                 <input type="number" id="withdraw-amount" class="form-control" placeholder="Enter amount to withdraw">
                             </div>
+                            <div id="payment-info-display" style="margin: 15px 0; padding: 15px; background: #f8fafc; border-radius: 8px; border-left: 3px solid var(--primary);">
+                                <p>Your funds will be sent to your saved payment details</p>
+                            </div>
                             <button class="btn btn-primary" id="withdraw-btn">
                                 <i class="fas fa-paper-plane"></i> Submit Request
                             </button>
@@ -2170,6 +2177,7 @@
                                         <th>Request ID</th>
                                         <th>User</th>
                                         <th>Amount</th>
+                                        <th>Account Details</th>
                                         <th>Date</th>
                                         <th>Status</th>
                                         <th>Actions</th>
@@ -2304,6 +2312,7 @@
         const referralLink = document.getElementById('referral-link');
         const escrowTypeSelect = document.getElementById('escrow-type');
         const sensitiveInfoGroup = document.getElementById('sensitive-info-group');
+        const contactUsLink = document.getElementById('contact-us-link');
         
         // Initialize Firebase after configuration is loaded
         document.addEventListener('DOMContentLoaded', function() {
@@ -2448,6 +2457,7 @@
                     if (escrowData.affiliateId && escrowData.affiliateCommission) {
                         const commission = escrowData.amount * (escrowData.affiliateCommission / 100);
                         await db.collection('users').doc(escrowData.affiliateId).update({
+                            affiliateEarnings: firebase.firestore.FieldValue.increment(commission),
                             balance: firebase.firestore.FieldValue.increment(commission)
                         });
                         
@@ -3251,6 +3261,12 @@
                 
                 showNotification('Payment details saved successfully', 'success');
                 paymentDetailsModal.style.display = 'none';
+                
+                // Update payment info display
+                document.getElementById('payment-info-display').innerHTML = `
+                    <p><strong>Payment Method:</strong> ${paymentType}</p>
+                    <p>Your funds will be sent to this account</p>
+                `;
             } catch (error) {
                 console.error("Error saving payment details: ", error);
                 showNotification('Failed to save payment details: ' + error.message, 'error');
@@ -3298,6 +3314,92 @@
             } catch (error) {
                 console.error("Error enabling affiliate: ", error);
                 showNotification('Failed to enable affiliate: ' + error.message, 'error');
+            } finally {
+                showLoader(false);
+            }
+        }
+        
+        // Withdraw funds
+        async function withdrawFunds(amount) {
+            if (!userData.paymentDetails) {
+                showNotification('Payment details not set', 'error');
+                return;
+            }
+            
+            if (amount > userData.balance) {
+                showNotification('Insufficient balance', 'error');
+                return;
+            }
+            
+            showLoader(true);
+            
+            try {
+                // Create withdrawal request
+                const withdrawalId = generateId('WD');
+                await db.collection('withdrawals').doc(withdrawalId).set({
+                    id: withdrawalId,
+                    userId: currentUser.uid,
+                    userName: userData.name,
+                    userEmail: currentUser.email,
+                    amount: amount,
+                    method: userData.paymentDetails.type,
+                    accountDetails: userData.paymentDetails,
+                    status: 'pending',
+                    createdAt: new Date()
+                });
+
+                // Deduct balance immediately
+                await db.collection('users').doc(currentUser.uid).update({
+                    balance: firebase.firestore.FieldValue.increment(-amount)
+                });
+
+                // Record transaction
+                const txId = generateId('TX');
+                await db.collection('transactions').doc(txId).set({
+                    id: txId,
+                    userId: currentUser.uid,
+                    type: 'withdrawal',
+                    amount: -amount,
+                    date: new Date(),
+                    status: 'pending',
+                    withdrawalId: withdrawalId
+                });
+                
+                showNotification('Withdrawal request submitted successfully', 'success');
+                document.getElementById('withdraw-amount').value = '';
+            } catch (error) {
+                console.error("Error processing withdrawal: ", error);
+                showNotification('Failed to process withdrawal: ' + error.message, 'error');
+            } finally {
+                showLoader(false);
+            }
+        }
+        
+        // Approve withdrawal request
+        async function approveWithdrawal(withdrawalId) {
+            try {
+                showLoader(true);
+                
+                // Update withdrawal status
+                await db.collection('withdrawals').doc(withdrawalId).update({
+                    status: 'completed',
+                    approvedAt: new Date(),
+                    approvedBy: currentUser.uid
+                });
+                
+                // Update transaction status
+                const txSnapshot = await db.collection('transactions')
+                    .where('withdrawalId', '==', withdrawalId)
+                    .get();
+                
+                txSnapshot.forEach(doc => {
+                    doc.ref.update({ status: 'completed' });
+                });
+                
+                showNotification('Withdrawal approved successfully', 'success');
+            } catch (error) {
+                console.error("Error approving withdrawal: ", error);
+                showNotification('Failed to approve withdrawal: ' + error.message, 'error');
             } finally {
                 showLoader(false);
             }
@@ -3602,38 +3704,7 @@
                     return;
                 }
                 
-                if (!userData.paymentDetails) {
-                    showNotification('Payment details not set', 'error');
-                    return;
-                }
-                
-                if (amount > userData.balance) {
-                    showNotification('Insufficient balance', 'error');
-                    return;
-                }
-                
-                showLoader(true);
-                
-                // Create withdrawal request
-                const withdrawalId = generateId('WD');
-                db.collection('withdrawals').doc(withdrawalId).set({
-                    id: withdrawalId,
-                    userId: currentUser.uid,
-                    userName: userData.name,
-                    userEmail: currentUser.email,
-                    amount: amount,
-                    method: userData.paymentDetails.type,
-                    status: 'pending',
-                    createdAt: new Date()
-                }).then(() => {
-                    showNotification('Withdrawal request submitted successfully', 'success');
-                    document.getElementById('withdraw-amount').value = '';
-                }).catch(error => {
-                    showNotification('Failed to submit withdrawal request: ' + error.message, 'error');
-                })
-                .finally(() => {
-                    showLoader(false);
-                });
+                withdrawFunds(amount);
             });
             
             // Generate tokens (admin)
@@ -3687,6 +3758,20 @@
                     sensitiveInfoGroup.style.display = 'block';
                 } else {
                     sensitiveInfoGroup.style.display = 'none';
+                }
+            });
+            
+            // Contact us link
+            contactUsLink.addEventListener('click', function() {
+                window.open('https://www.contactescrowus.com/8282828', '_blank');
+            });
+            
+            // Approve withdrawal buttons
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.approve-withdrawal')) {
+                    const btn = e.target.closest('.approve-withdrawal');
+                    const withdrawalId = btn.dataset.id;
+                    approveWithdrawal(withdrawalId);
                 }
             });
         }
@@ -3802,10 +3887,15 @@
                 .where('userId', '==', currentUser.uid)
                 .orderBy('createdAt', 'desc');
             
+            // Withdrawals reference for user
+            withdrawalsRef = db.collection('withdrawals')
+                .where('userId', '==', currentUser.uid)
+                .orderBy('createdAt', 'desc');
+            
             // Admin references
             if (isAdmin) {
                 usersRef = db.collection('users');
-                withdrawalsRef = db.collection('withdrawals').orderBy('createdAt', 'desc');
+                adminWithdrawalsRef = db.collection('withdrawals').orderBy('createdAt', 'desc');
                 tokenGenerationsRef = db.collection('tokenGenerations').orderBy('createdAt', 'desc');
             }
             
@@ -3842,6 +3932,14 @@
                     // Show payment details modal if not set
                     if (!userData.paymentDetailsSet) {
                         paymentDetailsModal.style.display = 'flex';
+                    }
+                    
+                    // Update payment info display
+                    if (userData.paymentDetails) {
+                        document.getElementById('payment-info-display').innerHTML = `
+                            <p><strong>Payment Method:</strong> ${userData.paymentDetails.type}</p>
+                            <p>Your funds will be sent to this account</p>
+                        `;
                     }
                 }
             });
@@ -3896,8 +3994,27 @@
                         <td>${transaction.id}</td>
                         <td>${transaction.type}</td>
                         <td>$${transaction.amount.toFixed(2)}</td>
-                        <td><span class="badge badge-success">Completed</span></td>
+                        <td><span class="badge ${transaction.status === 'completed' ? 'badge-success' : transaction.status === 'pending' ? 'badge-warning' : 'badge-danger'}">${transaction.status}</span></td>
                         <td>${transaction.date.toDate().toLocaleDateString()}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            });
+            
+            // Listen for user withdrawals
+            withdrawalsRef.onSnapshot(snapshot => {
+                const tableBody = document.getElementById('withdrawal-history');
+                tableBody.innerHTML = '';
+                
+                snapshot.forEach(doc => {
+                    const withdrawal = doc.data();
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>${withdrawal.id}</td>
+                        <td>$${withdrawal.amount.toFixed(2)}</td>
+                        <td>${withdrawal.createdAt.toDate().toLocaleDateString()}</td>
+                        <td><span class="badge ${withdrawal.status === 'pending' ? 'badge-warning' : withdrawal.status === 'completed' ? 'badge-success' : 'badge-danger'}">${withdrawal.status}</span></td>
                     `;
                     tableBody.appendChild(row);
                 });
@@ -3934,13 +4051,25 @@
                 });
                 
                 // Withdrawals
-                withdrawalsRef.onSnapshot(snapshot => {
+                adminWithdrawalsRef.onSnapshot(snapshot => {
                     const tableBody = document.getElementById('withdrawal-requests');
                     tableBody.innerHTML = '';
                     
                     snapshot.forEach(doc => {
                         const withdrawal = doc.data();
                         const row = document.createElement('tr');
+                        
+                        // Format account details
+                        let accountDetails = '';
+                        if (withdrawal.accountDetails) {
+                            if (withdrawal.accountDetails.type === 'bank') {
+                                accountDetails = `${withdrawal.accountDetails.accountName} (${withdrawal.accountDetails.bankName})`;
+                            } else if (withdrawal.accountDetails.type === 'paypal') {
+                                accountDetails = withdrawal.accountDetails.email;
+                            } else {
+                                accountDetails = `${withdrawal.accountDetails.walletAddress} (${withdrawal.accountDetails.cryptoType})`;
+                            }
+                        }
                         
                         row.innerHTML = `
                             <td>${withdrawal.id}</td>
@@ -3951,11 +4080,11 @@
                                 </div>
                             </td>
                             <td>$${withdrawal.amount.toFixed(2)}</td>
+                            <td>${accountDetails}</td>
                             <td>${withdrawal.createdAt.toDate().toLocaleDateString()}</td>
                             <td><span class="badge badge-warning">${withdrawal.status}</span></td>
                             <td>
-                                <button class="btn-sm btn-success-sm">Approve</button>
-                                <button class="btn-sm btn-danger-sm">Reject</button>
+                                <button class="btn-sm btn-success-sm approve-withdrawal" data-id="${withdrawal.id}">Approve</button>
                             </td>
                         `;
                         tableBody.appendChild(row);
