@@ -3809,6 +3809,11 @@
                     return;
                 }
                 
+                if (password.length < 6) {
+                    showNotification('Password must be at least 6 characters', 'error');
+                    return;
+                }
+                
                 showLoader(true);
                 
                 auth.createUserWithEmailAndPassword(email, password)
@@ -3844,7 +3849,21 @@
                         paymentDetailsModal.style.display = 'flex';
                     })
                     .catch((error) => {
-                        showNotification(error.message, 'error');
+                        let errorMessage = 'Signup failed. ';
+                        switch (error.code) {
+                            case 'auth/email-already-in-use':
+                                errorMessage += 'Email already in use';
+                                break;
+                            case 'auth/invalid-email':
+                                errorMessage += 'Invalid email format';
+                                break;
+                            case 'auth/weak-password':
+                                errorMessage += 'Password is too weak';
+                                break;
+                            default:
+                                errorMessage += error.message;
+                        }
+                        showNotification(errorMessage, 'error');
                     })
                     .finally(() => {
                         showLoader(false);
