@@ -1459,6 +1459,58 @@
             color: var(--text-light);
             font-style: italic;
         }
+        
+        /* Token display styles */
+        .token-display {
+            background: #f0f7ff;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid var(--info);
+        }
+        
+        .token-code {
+            font-size: 1.5rem;
+            font-weight: bold;
+            letter-spacing: 3px;
+            text-align: center;
+            margin: 15px 0;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px dashed var(--info);
+            font-family: monospace;
+            word-break: break-all;
+        }
+        
+        .token-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        
+        /* Token list */
+        .token-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .token-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border);
+            background: #f8fafc;
+            margin-bottom: 8px;
+            border-radius: 8px;
+        }
+        
+        .token-id {
+            font-family: monospace;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -2160,6 +2212,21 @@
                             </button>
                         </div>
                         
+                        <div class="token-display" id="token-display-section" style="display: none;">
+                            <h3>Generated Tokens</h3>
+                            <div class="token-list" id="generated-tokens-list">
+                                <!-- Tokens will be displayed here -->
+                            </div>
+                            <div class="token-actions">
+                                <button class="btn btn-outline" id="copy-all-tokens">
+                                    <i class="fas fa-copy"></i> Copy All
+                                </button>
+                                <button class="btn btn-primary" id="download-tokens">
+                                    <i class="fas fa-download"></i> Download
+                                </button>
+                            </div>
+                        </div>
+                        
                         <div class="table-container" style="margin-top: 30px;">
                             <div class="table-header">
                                 <div class="table-title">Recent Token Generations</div>
@@ -2396,6 +2463,10 @@
         const sensitiveInfoGroup = document.getElementById('sensitive-info-group');
         const contactUsLink = document.getElementById('contact-us-link');
         const userSearch = document.getElementById('user-search');
+        const tokenDisplaySection = document.getElementById('token-display-section');
+        const generatedTokensList = document.getElementById('generated-tokens-list');
+        const copyAllTokensBtn = document.getElementById('copy-all-tokens');
+        const downloadTokensBtn = document.getElementById('download-tokens');
         
         // Initialize Firebase
         document.addEventListener('DOMContentLoaded', function() {
@@ -2475,9 +2546,12 @@
             return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
         }
         
-        // Generate 6-digit product ID
-        function generateProductId() {
-            return Math.floor(100000 + Math.random() * 900000);
+        // Generate secure token (cryptographically strong)
+        function generateSecureToken(length = 16) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            const values = new Uint8Array(length);
+            window.crypto.getRandomValues(values);
+            return Array.from(values, x => chars[x % chars.length]).join('');
         }
         
         // Format time for display
@@ -2861,8 +2935,9 @@
                 const batch = db.batch();
                 const tokens = [];
                 
+                // Generate tokens and store them
                 for (let i = 0; i < tokenAmount; i++) {
-                    const tokenId = generateId('TKN');
+                    const tokenId = generateSecureToken(16);
                     const tokenRef = db.collection('tokens').doc(tokenId);
                     
                     tokens.push({
@@ -2881,6 +2956,9 @@
                 
                 await batch.commit();
                 
+                // Display generated tokens
+                displayGeneratedTokens(tokens);
+                
                 // Show success message
                 showNotification(`Generated ${tokenAmount} tokens of $${tokenValue.toFixed(2)} each`, 'success');
                 
@@ -2898,6 +2976,58 @@
             } finally {
                 showLoader(false);
             }
+        }
+        
+        // Display generated tokens
+        function displayGeneratedTokens(tokens) {
+            tokenDisplaySection.style.display = 'block';
+            generatedTokensList.innerHTML = '';
+            
+            tokens.forEach(token => {
+                const tokenItem = document.createElement('div');
+                tokenItem.className = 'token-item';
+                tokenItem.innerHTML = `
+                    <div class="token-id">${token.id}</div>
+                    <div>$${token.value.toFixed(2)}</div>
+                `;
+                generatedTokensList.appendChild(tokenItem);
+            });
+        }
+        
+        // Copy all tokens to clipboard
+        function copyAllTokens() {
+            const tokens = Array.from(generatedTokensList.querySelectorAll('.token-id'))
+                .map(el => el.textContent)
+                .join('\n');
+            
+            navigator.clipboard.writeText(tokens)
+                .then(() => {
+                    showNotification('All tokens copied to clipboard', 'success');
+                })
+                .catch(err => {
+                    console.error('Failed to copy tokens: ', err);
+                    showNotification('Failed to copy tokens', 'error');
+                });
+        }
+        
+        // Download tokens as text file
+        function downloadTokens() {
+            const tokens = Array.from(generatedTokensList.querySelectorAll('.token-id'))
+                .map(el => el.textContent)
+                .join('\n');
+            
+            const blob = new Blob([tokens], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `secureescrow-tokens-${Date.now()}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showNotification('Tokens downloaded successfully', 'success');
         }
         
         // Save payment details
@@ -2972,7 +3102,7 @@
                 const userId = userDoc.id;
                 
                 // Generate affiliate ID
-                const affiliateId = generateId('AFF');
+                const affiliateId = generateId('REF');
                 
                 // Update user
                 await db.collection('users').doc(userId).update({
@@ -3088,6 +3218,52 @@
             } catch (error) {
                 console.error("Error approving withdrawal: ", error);
                 showNotification('Failed to approve withdrawal: ' + error.message, 'error');
+            } finally {
+                showLoader(false);
+            }
+        }
+        
+        // Decline withdrawal request
+        async function declineWithdrawal(withdrawalId) {
+            try {
+                showLoader(true);
+                
+                // Get withdrawal data
+                const withdrawalDoc = await db.collection('withdrawals').doc(withdrawalId).get();
+                if (!withdrawalDoc.exists) {
+                    showNotification('Withdrawal not found', 'error');
+                    return;
+                }
+                
+                const withdrawal = withdrawalDoc.data();
+                const userId = withdrawal.userId;
+                const amount = withdrawal.amount;
+                
+                // Update withdrawal status
+                await db.collection('withdrawals').doc(withdrawalId).update({
+                    status: 'declined',
+                    declinedAt: new Date(),
+                    declinedBy: currentUser.uid
+                });
+                
+                // Update transaction status
+                const txSnapshot = await db.collection('transactions')
+                    .where('withdrawalId', '==', withdrawalId)
+                    .get();
+                
+                txSnapshot.forEach(doc => {
+                    doc.ref.update({ status: 'declined' });
+                });
+                
+                // Refund the amount to user's balance
+                await db.collection('users').doc(userId).update({
+                    balance: firebase.firestore.FieldValue.increment(amount)
+                });
+                
+                showNotification('Withdrawal declined and amount refunded', 'success');
+            } catch (error) {
+                console.error("Error declining withdrawal: ", error);
+                showNotification('Failed to decline withdrawal: ' + error.message, 'error');
             } finally {
                 showLoader(false);
             }
@@ -3230,6 +3406,66 @@
             }
         }
         
+        // Load withdrawal requests for admin
+        async function loadWithdrawalRequests() {
+            try {
+                const snapshot = await db.collection('withdrawals')
+                    .where('status', '==', 'pending')
+                    .orderBy('createdAt', 'desc')
+                    .get();
+                
+                const tableBody = document.getElementById('withdrawal-requests');
+                tableBody.innerHTML = '';
+                
+                if (snapshot.empty) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="empty-state">No withdrawal requests</td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                snapshot.forEach(doc => {
+                    const withdrawal = doc.data();
+                    const row = document.createElement('tr');
+                    
+                    // Format account details
+                    let accountDetails = '';
+                    if (withdrawal.accountDetails) {
+                        if (withdrawal.accountDetails.type === 'bank') {
+                            accountDetails = `${withdrawal.accountDetails.accountName} (${withdrawal.accountDetails.bankName})`;
+                        } else if (withdrawal.accountDetails.type === 'paypal') {
+                            accountDetails = withdrawal.accountDetails.email;
+                        } else {
+                            accountDetails = `${withdrawal.accountDetails.walletAddress} (${withdrawal.accountDetails.cryptoType})`;
+                        }
+                    }
+                    
+                    row.innerHTML = `
+                        <td>${withdrawal.id}</td>
+                        <td>
+                            <div class="user-info">
+                                <div class="user-avatar-sm">${withdrawal.userName.charAt(0)}</div>
+                                <div>${withdrawal.userName}</div>
+                            </div>
+                        </td>
+                        <td>$${withdrawal.amount.toFixed(2)}</td>
+                        <td>${accountDetails}</td>
+                        <td>${withdrawal.createdAt.toDate().toLocaleDateString()}</td>
+                        <td><span class="badge badge-warning">${withdrawal.status}</span></td>
+                        <td>
+                            <button class="btn-sm btn-success-sm approve-withdrawal" data-id="${withdrawal.id}">Approve</button>
+                            <button class="btn-sm btn-danger-sm decline-withdrawal" data-id="${withdrawal.id}">Decline</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error("Error loading withdrawal requests: ", error);
+            }
+        }
+        
         // Initialize user data and listeners
         function initUserData() {
             if (!currentUser) return;
@@ -3302,6 +3538,7 @@
                         adminMenu.style.display = 'block';
                         isAdmin = true;
                         loadUsers();
+                        loadWithdrawalRequests();
                     } else {
                         adminMenu.style.display = 'none';
                         isAdmin = false;
@@ -3424,128 +3661,43 @@
                     tableBody.appendChild(row);
                 });
             });
-            
-            // Admin listeners
-            if (isAdmin) {
-                // Users
-                usersRef.onSnapshot(snapshot => {
-                    const tableBody = document.getElementById('users-table');
-                    tableBody.innerHTML = '';
-                    
-                    if (snapshot.empty) {
-                        tableBody.innerHTML = `
-                            <tr>
-                                <td colspan="6" class="empty-state">No users found</td>
-                            </tr>
-                        `;
-                        return;
-                    }
-                    
-                    snapshot.forEach(doc => {
-                        const user = doc.data();
-                        const row = document.createElement('tr');
-                        
-                        row.innerHTML = `
-                            <td>
-                                <div class="user-info">
-                                    <div class="user-avatar-sm">${user.name.charAt(0)}</div>
-                                    <div>${user.name}</div>
-                                </div>
-                            </td>
-                            <td>${user.email}</td>
-                            <td>${user.role || 'user'}</td>
-                            <td>Active</td>
-                            <td>$${user.balance.toFixed(2)}</td>
-                            <td>
-                                <button class="btn-sm btn-outline">View</button>
-                            </td>
-                        `;
-                        tableBody.appendChild(row);
-                    });
-                });
-                
-                // Withdrawals
-                adminWithdrawalsRef.onSnapshot(snapshot => {
-                    const tableBody = document.getElementById('withdrawal-requests');
-                    tableBody.innerHTML = '';
-                    
-                    if (snapshot.empty) {
-                        tableBody.innerHTML = `
-                            <tr>
-                                <td colspan="7" class="empty-state">No withdrawal requests</td>
-                            </tr>
-                        `;
-                        return;
-                    }
-                    
-                    snapshot.forEach(doc => {
-                        const withdrawal = doc.data();
-                        const row = document.createElement('tr');
-                        
-                        // Format account details
-                        let accountDetails = '';
-                        if (withdrawal.accountDetails) {
-                            if (withdrawal.accountDetails.type === 'bank') {
-                                accountDetails = `${withdrawal.accountDetails.accountName} (${withdrawal.accountDetails.bankName})`;
-                            } else if (withdrawal.accountDetails.type === 'paypal') {
-                                accountDetails = withdrawal.accountDetails.email;
-                            } else {
-                                accountDetails = `${withdrawal.accountDetails.walletAddress} (${withdrawal.accountDetails.cryptoType})`;
-                            }
-                        }
-                        
-                        row.innerHTML = `
-                            <td>${withdrawal.id}</td>
-                            <td>
-                                <div class="user-info">
-                                    <div class="user-avatar-sm">${withdrawal.userName.charAt(0)}</div>
-                                    <div>${withdrawal.userName}</div>
-                                </div>
-                            </td>
-                            <td>$${withdrawal.amount.toFixed(2)}</td>
-                            <td>${accountDetails}</td>
-                            <td>${withdrawal.createdAt.toDate().toLocaleDateString()}</td>
-                            <td><span class="badge badge-warning">${withdrawal.status}</span></td>
-                            <td>
-                                <button class="btn-sm btn-success-sm approve-withdrawal" data-id="${withdrawal.id}">Approve</button>
-                            </td>
-                        `;
-                        tableBody.appendChild(row);
-                    });
-                });
-                
-                // Token generations
-                tokenGenerationsRef.onSnapshot(snapshot => {
-                    const tableBody = document.getElementById('token-generations');
-                    tableBody.innerHTML = '';
-                    
-                    if (snapshot.empty) {
-                        tableBody.innerHTML = `
-                            <tr>
-                                <td colspan="5" class="empty-state">No tokens generated</td>
-                            </tr>
-                        `;
-                        return;
-                    }
-                    
-                    snapshot.forEach(doc => {
-                        const generation = doc.data();
-                        const row = document.createElement('tr');
-                        
-                        row.innerHTML = `
-                            <td>${generation.id}</td>
-                            <td>$${generation.value.toFixed(2)}</td>
-                            <td>${generation.userEmail || 'Generic'}</td>
-                            <td>${generation.createdAt.toDate().toLocaleDateString()}</td>
-                            <td>${generation.used ? 'Used' : 'Available'}</td>
-                        `;
-                        tableBody.appendChild(row);
-                    });
-                });
-                
-                // Load affiliate users
-                loadAffiliateUsers();
+        }
+        
+        // Get status badge class
+        function getStatusBadgeClass(status) {
+            switch(status) {
+                case 'pending':
+                case 'pending_buyer_acceptance':
+                    return 'badge-warning';
+                case 'completed':
+                    return 'badge-success';
+                case 'cancelled':
+                case 'refunded':
+                    return 'badge-danger';
+                case 'active':
+                case 'awaiting_inspection':
+                    return 'badge-primary';
+                default:
+                    return 'badge-info';
             }
+        }
+        
+        // Get status text
+        function getStatusText(status) {
+            const statusMap = {
+                'pending': 'Pending',
+                'pending_buyer_acceptance': 'Waiting for Buyer',
+                'active': 'Active',
+                'completed': 'Completed',
+                'cancelled': 'Cancelled',
+                'refunded': 'Refunded',
+                'awaiting_inspection': 'Inspection Period',
+                'in_review': 'In Review',
+                'shipment_requested': 'Shipment Requested',
+                'shipped': 'Shipped',
+                'refund_requested': 'Refund Requested'
+            };
+            return statusMap[status] || status;
         }
         
         // Initialize event listeners
@@ -3913,12 +4065,17 @@
                 window.open('https://www.contactescrowus.com/8282828', '_blank');
             });
             
-            // Approve withdrawal buttons
+            // Approve/decline withdrawal buttons
             document.addEventListener('click', function(e) {
                 if (e.target.closest('.approve-withdrawal')) {
                     const btn = e.target.closest('.approve-withdrawal');
                     const withdrawalId = btn.dataset.id;
                     approveWithdrawal(withdrawalId);
+                }
+                if (e.target.closest('.decline-withdrawal')) {
+                    const btn = e.target.closest('.decline-withdrawal');
+                    const withdrawalId = btn.dataset.id;
+                    declineWithdrawal(withdrawalId);
                 }
             });
             
@@ -3959,6 +4116,12 @@
                     console.error("Error searching users: ", error);
                 }
             });
+            
+            // Copy all tokens
+            copyAllTokensBtn.addEventListener('click', copyAllTokens);
+            
+            // Download tokens
+            downloadTokensBtn.addEventListener('click', downloadTokens);
         }
     </script>
 </body>
