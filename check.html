@@ -1514,6 +1514,80 @@
             color: white;
             border-color: var(--primary);
         }
+        
+        /* New styles */
+        .damage-report-section {
+            background: #fff8e1;
+            border-left: 4px solid var(--warning);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .damage-timer {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--warning);
+            text-align: center;
+            margin: 15px 0;
+            padding: 15px;
+            background: #fff8e1;
+            border-radius: 10px;
+        }
+        
+        .admin-search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .admin-search-bar input {
+            flex: 1;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        
+        .admin-action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .withdrawal-filter {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .filter-btn {
+            padding: 8px 15px;
+            border-radius: 20px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        
+        .account-adjust-form {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            margin-top: 20px;
+        }
+        
+        .adjustment-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
     </style>
 </head>
 <body>
@@ -2246,6 +2320,51 @@
                 </div>
             </div>
             
+            <div class="page-content" id="intervention-page">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Escrow Intervention</div>
+                        <div class="card-icon bg-warning-light">
+                            <i class="fas fa-gavel"></i>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="admin-search-bar">
+                            <input type="text" id="escrow-search" placeholder="Enter Escrow ID">
+                            <button class="btn btn-primary" id="search-escrow-btn">
+                                <i class="fas fa-search"></i> Search
+                            </button>
+                        </div>
+                        
+                        <div id="escrow-search-results">
+                            <!-- Escrow details will appear here -->
+                        </div>
+                        
+                        <div class="account-adjust-form">
+                            <h3>Adjust User Account</h3>
+                            <div class="form-group">
+                                <label for="user-search">Search User by Email</label>
+                                <input type="text" id="user-search" class="form-control" placeholder="Enter user email">
+                            </div>
+                            <div id="user-search-results"></div>
+                            
+                            <div class="form-group" id="adjust-account-section" style="display: none;">
+                                <label for="adjust-amount">Amount ($)</label>
+                                <input type="number" id="adjust-amount" class="form-control" placeholder="Enter amount">
+                                <div class="adjustment-buttons">
+                                    <button class="btn btn-success" id="credit-btn">
+                                        <i class="fas fa-plus-circle"></i> Credit
+                                    </button>
+                                    <button class="btn btn-danger" id="debit-btn">
+                                        <i class="fas fa-minus-circle"></i> Debit
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <div class="page-content" id="withdraw-admin-page">
                 <div class="card">
                     <div class="card-header">
@@ -2255,6 +2374,13 @@
                         </div>
                     </div>
                     <div class="card-body">
+                        <div class="withdrawal-filter">
+                            <div class="filter-btn active" data-status="all">All</div>
+                            <div class="filter-btn" data-status="pending">Pending</div>
+                            <div class="filter-btn" data-status="approved">Approved</div>
+                            <div class="filter-btn" data-status="rejected">Rejected</div>
+                        </div>
+                        
                         <div class="table-container">
                             <table class="table">
                                 <thead>
@@ -2359,6 +2485,7 @@
         let userData = {};
         let selectedCounterparty = null;
         let referralCode = '';
+        let currentAdjustUser = null;
         
         // DOM Elements
         const authSection = document.getElementById('auth-section');
@@ -2400,7 +2527,17 @@
         const contactUsLink = document.getElementById('contact-us-link');
         const tokenFilterBtns = document.querySelectorAll('.filter-btn');
         const closePaymentViewer = document.getElementById('close-payment-viewer');
-        
+        const escrowSearch = document.getElementById('escrow-search');
+        const searchEscrowBtn = document.getElementById('search-escrow-btn');
+        const escrowSearchResults = document.getElementById('escrow-search-results');
+        const userSearch = document.getElementById('user-search');
+        const userSearchResults = document.getElementById('user-search-results');
+        const adjustAccountSection = document.getElementById('adjust-account-section');
+        const creditBtn = document.getElementById('credit-btn');
+        const debitBtn = document.getElementById('debit-btn');
+        const adjustAmount = document.getElementById('adjust-amount');
+        const withdrawalFilter = document.querySelectorAll('.withdrawal-filter .filter-btn');
+
         // Initialize Firebase after configuration is loaded
         document.addEventListener('DOMContentLoaded', function() {
             try {
@@ -2515,9 +2652,38 @@
             }
         }
         
+        // Start damage complaint timer
+        function startDamageTimer(escrowId, duration = 259200) { // 3 days in seconds
+            if (escrowTimers[`damage-${escrowId}`]) {
+                clearInterval(escrowTimers[`damage-${escrowId}`]);
+            }
+            
+            let seconds = duration;
+            const timerElement = document.getElementById('damage-timer');
+            
+            escrowTimers[`damage-${escrowId}`] = setInterval(() => {
+                seconds--;
+                if (timerElement) {
+                    timerElement.textContent = formatTime(seconds);
+                }
+                
+                if (seconds <= 0) {
+                    clearInterval(escrowTimers[`damage-${escrowId}`]);
+                    // Auto-refund the buyer after 3 days
+                    completeEscrow(escrowId, false);
+                }
+            }, 1000);
+            
+            // Initialize display
+            if (timerElement) {
+                timerElement.textContent = formatTime(seconds);
+            }
+        }
+        
         // Complete escrow (accept or refund)
         async function completeEscrow(escrowId, isAccepted, refundReason = '') {
             clearInterval(escrowTimers[escrowId]);
+            clearInterval(escrowTimers[`damage-${escrowId}`]);
             
             try {
                 const escrowDoc = await db.collection('escrows').doc(escrowId).get();
@@ -2601,22 +2767,37 @@
             }
         }
         
-        // Initiate refund process
-        async function initiateRefund(escrowId, reason) {
+        // Report product damage
+        async function reportDamage(escrowId) {
             try {
-                const returnProductId = generateProductId();
+                showLoader(true);
+                const now = new Date();
+                const damageExpiry = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 days from now
                 
-                // Update escrow status to 'refund_requested'
-                await updateEscrowStatus(escrowId, 'refund_requested', {
-                    returnProductId: returnProductId,
-                    refundReason: reason
+                await db.collection('escrows').doc(escrowId).update({
+                    status: 'damage_reported',
+                    damageReportedAt: now,
+                    damageExpiry: damageExpiry
                 });
                 
-                // Notify both parties
-                showNotification(`Refund process initiated. Product ID for return: ${returnProductId}`, 'info');
+                showNotification('Damage reported. You have 3 days to file a complaint.', 'warning');
+                
+                // Refresh escrow details
+                const updatedEscrow = await db.collection('escrows').doc(escrowId).get();
+                activeEscrow = {
+                    id: escrowId,
+                    ...updatedEscrow.data()
+                };
+                renderEscrowDetails(activeEscrow);
+                
+                // Start damage timer
+                const secondsLeft = Math.floor((damageExpiry - now) / 1000);
+                startDamageTimer(escrowId, secondsLeft);
             } catch (error) {
-                console.error("Error initiating refund: ", error);
-                showNotification('Failed to initiate refund: ' + error.message, 'error');
+                console.error("Error reporting damage: ", error);
+                showNotification('Failed to report damage: ' + error.message, 'error');
+            } finally {
+                showLoader(false);
             }
         }
         
@@ -2697,6 +2878,33 @@
                 html += renderPhysicalProductDetails(escrow);
             }
             
+            // Damage reported section
+            if (escrow.status === 'damage_reported') {
+                const now = new Date();
+                const damageExpiry = escrow.damageExpiry.toDate();
+                const secondsLeft = Math.floor((damageExpiry - now) / 1000);
+                
+                html += `
+                    <div class="damage-report-section">
+                        <h3><i class="fas fa-exclamation-triangle"></i> Damage Reported</h3>
+                        <p>The seller has reported that the returned product was damaged.</p>
+                        <div class="warning-box">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <strong>Warning:</strong> Falsely reporting damage may result in account suspension.
+                        </div>
+                        <div class="damage-timer">
+                            <i class="fas fa-clock"></i> 
+                            <span id="damage-timer">${formatTime(secondsLeft)}</span>
+                        </div>
+                        <p>You have 3 days to file a formal complaint. If no complaint is filed, 
+                        the buyer will be automatically refunded.</p>
+                        <button class="btn btn-warning" id="file-complaint-btn">
+                            <i class="fas fa-file-alt"></i> File Complaint at www.judgeanescrow.com/282727
+                        </button>
+                    </div>
+                `;
+            }
+            
             // Terms & Conditions
             html += `
                 <div class="detail-section">
@@ -2734,7 +2942,12 @@
             
             escrowDetailsContainer.innerHTML = html;
             
-            // Add action buttons based on status
+            // Add event listeners
+            document.getElementById('file-complaint-btn')?.addEventListener('click', function() {
+                window.open('http://www.judgeanescrow.com/282727', '_blank');
+            });
+            
+            // Add action buttons
             addActionButtons(escrow);
         }
         
@@ -2814,6 +3027,8 @@
                     return 'badge-info';
                 case 'shipment_requested': 
                     return 'badge-primary';
+                case 'damage_reported': 
+                    return 'badge-warning';
                 default: return 'badge-info';
             }
         }
@@ -2830,6 +3045,7 @@
                 case 'completed': return 'Completed';
                 case 'cancelled': return 'Cancelled';
                 case 'refunded': return 'Refunded';
+                case 'damage_reported': return 'Damage Reported';
                 default: return status;
             }
         }
@@ -2844,6 +3060,18 @@
                 actionsDiv.innerHTML = `
                     <button class="action-btn action-danger" id="delete-escrow-btn">
                         <i class="fas fa-trash"></i> Delete Escrow
+                    </button>
+                `;
+            }
+            
+            // Seller actions for refund request
+            if (currentUser.uid === escrow.sellerId && escrow.status === 'refund_requested') {
+                actionsDiv.innerHTML = `
+                    <button class="action-btn action-success" id="approve-refund-btn">
+                        <i class="fas fa-check"></i> Product Returned in Good Condition
+                    </button>
+                    <button class="action-btn action-danger" id="report-damage-btn">
+                        <i class="fas fa-times"></i> Product Damaged
                     </button>
                 `;
             }
@@ -3011,7 +3239,12 @@
             document.getElementById('request-refund-btn')?.addEventListener('click', () => {
                 const reason = prompt('Please specify reason for refund:');
                 if (reason) {
-                    completeEscrow(escrow.id, false, reason);
+                    updateEscrowStatus(escrow.id, 'refund_requested', {
+                        refundReason: reason
+                    });
+                    
+                    // Refresh escrow details
+                    viewEscrowDetails(escrow.id);
                 }
             });
             
@@ -3036,6 +3269,14 @@
                     console.error("Error initiating return shipment: ", error);
                     showNotification('Failed to initiate return shipment: ' + error.message, 'error');
                 }
+            });
+            
+            document.getElementById('approve-refund-btn')?.addEventListener('click', () => {
+                completeEscrow(escrow.id, false, escrow.refundReason);
+            });
+            
+            document.getElementById('report-damage-btn')?.addEventListener('click', () => {
+                reportDamage(escrow.id);
             });
             
             document.getElementById('delete-escrow-btn')?.addEventListener('click', async () => {
@@ -3079,6 +3320,20 @@
                     } else {
                         // Auto-complete if time expired
                         completeEscrow(escrowId, true);
+                    }
+                }
+                
+                // Start damage timer if needed
+                if (activeEscrow.status === 'damage_reported') {
+                    const now = new Date();
+                    const damageExpiry = activeEscrow.damageExpiry.toDate();
+                    const secondsLeft = Math.floor((damageExpiry - now) / 1000);
+                    
+                    if (secondsLeft > 0) {
+                        startDamageTimer(escrowId, secondsLeft);
+                    } else {
+                        // Auto-refund if time expired
+                        completeEscrow(escrowId, false);
                     }
                 }
             } catch (error) {
@@ -3484,6 +3739,7 @@
                     `;
                 } else if (paymentDetails.type === 'crypto') {
                     detailsHTML += `
+                        <极
                         <div class="payment-detail-row">
                             <div class="payment-detail-label">Cryptocurrency:</div>
                             <div>${paymentDetails.cryptoType || 'N/A'}</div>
@@ -3494,7 +3750,7 @@
                         </div>
                         <div class="payment-detail-row">
                             <div class="payment-detail-label">Network:</div>
-                            <div>${paymentDetails.network || 'N/A'}</div>
+                            <div>${paymentDetails.network || 'N/A'}</极
                         </div>
                     `;
                 } else {
@@ -3512,7 +3768,263 @@
                 showLoader(false);
             }
         }
-
+        
+        // Search escrow by ID (admin)
+        async function searchEscrowById(escrowId) {
+            try {
+                showLoader(true);
+                const escrowDoc = await db.collection('escrows').doc(escrowId).get();
+                if (!escrowDoc.exists) {
+                    showNotification('Escrow not found', 'error');
+                    return;
+                }
+                
+                const escrow = escrowDoc.data();
+                let html = `
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">Escrow Details: ${escrowId}</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="detail-section">
+                                <h3>Transaction Overview</h3>
+                                <div class="detail-row">
+                                    <div class="detail-label">Status:</div>
+                                    <div class="detail-value">
+                                        <span class="badge ${getStatusBadgeClass(escrow.status)}">
+                                            ${getStatusText(escrow.status)}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="detail-row">
+                                    <div class="detail-label">Item:</div>
+                                    <div class="detail-value">${escrow.itemName}</div>
+                                </div>
+                                <div class="detail-row">
+                                    <div class="detail-label">Amount:</div>
+                                    <div class="detail-value">$${escrow.amount.toFixed(2)}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="detail-section">
+                                <h3>Parties</h3>
+                                <div class="detail-row">
+                                    <div class="detail-label">Seller:</div>
+                                    <div class="detail-value">${escrow.sellerName} (${escrow.sellerEmail})</div>
+                                </div>
+                                <div class="detail-row">
+                                    <div class="detail-label">Buyer:</div>
+                                    <div class="detail-value">${escrow.buyerName} (${escrow.buyerEmail})</div>
+                                </div>
+                            </div>
+                            
+                            <div class="action-buttons">
+                                <button class="btn btn-primary" id="refund-buyer-btn">
+                                    <i class="fas fa-undo"></i> Refund Buyer
+                                </button>
+                                <button class="btn btn-success" id="pay-seller-btn">
+                                    <i class="fas fa-check"></i> Pay Seller
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                escrowSearchResults.innerHTML = html;
+                
+                // Add event listeners
+                document.getElementById('refund-buyer-btn').addEventListener('click', async () => {
+                    try {
+                        // Refund buyer
+                        await db.collection('users').doc(escrow.buyerId).update({
+                            balance: firebase.firestore.FieldValue.increment(escrow.amount)
+                        });
+                        
+                        // Update escrow status
+                        await db.collection('escrows').doc(escrowId).update({
+                            status: 'refunded',
+                            refundedAt: new Date(),
+                            adminIntervention: true
+                        });
+                        
+                        showNotification(`Buyer refunded for escrow ${escrowId}`, 'success');
+                    } catch (error) {
+                        showNotification('Failed to refund buyer: ' + error.message, 'error');
+                    }
+                });
+                
+                document.getElementById('pay-seller-btn').addEventListener('click', async () => {
+                    try {
+                        // Pay seller
+                        await db.collection('users').doc(escrow.sellerId).update({
+                            balance: firebase.firestore.FieldValue.increment(escrow.amount)
+                        });
+                        
+                        // Update escrow status
+                        await db.collection('escrows').doc(escrowId).update({
+                            status: 'completed',
+                            completedAt: new Date(),
+                            adminIntervention: true
+                        });
+                        
+                        showNotification(`Seller paid for escrow ${escrowId}`, 'success');
+                    } catch (error) {
+                        showNotification('Failed to pay seller: ' + error.message, 'error');
+                    }
+                });
+                
+            } catch (error) {
+                showNotification('Failed to load escrow: ' + error.message, 'error');
+            } finally {
+                showLoader(false);
+            }
+        }
+        
+        // Search user by email (admin)
+        async function searchUserByEmail(email) {
+            try {
+                showLoader(true);
+                const userSnapshot = await db.collection('users')
+                    .where('email', '==', email)
+                    .limit(1)
+                    .get();
+                
+                if (userSnapshot.empty) {
+                    showNotification('User not found', 'error');
+                    return;
+                }
+                
+                const userDoc = userSnapshot.docs[0];
+                const user = userDoc.data();
+                currentAdjustUser = userDoc.id;
+                
+                let html = `
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">User Account: ${user.email}</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="detail-section">
+                                <div class="detail-row">
+                                    <div class="detail-label">Name:</div>
+                                    <div class="detail-value">${user.name}</div>
+                                </div>
+                                <div class="detail-row">
+                                    <div class="detail-label">Balance:</div>
+                                    <div class="detail-value">$${user.balance.toFixed(2)}</div>
+                                </div>
+                                <div class="detail-row">
+                                    <div class="detail-label">Role:</div>
+                                    <div class="detail-value">${user.role}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                userSearchResults.innerHTML = html;
+                adjustAccountSection.style.display = 'block';
+                
+            } catch (error) {
+                showNotification('Failed to search user: ' + error.message, 'error');
+            } finally {
+                showLoader(false);
+            }
+        }
+        
+        // Adjust user account (admin)
+        async function adjustUserAccount(amount, isCredit) {
+            if (!currentAdjustUser) {
+                showNotification('No user selected', 'error');
+                return;
+            }
+            
+            if (isNaN(amount) || amount <= 0) {
+                showNotification('Please enter a valid amount', 'error');
+                return;
+            }
+            
+            try {
+                const adjustment = isCredit ? amount : -amount;
+                const action = isCredit ? 'credited' : 'debited';
+                
+                await db.collection('users').doc(currentAdjustUser).update({
+                    balance: firebase.firestore.FieldValue.increment(adjustment)
+                });
+                
+                // Record transaction
+                const txId = generateId('ADJ');
+                await db.collection('transactions').doc(txId).set({
+                    id: txId,
+                    userId: currentAdjustUser,
+                    type: 'adjustment',
+                    amount: adjustment,
+                    date: new Date(),
+                    adminId: currentUser.uid,
+                    note: `Manual ${action} by admin`
+                });
+                
+                showNotification(`Account ${action} by $${amount.toFixed(2)}`, 'success');
+                adjustAmount.value = '';
+                
+                // Refresh user data
+                searchUserByEmail(userSearch.value);
+                
+            } catch (error) {
+                showNotification('Failed to adjust account: ' + error.message, 'error');
+            }
+        }
+        
+        // Filter withdrawal requests
+        async function filterWithdrawals(status) {
+            try {
+                let query = db.collection('withdrawals').orderBy('createdAt', 'desc');
+                
+                if (status !== 'all') {
+                    query = query.where('status', '==', status);
+                }
+                
+                const snapshot = await query.get();
+                const tableBody = document.getElementById('withdrawal-requests');
+                tableBody.innerHTML = '';
+                
+                snapshot.forEach(doc => {
+                    const withdrawal = doc.data();
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>${withdrawal.id}</td>
+                        <td>
+                            <div class="user-info">
+                                <div class="user-avatar-sm">${withdrawal.userName.charAt(0)}</div>
+                                <div>${withdrawal.userName}</div>
+                            </div>
+                        </td>
+                        <td>$${withdrawal.amount.toFixed(2)}</td>
+                        <td>${withdrawal.createdAt.toDate().toLocaleDateString()}</td>
+                        <td>${withdrawal.method || 'N/A'}</td>
+                        <td><span class="badge ${getStatusBadgeClass(withdrawal.status)}">${withdrawal.status}</span></td>
+                        <td>
+                            <button class="btn-sm btn-outline view-payment-details" data-userid="${withdrawal.userId}">
+                                <i class="fas fa-eye"></i> Details
+                            </button>
+                            <button class="btn-sm btn-success-sm" data-withdrawal="${withdrawal.id}" data-action="approve">Approve</button>
+                            <button class="btn-sm btn-danger-sm" data-withdrawal="${withdrawal.id}" data-action="reject">Reject</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                    
+                    // Add event listener for payment details button
+                    row.querySelector('.view-payment-details').addEventListener('click', function() {
+                        showPaymentDetails(this.dataset.userid);
+                    });
+                });
+                
+            } catch (error) {
+                console.error("Error loading withdrawals: ", error);
+            }
+        }
+        
         // Initialize event listeners
         function initEventListeners() {
             // View escrow buttons
@@ -3553,7 +4065,7 @@
                 e.preventDefault();
                 document.getElementById('signup-tab').classList.remove('active');
                 document.getElementById('login-tab').classList.add('active');
-                document.getElementById('signup-form').style.display = 'none';
+                document.getElementById('sign极-form').style.display = 'none';
                 document.getElementById('login-form').style.display = 'block';
             });
             
@@ -3936,53 +4448,44 @@
             closePaymentViewer.addEventListener('click', function() {
                 document.getElementById('payment-details-viewer').style.display = 'none';
             });
-        }
-        
-        // Show page
-        function showPage(pageId) {
-            pages.forEach(page => {
-                page.classList.remove('active');
-                if (page.id === pageId) {
-                    page.classList.add('active');
-                    document.getElementById('page-title').textContent = pageId.replace('-page', '').replace(/-/g, ' ');
+            
+            // Escrow search
+            searchEscrowBtn.addEventListener('click', function() {
+                const escrowId = escrowSearch.value.trim();
+                if (escrowId) {
+                    searchEscrowById(escrowId);
                 }
             });
-        }
-        
-        // Load affiliate users
-        async function loadAffiliateUsers() {
-            try {
-                const snapshot = await db.collection('users')
-                    .where('isAffiliate', '==', true)
-                    .get();
-                
-                const tableBody = document.getElementById('affiliate-users');
-                tableBody.innerHTML = '';
-                
-                snapshot.forEach(doc => {
-                    const user = doc.data();
-                    const row = document.createElement('tr');
-                    
-                    row.innerHTML = `
-                        <td>
-                            <div class="user-info">
-                                <div class="user-avatar-sm">${user.name.charAt(0)}</div>
-                                <div>${user.name}</div>
-                            </div>
-                        </td>
-                        <td>${user.affiliateCommission}%</td>
-                        <td>${user.referralCount || 0}</td>
-                        <td>$${user.affiliateEarnings || 0}</td>
-                        <td>Active</td>
-                        <td>
-                            <button class="btn-sm btn-outline">View</button>
-                        </td>
-                    `;
-                    tableBody.appendChild(row);
+            
+            // User search
+            userSearch.addEventListener('keyup', function(e) {
+                if (e.key === 'Enter') {
+                    const email = userSearch.value.trim();
+                    if (email) {
+                        searchUserByEmail(email);
+                    }
+                }
+            });
+            
+            // Account adjustment
+            creditBtn.addEventListener('click', function() {
+                const amount = parseFloat(adjustAmount.value);
+                adjustUserAccount(amount, true);
+            });
+            
+            debitBtn.addEventListener('click', function() {
+                const amount = parseFloat(adjustAmount.value);
+                adjustUserAccount(amount, false);
+            });
+            
+            // Withdrawal filter
+            withdrawalFilter.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.withdrawal-filter .filter-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    filterWithdrawals(this.dataset.status);
                 });
-            } catch (error) {
-                console.error("Error loading affiliate users: ", error);
-            }
+            });
         }
         
         // Initialize user data and listeners
@@ -4007,7 +4510,8 @@
                     'awaiting_inspection', 
                     'shipment_requested', 
                     'shipped', 
-                    'refund_requested'
+                    'refund_requested',
+                    'damage_reported'
                 ]);
             
             transactionsRef = db.collection('transactions')
@@ -4135,7 +4639,7 @@
                             <td>
                                 <div class="user-info">
                                     <div class="user-avatar-sm">${user.name.charAt(0)}</div>
-                                    <div>${user.name}</div>
+                                    <极>${user.name}</div>
                                 </div>
                             </td>
                             <td>${user.email}</td>
@@ -4272,7 +4776,57 @@
                 
                 // Load affiliate users
                 loadAffiliateUsers();
+                
+                // Load withdrawals with 'all' filter by default
+                filterWithdrawals('all');
             }
+        }
+        
+        // Load affiliate users
+        async function loadAffiliateUsers() {
+            try {
+                const snapshot = await db.collection('users')
+                    .where('isAffiliate', '==', true)
+                    .get();
+                
+                const tableBody = document.getElementById('affiliate-users');
+                tableBody.innerHTML = '';
+                
+                snapshot.forEach(doc => {
+                    const user = doc.data();
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>
+                            <div class="user-info">
+                                <div class="user-avatar-sm">${user.name.charAt(0)}</div>
+                                <div>${user.name}</div>
+                            </div>
+                        </td>
+                        <td>${user.affiliateCommission}%</td>
+                        <td>${user.referralCount || 0}</td>
+                        <td>$${user.affiliateEarnings || 0}</td>
+                        <td>Active</td>
+                        <td>
+                            <button class="btn-sm btn-outline">View</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error("Error loading affiliate users: ", error);
+            }
+        }
+        
+        // Show page
+        function showPage(pageId) {
+            pages.forEach(page => {
+                page.classList.remove('active');
+                if (page.id === pageId) {
+                    page.classList.add('active');
+                    document.getElementById('page-title').textContent = pageId.replace('-page', '').replace(/-/g, ' ');
+                }
+            });
         }
         
         // Initialize the application
