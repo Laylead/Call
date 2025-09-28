@@ -4,15 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StreamLive - Adult Video Platform</title>
+    
+    <!-- External Configuration -->
+    <script src="configuration.js"></script>
+    
     <!-- Agora SDK -->
     <script src="https://download.agora.io/sdk/release/AgoraRTCSDK-4.10.0.js"></script>
+    
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+    
     <!-- Material Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
     <style>
         /* Global Styles */
         * {
@@ -36,6 +43,95 @@
             display: flex !important;
         }
         
+        /* Age Verification Modal */
+        .age-verification-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+        }
+        
+        .age-verification-content {
+            background: #252525;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+        }
+        
+        .age-verification-content h2 {
+            color: #f5a623;
+            margin-bottom: 25px;
+            font-size: 28px;
+        }
+        
+        .age-verification-content p {
+            margin-bottom: 30px;
+            line-height: 1.6;
+            color: #ddd;
+            font-size: 18px;
+        }
+        
+        .verification-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        
+        .verification-btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        
+        .confirm-btn {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .confirm-btn:hover {
+            background: #3d8b40;
+            transform: translateY(-2px);
+        }
+        
+        .leave-btn {
+            background: #f44336;
+            color: white;
+        }
+        
+        .leave-btn:hover {
+            background: #d32f2f;
+            transform: translateY(-2px);
+        }
+
+        /* Admin stealth mode indicator */
+        .stealth-indicator {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #4caf50;
+            padding: 8px 15px;
+            border-radius: 6px;
+            font-size: 14px;
+            z-index: 1000;
+            display: none;
+            border: 1px solid #4caf50;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+
         /* Authentication Screen */
         #auth-screen {
             position: fixed;
@@ -46,7 +142,7 @@
             background: linear-gradient(135deg, #2c3e50 0%, #1a1a1a 100%);
             justify-content: center;
             align-items: center;
-            z-index: 1000;
+            z-index: 2000;
         }
         
         .auth-container {
@@ -475,6 +571,8 @@
             flex: 1;
             overflow-y: auto;
             padding: 10px;
+            display: flex;
+            flex-direction: column;
         }
         
         .message {
@@ -482,6 +580,19 @@
             padding: 8px;
             border-radius: 8px;
             background-color: #2a2a2a;
+            max-width: 80%;
+            align-self: flex-start;
+        }
+        
+        .message.admin {
+            background-color: #4285F430;
+            border-left: 3px solid #4285F4;
+            align-self: flex-end;
+        }
+        
+        .message.user {
+            background-color: #f5a62330;
+            border-left: 3px solid #f5a623;
         }
         
         .message-sender {
@@ -798,15 +909,18 @@
         
         .withdrawal-form {
             margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
         
         .form-group {
-            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
         }
         
         .form-label {
-            display: block;
-            margin-bottom: 5px;
             color: #aaa;
         }
         
@@ -847,6 +961,111 @@
             border-radius: 0 4px 4px 0;
             padding: 0 12px;
             cursor: pointer;
+        }
+        
+        /* Support Chat Modal */
+        .support-chat-modal {
+            background-color: #252525;
+            border-radius: 10px;
+            padding: 20px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .support-chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            max-height: 300px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .support-message {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 8px;
+            background-color: #1e1e1e;
+            max-width: 80%;
+        }
+        
+        .support-message.admin {
+            background-color: #4285F430;
+            border-left: 3px solid #4285F4;
+            align-self: flex-end;
+        }
+        
+        .support-message.user {
+            background-color: #f5a62330;
+            border-left: 3px solid #f5a623;
+            align-self: flex-start;
+        }
+        
+        .fund-wallet-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .fund-action-btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+        
+        .fund-btn {
+            background-color: #4caf50;
+            color: white;
+        }
+        
+        .debit-btn {
+            background-color: #f44336;
+            color: white;
+        }
+        
+        .close-chat-btn {
+            background-color: #4285F4;
+            color: white;
+        }
+        
+        /* Broadcaster Approval Modal */
+        .approval-modal {
+            background-color: #252525;
+            border-radius: 10px;
+            padding: 20px;
+            width: 90%;
+            max-width: 500px;
+        }
+        
+        .approval-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 15px 0;
+        }
+        
+        .approval-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #444;
+        }
+        
+        .approval-actions {
+            display: flex;
+            gap: 10px;
         }
         
         /* Responsive Design */
@@ -893,11 +1112,131 @@
                 display: none;
             }
         }
+
+        /* Stealth Chat Window */
+        .stealth-chat-window {
+            position: fixed;
+            bottom: 60px;
+            right: 15px;
+            width: 300px;
+            height: 300px;
+            background: rgba(30, 30, 30, 0.95);
+            border: 1px solid #4caf50;
+            border-radius: 8px;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
+        }
+        
+        .stealth-chat-header {
+            background: #252525;
+            padding: 10px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            color: #4caf50;
+        }
+        
+        .stealth-chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .stealth-message {
+            margin-bottom: 8px;
+            padding: 6px;
+            background: #2a2a2a;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .stealth-chat-input-container {
+            padding: 10px;
+            border-top: 1px solid #333;
+            display: flex;
+        }
+        
+        .stealth-chat-input {
+            flex: 1;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 8px;
+            color: white;
+            font-size: 12px;
+        }
+        
+        .stealth-chat-send {
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 0 12px;
+            margin-left: 5px;
+            cursor: pointer;
+        }
+        
+        /* Loading Spinner */
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #f5a623;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Error Message */
+        .error-message {
+            background-color: #f44336;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        
+        /* Success Message */
+        .success-message {
+            background-color: #4caf50;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
+    <!-- Age Verification Modal -->
+    <div class="age-verification-modal" id="age-verification">
+        <div class="age-verification-content">
+            <h2>Age Verification Required</h2>
+            <p>This content is intended for adults only and contains age-restricted material. You must be at least 18 years of age (or the age of majority in your jurisdiction) to access this platform. By entering, you acknowledge that you meet the age requirement and consent to viewing adult content.</p>
+            <div class="verification-buttons">
+                <button class="verification-btn leave-btn" id="leave-site">Leave</button>
+                <button class="verification-btn confirm-btn" id="confirm-age">I Am 18+</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Stealth Mode Indicator -->
+    <div class="stealth-indicator" id="stealth-indicator">
+        Stealth Mode Active
+    </div>
+
     <!-- Authentication Screen -->
-    <div id="auth-screen" class="visible">
+    <div id="auth-screen" class="hidden">
         <div class="auth-container">
             <h1>StreamLive</h1>
             <p>Watch and broadcast live adult content</p>
@@ -917,6 +1256,14 @@
                 <input type="email" class="form-input" id="signup-email" placeholder="Email">
                 <input type="password" class="form-input" id="signup-password" placeholder="Password">
                 <input type="password" class="form-input" id="signup-confirm" placeholder="Confirm Password">
+                
+                <div style="margin: 15px 0; text-align: left;">
+                    <label>
+                        <input type="checkbox" id="signup-broadcaster">
+                        I want to be a broadcaster
+                    </label>
+                </div>
+                
                 <button id="signup-btn" class="auth-btn">
                     <i class="material-icons">person_add</i>
                     Sign Up
@@ -1009,6 +1356,9 @@
                 <i class="material-icons">video_call</i>
                 Start Broadcast
             </button>
+            <div id="broadcaster-pending-msg" class="hidden" style="color: #f5a623; padding: 0 20px; margin-bottom: 10px;">
+                Your broadcaster account is pending approval
+            </div>
             <div style="padding: 0 20px;">
                 <label>
                     <input type="checkbox" id="private-broadcast">
@@ -1106,9 +1456,9 @@
                     <div class="token-bonus">20% bonus</div>
                 </div>
             </div>
-            <button class="auth-btn" style="margin-top: 20px;">
+            <button class="auth-btn" id="fund-wallet-btn" style="margin-top: 20px;">
                 <i class="material-icons">payment</i>
-                Proceed to Payment
+                Fund Wallet
             </button>
         </div>
     </div>
@@ -1182,6 +1532,17 @@
                 </div>
                 
                 <div class="admin-section">
+                    <h2>Broadcaster Approval</h2>
+                    <button class="auth-btn" id="manage-broadcaster-approvals" style="margin-bottom: 15px;">
+                        <i class="material-icons">how_to_reg</i>
+                        Manage Broadcaster Approvals
+                    </button>
+                    <div id="broadcaster-approval-status">
+                        <!-- Broadcaster approval status will be shown here -->
+                    </div>
+                </div>
+                
+                <div class="admin-section">
                     <h2>User Management</h2>
                     <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                         <input type="text" class="form-input" id="user-search" placeholder="Search user by email">
@@ -1189,6 +1550,33 @@
                     </div>
                     <div id="user-management-results">
                         <!-- User management results will be shown here -->
+                    </div>
+                </div>
+                
+                <div class="admin-section">
+                    <h2>Wallet Funding Configuration</h2>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 10px;">
+                            <input type="radio" name="funding-method" value="redirect" checked> Redirect to external website
+                        </label>
+                        <label style="display: block;">
+                            <input type="radio" name="funding-method" value="chat"> Use chat system
+                        </label>
+                    </div>
+                    <div id="redirect-config" style="margin-bottom: 15px;">
+                        <label class="form-label">Redirect URL</label>
+                        <input type="text" class="form-input" id="redirect-url" value="www.fundadultwallet.com/2773737373738">
+                    </div>
+                    <button class="auth-btn" id="save-funding-config">
+                        <i class="material-icons">save</i>
+                        Save Configuration
+                    </button>
+                </div>
+                
+                <div class="admin-section">
+                    <h2>Support Chats</h2>
+                    <div id="support-chats-list">
+                        <!-- Support chats will be listed here -->
                     </div>
                 </div>
                 
@@ -1202,142 +1590,255 @@
         </div>
     </div>
 
-    <!-- User Profile Modal -->
-    <div class="modal-backdrop hidden" id="profile-modal">
-        <div class="profile-modal">
+    <!-- Broadcaster Approval Modal -->
+    <div class="modal-backdrop hidden" id="broadcaster-approval-modal">
+        <div class="approval-modal">
             <div class="modal-header">
-                <h2>User Profile</h2>
-                <button class="close-modal" id="close-profile-modal">&times;</button>
+                <h2>Broadcaster Approval Requests</h2>
+                <button class="close-modal" id="close-approval-modal">&times;</button>
             </div>
-            <div class="profile-header">
-                <img src="" class="profile-avatar" id="profile-avatar" alt="Avatar">
-                <div class="profile-info">
-                    <div class="profile-name" id="profile-name"></div>
-                    <div class="profile-stats">
-                        <div class="stat" id="profile-followers">0 followers</div>
-                        <div class="stat" id="profile-tips">0 tokens received</div>
-                    </div>
-                    <div class="profile-actions">
-                        <button class="follow-btn" id="follow-btn">
-                            <i class="material-icons">favorite</i>
-                            Follow
-                        </button>
-                        <button class="auth-btn" id="book-session-btn">
-                            <i class="material-icons">event</i>
-                            Book Session
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <div id="profile-bio">
-                <!-- Bio will be populated here -->
+            <div class="approval-list" id="approval-list">
+                <!-- Approval requests will be listed here -->
             </div>
         </div>
     </div>
 
-    <!-- Booking Modal -->
-    <div class="modal-backdrop hidden" id="booking-modal">
-        <div class="booking-modal">
+    <!-- Support Chat Modal -->
+    <div class="modal-backdrop hidden" id="support-chat-modal">
+        <div class="support-chat-modal">
             <div class="modal-header">
-                <h2>Book Private Session</h2>
-                <button class="close-modal" id="close-booking-modal">&times;</button>
+                <h2>Support Chat</h2>
+                <button class="close-modal" id="close-support-chat-modal">&times;</button>
             </div>
-            <p>Book a private one-on-one session with <span id="booking-model-name"></span></p>
-            <div class="booking-options">
-                <div class="booking-option" data-duration="15" data-price="50">
-                    <div class="booking-duration">15 Minutes</div>
-                    <div class="booking-price">50 tokens</div>
-                </div>
-                <div class="booking-option" data-duration="30" data-price="90">
-                    <div class="booking-duration">30 Minutes</div>
-                    <div class="booking-price">90 tokens (10% off)</div>
-                </div>
-                <div class="booking-option" data-duration="60" data-price="160">
-                    <div class="booking-duration">60 Minutes</div>
-                    <div class="booking-price">160 tokens (20% off)</div>
-                </div>
+            <div class="support-chat-messages" id="support-chat-messages">
+                <!-- Chat messages will appear here -->
             </div>
-            <button class="auth-btn" id="confirm-booking">
-                <i class="material-icons">event_available</i>
-                Confirm Booking
-            </button>
-        </div>
-    </div>
-
-    <!-- Withdrawal Modal -->
-    <div class="modal-backdrop hidden" id="withdrawal-modal">
-        <div class="withdrawal-modal">
-            <div class="modal-header">
-                <h2>Withdraw Earnings</h2>
-                <button class="close-modal" id="close-withdrawal-modal">&times;</button>
+            <div class="chat-input-container">
+                <input type="text" class="chat-input" id="support-chat-input" placeholder="Type your message...">
+                <button class="send-tip-btn" id="send-support-message">
+                    <i class="material-icons">send</i>
+                    Send
+                </button>
             </div>
-            <div id="withdrawal-info">
-                <p>Available balance: <span id="available-balance">0</span> tokens</p>
-                <p>Minimum withdrawal: 100 tokens</p>
+            <div class="fund-wallet-actions">
+                <button class="fund-action-btn fund-btn" id="fund-user-btn">
+                    <i class="material-icons">add</i>
+                    Fund User
+                </button>
+                <button class="fund-action-btn debit-btn" id="debit-user-btn">
+                    <i class="material-icons">remove</i>
+                    Debit User
+                </button>
+                <button class="fund-action-btn close-chat-btn" id="close-chat-btn">
+                    <i class="material-icons">check</i>
+                    Mark as Done
+                </button>
             </div>
-            <div class="withdrawal-form">
+            <div id="fund-actions" class="hidden" style="margin-top: 15px;">
                 <div class="form-group">
-                    <label class="form-label">Payment Method</label>
-                    <select class="form-input" id="payment-method">
-                        <option value="bank">Bank Transfer</option>
-                        <option value="paypal">PayPal</option>
-                        <option value="crypto">Cryptocurrency</option>
-                    </select>
+                    <label class="form-label">Amount</label>
+                    <input type="number" class="form-input" id="fund-amount" placeholder="Enter amount">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Account Details</label>
-                    <input type="text" class="form-input" id="account-details" placeholder="Account number or email">
+                    <label class="form-label">Reason</label>
+                    <input type="text" class="form-input" id="fund-reason" placeholder="Enter reason">
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Amount to Withdraw (tokens)</label>
-                    <input type="number" class="form-input" id="withdrawal-amount" min="100" step="10">
-                </div>
-                <button class="auth-btn" id="submit-withdrawal">
-                    <i class="material-icons">account_balance</i>
-                    Request Withdrawal
+                <button class="auth-btn" id="confirm-fund-action">
+                    <i class="material-icons">check_circle</i>
+                    Confirm
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Private Session Modal -->
-    <div class="modal-backdrop hidden" id="private-session-modal">
-        <div class="private-session-modal">
-            <div class="modal-header">
-                <h2>Private Session</h2>
-                <button class="close-modal" id="close-private-session-modal">&times;</button>
-            </div>
-            <div class="session-info">
-                <p>Your private session with <span id="session-model-name"></span> is ready!</p>
-                <p>Session duration: <span id="session-duration"></span> minutes</p>
-                <p>Use the link below to join your private session:</p>
-                <div class="session-link">
-                    <input type="text" class="link-input" id="session-link-input" readonly>
-                    <button class="copy-link" id="copy-session-link">
-                        <i class="material-icons">content_copy</i>
-                    </button>
-                </div>
-                <p style="margin-top: 10px; font-size: 0.9rem; color: #f5a623;">
-                    <i class="material-icons" style="font-size: 1rem;">warning</i>
-                    This link can only be used once and will expire after 24 hours
-                </p>
-            </div>
-            <button class="auth-btn" id="join-private-session">
-                <i class="material-icons">video_call</i>
-                Join Private Session
-            </button>
-        </div>
-    </div>
+    <!-- Configuration Script -->
+    <script id="configuration.js">
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBlh428ba5aSFt6x2pPkVjeEk5D6AbIU7Y",
+            authDomain: "kheemz-fb9b6.firebaseapp.com",
+            projectId: "kheemz-fb9b6",
+            storageBucket: "kheemz-fb9b6.firebasestorage.app",
+            messagingSenderId: "593310501630",
+            appId: "1:593310501630:web:c241a05e0d7c4a810173af",
+            measurementId: "G-Q50WK6G76P"
+        };
 
-    <!-- Configuration -->
-    <script src="configuration.js"></script>
-    
-    <!-- Agora Functions -->
-    <script src="agora.js"></script>
+        // Agora Configuration
+        const agoraConfig = {
+            appId: "974f4c7b124940a1a6ee5e526175118d",
+            token: null // Tokens should be generated on your server for production
+        };
+    </script>
 
+    <!-- Agora Script -->
+    <script id="agora.js">
+        // Agora-related functionality
+        let agoraClient = null;
+        let localStream = null;
+        let remoteStreams = [];
+        let rtmClient = null;
+        let channel = null;
+
+        // Initialize Agora RTC
+        function initializeAgoraRTC() {
+            if (!agoraConfig.appId) {
+                console.error("Agora App ID is not configured");
+                return;
+            }
+
+            try {
+                agoraClient = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+                console.log("Agora RTC client initialized");
+            } catch (error) {
+                console.error("Failed to initialize Agora RTC client:", error);
+            }
+        }
+
+        // Initialize Agora RTM
+        function initializeAgoraRTM() {
+            if (!agoraConfig.appId) {
+                console.error("Agora App ID is not configured");
+                return;
+            }
+
+            try {
+                rtmClient = AgoraRTM.createInstance(agoraConfig.appId);
+                console.log("Agora RTM client initialized");
+            } catch (error) {
+                console.error("Failed to initialize Agora RTM client:", error);
+            }
+        }
+
+        // Join a channel
+        async function joinChannel(channelName, token = null, uid = null) {
+            if (!agoraClient) {
+                console.error("Agora client is not initialized");
+                return;
+            }
+
+            try {
+                await agoraClient.join(agoraConfig.appId, channelName, token || null, uid || null);
+                console.log("Joined channel successfully:", channelName);
+                
+                // Create and publish local stream
+                localStream = AgoraRTC.createStream({
+                    streamID: uid || agoraClient.uid,
+                    audio: true,
+                    video: true,
+                    screen: false
+                });
+                
+                await localStream.init();
+                await agoraClient.publish(localStream);
+                console.log("Local stream published");
+                
+                return true;
+            } catch (error) {
+                console.error("Failed to join channel:", error);
+                return false;
+            }
+        }
+
+        // Leave channel
+        async function leaveChannel() {
+            if (localStream) {
+                localStream.close();
+                localStream = null;
+            }
+            
+            if (agoraClient) {
+                await agoraClient.leave();
+                console.log("Left channel");
+            }
+            
+            if (rtmClient) {
+                await rtmClient.logout();
+                console.log("Logged out from RTM");
+            }
+        }
+
+        // Subscribe to remote streams
+        function setupRemoteStreamHandlers() {
+            if (!agoraClient) return;
+
+            agoraClient.on("stream-added", (evt) => {
+                const remoteStream = evt.stream;
+                console.log("New stream added:", remoteStream.getId());
+                agoraClient.subscribe(remoteStream, (error) => {
+                    if (error) {
+                        console.error("Subscribe failed:", error);
+                    }
+                });
+            });
+
+            agoraClient.on("stream-subscribed", (evt) => {
+                const remoteStream = evt.stream;
+                console.log("Subscribed to remote stream:", remoteStream.getId());
+                remoteStreams.push(remoteStream);
+                // Add remote stream to video container
+                addRemoteVideoStream(remoteStream);
+            });
+
+            agoraClient.on("stream-removed", (evt) => {
+                const remoteStream = evt.stream;
+                console.log("Stream removed:", remoteStream.getId());
+                removeRemoteVideoStream(remoteStream);
+            });
+        }
+
+        // Add remote video stream to UI
+        function addRemoteVideoStream(remoteStream) {
+            const videoContainer = document.getElementById('video-streams');
+            if (!videoContainer) return;
+
+            const streamId = remoteStream.getId();
+            let videoElement = document.getElementById(`remote-video-${streamId}`);
+            
+            if (!videoElement) {
+                videoElement = document.createElement('div');
+                videoElement.id = `remote-video-${streamId}`;
+                videoElement.className = 'stream-video';
+                videoContainer.appendChild(videoElement);
+            }
+            
+            remoteStream.play(`remote-video-${streamId}`);
+        }
+
+        // Remove remote video stream from UI
+        function removeRemoteVideoStream(remoteStream) {
+            const streamId = remoteStream.getId();
+            const videoElement = document.getElementById(`remote-video-${streamId}`);
+            if (videoElement) {
+                videoElement.remove();
+            }
+            
+            // Remove from remoteStreams array
+            remoteStreams = remoteStreams.filter(stream => stream.getId() !== streamId);
+        }
+
+        // Initialize Agora services
+        function initializeAgora() {
+            initializeAgoraRTC();
+            initializeAgoraRTM();
+            setupRemoteStreamHandlers();
+            console.log("Agora services initialized");
+        }
+
+        // Export functions for use in main application
+        window.agoraService = {
+            initializeAgora,
+            joinChannel,
+            leaveChannel,
+            addRemoteVideoStream,
+            removeRemoteVideoStream
+        };
+    </script>
+
+    <!-- Main Application Script -->
     <script>
-        // Initialize Firebase with external configuration
-        firebase.initializeApp(Configuration.firebaseConfig);
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const auth = firebase.auth();
 
@@ -1386,54 +1887,52 @@
         const chatInput = document.getElementById('chat-input');
         const sendTipBtn = document.getElementById('send-tip');
         const viewerCountEl = document.getElementById('viewer-count');
+        const broadcasterPendingMsg = document.getElementById('broadcaster-pending-msg');
+        const signupBroadcasterCheckbox = document.getElementById('signup-broadcaster');
+        const manageBroadcasterApprovalsBtn = document.getElementById('manage-broadcaster-approvals');
+        const broadcasterApprovalModal = document.getElementById('broadcaster-approval-modal');
+        const closeApprovalModal = document.getElementById('close-approval-modal');
+        const approvalList = document.getElementById('approval-list');
+        const fundWalletBtn = document.getElementById('fund-wallet-btn');
+        const supportChatModal = document.getElementById('support-chat-modal');
+        const closeSupportChatModal = document.getElementById('close-support-chat-modal');
+        const supportChatMessages = document.getElementById('support-chat-messages');
+        const supportChatInput = document.getElementById('support-chat-input');
+        const sendSupportMessageBtn = document.getElementById('send-support-message');
+        const fundUserBtn = document.getElementById('fund-user-btn');
+        const debitUserBtn = document.getElementById('debit-user-btn');
+        const closeChatBtn = document.getElementById('close-chat-btn');
+        const fundActions = document.getElementById('fund-actions');
+        const fundAmount = document.getElementById('fund-amount');
+        const fundReason = document.getElementById('fund-reason');
+        const confirmFundAction = document.getElementById('confirm-fund-action');
+        const supportChatsList = document.getElementById('support-chats-list');
+        const fundingMethodRadios = document.querySelectorAll('input[name="funding-method"]');
+        const redirectUrlInput = document.getElementById('redirect-url');
+        const redirectConfig = document.getElementById('redirect-config');
+        const saveFundingConfigBtn = document.getElementById('save-funding-config');
         
         // New element references for added features
         const searchInput = document.getElementById('search-input');
         const searchResults = document.getElementById('search-results');
         const profileBtn = document.getElementById('profile-btn');
-        const profileModal = document.getElementById('profile-modal');
-        const closeProfileModal = document.getElementById('close-profile-modal');
-        const profileAvatar = document.getElementById('profile-avatar');
-        const profileName = document.getElementById('profile-name');
-        const profileFollowers = document.getElementById('profile-followers');
-        const profileTips = document.getElementById('profile-tips');
-        const followBtn = document.getElementById('follow-btn');
-        const bookSessionBtn = document.getElementById('book-session-btn');
-        const profileBio = document.getElementById('profile-bio');
-        const bookingModal = document.getElementById('booking-modal');
-        const closeBookingModal = document.getElementById('close-booking-modal');
-        const bookingModelName = document.getElementById('booking-model-name');
-        const confirmBooking = document.getElementById('confirm-booking');
-        const withdrawalModal = document.getElementById('withdrawal-modal');
-        const closeWithdrawalModal = document.getElementById('close-withdrawal-modal');
-        const availableBalance = document.getElementById('available-balance');
-        const paymentMethod = document.getElementById('payment-method');
-        const accountDetails = document.getElementById('account-details');
-        const withdrawalAmount = document.getElementById('withdrawal-amount');
-        const submitWithdrawal = document.getElementById('submit-withdrawal');
-        const withdrawEarningsBtn = document.getElementById('withdraw-earnings');
         const enableAudioBtn = document.getElementById('enable-audio');
         const muteAudioBtn = document.getElementById('mute-audio');
-        const privateSessionModal = document.getElementById('private-session-modal');
-        const closePrivateSessionModal = document.getElementById('close-private-session-modal');
-        const sessionModelName = document.getElementById('session-model-name');
-        const sessionDuration = document.getElementById('session-duration');
-        const sessionLinkInput = document.getElementById('session-link-input');
-        const copySessionLink = document.getElementById('copy-session-link');
-        const joinPrivateSession = document.getElementById('join-private-session');
+        const withdrawEarningsBtn = document.getElementById('withdraw-earnings');
         const tabBtns = document.querySelectorAll('.tab-btn');
         const tabContents = document.querySelectorAll('.tab-content');
         const followedBroadcasts = document.getElementById('followed-broadcasts');
         const recommendedBroadcasts = document.getElementById('recommended-broadcasts');
         const followingList = document.getElementById('following-list');
 
+        // Age verification elements
+        const ageVerificationModal = document.getElementById('age-verification');
+        const confirmAgeBtn = document.getElementById('confirm-age');
+        const leaveSiteBtn = document.getElementById('leave-site');
+        const stealthIndicator = document.getElementById('stealth-indicator');
+
         // Application state
         let currentUser = null;
-        let agoraClient = null;
-        let localStream = null;
-        let remoteStreams = [];
-        let rtmClient = null;
-        let channel = null;
         let currentBroadcastId = null;
         let isBroadcasting = false;
         let isAdmin = false;
@@ -1441,15 +1940,70 @@
         let followedBroadcasters = [];
         let viewerTipHistory = {};
         let audioEnabled = false;
-        let selectedBookingOption = null;
+        let fundingMethod = 'redirect';
+        let currentSupportChat = null;
+        let currentActionType = 'fund'; // 'fund' or 'debit'
+        let isStealthMode = false;
+        let stealthChatWindow = null;
         let currentProfileUserId = null;
+        let selectedBookingOption = null;
 
         // Initialize the application
         function init() {
+            // Check if age is verified first
+            const ageVerified = getCookie('ageVerified');
+            if (!ageVerified) {
+                showAgeVerification();
+            } else {
+                initApp();
+            }
+        }
+        
+        function showAgeVerification() {
+            ageVerificationModal.style.display = 'flex';
+            
+            confirmAgeBtn.addEventListener('click', () => {
+                setCookie('ageVerified', 'true', 30); // Remember for 30 days
+                ageVerificationModal.style.display = 'none';
+                initApp();
+            });
+            
+            leaveSiteBtn.addEventListener('click', () => {
+                window.location.href = 'https://www.google.com';
+            });
+        }
+        
+        function initApp() {
             // Set up authentication listeners
             auth.onAuthStateChanged(handleAuthStateChange);
             
+            // Initialize Agora
+            if (window.agoraService) {
+                window.agoraService.initializeAgora();
+            }
+            
             // Set up event listeners
+            setupEventListeners();
+            
+            // Load broadcasters
+            loadBroadcasters();
+            
+            // Set up real-time listener for broadcasts
+            db.collection('broadcasts').where('isLive', '==', true)
+                .onSnapshot(snapshot => {
+                    loadBroadcasters();
+                    if (isAdmin) {
+                        loadAdminBroadcasts();
+                    }
+                });
+                
+            // Load funding configuration
+            loadFundingConfig();
+        }
+
+        // Set up all event listeners
+        function setupEventListeners() {
+            // Authentication
             showSignup.addEventListener('click', () => {
                 loginForm.classList.add('hidden');
                 signupForm.classList.remove('hidden');
@@ -1463,20 +2017,29 @@
             loginBtn.addEventListener('click', signInWithEmail);
             signupBtn.addEventListener('click', signUpWithEmail);
             signOutBtn.addEventListener('click', signOut);
+            
+            // Broadcasting
             startBroadcastBtn.addEventListener('click', startBroadcast);
+            cameraToggle.addEventListener('click', toggleCamera);
+            micToggle.addEventListener('click', toggleMic);
+            endBroadcast.addEventListener('click', endBroadcastHandler);
+            
+            // Modals
             buyTokensBtn.addEventListener('click', () => tokenModal.classList.add('visible'));
             closeTokenModal.addEventListener('click', () => tokenModal.classList.remove('visible'));
             managePasskeysBtn.addEventListener('click', () => passkeyManagementModal.classList.add('visible'));
             closePasskeyManagementModal.addEventListener('click', () => passkeyManagementModal.classList.remove('visible'));
             generatePasskeysBtn.addEventListener('click', generatePasskeys);
-            cameraToggle.addEventListener('click', toggleCamera);
-            micToggle.addEventListener('click', toggleMic);
-            endBroadcast.addEventListener('click', endBroadcastHandler);
             submitPasskey.addEventListener('click', validatePasskey);
             closePasskeyModal.addEventListener('click', () => passkeyModal.classList.remove('visible'));
             adminBtn.addEventListener('click', () => adminModal.classList.add('visible'));
             closeAdminModal.addEventListener('click', () => adminModal.classList.remove('visible'));
+            
+            // Search and user management
             searchUserBtn.addEventListener('click', searchUser);
+            searchInput.addEventListener('input', handleSearch);
+            
+            // Chat
             sendTipBtn.addEventListener('click', sendTip);
             chatInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
@@ -1484,21 +2047,12 @@
                 }
             });
             
-            // New event listeners for added features
-            searchInput.addEventListener('input', handleSearch);
-            profileBtn.addEventListener('click', () => showUserProfile());
-            closeProfileModal.addEventListener('click', () => profileModal.classList.remove('visible'));
-            followBtn.addEventListener('click', toggleFollow);
-            bookSessionBtn.addEventListener('click', showBookingModal);
-            closeBookingModal.addEventListener('click', () => bookingModal.classList.remove('visible'));
-            withdrawEarningsBtn.addEventListener('click', showWithdrawalModal);
-            closeWithdrawalModal.addEventListener('click', () => withdrawalModal.classList.remove('visible'));
-            submitWithdrawal.addEventListener('click', submitWithdrawalRequest);
+            // Audio controls
             enableAudioBtn.addEventListener('click', enableAudio);
             muteAudioBtn.addEventListener('click', muteAudio);
-            closePrivateSessionModal.addEventListener('click', () => privateSessionModal.classList.remove('visible'));
-            copySessionLink.addEventListener('click', copySessionLinkToClipboard);
-            joinPrivateSession.addEventListener('click', joinPrivateSessionHandler);
+            
+            // Withdrawal
+            withdrawEarningsBtn.addEventListener('click', showWithdrawalModal);
             
             // Tab navigation
             tabBtns.forEach(btn => {
@@ -1508,34 +2062,81 @@
                 });
             });
             
-            // Booking options selection
-            document.querySelectorAll('.booking-option').forEach(option => {
-                option.addEventListener('click', () => {
-                    document.querySelectorAll('.booking-option').forEach(o => o.classList.remove('selected'));
-                    option.classList.add('selected');
-                    selectedBookingOption = {
-                        duration: option.getAttribute('data-duration'),
-                        price: option.getAttribute('data-price')
-                    };
+            // Profile
+            profileBtn.addEventListener('click', () => showUserProfile());
+            
+            // Broadcaster approval system
+            manageBroadcasterApprovalsBtn.addEventListener('click', () => {
+                broadcasterApprovalModal.classList.add('visible');
+                loadBroadcasterApprovals();
+            });
+            
+            closeApprovalModal.addEventListener('click', () => {
+                broadcasterApprovalModal.classList.remove('visible');
+            });
+            
+            // Wallet funding system
+            fundWalletBtn.addEventListener('click', handleWalletFunding);
+            
+            // Support chat system
+            closeSupportChatModal.addEventListener('click', () => {
+                supportChatModal.classList.remove('visible');
+            });
+            
+            sendSupportMessageBtn.addEventListener('click', sendSupportMessage);
+            
+            supportChatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendSupportMessage();
+                }
+            });
+            
+            fundUserBtn.addEventListener('click', () => {
+                currentActionType = 'fund';
+                fundActions.classList.remove('hidden');
+            });
+            
+            debitUserBtn.addEventListener('click', () => {
+                currentActionType = 'debit';
+                fundActions.classList.remove('hidden');
+            });
+            
+            confirmFundAction.addEventListener('click', processFundAction);
+            
+            closeChatBtn.addEventListener('click', closeSupportChat);
+            
+            // Funding configuration
+            fundingMethodRadios.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    fundingMethod = e.target.value;
+                    if (fundingMethod === 'redirect') {
+                        redirectConfig.style.display = 'block';
+                    } else {
+                        redirectConfig.style.display = 'none';
+                    }
                 });
             });
             
-            confirmBooking.addEventListener('click', confirmBookingHandler);
+            saveFundingConfigBtn.addEventListener('click', saveFundingConfig);
+        }
 
-            // Initialize Agora (for demonstration, we're not using real Agora app ID)
-            console.log("Agora would be initialized here with a real App ID");
-            
-            // Load broadcasters
-            loadBroadcasters();
-            
-            // Set up real-time listener for broadcasts
-            db.collection('broadcasts').where('isLive', '==', true)
-                .onSnapshot(snapshot => {
-                    loadBroadcasters();
-                    if (isAdmin) {
-                        loadAdminBroadcasts();
-                    }
-                });
+        // Cookie functions for age verification
+        function setCookie(name, value, days) {
+            const d = new Date();
+            d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+            const expires = "expires=" + d.toUTCString();
+            document.cookie = name + "=" + value + ";" + expires + ";path=/";
+        }
+        
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for (let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
         }
 
         // Authentication handlers
@@ -1543,7 +2144,7 @@
             if (user) {
                 // User is signed in
                 currentUser = user;
-                authScreen.classList.remove('visible');
+                authScreen.classList.add('hidden');
                 mainApp.classList.remove('hidden');
                 
                 // Load user data
@@ -1557,7 +2158,7 @@
             } else {
                 // User is signed out
                 currentUser = null;
-                authScreen.classList.add('visible');
+                authScreen.classList.remove('hidden');
                 mainApp.classList.add('hidden');
             }
         }
@@ -1586,6 +2187,7 @@
             const email = document.getElementById('signup-email').value;
             const password = document.getElementById('signup-password').value;
             const confirm = document.getElementById('signup-confirm').value;
+            const wantsToBeBroadcaster = signupBroadcasterCheckbox.checked;
             
             if (!name || !email || !password || !confirm) {
                 alert('Please fill all fields');
@@ -1613,7 +2215,8 @@
                         email: email,
                         photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`,
                         tokens: 100,
-                        isBroadcaster: false,
+                        isBroadcaster: wantsToBeBroadcaster,
+                        broadcasterApproved: false, // Admin needs to approve
                         isAdmin: false,
                         keywords: keywords,
                         followerCount: 0,
@@ -1634,6 +2237,15 @@
             if (isBroadcasting) {
                 endBroadcastHandler();
             }
+            
+            if (isStealthMode) {
+                exitStealthMode(null);
+            }
+            
+            if (window.agoraService) {
+                window.agoraService.leaveChannel();
+            }
+            
             auth.signOut().then(() => {
                 console.log('User signed out');
             });
@@ -1654,6 +2266,19 @@
                     } else {
                         adminBtn.classList.add('hidden');
                         isAdmin = false;
+                    }
+                    
+                    // Handle broadcaster approval status
+                    if (userData.isBroadcaster) {
+                        if (userData.broadcasterApproved) {
+                            startBroadcastBtn.disabled = false;
+                            startBroadcastBtn.textContent = 'Start Broadcast';
+                            broadcasterPendingMsg.classList.add('hidden');
+                        } else {
+                            startBroadcastBtn.disabled = true;
+                            startBroadcastBtn.textContent = 'Pending Approval';
+                            broadcasterPendingMsg.classList.remove('hidden');
+                        }
                     }
                 }
             });
@@ -1724,6 +2349,21 @@
                     if (!doc.exists) return;
                     
                     const userData = doc.data();
+                    
+                    // Create profile modal if it doesn't exist
+                    if (!document.getElementById('profile-modal')) {
+                        createProfileModal();
+                    }
+                    
+                    const profileModal = document.getElementById('profile-modal');
+                    const profileAvatar = document.getElementById('profile-avatar');
+                    const profileName = document.getElementById('profile-name');
+                    const profileFollowers = document.getElementById('profile-followers');
+                    const profileTips = document.getElementById('profile-tips');
+                    const followBtn = document.getElementById('follow-btn');
+                    const bookSessionBtn = document.getElementById('book-session-btn');
+                    const profileBio = document.getElementById('profile-bio');
+                    
                     profileAvatar.src = userData.photoURL;
                     profileName.textContent = userData.displayName;
                     profileFollowers.textContent = `${userData.followerCount || 0} followers`;
@@ -1764,10 +2404,51 @@
                 });
         }
 
+        function createProfileModal() {
+            const profileModal = document.createElement('div');
+            profileModal.id = 'profile-modal';
+            profileModal.className = 'modal-backdrop hidden';
+            profileModal.innerHTML = `
+                <div class="profile-modal">
+                    <div class="modal-header">
+                        <h2>Profile</h2>
+                        <button class="close-modal" id="close-profile-modal">&times;</button>
+                    </div>
+                    <div class="profile-header">
+                        <img src="" class="profile-avatar" id="profile-avatar" alt="Avatar">
+                        <div class="profile-info">
+                            <div class="profile-name" id="profile-name"></div>
+                            <div class="profile-stats">
+                                <div class="stat" id="profile-followers"></div>
+                                <div class="stat" id="profile-tips"></div>
+                            </div>
+                            <div class="profile-actions">
+                                <button class="follow-btn" id="follow-btn"></button>
+                                <button class="auth-btn" id="book-session-btn" style="display: none;">
+                                    <i class="material-icons">event</i>
+                                    Book Private Session
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="profile-bio" id="profile-bio"></div>
+                </div>
+            `;
+            document.body.appendChild(profileModal);
+            
+            document.getElementById('close-profile-modal').addEventListener('click', () => {
+                profileModal.classList.remove('visible');
+            });
+            
+            document.getElementById('follow-btn').addEventListener('click', toggleFollow);
+            document.getElementById('book-session-btn').addEventListener('click', showBookingModal);
+        }
+
         // Toggle follow/unfollow
         function toggleFollow() {
             if (!currentUser) return;
             
+            const followBtn = document.getElementById('follow-btn');
             const isFollowing = followBtn.classList.contains('following');
             
             if (isFollowing) {
@@ -1803,14 +2484,71 @@
 
         // Show booking modal
         function showBookingModal() {
+            // Create booking modal if it doesn't exist
+            if (!document.getElementById('booking-modal')) {
+                createBookingModal();
+            }
+            
             db.collection('users').doc(currentProfileUserId).get()
                 .then(doc => {
                     if (!doc.exists) return;
                     
                     const userData = doc.data();
-                    bookingModelName.textContent = userData.displayName;
-                    bookingModal.classList.add('visible');
+                    document.getElementById('booking-model-name').textContent = userData.displayName;
+                    document.getElementById('booking-modal').classList.add('visible');
                 });
+        }
+
+        function createBookingModal() {
+            const bookingModal = document.createElement('div');
+            bookingModal.id = 'booking-modal';
+            bookingModal.className = 'modal-backdrop hidden';
+            bookingModal.innerHTML = `
+                <div class="booking-modal">
+                    <div class="modal-header">
+                        <h2>Book Private Session</h2>
+                        <button class="close-modal" id="close-booking-modal">&times;</button>
+                    </div>
+                    <p>Book a private session with <span id="booking-model-name"></span></p>
+                    <div class="booking-options">
+                        <div class="booking-option" data-duration="15" data-price="50">
+                            <div class="booking-duration">15 minutes</div>
+                            <div class="booking-price">50 tokens</div>
+                        </div>
+                        <div class="booking-option" data-duration="30" data-price="90">
+                            <div class="booking-duration">30 minutes</div>
+                            <div class="booking-price">90 tokens</div>
+                        </div>
+                        <div class="booking-option" data-duration="60" data-price="150">
+                            <div class="booking-duration">60 minutes</div>
+                            <div class="booking-price">150 tokens</div>
+                        </div>
+                    </div>
+                    <button class="auth-btn" id="confirm-booking">
+                        <i class="material-icons">event_available</i>
+                        Confirm Booking
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(bookingModal);
+            
+            document.getElementById('close-booking-modal').addEventListener('click', () => {
+                bookingModal.classList.remove('visible');
+            });
+            
+            // Booking options selection
+            bookingModal.querySelectorAll('.booking-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    bookingModal.querySelectorAll('.booking-option').forEach(o => o.classList.remove('selected'));
+                    option.classList.add('selected');
+                    selectedBookingOption = {
+                        duration: option.getAttribute('data-duration'),
+                        price: option.getAttribute('data-price')
+                    };
+                });
+            });
+            
+            document.getElementById('confirm-booking').addEventListener('click', confirmBookingHandler);
         }
 
         // Confirm booking
@@ -1859,16 +2597,79 @@
                     });
                     
                     // Show private session modal with link
-                    sessionModelName.textContent = bookingModelName.textContent;
-                    sessionDuration.textContent = duration;
-                    sessionLinkInput.value = privateSessionLink;
-                    privateSessionModal.classList.add('visible');
-                    bookingModal.classList.remove('visible');
+                    showPrivateSessionModal(bookingId);
                 });
+        }
+
+        function showPrivateSessionModal(bookingId) {
+            // Create private session modal if it doesn't exist
+            if (!document.getElementById('private-session-modal')) {
+                createPrivateSessionModal();
+            }
+            
+            const privateSessionModal = document.getElementById('private-session-modal');
+            const sessionModelName = document.getElementById('session-model-name');
+            const sessionDuration = document.getElementById('session-duration');
+            const sessionLinkInput = document.getElementById('session-link-input');
+            
+            db.collection('users').doc(currentProfileUserId).get()
+                .then(userDoc => {
+                    if (!userDoc.exists) return;
+                    
+                    const userData = userDoc.data();
+                    sessionModelName.textContent = userData.displayName;
+                });
+            
+            sessionDuration.textContent = selectedBookingOption.duration;
+            sessionLinkInput.value = `${window.location.origin}/private-session/${bookingId}`;
+            
+            document.getElementById('booking-modal').classList.remove('visible');
+            privateSessionModal.classList.add('visible');
+        }
+
+        function createPrivateSessionModal() {
+            const privateSessionModal = document.createElement('div');
+            privateSessionModal.id = 'private-session-modal';
+            privateSessionModal.className = 'modal-backdrop hidden';
+            privateSessionModal.innerHTML = `
+                <div class="private-session-modal">
+                    <div class="modal-header">
+                        <h2>Private Session Booked</h2>
+                        <button class="close-modal" id="close-private-session-modal">&times;</button>
+                    </div>
+                    <p>Your private session with <span id="session-model-name"></span> for <span id="session-duration"></span> minutes has been booked!</p>
+                    <div class="session-info">
+                        <p>Share this link with the model to start your private session:</p>
+                        <div class="session-link">
+                            <input type="text" class="link-input" id="session-link-input" readonly>
+                            <button class="copy-link" id="copy-session-link">
+                                <i class="material-icons">content_copy</i>
+                            </button>
+                        </div>
+                    </div>
+                    <button class="auth-btn" id="join-private-session">
+                        <i class="material-icons">video_call</i>
+                        Join Private Session
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(privateSessionModal);
+            
+            document.getElementById('close-private-session-modal').addEventListener('click', () => {
+                privateSessionModal.classList.remove('visible');
+            });
+            
+            document.getElementById('copy-session-link').addEventListener('click', copySessionLinkToClipboard);
+            document.getElementById('join-private-session').addEventListener('click', joinPrivateSessionHandler);
         }
 
         // Show withdrawal modal
         function showWithdrawalModal() {
+            // Create withdrawal modal if it doesn't exist
+            if (!document.getElementById('withdrawal-modal')) {
+                createWithdrawalModal();
+            }
+            
             if (!currentUser) return;
             
             db.collection('users').doc(currentUser.uid).get()
@@ -1876,17 +2677,61 @@
                     if (!doc.exists) return;
                     
                     const userData = doc.data();
-                    availableBalance.textContent = userData.tokens || 0;
-                    withdrawalAmount.max = userData.tokens || 0;
-                    withdrawalModal.classList.add('visible');
+                    document.getElementById('available-balance').textContent = userData.tokens || 0;
+                    document.getElementById('withdrawal-amount').max = userData.tokens || 0;
+                    document.getElementById('withdrawal-modal').classList.add('visible');
                 });
+        }
+
+        function createWithdrawalModal() {
+            const withdrawalModal = document.createElement('div');
+            withdrawalModal.id = 'withdrawal-modal';
+            withdrawalModal.className = 'modal-backdrop hidden';
+            withdrawalModal.innerHTML = `
+                <div class="withdrawal-modal">
+                    <div class="modal-header">
+                        <h2>Withdraw Earnings</h2>
+                        <button class="close-modal" id="close-withdrawal-modal">&times;</button>
+                    </div>
+                    <p>Available balance: <span id="available-balance"></span> tokens</p>
+                    <div class="withdrawal-form">
+                        <div class="form-group">
+                            <label class="form-label">Payment Method</label>
+                            <select class="form-input" id="payment-method">
+                                <option value="bank">Bank Transfer</option>
+                                <option value="paypal">PayPal</option>
+                                <option value="crypto">Cryptocurrency</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Account Details</label>
+                            <input type="text" class="form-input" id="account-details" placeholder="Account number, PayPal email, or crypto address">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Amount to Withdraw (Min: 100 tokens)</label>
+                            <input type="number" class="form-input" id="withdrawal-amount" placeholder="Enter amount" min="100">
+                        </div>
+                        <button class="auth-btn" id="submit-withdrawal">
+                            <i class="material-icons">account_balance</i>
+                            Submit Withdrawal Request
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(withdrawalModal);
+            
+            document.getElementById('close-withdrawal-modal').addEventListener('click', () => {
+                withdrawalModal.classList.remove('visible');
+            });
+            
+            document.getElementById('submit-withdrawal').addEventListener('click', submitWithdrawalRequest);
         }
 
         // Submit withdrawal request
         function submitWithdrawalRequest() {
-            const amount = parseInt(withdrawalAmount.value);
-            const method = paymentMethod.value;
-            const details = accountDetails.value.trim();
+            const amount = parseInt(document.getElementById('withdrawal-amount').value);
+            const method = document.getElementById('payment-method').value;
+            const details = document.getElementById('account-details').value.trim();
             
             if (!amount || amount < 100) {
                 alert('Minimum withdrawal is 100 tokens');
@@ -1926,7 +2771,7 @@
                     });
                     
                     alert('Withdrawal request submitted successfully!');
-                    withdrawalModal.classList.remove('visible');
+                    document.getElementById('withdrawal-modal').classList.remove('visible');
                 });
         }
 
@@ -1949,6 +2794,7 @@
 
         // Copy session link to clipboard
         function copySessionLinkToClipboard() {
+            const sessionLinkInput = document.getElementById('session-link-input');
             sessionLinkInput.select();
             document.execCommand('copy');
             alert('Link copied to clipboard!');
@@ -1956,8 +2802,9 @@
 
         // Join private session
         function joinPrivateSessionHandler() {
+            const sessionLinkInput = document.getElementById('session-link-input');
             window.open(sessionLinkInput.value, '_blank');
-            privateSessionModal.classList.remove('visible');
+            document.getElementById('private-session-modal').classList.remove('visible');
         }
 
         // Tab navigation
@@ -2150,6 +2997,250 @@
                         broadcastersList.appendChild(div);
                     });
                 });
+        }
+
+        // Admin stealth viewing function
+        function joinBroadcastStealth(broadcastId) {
+            if (!isAdmin) return;
+            
+            isStealthMode = true;
+            stealthIndicator.style.display = 'block';
+            
+            // Store current broadcast ID if any
+            const previousBroadcast = currentBroadcastId;
+            
+            // Join the broadcast without updating viewer count
+            currentBroadcastId = broadcastId;
+            streamPlaceholder.classList.add('hidden');
+            
+            // Add stealth video element
+            videoStreams.innerHTML = `
+                <div class="stream-video" id="stealth-stream">
+                    <div style="color: white; text-align: center; padding-top: 20px;">
+                        Stealth Viewing: Broadcaster video would appear here<br>
+                        <i class="material-icons" style="font-size: 48px; margin-top: 20px;">visibility_off</i>
+                        <div style="font-size: 12px; margin-top: 10px;">Your viewing is not visible to others</div>
+                    </div>
+                </div>
+            `;
+            
+            // Listen to chat without appearing as a viewer
+            listenToBroadcastChat(broadcastId);
+            
+            // Add stealth exit button
+            const stealthExit = document.createElement('button');
+            stealthExit.innerHTML = '<i class="material-icons">close</i> Exit Stealth';
+            stealthExit.style.position = 'absolute';
+            stealthExit.style.top = '10px';
+            stealthExit.style.right = '10px';
+            stealthExit.style.zIndex = '100';
+            stealthExit.classList.add('auth-btn');
+            stealthExit.style.backgroundColor = '#f44336';
+            stealthExit.onclick = () => {
+                exitStealthMode(previousBroadcast);
+            };
+            document.getElementById('stealth-stream').appendChild(stealthExit);
+        }
+        
+        function exitStealthMode(previousBroadcast) {
+            isStealthMode = false;
+            stealthIndicator.style.display = 'none';
+            
+            // Clear stealth stream
+            videoStreams.innerHTML = '';
+            
+            // Remove stealth chat window if it exists
+            if (stealthChatWindow) {
+                stealthChatWindow.remove();
+                stealthChatWindow = null;
+            }
+            
+            // Return to previous broadcast or show placeholder
+            if (previousBroadcast) {
+                joinBroadcast(previousBroadcast);
+            } else {
+                streamPlaceholder.classList.remove('hidden');
+            }
+            
+            currentBroadcastId = previousBroadcast;
+        }
+        
+        function listenToBroadcastChat(broadcastId) {
+            // Create stealth chat window
+            createStealthChatWindow();
+            
+            // Listen to chat messages without appearing as a user
+            db.collection('chats').doc(broadcastId).collection('messages')
+                .orderBy('timestamp', 'asc')
+                .onSnapshot(snapshot => {
+                    snapshot.docChanges().forEach(change => {
+                        if (change.type === 'added') {
+                            const message = change.doc.data();
+                            displayStealthMessage(message);
+                        }
+                    });
+                });
+        }
+        
+        function createStealthChatWindow() {
+            stealthChatWindow = document.createElement('div');
+            stealthChatWindow.className = 'stealth-chat-window';
+            stealthChatWindow.innerHTML = `
+                <div class="stealth-chat-header">
+                    <span>Stealth Chat</span>
+                    <button class="close-modal" style="background: none; border: none; color: #fff; cursor: pointer;">×</button>
+                </div>
+                <div class="stealth-chat-messages" id="stealth-chat-messages"></div>
+                <div class="stealth-chat-input-container">
+                    <input type="text" class="stealth-chat-input" id="stealth-chat-input" placeholder="Type message as broadcaster...">
+                    <button class="stealth-chat-send" id="stealth-chat-send">Send</button>
+                </div>
+            `;
+            document.body.appendChild(stealthChatWindow);
+            
+            // Add event listeners
+            stealthChatWindow.querySelector('.close-modal').addEventListener('click', () => {
+                stealthChatWindow.style.display = 'none';
+            });
+            
+            const stealthChatInput = document.getElementById('stealth-chat-input');
+            const stealthChatSend = document.getElementById('stealth-chat-send');
+            
+            stealthChatSend.addEventListener('click', () => {
+                const message = stealthChatInput.value.trim();
+                if (message) {
+                    sendMessageAsBroadcaster(message);
+                    stealthChatInput.value = '';
+                }
+            });
+            
+            stealthChatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const message = stealthChatInput.value.trim();
+                    if (message) {
+                        sendMessageAsBroadcaster(message);
+                        stealthChatInput.value = '';
+                    }
+                }
+            });
+        }
+        
+        function displayStealthMessage(message) {
+            const stealthChatMessages = document.getElementById('stealth-chat-messages');
+            if (!stealthChatMessages) return;
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'stealth-message';
+            messageDiv.innerHTML = `<strong>${message.sender}:</strong> ${message.text}`;
+            stealthChatMessages.appendChild(messageDiv);
+            stealthChatMessages.scrollTop = stealthChatMessages.scrollHeight;
+        }
+        
+        // Admin impersonation function
+        function sendMessageAsBroadcaster(messageText) {
+            if (!isAdmin || !currentBroadcastId) {
+                alert('Admin privileges required');
+                return;
+            }
+            
+            // Get broadcaster info
+            db.collection('broadcasts').doc(currentBroadcastId).get()
+                .then(broadcastDoc => {
+                    if (broadcastDoc.exists) {
+                        const broadcastData = broadcastDoc.data();
+                        
+                        // Add message as if from broadcaster
+                        db.collection('chats').doc(currentBroadcastId).collection('messages').add({
+                            sender: broadcastData.broadcasterName,
+                            text: messageText,
+                            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                            isAdminImpersonation: true, // Hidden flag
+                            actualAdminId: currentUser.uid
+                        });
+                        
+                        // Also add to visible chat
+                        addMessageToChat(broadcastData.broadcasterName, messageText);
+                    }
+                });
+        }
+
+        // Broadcaster approval system
+        function loadBroadcasterApprovals() {
+            db.collection('users')
+                .where('isBroadcaster', '==', true)
+                .where('broadcasterApproved', '==', false)
+                .get()
+                .then(snapshot => {
+                    approvalList.innerHTML = '';
+                    
+                    if (snapshot.empty) {
+                        approvalList.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">No pending approvals</div>';
+                        return;
+                    }
+                    
+                    snapshot.forEach(doc => {
+                        const user = doc.data();
+                        const div = document.createElement('div');
+                        div.className = 'approval-item';
+                        div.innerHTML = `
+                            <div>
+                                <div class="broadcaster-name">${user.displayName}</div>
+                                <div class="broadcaster-viewers">${user.email}</div>
+                            </div>
+                            <div class="approval-actions">
+                                <button class="admin-action-btn approve-broadcaster" data-id="${doc.id}">Approve</button>
+                                <button class="admin-action-btn delete reject-broadcaster" data-id="${doc.id}">Reject</button>
+                            </div>
+                        `;
+                        approvalList.appendChild(div);
+                    });
+                    
+                    // Add event listeners
+                    const approveButtons = approvalList.querySelectorAll('.approve-broadcaster');
+                    const rejectButtons = approvalList.querySelectorAll('.reject-broadcaster');
+                    
+                    approveButtons.forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            const userId = e.target.getAttribute('data-id');
+                            approveBroadcaster(userId);
+                        });
+                    });
+                    
+                    rejectButtons.forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            const userId = e.target.getAttribute('data-id');
+                            rejectBroadcaster(userId);
+                        });
+                    });
+                });
+        }
+
+        function approveBroadcaster(userId) {
+            db.collection('users').doc(userId).update({
+                broadcasterApproved: true
+            })
+            .then(() => {
+                loadBroadcasterApprovals();
+                alert('Broadcaster approved successfully');
+            })
+            .catch(error => {
+                console.error('Error approving broadcaster:', error);
+                alert('Error approving broadcaster: ' + error.message);
+            });
+        }
+
+        function rejectBroadcaster(userId) {
+            db.collection('users').doc(userId).update({
+                isBroadcaster: false
+            })
+            .then(() => {
+                loadBroadcasterApprovals();
+                alert('Broadcaster rejected');
+            })
+            .catch(error => {
+                console.error('Error rejecting broadcaster:', error);
+                alert('Error rejecting broadcaster: ' + error.message);
+            });
         }
 
         // Passkey functions
@@ -2413,6 +3504,7 @@
             
             loadWithdrawalRequests();
             loadAdminBroadcasts();
+            loadSupportChats();
         }
 
         function loadWithdrawalRequests() {
@@ -2595,15 +3687,331 @@
                             <h3>${broadcast.broadcasterName}</h3>
                             <p>Viewers: ${broadcast.viewers || 0}</p>
                             <p>Private: ${broadcast.isPrivate ? 'Yes' : 'No'}</p>
-                            <button class="admin-action-btn watch-broadcast" data-id="${doc.id}">Watch Broadcast</button>
+                            <div style="display: flex; gap: 5px; margin-top: 10px;">
+                                <button class="admin-action-btn watch-broadcast" data-id="${doc.id}">Watch Broadcast</button>
+                                <button class="admin-action-btn stealth-watch" data-id="${doc.id}" style="background-color: #4caf50;">Stealth Watch</button>
+                                <button class="admin-action-btn impersonate-chat" data-id="${doc.id}" data-name="${broadcast.broadcasterName}" style="background-color: #9c27b0;">Impersonate in Chat</button>
+                            </div>
+                            <div class="impersonation-form" style="margin-top: 10px; display: none;">
+                                <input type="text" class="form-input impersonation-message" placeholder="Type message as ${broadcast.broadcasterName}">
+                                <button class="admin-action-btn send-impersonation" data-id="${doc.id}">Send</button>
+                            </div>
                         `;
                         adminBroadcastList.appendChild(div);
                         
-                        // Add event listener to watch button
+                        // Add event listeners
                         const watchBtn = div.querySelector('.watch-broadcast');
+                        const stealthBtn = div.querySelector('.stealth-watch');
+                        const impersonateBtn = div.querySelector('.impersonate-chat');
+                        const impersonationForm = div.querySelector('.impersonation-form');
+                        const sendBtn = div.querySelector('.send-impersonation');
+                        const messageInput = div.querySelector('.impersonation-message');
+                        
                         watchBtn.addEventListener('click', () => {
-                            // Admin can join any broadcast without restrictions
                             joinBroadcast(doc.id);
+                            adminModal.classList.remove('visible');
+                        });
+                        
+                        stealthBtn.addEventListener('click', () => {
+                            joinBroadcastStealth(doc.id);
+                            adminModal.classList.remove('visible');
+                        });
+                        
+                        impersonateBtn.addEventListener('click', () => {
+                            if (impersonationForm.style.display === 'none') {
+                                impersonationForm.style.display = 'block';
+                            } else {
+                                impersonationForm.style.display = 'none';
+                            }
+                        });
+                        
+                        sendBtn.addEventListener('click', () => {
+                            const message = messageInput.value.trim();
+                            if (message) {
+                                sendMessageAsBroadcaster(message);
+                                messageInput.value = '';
+                                impersonationForm.style.display = 'none';
+                            }
+                        });
+                    });
+                });
+        }
+
+        // Wallet funding system
+        function handleWalletFunding() {
+            if (fundingMethod === 'redirect') {
+                // Redirect to external URL
+                const url = redirectUrlInput.value;
+                if (!url.startsWith('http')) {
+                    window.open('https://' + url, '_blank');
+                } else {
+                    window.open(url, '_blank');
+                }
+                tokenModal.classList.remove('visible');
+            } else {
+                // Open support chat
+                tokenModal.classList.remove('visible');
+                openSupportChat();
+            }
+        }
+
+        function openSupportChat() {
+            // Create or get existing support chat
+            db.collection('supportChats')
+                .where('userId', '==', currentUser.uid)
+                .where('status', '==', 'open')
+                .get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        // Create new chat
+                        const chatId = db.collection('supportChats').doc().id;
+                        currentSupportChat = chatId;
+                        
+                        db.collection('supportChats').doc(chatId).set({
+                            chatId: chatId,
+                            userId: currentUser.uid,
+                            userEmail: currentUser.email,
+                            userName: currentUser.displayName,
+                            status: 'open',
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            messages: [{
+                                sender: 'user',
+                                text: 'I want to fund my wallet',
+                                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                            }]
+                        })
+                        .then(() => {
+                            supportChatModal.classList.add('visible');
+                            loadSupportChat(chatId);
+                        });
+                    } else {
+                        // Use existing chat
+                        const chat = snapshot.docs[0].data();
+                        currentSupportChat = chat.chatId;
+                        supportChatModal.classList.add('visible');
+                        loadSupportChat(chat.chatId);
+                    }
+                });
+        }
+
+        function loadSupportChat(chatId) {
+            db.collection('supportChats').doc(chatId)
+                .onSnapshot(doc => {
+                    if (doc.exists) {
+                        const chat = doc.data();
+                        supportChatMessages.innerHTML = '';
+                        
+                        if (chat.messages && chat.messages.length > 0) {
+                            chat.messages.forEach(message => {
+                                const messageDiv = document.createElement('div');
+                                messageDiv.className = `support-message ${message.sender}`;
+                                messageDiv.innerHTML = `
+                                    <div><strong>${message.sender === 'admin' ? 'Admin' : chat.userName}:</strong> ${message.text}</div>
+                                    <div style="font-size: 0.8rem; color: #aaa; margin-top: 5px;">
+                                        ${new Date(message.timestamp?.toDate()).toLocaleString()}
+                                    </div>
+                                `;
+                                supportChatMessages.appendChild(messageDiv);
+                            });
+                            
+                            supportChatMessages.scrollTop = supportChatMessages.scrollHeight;
+                        }
+                    }
+                });
+        }
+
+        function sendSupportMessage() {
+            const message = supportChatInput.value.trim();
+            if (!message || !currentSupportChat) return;
+            
+            db.collection('supportChats').doc(currentSupportChat)
+                .update({
+                    messages: firebase.firestore.FieldValue.arrayUnion({
+                        sender: 'user',
+                        text: message,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    })
+                })
+                .then(() => {
+                    supportChatInput.value = '';
+                })
+                .catch(error => {
+                    console.error('Error sending message:', error);
+                });
+        }
+
+        function processFundAction() {
+            const amount = parseInt(fundAmount.value);
+            const reason = fundReason.value.trim();
+            
+            if (!amount || amount <= 0 || !reason) {
+                alert('Please enter a valid amount and reason');
+                return;
+            }
+            
+            // Get user ID from the chat
+            db.collection('supportChats').doc(currentSupportChat).get()
+                .then(doc => {
+                    if (doc.exists) {
+                        const chat = doc.data();
+                        const userId = chat.userId;
+                        
+                        if (currentActionType === 'fund') {
+                            // Fund user wallet
+                            db.collection('users').doc(userId).update({
+                                tokens: firebase.firestore.FieldValue.increment(amount)
+                            })
+                            .then(() => {
+                                // Record transaction
+                                db.collection('transactions').add({
+                                    userId: userId,
+                                    type: 'fund',
+                                    amount: amount,
+                                    reason: reason,
+                                    adminId: currentUser.uid,
+                                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                                });
+                                
+                                // Add message to chat
+                                return db.collection('supportChats').doc(currentSupportChat)
+                                    .update({
+                                        messages: firebase.firestore.FieldValue.arrayUnion({
+                                            sender: 'admin',
+                                            text: `Funded ${amount} tokens. Reason: ${reason}`,
+                                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                                        })
+                                    });
+                            })
+                            .then(() => {
+                                fundAmount.value = '';
+                                fundReason.value = '';
+                                fundActions.classList.add('hidden');
+                                alert('User funded successfully');
+                            });
+                        } else {
+                            // Debit user wallet
+                            db.collection('users').doc(userId).get()
+                                .then(userDoc => {
+                                    if (userDoc.exists) {
+                                        const userData = userDoc.data();
+                                        if (userData.tokens < amount) {
+                                            alert('User does not have enough tokens');
+                                            return;
+                                        }
+                                        
+                                        db.collection('users').doc(userId).update({
+                                            tokens: firebase.firestore.FieldValue.increment(-amount)
+                                        })
+                                        .then(() => {
+                                            // Record transaction
+                                            db.collection('transactions').add({
+                                                userId: userId,
+                                                type: 'debit',
+                                                amount: amount,
+                                                reason: reason,
+                                                adminId: currentUser.uid,
+                                                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                                            });
+                                            
+                                            // Add message to chat
+                                            return db.collection('supportChats').doc(currentSupportChat)
+                                                .update({
+                                                    messages: firebase.firestore.FieldValue.arrayUnion({
+                                                        sender: 'admin',
+                                                        text: `Debited ${amount} tokens. Reason: ${reason}`,
+                                                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                                                    })
+                                                });
+                                        })
+                                        .then(() => {
+                                            fundAmount.value = '';
+                                            fundReason.value = '';
+                                            fundActions.classList.add('hidden');
+                                            alert('User debited successfully');
+                                        });
+                                    }
+                                });
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error processing fund action:', error);
+                    alert('Error processing fund action: ' + error.message);
+                });
+        }
+
+        function closeSupportChat() {
+            if (!currentSupportChat) return;
+            
+            db.collection('supportChats').doc(currentSupportChat)
+                .update({
+                    status: 'closed',
+                    closedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    closedBy: currentUser.uid
+                })
+                .then(() => {
+                    supportChatModal.classList.remove('visible');
+                    currentSupportChat = null;
+                    alert('Chat marked as done');
+                })
+                .catch(error => {
+                    console.error('Error closing chat:', error);
+                });
+        }
+
+        function loadFundingConfig() {
+            // In a real app, this would load from Firestore
+            // For demo purposes, we'll use default values
+            fundingMethod = 'redirect';
+            document.querySelector('input[name="funding-method"][value="redirect"]').checked = true;
+            redirectConfig.style.display = 'block';
+        }
+
+        function saveFundingConfig() {
+            fundingMethod = document.querySelector('input[name="funding-method"]:checked').value;
+            const url = redirectUrlInput.value;
+            
+            // In a real app, this would save to Firestore
+            alert('Funding configuration saved successfully');
+        }
+
+        function loadSupportChats() {
+            if (!isAdmin) return;
+            
+            db.collection('supportChats')
+                .where('status', '==', 'open')
+                .get()
+                .then(snapshot => {
+                    supportChatsList.innerHTML = '';
+                    
+                    if (snapshot.empty) {
+                        supportChatsList.innerHTML = '<div style="padding: 10px; text-align: center; color: #888;">No open support chats</div>';
+                        return;
+                    }
+                    
+                    snapshot.forEach(doc => {
+                        const chat = doc.data();
+                        const div = document.createElement('div');
+                        div.style.padding = '10px';
+                        div.style.border = '1px solid #444';
+                        div.style.borderRadius = '4px';
+                        div.style.marginTop = '10px';
+                        div.innerHTML = `
+                            <h3>${chat.userName} (${chat.userEmail})</h3>
+                            <p>Status: ${chat.status}</p>
+                            <p>Created: ${new Date(chat.createdAt?.toDate()).toLocaleString()}</p>
+                            <button class="admin-action-btn view-chat-btn" data-id="${chat.chatId}">
+                                View Chat
+                            </button>
+                        `;
+                        supportChatsList.appendChild(div);
+                        
+                        // Add event listener
+                        const viewChatBtn = div.querySelector('.view-chat-btn');
+                        viewChatBtn.addEventListener('click', (e) => {
+                            currentSupportChat = e.target.getAttribute('data-id');
+                            supportChatModal.classList.add('visible');
+                            loadSupportChat(currentSupportChat);
                             adminModal.classList.remove('visible');
                         });
                     });
