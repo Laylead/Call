@@ -896,6 +896,49 @@
             font-size: 1.1rem;
             color: rgba(255, 255, 255, 0.9);
         }
+
+        /* Public Posts Modal */
+        .public-posts-modal .modal-content {
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .public-posts-container {
+            display: grid;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .public-post-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .public-post-image {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+        }
+
+        .public-post-content {
+            padding: 1rem;
+        }
+
+        .public-post-description {
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .public-post-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 0.8rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
     </style>
 </head>
 <body>
@@ -1357,6 +1400,21 @@
         </div>
     </div>
 
+    <!-- Public Posts Modal -->
+    <div class="modal public-posts-modal" id="publicPostsModal">
+        <div class="modal-content">
+            <h2 id="publicPostsModelName">Public Posts</h2>
+            <div class="public-posts-container" id="publicPostsContainer">
+                <!-- Public posts will be loaded here -->
+            </div>
+            <div class="modal-buttons" style="margin-top: 1.5rem;">
+                <button class="btn btn-primary" onclick="closeModal('publicPostsModal')">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -1536,7 +1594,7 @@
             }
         }
 
-        // Create Model Card - FIXED: Added proper scrolling to dropdown
+        // Create Model Card - FIXED: Changed public posts to modal
         function createModelCard(model) {
             const card = document.createElement('div');
             card.className = 'model-card';
@@ -1580,37 +1638,9 @@
                     </div>
 
                     ${publicPosts.length > 0 ? `
-                        <div class="model-dropdown">
-                            <button class="dropdown-btn" onclick="toggleDropdown('${model.id}')">
-                                <span>View Public Posts (${publicPosts.length})</span>
-                                <i class="fas fa-chevron-down"></i>
-                            </button>
-                            <div class="dropdown-content" id="dropdown-${model.id}">
-                                ${publicPosts.map(post => {
-                                    const [image, description] = post.split('|');
-                                    return `
-                                        <div class="public-post">
-                                            <img src="${image}" alt="Public post" onerror="this.style.display='none'">
-                                            <p>${description || 'No description'}</p>
-                                            <div class="model-stats">
-                                                <div class="likes">
-                                                    <button class="like-btn" onclick="handleLike('${model.id}')">
-                                                        <i class="fas fa-heart"></i>
-                                                    </button>
-                                                    <span>0</span>
-                                                </div>
-                                                <div class="comments">
-                                                    <button class="comment-btn" onclick="openCommentModal('${model.id}')">
-                                                        <i class="fas fa-comment"></i>
-                                                    </button>
-                                                    <span>0</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                        </div>
+                        <button class="btn btn-outline" style="width: 100%; margin-bottom: 1rem;" onclick="openPublicPostsModal('${model.id}')">
+                            <i class="fas fa-images"></i> View Public Posts (${publicPosts.length})
+                        </button>
                     ` : ''}
 
                     ${modelComments.length > 0 ? `
@@ -1640,20 +1670,50 @@
             return card;
         }
 
-        // Toggle dropdown for public posts - FIXED: Now properly shows/hides with scrolling
-        function toggleDropdown(modelId) {
-            const dropdown = document.getElementById(`dropdown-${modelId}`);
-            const isActive = dropdown.classList.contains('active');
+        // Open Public Posts Modal
+        function openPublicPostsModal(modelId) {
+            const model = allModels.find(m => m.id === modelId);
+            if (!model) return;
+
+            const publicPosts = model.publicPosts || [];
+            const container = document.getElementById('publicPostsContainer');
+            const modelNameElement = document.getElementById('publicPostsModelName');
             
-            // Close all other dropdowns
-            document.querySelectorAll('.dropdown-content').forEach(dd => {
-                dd.classList.remove('active');
-            });
-            
-            // Toggle current dropdown
-            if (!isActive) {
-                dropdown.classList.add('active');
+            modelNameElement.textContent = `${model.name}'s Public Posts`;
+            container.innerHTML = '';
+
+            if (publicPosts.length === 0) {
+                container.innerHTML = '<p>No public posts available.</p>';
+            } else {
+                publicPosts.forEach(post => {
+                    const [image, description] = post.split('|');
+                    const postElement = document.createElement('div');
+                    postElement.className = 'public-post-card';
+                    postElement.innerHTML = `
+                        <img src="${image}" alt="Public post" class="public-post-image" onerror="this.style.display='none'">
+                        <div class="public-post-content">
+                            <p class="public-post-description">${description || 'No description'}</p>
+                            <div class="public-post-stats">
+                                <div class="likes">
+                                    <button class="like-btn" onclick="handleLike('${model.id}')">
+                                        <i class="fas fa-heart"></i>
+                                    </button>
+                                    <span>0</span>
+                                </div>
+                                <div class="comments">
+                                    <button class="comment-btn" onclick="openCommentModal('${model.id}')">
+                                        <i class="fas fa-comment"></i>
+                                    </button>
+                                    <span>0</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(postElement);
+                });
             }
+
+            openModal('publicPostsModal');
         }
 
         // Handle Like
@@ -2515,13 +2575,6 @@
                     closeModal(modal.id);
                 }
             }
-            
-            // Close dropdowns when clicking outside
-            if (!event.target.matches('.dropdown-btn')) {
-                document.querySelectorAll('.dropdown-content').forEach(dd => {
-                    dd.classList.remove('active');
-                });
-            }
         }
 
         // Handle escape key to close modals
@@ -2533,11 +2586,6 @@
                         closeModal(modal.id);
                     }
                 }
-                
-                // Close dropdowns when pressing escape
-                document.querySelectorAll('.dropdown-content').forEach(dd => {
-                    dd.classList.remove('active');
-                });
             }
         });
 
