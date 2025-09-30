@@ -732,6 +732,8 @@
             z-index: 10;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            max-height: 300px;
+            overflow-y: auto;
         }
 
         .dropdown-content.active {
@@ -1397,6 +1399,7 @@
             await loadModels();
             checkAuthState();
             setupEventListeners();
+            updateAuthButtons(); // Initialize auth buttons correctly
         }
 
         function setupEventListeners() {
@@ -1427,13 +1430,15 @@
                         // User not in users collection - might be Firebase auth user but not in our system
                         await auth.signOut();
                     }
-                    updateAuthButtons(true);
+                    updateAuthButtons();
+                    await loadModels(); // Reload models to show private content if applicable
                 } else {
                     currentUser = null;
                     adminUser = null;
-                    updateAuthButtons(false);
+                    updateAuthButtons();
                     hideAdminPanel();
                     hideUserInterface();
+                    await loadModels(); // Reload models to hide private content
                 }
             });
         }
@@ -1486,7 +1491,7 @@
             }
         }
 
-        // Load Models
+        // Load Models - FIXED: Show public models to everyone
         async function loadModels() {
             try {
                 const snapshot = await modelsRef.orderBy('createdAt', 'desc').get();
@@ -1502,8 +1507,11 @@
                     allModels.push(model);
                     const modelCard = createModelCard(model);
                     
+                    // FIX: Always show public models, only show private models to logged-in users
                     if (model.contentType === 'private') {
-                        privateContentGrid.appendChild(modelCard);
+                        if (currentUser || adminUser) {
+                            privateContentGrid.appendChild(modelCard);
+                        }
                     } else {
                         modelsGrid.appendChild(modelCard);
                     }
@@ -1516,7 +1524,7 @@
 
                 // Show private content section if user is logged in and there's private content
                 const privateContent = document.getElementById('privateContent');
-                if (currentUser && privateContentGrid.children.length > 0) {
+                if ((currentUser || adminUser) && privateContentGrid.children.length > 0) {
                     privateContent.style.display = 'block';
                 } else {
                     privateContent.style.display = 'none';
@@ -1528,7 +1536,7 @@
             }
         }
 
-        // Create Model Card
+        // Create Model Card - FIXED: Added proper scrolling to dropdown
         function createModelCard(model) {
             const card = document.createElement('div');
             card.className = 'model-card';
@@ -1632,10 +1640,20 @@
             return card;
         }
 
-        // Toggle dropdown for public posts
+        // Toggle dropdown for public posts - FIXED: Now properly shows/hides with scrolling
         function toggleDropdown(modelId) {
             const dropdown = document.getElementById(`dropdown-${modelId}`);
-            dropdown.classList.toggle('active');
+            const isActive = dropdown.classList.contains('active');
+            
+            // Close all other dropdowns
+            document.querySelectorAll('.dropdown-content').forEach(dd => {
+                dd.classList.remove('active');
+            });
+            
+            // Toggle current dropdown
+            if (!isActive) {
+                dropdown.classList.add('active');
+            }
         }
 
         // Handle Like
@@ -2427,6 +2445,35 @@
             }
         }
 
+        // FIXED: Update Auth Buttons to properly show logout when user is logged in
+        function updateAuthButtons() {
+            const authButtons = document.getElementById('authButtons');
+            
+            if (currentUser || adminUser) {
+                // User is logged in (either regular user or admin)
+                authButtons.innerHTML = `
+                    <button class="btn btn-outline" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                    ${!adminUser ? `
+                        <button class="btn btn-primary" onclick="openAdminLogin()">
+                            <i class="fas fa-cog"></i> Admin
+                        </button>
+                    ` : ''}
+                `;
+            } else {
+                // User is not logged in
+                authButtons.innerHTML = `
+                    <button class="btn btn-outline" onclick="openLoginModal()">
+                        <i class="fas fa-user"></i> Login
+                    </button>
+                    <button class="btn btn-primary" onclick="openAdminLogin()">
+                        <i class="fas fa-cog"></i> Admin
+                    </button>
+                `;
+            }
+        }
+
         function redirectToSubscribe() {
             if (websiteSettings.subscriptionLink) {
                 window.location.href = websiteSettings.subscriptionLink;
@@ -2444,26 +2491,6 @@
         }
 
         // Utility Functions
-        function updateAuthButtons(isLoggedIn) {
-            const authButtons = document.getElementById('authButtons');
-            if (isLoggedIn) {
-                authButtons.innerHTML = `
-                    <button class="btn btn-outline" onclick="logout()">
-                        <i class="fas fa-sign-out-alt"></i>Logout
-                    </button>
-                `;
-            } else {
-                authButtons.innerHTML = `
-                    <button class="btn btn-outline" onclick="openLoginModal()">
-                        <i class="fas fa-user"></i>Login
-                    </button>
-                    <button class="btn btn-primary" onclick="openAdminLogin()">
-                        <i class="fas fa-cog"></i>Admin
-                    </button>
-                `;
-            }
-        }
-
         async function logout() {
             try {
                 await auth.signOut();
@@ -2488,6 +2515,13 @@
                     closeModal(modal.id);
                 }
             }
+            
+            // Close dropdowns when clicking outside
+            if (!event.target.matches('.dropdown-btn')) {
+                document.querySelectorAll('.dropdown-content').forEach(dd => {
+                    dd.classList.remove('active');
+                });
+            }
         }
 
         // Handle escape key to close modals
@@ -2499,6 +2533,11 @@
                         closeModal(modal.id);
                     }
                 }
+                
+                // Close dropdowns when pressing escape
+                document.querySelectorAll('.dropdown-content').forEach(dd => {
+                    dd.classList.remove('active');
+                });
             }
         });
 
