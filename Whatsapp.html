@@ -155,12 +155,15 @@
         /* Hero Section */
         .hero {
             margin-top: 80px;
-            padding: 8rem 2rem;
+            padding: 4rem 2rem;
             text-align: center;
             background-size: cover;
             background-position: center;
-            background-attachment: fixed;
             position: relative;
+            min-height: 60vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .hero::before {
@@ -201,7 +204,7 @@
 
         /* Models Grid */
         .models-section {
-            padding: 5rem 2rem;
+            padding: 2rem 2rem;
             max-width: 1400px;
             margin: 0 auto;
         }
@@ -771,7 +774,7 @@
             }
 
             .hero {
-                padding: 6rem 1rem;
+                padding: 4rem 1rem;
             }
 
             .hero h1 {
@@ -783,7 +786,7 @@
             }
 
             .models-section {
-                padding: 3rem 1rem;
+                padding: 2rem 1rem;
             }
 
             .models-grid {
@@ -1453,11 +1456,24 @@
         });
 
         async function initializeWebsite() {
-            await loadWebsiteSettings();
-            await loadModels();
-            checkAuthState();
-            setupEventListeners();
-            updateAuthButtons(); // Initialize auth buttons correctly
+            try {
+                await loadWebsiteSettings();
+                await loadModels(); // Load models immediately
+                checkAuthState();
+                setupEventListeners();
+                updateAuthButtons();
+                
+                // Add a fallback in case models don't load initially
+                setTimeout(() => {
+                    if (document.getElementById('modelsGrid').children.length === 0) {
+                        loadModels();
+                    }
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Error initializing website:', error);
+                toastr.error('Failed to initialize website');
+            }
         }
 
         function setupEventListeners() {
@@ -1549,7 +1565,7 @@
             }
         }
 
-        // Load Models - FIXED: Show public models to everyone
+        // Load Models - FIXED: Show public models to everyone, including before login
         async function loadModels() {
             try {
                 const snapshot = await modelsRef.orderBy('createdAt', 'desc').get();
@@ -1563,34 +1579,61 @@
                 snapshot.forEach(doc => {
                     const model = { id: doc.id, ...doc.data() };
                     allModels.push(model);
+                    
+                    // FIX: Always create model cards for ALL models
                     const modelCard = createModelCard(model);
                     
-                    // FIX: Always show public models, only show private models to logged-in users
+                    // Separate public vs private content
                     if (model.contentType === 'private') {
+                        // Private models only go to private section for logged-in users
                         if (currentUser || adminUser) {
                             privateContentGrid.appendChild(modelCard);
                         }
+                        // Don't add private models to public grid
                     } else {
+                        // Public models always go to public grid
                         modelsGrid.appendChild(modelCard);
                     }
                 });
 
-                // Update admin models list
+                // Update admin models list if admin is logged in
                 if (adminUser) {
                     updateAdminModelsList();
                 }
 
-                // Show private content section if user is logged in and there's private content
+                // Show private content section only if user is logged in AND there's private content
                 const privateContent = document.getElementById('privateContent');
-                if ((currentUser || adminUser) && privateContentGrid.children.length > 0) {
+                const hasPrivateContent = privateContentGrid.children.length > 0;
+                const userIsLoggedIn = currentUser || adminUser;
+                
+                if (userIsLoggedIn && hasPrivateContent) {
                     privateContent.style.display = 'block';
                 } else {
                     privateContent.style.display = 'none';
                 }
 
+                // If no public models found, show a message
+                if (modelsGrid.children.length === 0) {
+                    modelsGrid.innerHTML = `
+                        <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--gray);">
+                            <i class="fas fa-users" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                            <h3>No models available yet</h3>
+                            <p>Check back soon for our featured models!</p>
+                        </div>
+                    `;
+                }
+
             } catch (error) {
                 console.error('Error loading models:', error);
                 toastr.error('Failed to load models');
+                // Show error message in models grid
+                document.getElementById('modelsGrid').innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--danger);">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                        <h3>Error loading models</h3>
+                        <p>Please try refreshing the page</p>
+                    </div>
+                `;
             }
         }
 
