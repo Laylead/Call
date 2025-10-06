@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Private Messenger — Model Chat</title>
+<title>Model Private Chat (Fixed)</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -12,31 +12,14 @@
   }
   *{box-sizing:border-box;font-family:Inter,system-ui,Arial}
   body{margin:0;background:linear-gradient(180deg,var(--bg),#031226);color:#e9f7ff;height:100vh;overflow:hidden}
-  /* layout */
-  .app {
-    height:100vh;
-    display:grid;
-    grid-template-columns:320px 1fr;
-    gap:12px;
-    padding:12px;
-    align-items:stretch;
-  }
-  @media(max-width:900px){ .app{ grid-template-columns: 1fr; padding:8px; } }
+  .app{height:100vh;display:grid;grid-template-columns:320px 1fr;gap:12px;padding:12px;align-items:stretch}
+  @media(max-width:900px){ .app{ grid-template-columns: 1fr; padding:8px; } .sidebar{display:none} .sidebar.open{display:block;position:absolute;left:8px;right:8px;top:70px;bottom:8px;z-index:100} }
 
-  /* sidebar */
-  .sidebar {
-    background:linear-gradient(180deg,#071a2b,#06101b);
-    border-radius:12px;
-    padding:12px;
-    display:flex;
-    flex-direction:column;
-    gap:10px;
-    min-height:0; /* for flexbox scrolling */
-  }
+  /* Sidebar */
+  .sidebar{background:linear-gradient(180deg,#071a2b,#06101b);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;min-height:0}
   .sidebar header{display:flex;align-items:center;justify-content:space-between}
-  .sidebar .controls{display:flex;gap:8px}
-  .conversations{overflow:auto;flex:1}
-  .conv {display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:8px;cursor:pointer}
+  .conversations{flex:1;overflow:auto}
+  .conv{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:8px;cursor:pointer}
   .conv:hover{background:rgba(255,255,255,0.02)}
   .meta{display:flex;gap:10px;align-items:center}
   .avatar{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,var(--accent1),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:700}
@@ -44,17 +27,10 @@
   .last{font-size:12px;color:var(--muted)}
   .badge{background:var(--danger);color:white;padding:6px 8px;border-radius:999px;font-weight:700;font-size:12px}
 
-  /* center chat */
-  .chat {
-    background:linear-gradient(180deg,#071427,#061025);
-    border-radius:12px;
-    padding:12px;
-    display:flex;
-    flex-direction:column;
-    min-height:0;
-  }
+  /* Chat */
+  .chat{background:linear-gradient(180deg,#071427,#061025);border-radius:12px;padding:12px;display:flex;flex-direction:column;min-height:0}
   .chat header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-  .chat .subtitle{font-size:13px;color:var(--muted)}
+  .subtitle{font-size:13px;color:var(--muted)}
   .messages{flex:1;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:10px}
   .msg{max-width:78%;padding:10px 12px;border-radius:12px;word-break:break-word}
   .msg.self{align-self:flex-end;background:linear-gradient(45deg,var(--accent1),var(--accent2));color:#06111a}
@@ -65,67 +41,47 @@
   .btn{background:linear-gradient(45deg,var(--accent1),var(--accent2));padding:10px 12px;border-radius:10px;border:none;color:white;cursor:pointer;font-weight:700}
   .ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px;border-radius:8px;color:inherit;cursor:pointer}
 
-  /* top header area */
-  .topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 12px}
-  .topbar .logo{display:flex;gap:10px;align-items:center}
-  .topbar .logo .mark{width:40px;height:40px;border-radius:8px;background:linear-gradient(135deg,var(--accent1),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800}
-  .topbar .actions{display:flex;gap:8px;align-items:center}
-
-  /* login modal */
-  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);z-index:60}
-  .modal.open{display:flex}
-  .card{background:#07101a;padding:18px;border-radius:10px;color:#e6eef6;min-width:280px;max-width:420px}
-  .input{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;margin-top:8px}
-
-  /* floating chat open button + unread badge on mobile */
+  /* Topbar & floating */
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px}
+  .mark{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,var(--accent1),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800}
   .openChatBtn{position:fixed;right:18px;bottom:18px;width:64px;height:64px;border-radius:999px;background:linear-gradient(45deg,var(--accent1),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:26px;z-index:70;box-shadow:0 12px 30px rgba(0,0,0,0.45);cursor:pointer}
   .openChatBadge{position:absolute;top:-6px;right:-6px;background:var(--danger);color:white;padding:6px 8px;border-radius:999px;font-weight:700;font-size:12px;display:none}
 
-  /* responsive tweaks */
-  @media (max-width:900px){
-    .sidebar{order:2;display:none} /* collapsed by default on mobile, toggled via JS */
-    .sidebar.open{display:block;position:absolute;left:8px;right:8px;top:70px;bottom:8px;z-index:80}
-    .chat{order:1}
-    .topbar .actions .desktop-only{display:none}
-  }
-
-  /* small scrollbars */
-  .messages::-webkit-scrollbar{width:8px}
-  .messages::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.04);border-radius:8px}
+  /* Modal */
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);z-index:80}
+  .modal.open{display:flex}
+  .card{background:#07101a;padding:18px;border-radius:10px;color:#e6eef6;min-width:280px;max-width:420px}
+  .input{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;margin-top:8px}
 </style>
 </head>
 <body>
 
 <!-- Topbar -->
-<div class="topbar" style="padding:12px 18px;background:transparent">
-  <div class="logo">
+<div class="topbar">
+  <div style="display:flex;gap:12px;align-items:center">
     <div class="mark">MG</div>
     <div>
       <div style="font-weight:800">ModelChat</div>
-      <div style="font-size:13px;color:var(--muted)">Private chat — only you and model see this.</div>
+      <div style="font-size:13px;color:var(--muted)">Private — only you and model see this.</div>
     </div>
   </div>
-  <div class="actions">
-    <button id="toggleSidebar" class="ghost desktop-only">☰</button>
-    <div id="userInfo" style="font-size:13px;color:var(--muted)">Not signed in</div>
+  <div>
+    <span id="userInfo" style="font-size:13px;color:var(--muted);margin-right:8px">Not signed in</span>
     <button id="openLogin" class="ghost">Login</button>
   </div>
 </div>
 
-<!-- Main app -->
-<div class="app" id="appRoot" aria-hidden="true" style="display:none">
+<!-- App -->
+<div class="app" id="appRoot" style="display:none;">
 
-  <!-- Sidebar: conversations (admin) -->
+  <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div style="font-weight:800">Inbox</div>
-      <div style="font-size:13px;color:var(--muted)">Unread on top</div>
-    </div>
+    <header><div style="font-weight:800">Inbox</div><div style="font-size:13px;color:var(--muted)">Unread at top</div></header>
     <div class="conversations" id="conversationsList" role="list"></div>
   </aside>
 
-  <!-- Chat area -->
-  <main class="chat" id="chatArea" aria-live="polite">
+  <!-- Chat -->
+  <main class="chat" id="chatArea">
     <header>
       <div>
         <div id="chatTitle" style="font-weight:800">Welcome</div>
@@ -136,7 +92,7 @@
       </div>
     </header>
 
-    <div class="messages" id="messages"></div>
+    <div class="messages" id="messages" aria-live="polite"></div>
 
     <div class="compose">
       <label for="fileInput" class="ghost">📎</label>
@@ -148,17 +104,17 @@
 
 </div>
 
-<!-- Floating open chat button (mobile friendly) -->
+<!-- Floating open chat button -->
 <div class="openChatBtn" id="openChatBtn">
   💬
   <div class="openChatBadge" id="openChatBadge">0</div>
 </div>
 
 <!-- Login modal -->
-<div class="modal" id="loginModal" aria-hidden="true">
+<div class="modal" id="loginModal">
   <div class="card">
     <div style="font-weight:800;font-size:18px">Sign in</div>
-    <div style="font-size:13px;color:var(--muted);margin-top:6px">Sign in with email/password. Firestore decides who is admin.</div>
+    <div style="font-size:13px;color:var(--muted);margin-top:6px">Sign in with email/password. Firestore determines admin via users/{uid}.role</div>
     <input id="emailInput" class="input" placeholder="Email"/>
     <input id="passInput" class="input" type="password" placeholder="Password"/>
     <label style="display:flex;align-items:center;gap:8px;margin-top:8px"><input type="checkbox" id="rememberMe"/> Remember me</label>
@@ -166,7 +122,7 @@
       <button id="loginBtn" class="btn">Sign in</button>
       <button id="loginClose" class="ghost">Close</button>
     </div>
-    <div style="margin-top:10px;font-size:13px;color:var(--muted)">If a user should be an admin, set `users/{uid}.role = "admin"` in Firestore for that uid.</div>
+    <div style="margin-top:10px;font-size:13px;color:var(--muted)">Admins are set in Firestore: users/{uid}.role = "admin". Do this server-side for security.</div>
   </div>
 </div>
 
@@ -176,14 +132,14 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
 
-<!-- External config (must exist in same folder) -->
+<!-- External config -->
 <script src="configuration.js"></script>
 
 <script>
 /*
-  Messenger-style private chat
-  - External config: configuration.js must export window.FIREBASE_CONFIG
-  - Firestore structure:
+  Fixed messenger-style private chat.
+  - Ensure configuration.js exists and sets window.FIREBASE_CONFIG
+  - Firestore collections:
     users/{uid} { role: "admin" | "user", email?: string }
     conversations/{uid} { lastMessage, lastTimestamp, unreadFromUser, unreadFromAdmin, displayName? }
     messages/{uid}/items/{msg} { from, fromName, text, mediaUrl, mediaType, timestamp }
@@ -191,71 +147,66 @@
 
 (async function(){
   if(!window.FIREBASE_CONFIG){
-    document.body.innerHTML = '<div style="padding:20px;color:white">Missing configuration.js — set window.FIREBASE_CONFIG</div>';
+    document.body.innerHTML = '<div style="padding:20px;color:white">Missing configuration.js (set window.FIREBASE_CONFIG)</div>';
     return;
   }
 
-  // initialize firebase
+  // init firebase
   firebase.initializeApp(window.FIREBASE_CONFIG);
   const auth = firebase.auth();
   const db = firebase.firestore();
   const storage = firebase.storage();
-  const { serverTimestamp, FieldValue } = firebase.firestore;
 
   // DOM refs
   const appRoot = document.getElementById('appRoot');
-  const sidebar = document.getElementById('sidebar');
-  const conversationsList = document.getElementById('conversationsList');
-  const messagesEl = document.getElementById('messages');
-  const chatTitle = document.getElementById('chatTitle');
-  const chatSubtitle = document.getElementById('chatSubtitle');
-  const signOutBtn = document.getElementById('signOutBtn');
   const openChatBtn = document.getElementById('openChatBtn');
   const openChatBadge = document.getElementById('openChatBadge');
-  const topUserInfo = document.getElementById('userInfo');
-  const toggleSidebar = document.getElementById('toggleSidebar');
-
-  const fileInput = document.getElementById('fileInput');
-  const textInput = document.getElementById('textInput');
-  const sendBtn = document.getElementById('sendBtn');
-
+  const openLogin = document.getElementById('openLogin');
   const loginModal = document.getElementById('loginModal');
   const loginBtn = document.getElementById('loginBtn');
   const loginClose = document.getElementById('loginClose');
   const emailInput = document.getElementById('emailInput');
   const passInput = document.getElementById('passInput');
   const rememberMe = document.getElementById('rememberMe');
-  const openLogin = document.getElementById('openLogin');
+
+  const userInfo = document.getElementById('userInfo');
+  const signOutBtn = document.getElementById('signOutBtn');
+
+  const conversationsList = document.getElementById('conversationsList');
+  const messagesEl = document.getElementById('messages');
+  const chatTitle = document.getElementById('chatTitle');
+  const chatSubtitle = document.getElementById('chatSubtitle');
+
+  const fileInput = document.getElementById('fileInput');
+  const textInput = document.getElementById('textInput');
+  const sendBtn = document.getElementById('sendBtn');
 
   // state
   let me = null;
   let myRole = 'guest'; // 'admin' | 'user' | 'guest'
-  let currentConversationId = null; // uid of open conversation (for admin) or user's own uid (for user)
+  let currentConversationId = null; // uid for open conversation
   let convsUnsub = null;
   let msgsUnsub = null;
   let myConvUnsub = null;
 
   // helpers
-  function el(tag, props={}, ...kids){ const e=document.createElement(tag); for(const k in props){ if(k in e) e[k]=props[k]; else e.setAttribute(k, props[k]); } kids.forEach(k=>{ if(k==null) return; if(k instanceof Node) e.appendChild(k); else e.appendChild(document.createTextNode(k)); }); return e; }
+  function el(tag, props={}, ...kids){
+    const e = document.createElement(tag);
+    for(const k in props){ if(k in e) e[k] = props[k]; else e.setAttribute(k, props[k]); }
+    kids.forEach(k => { if(k==null) return; if(k instanceof Node) e.appendChild(k); else e.appendChild(document.createTextNode(k)); });
+    return e;
+  }
   function openModal(){ loginModal.classList.add('open'); loginModal.style.display='flex'; }
   function closeModal(){ loginModal.classList.remove('open'); loginModal.style.display='none'; }
   function showApp(){ appRoot.style.display='grid'; appRoot.setAttribute('aria-hidden','false'); }
   function hideApp(){ appRoot.style.display='none'; appRoot.setAttribute('aria-hidden','true'); }
   function fmtTime(ts){ if(!ts) return ''; try{ return ts.toDate ? ts.toDate().toLocaleString() : new Date(ts).toLocaleString(); } catch(e){ return ''; } }
+  async function setPersistence(remember){ try{ await auth.setPersistence(remember ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION); } catch(e){ console.warn('persistence err', e); } }
 
-  // persistence helper
-  async function setPersistence(remember){ try{ await auth.setPersistence(remember ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION); } catch(e){ console.warn('persistence error', e); } }
-
-  // open/close sidebar on mobile
-  toggleSidebar.addEventListener('click', ()=> {
-    sidebar.classList.toggle('open');
-  });
-
-  // Open chat button behavior
+  // open/hide chat
   openChatBtn.addEventListener('click', async () => {
     const user = auth.currentUser;
     if(user){
-      // if already signed in, open app and show correct view
       me = user;
       await postLoginSetup();
       closeModal();
@@ -264,13 +215,14 @@
     }
   });
 
-  // login modal buttons
+  // login modal handlers
   loginClose.addEventListener('click', closeModal);
+  openLogin.addEventListener('click', openModal);
 
-  loginBtn.addEventListener('click', async ()=>{
+  loginBtn.addEventListener('click', async () => {
     const email = emailInput.value.trim();
     const pw = passInput.value;
-    const remember = rememberMe.checked;
+    const remember = !!rememberMe.checked;
     if(!email || !pw) return alert('Enter email & password');
     await setPersistence(remember);
     try{
@@ -278,53 +230,52 @@
       me = cred.user;
       await postLoginSetup();
       closeModal();
-    } catch(e){ alert('Sign-in failed: ' + e.message); }
+    }catch(e){ alert('Sign-in failed: '+e.message); }
   });
 
-  openLogin.addEventListener('click', openModal);
-
   // sign out
-  signOutBtn.addEventListener('click', async () => {
+  signOutBtn.addEventListener('click', async ()=>{
     try{
       if(convsUnsub) convsUnsub();
       if(msgsUnsub) msgsUnsub();
       if(myConvUnsub) myConvUnsub();
       await auth.signOut();
-      me = null;
-      myRole = 'guest';
-      currentConversationId = null;
+      me = null; myRole = 'guest'; currentConversationId = null;
       messagesEl.innerHTML = '';
       hideApp();
-      topUserInfo.textContent = 'Not signed in';
-      // update floating badge visibility based on nothing
-      openChatBadge.style.display = 'none';
+      userInfo.textContent = 'Not signed in';
       openChatBtn.style.display = 'flex';
+      openChatBadge.style.display = 'none';
     }catch(e){ console.warn(e); }
   });
 
-  // post login: setup role and UI
+  // post login setup
   async function postLoginSetup(){
-    // ensure users doc exists and determine role
-    const doc = await db.collection('users').doc(me.uid).get();
-    myRole = doc.exists ? doc.data().role || 'user' : 'user';
-    if(!doc.exists){
-      await db.collection('users').doc(me.uid).set({ role: myRole, email: me.email || null }, { merge:true });
-    } else {
-      if(me.email) await db.collection('users').doc(me.uid).set({ email: me.email }, { merge:true });
+    try{
+      // get role from users/{uid}
+      const doc = await db.collection('users').doc(me.uid).get();
+      myRole = doc.exists ? (doc.data().role || 'user') : 'user';
+      if(!doc.exists){
+        await db.collection('users').doc(me.uid).set({ role: myRole, email: me.email || null }, { merge:true });
+      } else {
+        if(me.email) await db.collection('users').doc(me.uid).set({ email: me.email }, { merge:true });
+      }
+    }catch(e){
+      console.warn('postLogin fetch role failed', e);
+      myRole = 'user';
     }
 
-    // show UI
+    // UI updates
     showApp();
     openChatBtn.style.display = 'none';
-    topUserInfo.textContent = me.email ? (me.email + (myRole==='admin' ? ' • admin' : '')) : ('User • ' + me.uid.slice(0,6));
+    userInfo.textContent = me.email ? ('Signed in') : ('User ' + me.uid.slice(0,6));
     signOutBtn.style.display = 'inline-block';
     document.getElementById('openLogin').style.display = 'none';
 
     if(myRole === 'admin'){
       chatTitle.textContent = 'Admin Inbox';
-      chatSubtitle.textContent = 'Open any user to reply privately';
+      chatSubtitle.textContent = 'Open user to reply';
       startAdminView();
-      // hide user's own chat view until admin opens a conversation
       messagesEl.innerHTML = '';
     } else {
       chatTitle.textContent = 'Your Private Chat';
@@ -332,30 +283,26 @@
       startUserView();
     }
 
-    // listen for conversation doc to set user's badge (unread from admin)
+    // show user badge updates for unread replies if user
     if(myRole !== 'admin'){
       db.collection('conversations').doc(me.uid).onSnapshot(s => {
         const data = s.exists ? s.data() : {};
         const unread = data.unreadFromAdmin || 0;
-        if(unread > 0){
-          openChatBadge.style.display = 'block';
-          openChatBadge.textContent = unread;
-        } else {
-          openChatBadge.style.display = 'none';
-        }
+        if(unread > 0){ openChatBadge.style.display = 'block'; openChatBadge.textContent = unread; }
+        else { openChatBadge.style.display = 'none'; }
       });
     }
   }
 
-  // ---------- USER flow ----------
+  // USER flows
   function startUserView(){
     currentConversationId = me.uid;
-    // when user opens chat, reset unreadFromAdmin to 0
-    db.collection('conversations').doc(me.uid).set({ unreadFromAdmin: 0 }, { merge:true });
-    subscribeUserMessages(me.uid);
+    // reset unread from admin because user opened chat
+    db.collection('conversations').doc(me.uid).set({ unreadFromAdmin: 0 }, { merge:true }).catch(()=>{});
+    subscribeToUserMessages(me.uid);
   }
 
-  function subscribeUserMessages(uid){
+  function subscribeToUserMessages(uid){
     if(myConvUnsub) myConvUnsub();
     myConvUnsub = db.collection('messages').doc(uid).collection('items').orderBy('timestamp','asc')
       .onSnapshot(snapshot => {
@@ -363,61 +310,13 @@
         snapshot.forEach(d => arr.push({ id: d.id, ...d.data() }));
         renderMessages(arr, me.uid);
         messagesEl.scrollTop = messagesEl.scrollHeight;
-      });
-  }
-
-  // when user sends a message
-  sendBtn.addEventListener('click', async () => {
-    const text = textInput.value.trim();
-    const file = fileInput.files[0];
-    if(!text && !file) return;
-    if(myRole === 'admin'){
-      if(!currentConversationId) return alert('Open a user to reply');
-      await adminSendReply(currentConversationId, text, file);
-    } else {
-      await userSendMessage(me.uid, text, file);
-    }
-    textInput.value = '';
-    fileInput.value = '';
-  });
-
-  // Enter to send
-  textInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') sendBtn.click(); });
-
-  async function uploadFile(file){
-    if(!file) return { url:'', type:'' };
-    const path = `chat/${Date.now()}_${file.name.replace(/\s+/g,'_')}`;
-    const ref = storage.ref(path);
-    await ref.put(file);
-    const url = await ref.getDownloadURL();
-    return { url, type: file.type || '' };
-  }
-
-  async function userSendMessage(convUid, text, file){
-    const { url, type } = file ? await uploadFile(file) : { url:'', type:'' };
-    await db.collection('messages').doc(convUid).collection('items').add({
-      from: me.uid,
-      fromName: me.email || ('User-'+me.uid.slice(0,6)),
-      text: text || '',
-      mediaUrl: url || null,
-      mediaType: type || null,
-      timestamp: serverTimestamp()
     });
-    // increment unreadFromUser for admin and set lastMessage/lastTimestamp
-    await db.collection('conversations').doc(convUid).set({
-      lastMessage: text || (url ? 'Media' : ''),
-      lastTimestamp: serverTimestamp(),
-      unreadFromUser: FieldValue.increment(1)
-    }, { merge:true });
-
-    // ensure user's users/{uid} doc exists
-    await db.collection('users').doc(convUid).set({ role:'user', email: me.email || null }, { merge:true });
   }
 
-  // ---------- ADMIN flow ----------
+  // ADMIN flows
   function startAdminView(){
-    // subscribe to conversations collection and render sorted list
     if(convsUnsub) convsUnsub();
+    // listen all conversations
     convsUnsub = db.collection('conversations').onSnapshot(snap => {
       const rows = [];
       snap.forEach(d => rows.push({ id: d.id, ...d.data() }));
@@ -448,44 +347,94 @@
   }
 
   async function openConversationAsAdmin(userUid, displayName){
-    currentConversationId = userUid;
-    chatTitle.textContent = displayName || ('User ' + userUid.slice(0,6));
-    chatSubtitle.textContent = 'Private conversation';
-    // subscribe to messages for this user
-    if(msgsUnsub) msgsUnsub();
-    msgsUnsub = db.collection('messages').doc(userUid).collection('items').orderBy('timestamp','asc').onSnapshot(snap => {
-      const arr = [];
-      snap.forEach(d => arr.push({ id: d.id, ...d.data() }));
-      renderMessages(arr, me.uid);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    });
-    // reset unreadFromUser to 0
-    await db.collection('conversations').doc(userUid).set({ unreadFromUser: 0 }, { merge:true });
+    try{
+      currentConversationId = userUid;
+      chatTitle.textContent = displayName || ('User ' + userUid.slice(0,6));
+      chatSubtitle.textContent = 'Private conversation';
+      if(msgsUnsub) msgsUnsub();
+      msgsUnsub = db.collection('messages').doc(userUid).collection('items').orderBy('timestamp','asc').onSnapshot(snap => {
+        const arr = [];
+        snap.forEach(d => arr.push({ id: d.id, ...d.data() }));
+        renderMessages(arr, me.uid);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      });
+      // reset unreadFromUser
+      await db.collection('conversations').doc(userUid).set({ unreadFromUser: 0 }, { merge:true });
+    }catch(e){ console.warn('openConversationAsAdmin error', e); alert('Could not open conversation'); }
+  }
+
+  // Sending messages (single handler)
+  sendBtn.addEventListener('click', async () => {
+    const text = textInput.value.trim();
+    const file = fileInput.files[0];
+    if(!text && !file) return;
+    if(myRole === 'admin'){
+      if(!currentConversationId){ alert('Open a user conversation to reply'); return; }
+      await adminSendReply(currentConversationId, text, file);
+    } else {
+      await userSendMessage(me.uid, text, file);
+    }
+    textInput.value = '';
+    fileInput.value = '';
+  });
+
+  textInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') sendBtn.click(); });
+
+  async function uploadFile(file){
+    if(!file) return { url:'', type:'' };
+    try{
+      const path = `chat/${Date.now()}_${file.name.replace(/\s+/g,'_')}`;
+      const ref = storage.ref(path);
+      await ref.put(file);
+      const url = await ref.getDownloadURL();
+      return { url, type: file.type || '' };
+    }catch(e){ console.warn('upload failed', e); return { url:'', type:'' }; }
+  }
+
+  async function userSendMessage(convUid, text, file){
+    try{
+      const { url, type } = file ? await uploadFile(file) : { url:'', type:'' };
+      await db.collection('messages').doc(convUid).collection('items').add({
+        from: me.uid,
+        fromName: null, // do not expose email/name
+        text: text || '',
+        mediaUrl: url || null,
+        mediaType: type || null,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      await db.collection('conversations').doc(convUid).set({
+        lastMessage: text || (url ? 'Media' : ''),
+        lastTimestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        unreadFromUser: firebase.firestore.FieldValue.increment(1)
+      }, { merge:true });
+      await db.collection('users').doc(convUid).set({ role:'user', email: me.email || null }, { merge:true });
+    }catch(e){ console.warn('userSendMessage error', e); alert('Send failed'); }
   }
 
   async function adminSendReply(userUid, text, file){
-    const { url, type } = file ? await uploadFile(file) : { url:'', type:'' };
-    await db.collection('messages').doc(userUid).collection('items').add({
-      from: me.uid,
-      fromName: me.email || 'Model',
-      text: text || '',
-      mediaUrl: url || null,
-      mediaType: type || null,
-      timestamp: serverTimestamp()
-    });
-    // increment unreadFromAdmin for user and set lastMessage/lastTimestamp
-    await db.collection('conversations').doc(userUid).set({
-      lastMessage: text || (url ? 'Media' : ''),
-      lastTimestamp: serverTimestamp(),
-      unreadFromAdmin: FieldValue.increment(1)
-    }, { merge:true });
+    try{
+      const { url, type } = file ? await uploadFile(file) : { url:'', type:'' };
+      await db.collection('messages').doc(userUid).collection('items').add({
+        from: me.uid,
+        fromName: null, // keep admin identity hidden
+        text: text || '',
+        mediaUrl: url || null,
+        mediaType: type || null,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      await db.collection('conversations').doc(userUid).set({
+        lastMessage: text || (url ? 'Media' : ''),
+        lastTimestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        unreadFromAdmin: firebase.firestore.FieldValue.increment(1)
+      }, { merge:true });
+    }catch(e){ console.warn('adminSendReply error', e); alert('Reply failed'); }
   }
 
-  // render messages (safe DOM)
+  // Render messages safely (no email shown)
   function renderMessages(items, myUid){
     messagesEl.innerHTML = '';
     items.forEach(m => {
-      const isSelf = (myRole === 'admin') ? (m.from === me.uid) : (m.from === myUid);
+      const isSelf = (m.from === myUid || m.from === me?.uid);
       const wrapper = el('div', { className: 'msg ' + (isSelf ? 'self' : 'other') });
       if(m.text) wrapper.appendChild(document.createTextNode(m.text));
       if(m.mediaUrl){
@@ -495,11 +444,11 @@
           const img = document.createElement('img'); img.src = m.mediaUrl; img.alt = 'media'; img.style.maxWidth = '100%'; wrapper.appendChild(img);
         }
       }
-      const metaText = (m.fromName ? m.fromName : (m.from ? m.from.slice(0,6) : '')) + (m.timestamp ? ' • ' + fmtTime(m.timestamp) : '');
-      wrapper.appendChild(el('small', {}, metaText));
+      // show only timestamp (no email or fromName)
+      wrapper.appendChild(el('small', {}, fmtTime(m.timestamp)));
 
-      // admin moderation: delete message button
-      if(myRole === 'admin' && m.id){
+      // admin-only moderation: delete button (optional)
+      if(myRole === 'admin' && currentConversationId && m.id){
         const del = el('button', { className:'ghost', title:'Delete', style:'margin-left:8px' }, '🗑');
         del.onclick = async () => {
           try{ await db.collection('messages').doc(currentConversationId).collection('items').doc(m.id).delete(); }
@@ -512,39 +461,27 @@
     });
   }
 
-  // unsubscribe on unload
+  // cleanup on unload
   window.addEventListener('beforeunload', () => {
     if(convsUnsub) convsUnsub();
     if(msgsUnsub) msgsUnsub();
     if(myConvUnsub) myConvUnsub();
   });
 
-  // auth state persistence: detect logged in user on load
-  auth.onAuthStateChanged(async user => {
-    if(!user) {
-      // not signed in
+  // initial auth state
+  auth.onAuthStateChanged(async (user) => {
+    if(!user){
       hideApp();
       openChatBtn.style.display = 'flex';
-      topUserInfo.textContent = 'Not signed in';
+      userInfo.textContent = 'Not signed in';
+      openChatBadge.style.display = 'none';
       return;
     }
     me = user;
     await postLoginSetup();
   });
 
-  // keyboard accessibility: open login via Enter on openLogin
-  document.addEventListener('keydown', (e) => {
-    if(e.key === 'l' && e.ctrlKey){ openModal(); } // dev shortcut Ctrl+L
-  });
-
-  // tiny UI: toggle sidebar on small screens
-  document.addEventListener('click', (e) => {
-    if(window.innerWidth <= 900 && !sidebar.contains(e.target) && !toggleSidebar.contains(e.target) && sidebar.classList.contains('open')){
-      sidebar.classList.remove('open');
-    }
-  });
-
-  // Done
+  // done
 })();
 </script>
 </body>
