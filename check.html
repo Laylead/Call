@@ -1,206 +1,639 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Kheemz Private Chat</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Private Admin ↔ User Chat</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 <style>
-body{font-family:'Inter',sans-serif;margin:0;background:#0b0f18;color:#fff;height:100vh;display:flex;justify-content:center;align-items:center}
-#chatIcon{position:fixed;bottom:25px;right:25px;width:60px;height:60px;border-radius:50%;background:linear-gradient(45deg,#ff6f2d,#ff4b98);display:flex;justify-content:center;align-items:center;font-size:26px;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.4)}
-#chatApp{position:fixed;bottom:20px;right:20px;width:400px;max-width:95%;height:550px;border-radius:16px;display:none;flex-direction:column;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.1);overflow:hidden}
-header{background:rgba(255,255,255,0.05);padding:10px;text-align:center;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.1)}
-#chat-box{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
-.msg{max-width:75%;padding:10px 14px;border-radius:14px;word-wrap:break-word;animation:fadeIn .3s}
-.msg.self{align-self:flex-end;background:linear-gradient(45deg,#ff6f2d,#ff4b98)}
-.msg.other{align-self:flex-start;background:rgba(255,255,255,0.08)}
-.msg img,.msg video{max-width:100%;border-radius:10px;margin-top:6px}
-#input-area{display:flex;gap:8px;padding:10px;background:rgba(255,255,255,0.06);border-top:1px solid rgba(255,255,255,0.1)}
-#msg-input{flex:1;border:none;border-radius:10px;padding:10px;background:rgba(255,255,255,0.1);color:#fff}
-#msg-input:focus{outline:none}
-button,label{border:none;background:linear-gradient(45deg,#ff6f2d,#ff4b98);color:white;border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:600}
-#file-input{display:none}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,0.8);display:none;justify-content:center;align-items:center;z-index:200}
-.modal-content{background:#0e1624;padding:20px;border-radius:12px;width:90%;max-width:360px;color:#fff}
-.modal input{width:100%;padding:10px;margin:6px 0;border:none;border-radius:8px;background:rgba(255,255,255,0.1);color:#fff}
-#userList{overflow:auto;max-height:150px;margin-bottom:10px}
-.userItem{padding:6px;border-bottom:1px solid rgba(255,255,255,0.1);cursor:pointer}
-.userItem:hover{background:rgba(255,255,255,0.05)}
+  :root{--bg:#071024;--panel:#0b1220;--accent:#ff6f2d;--accent2:#ff4b98;--muted:#9aa2b2}
+  *{box-sizing:border-box;font-family:Inter,system-ui,Arial}
+  body{margin:0;background:linear-gradient(180deg,var(--bg),#071a2a);color:#eef2f7;height:100vh;overflow:hidden}
+  /* chat icon */
+  #chatIcon{position:fixed;right:24px;bottom:24px;width:64px;height:64px;border-radius:50%;background:linear-gradient(45deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:26px;cursor:pointer;box-shadow:0 12px 30px rgba(0,0,0,0.5);z-index:120}
+  #chatBadge{position:absolute;top:-6px;right:-6px;background:#e02323;color:#fff;border-radius:999px;padding:6px 8px;font-weight:700;font-size:13px;box-shadow:0 6px 14px rgba(0,0,0,0.3)}
+  /* app window */
+  #app{position:fixed;right:20px;bottom:100px;width:900px;max-width:96%;height:640px;background:linear-gradient(180deg,#071427,#061025);border-radius:12px;border:1px solid rgba(255,255,255,0.03);display:grid;grid-template-columns:260px 1fr 360px;gap:12px;padding:12px;box-shadow:0 30px 80px rgba(0,0,0,0.6);z-index:110;display:none}
+  @media(max-width:1100px){#app{grid-template-columns:1fr;grid-auto-rows:min-content;height:80vh;right:12px;left:12px;bottom:60px}}
+  /* sidebar: conversations (admin) */
+  .sidebar{background:linear-gradient(180deg,#07192b,#06101b);padding:10px;border-radius:10px;overflow:auto}
+  .sidebar h4{margin:6px 0 10px 0}
+  .userRow{padding:10px;border-radius:8px;display:flex;justify-content:space-between;gap:8px;align-items:center;cursor:pointer}
+  .userRow:hover{background:rgba(255,255,255,0.02)}
+  .userLeft{display:flex;gap:8px;align-items:center}
+  .avatar{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:700}
+  .userMeta{display:flex;flex-direction:column}
+  .userName{font-weight:700}
+  .userLast{font-size:12px;color:var(--muted)}
+  .unreadBadge{background:#e02323;color:#fff;padding:4px 8px;border-radius:999px;font-weight:700;font-size:13px}
+  /* center chat area (user or admin conversation view) */
+  .center{background:linear-gradient(180deg,#071427,#061025);padding:10px;border-radius:10px;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+  .centerHeader{display:flex;justify-content:space-between;align-items:center;padding:6px}
+  .messages{flex:1;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
+  .msg{max-width:70%;padding:10px 12px;border-radius:12px;word-break:break-word}
+  .msg.self{align-self:flex-end;background:linear-gradient(45deg,var(--accent),var(--accent2));color:#06111a}
+  .msg.other{align-self:flex-start;background:rgba(255,255,255,0.04);color:#e9f2ff}
+  .msg img,.msg video{max-width:100%;border-radius:8px;margin-top:8px}
+  .compose{display:flex;gap:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.03)}
+  .compose input[type="text"]{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+  .btn{background:linear-gradient(45deg,var(--accent),var(--accent2));padding:10px 12px;border-radius:8px;border:none;color:white;cursor:pointer;font-weight:700}
+  .ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px;border-radius:8px;color:inherit;cursor:pointer}
+  /* right admin details area */
+  .panel{background:linear-gradient(180deg,#071427,#061025);padding:10px;border-radius:10px;overflow:auto}
+  .panel h4{margin:6px 0}
+  .loginNote{font-size:13px;color:var(--muted);margin-bottom:8px}
+  .small{font-size:13px;color:var(--muted)}
+  /* modal */
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);z-index:200}
+  .modal.open{display:flex}
+  .modalBox{background:#07101a;padding:18px;border-radius:10px;width:360px;color:#e6eef6}
+  .input{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.05);background:transparent;color:inherit;margin-top:8px}
+  .row{display:flex;gap:8px;align-items:center}
+  .topNote{font-size:13px;color:var(--muted);margin-bottom:8px}
 </style>
 </head>
 <body>
 
-<div id="chatIcon">💬</div>
+<!-- Floating chat icon -->
+<div id="chatIcon" title="Open chat">
+  💬
+  <div id="chatBadge" style="display:none">0</div>
+</div>
 
-<div id="chatApp">
-  <header id="chatHeader">Kheemz Chat</header>
-  <div id="userList" style="display:none"></div>
-  <div id="chat-box"></div>
-  <div id="input-area">
-    <label for="file-input"><i>📎</i></label>
-    <input type="file" id="file-input" accept="image/*,video/*">
-    <input type="text" id="msg-input" placeholder="Type a message...">
-    <button id="send-btn">Send</button>
+<!-- App window -->
+<div id="app" role="application" aria-label="Private chat app">
+
+  <!-- Left: Admin conversation list (visible to admin only) -->
+  <div class="sidebar" id="sidebar">
+    <h4>Conversations</h4>
+    <div class="topNote small">Unread appear at top. Click a user to open their thread.</div>
+    <div id="conversationsList"></div>
+  </div>
+
+  <!-- Center: conversation view (user sees own chat here) -->
+  <div class="center">
+    <div class="centerHeader">
+      <div>
+        <div id="centerTitle" style="font-weight:800">Welcome</div>
+        <div id="centerSub" class="small">Private chat with admin</div>
+      </div>
+      <div id="signWrap">
+        <button id="btnLogin" class="ghost">Login</button>
+        <button id="btnLogout" class="ghost" style="display:none">Sign out</button>
+      </div>
+    </div>
+
+    <div class="messages" id="messages"></div>
+
+    <div class="compose">
+      <label class="ghost" for="fileInput">📎</label>
+      <input type="file" id="fileInput" accept="image/*,video/*" style="display:none"/>
+      <input type="text" id="textInput" placeholder="Say hello..." />
+      <button id="sendBtn" class="btn">Send</button>
+    </div>
+  </div>
+
+  <!-- Right: admin controls & login -->
+  <div class="panel" id="panel">
+    <h4>Admin Panel</h4>
+    <div id="adminControls">
+      <div class="loginNote small">Log in as admin to manage conversations.</div>
+      <div id="adminLoginBox">
+        <input id="adminEmail" class="input" placeholder="Admin email"/>
+        <input id="adminPass" type="password" class="input" placeholder="Password"/>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="rememberAdmin"/> Remember me</label>
+          <button id="adminLoginBtn" class="btn">Sign in</button>
+        </div>
+      </div>
+      <div id="adminActions" style="display:none;margin-top:12px">
+        <div class="small">Open a conversation from the left list to view & reply.</div>
+        <div style="margin-top:12px">
+          <button id="refreshUsers" class="ghost">Refresh list</button>
+        </div>
+      </div>
+    </div>
+
+    <hr style="border-color:rgba(255,255,255,0.03);margin:12px 0"/>
+
+    <div class="small">User login (email/password or guest)</div>
+    <input id="userEmail" class="input" placeholder="User email (optional)"/>
+    <input id="userPass" type="password" class="input" placeholder="Password (if email)"/>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:8px"><input type="checkbox" id="rememberUser"/> Remember me</label>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button id="userLoginBtn" class="btn">Login</button>
+      <button id="guestBtn" class="ghost">Continue as guest</button>
+    </div>
+
+    <div style="margin-top:12px" class="small">Notes: create admin user in Auth + set Firestore users/{uid}.role = "admin"</div>
   </div>
 </div>
 
-<div class="modal" id="loginModal">
-  <div class="modal-content">
-    <h3>Login</h3>
-    <input type="email" id="loginEmail" placeholder="Email">
-    <input type="password" id="loginPass" placeholder="Password">
-    <button id="loginBtn">Login</button>
-    <p style="font-size:13px;opacity:0.7;text-align:center;margin-top:6px">or</p>
-    <button id="anonBtn" style="background:rgba(255,255,255,0.15)">Continue as Guest</button>
+<!-- Login modal (for when chat icon clicked before login) -->
+<div id="loginModal" class="modal">
+  <div class="modalBox">
+    <div style="font-weight:800">Sign in to chat</div>
+    <div class="topNote">You can login with email/password or continue as guest.</div>
+    <input id="modalEmail" class="input" placeholder="Email (optional)"/>
+    <input id="modalPass" type="password" class="input" placeholder="Password (if email)"/>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:8px"><input type="checkbox" id="modalRemember"/> Remember me</label>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button id="modalLoginBtn" class="btn">Login</button>
+      <button id="modalGuestBtn" class="ghost">Guest</button>
+      <button id="modalCloseBtn" class="ghost">Close</button>
+    </div>
+    <div style="margin-top:8px" class="small">When logged, admin is determined via Firestore - users/{uid}.role === "admin".</div>
   </div>
 </div>
 
+<!-- Firebase libs -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+
+<!-- external config (must exist next to this file) -->
 <script src="configuration.js"></script>
 
 <script>
-if(!window.FIREBASE_CONFIG){alert("Missing configuration.js");}
-else{
-firebase.initializeApp(window.FIREBASE_CONFIG);
-const auth=firebase.auth(),db=firebase.firestore(),storage=firebase.storage();
+/* PRIVATE CHAT APP
+   External config: configuration.js -> window.FIREBASE_CONFIG
+   Firestore layout:
+   - users/{uid} { role: "admin" | "user", email?: "...", unreadFromAdmin?: number, unreadFromUser?: number }
+   - conversations/{uid} { lastMessage, lastTimestamp, unreadFromUser, unreadFromAdmin }
+   - messages/{uid}/items/{msg} { from, fromName, text, mediaUrl, mediaType, timestamp }
+*/
 
-const chatIcon=document.getElementById('chatIcon'),
-      chatApp=document.getElementById('chatApp'),
-      loginModal=document.getElementById('loginModal'),
-      emailInput=document.getElementById('loginEmail'),
-      passInput=document.getElementById('loginPass'),
-      loginBtn=document.getElementById('loginBtn'),
-      anonBtn=document.getElementById('anonBtn'),
-      chatBox=document.getElementById('chat-box'),
-      msgInput=document.getElementById('msg-input'),
-      sendBtn=document.getElementById('send-btn'),
-      fileInput=document.getElementById('file-input'),
-      userList=document.getElementById('userList'),
-      chatHeader=document.getElementById('chatHeader');
+(async function(){
+  if(!window.FIREBASE_CONFIG){
+    document.body.innerHTML = '<div style="padding:20px;color:white">Missing configuration.js (window.FIREBASE_CONFIG)</div>';
+    return;
+  }
 
-let currentUser=null,role='guest',currentChatUser=null,unsubMessages=null;
+  // init
+  firebase.initializeApp(window.FIREBASE_CONFIG);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  const storage = firebase.storage();
+  const { serverTimestamp, FieldValue } = firebase.firestore;
 
-chatIcon.onclick=()=>loginModal.style.display='flex';
+  // DOM
+  const chatIcon = document.getElementById('chatIcon');
+  const chatBadge = document.getElementById('chatBadge');
+  const app = document.getElementById('app');
+  const loginModal = document.getElementById('loginModal');
+  const modalLoginBtn = document.getElementById('modalLoginBtn');
+  const modalGuestBtn = document.getElementById('modalGuestBtn');
+  const modalCloseBtn = document.getElementById('modalCloseBtn');
+  const modalEmail = document.getElementById('modalEmail');
+  const modalPass = document.getElementById('modalPass');
+  const modalRemember = document.getElementById('modalRemember');
 
-loginBtn.onclick=async()=>{
-  try{
-    const cred=await auth.signInWithEmailAndPassword(emailInput.value,passInput.value);
-    currentUser=cred.user;
-    await checkRole();
-    openChat();
-  }catch(e){alert(e.message);}
-};
+  const btnLogin = document.getElementById('btnLogin');
+  const btnLogout = document.getElementById('btnLogout');
 
-anonBtn.onclick=async()=>{
-  const cred=await auth.signInAnonymously();
-  currentUser=cred.user;
-  role='user';
-  await db.collection('users').doc(currentUser.uid).set({role:'user'}, {merge:true});
-  openChat();
-};
+  const messagesEl = document.getElementById('messages');
+  const textInput = document.getElementById('textInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const fileInput = document.getElementById('fileInput');
 
-async function checkRole(){
-  const doc=await db.collection('users').doc(currentUser.uid).get();
-  role=doc.exists?doc.data().role||'user':'user';
-}
+  // admin panel elements
+  const conversationsList = document.getElementById('conversationsList');
+  const adminEmail = document.getElementById('adminEmail');
+  const adminPass = document.getElementById('adminPass');
+  const adminLoginBtn = document.getElementById('adminLoginBtn');
+  const rememberAdmin = document.getElementById('rememberAdmin');
+  const adminLoginBox = document.getElementById('adminLoginBox');
+  const adminActions = document.getElementById('adminActions');
+  const adminControls = document.getElementById('adminControls');
+  const panel = document.getElementById('panel');
 
-function openChat(){
-  loginModal.style.display='none';
-  chatApp.style.display='flex';
-  chatIcon.style.display='none';
-  if(role==='admin') showAdminPanel(); else openUserChat();
-}
+  const userEmail = document.getElementById('userEmail');
+  const userPass = document.getElementById('userPass');
+  const userLoginBtn = document.getElementById('userLoginBtn');
+  const guestBtn = document.getElementById('guestBtn');
+  const rememberUser = document.getElementById('rememberUser');
 
-function showAdminPanel(){
-  userList.style.display='block';
-  chatHeader.textContent='Admin Panel';
-  db.collection('users').onSnapshot(snap=>{
-    userList.innerHTML='';
-    snap.forEach(doc=>{
-      const data=doc.data();
-      if(data.role!=='admin'){
-        const div=document.createElement('div');
-        div.className='userItem';
-        div.textContent=data.email||('User '+doc.id.slice(0,6));
-        div.onclick=()=>openAdminConversation(doc.id,div.textContent);
-        userList.appendChild(div);
-      }
-    });
+  const centerTitle = document.getElementById('centerTitle');
+  const centerSub = document.getElementById('centerSub');
+  const sidebar = document.getElementById('sidebar');
+
+  // state
+  let me = null;
+  let meRole = 'guest'; // "admin" or "user" or "guest"
+  let currentConversationId = null; // uid of user whose conversation is open (for admin), or own uid for user
+  let messagesUnsub = null;
+  let convsUnsub = null;
+  let myConvUnsub = null;
+
+  // utility helpers
+  function el(tag, props={}, ...kids){
+    const e = document.createElement(tag);
+    for(const k in props){ if(k in e) e[k] = props[k]; else e.setAttribute(k, props[k]); }
+    kids.forEach(k => { if(k==null) return; if(k instanceof Node) e.appendChild(k); else e.appendChild(document.createTextNode(k)); });
+    return e;
+  }
+  function openModal(){ loginModal.classList.add('open'); loginModal.style.display='flex'; }
+  function closeModal(){ loginModal.classList.remove('open'); loginModal.style.display='none'; }
+  function showApp(){ app.style.display='grid'; }
+  function hideApp(){ app.style.display='none'; }
+  function fmtTime(ts){ try{ return ts?.toDate ? ts.toDate().toLocaleString() : new Date(ts).toLocaleString(); }catch(e){ return ''; } }
+
+  // chat icon behavior
+  chatIcon.addEventListener('click', () => {
+    // if not open, show login modal
+    openModal();
   });
-}
 
-function openAdminConversation(uid,name){
-  currentChatUser=uid;
-  chatHeader.textContent='Chat with '+name;
-  if(unsubMessages)unsubMessages();
-  unsubMessages=db.collection('messages').doc(uid).collection('items')
-    .orderBy('timestamp','asc')
-    .onSnapshot(snap=>{
-      chatBox.innerHTML='';
-      snap.forEach(d=>renderMsg(d.data(),d.id));
-      chatBox.scrollTop=chatBox.scrollHeight;
+  modalCloseBtn.addEventListener('click', () => closeModal());
+
+  // set persistence helper
+  async function setPersistence(remember){
+    try{
+      await auth.setPersistence(remember ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION);
+    }catch(e){ console.warn('persistence err', e); }
+  }
+
+  // ========== LOGIN flows ==========
+  modalLoginBtn.addEventListener('click', async ()=>{
+    const email = modalEmail.value.trim();
+    const pass = modalPass.value;
+    const remember = modalRemember.checked;
+    if(!email || !pass){ alert('Enter email & password (or use Guest)'); return; }
+    await setPersistence(remember);
+    try{
+      const cred = await auth.signInWithEmailAndPassword(email, pass);
+      me = cred.user;
+      await postLoginSetup();
+      closeModal();
+    }catch(e){ alert('Login failed: '+e.message); }
+  });
+
+  modalGuestBtn.addEventListener('click', async ()=>{
+    const remember = modalRemember.checked;
+    await setPersistence(remember);
+    const cred = await auth.signInAnonymously();
+    me = cred.user;
+    meRole = 'user';
+    // ensure users doc
+    await db.collection('users').doc(me.uid).set({ role:'user', email:null }, { merge:true });
+    await postLoginSetup();
+    closeModal();
+  });
+
+  // quick buttons in panel
+  userLoginBtn.addEventListener('click', async ()=>{
+    const email = userEmail.value.trim(), pass = userPass.value, remember = rememberUser.checked;
+    if(!email || !pass){ alert('Enter email & password'); return; }
+    await setPersistence(remember);
+    try{
+      const cred = await auth.signInWithEmailAndPassword(email, pass);
+      me = cred.user;
+      await postLoginSetup();
+    }catch(e){ alert('Login failed: '+e.message); }
+  });
+
+  guestBtn.addEventListener('click', async ()=>{
+    const remember = rememberUser.checked;
+    await setPersistence(remember);
+    const cred = await auth.signInAnonymously();
+    me = cred.user;
+    meRole = 'user';
+    await db.collection('users').doc(me.uid).set({ role:'user', email:null }, { merge:true });
+    await postLoginSetup();
+  });
+
+  // admin login on right panel
+  adminLoginBtn.addEventListener('click', async ()=>{
+    const email = adminEmail.value.trim(), pass = adminPass.value, remember = rememberAdmin.checked;
+    if(!email || !pass) { alert('Enter admin email & password'); return; }
+    await setPersistence(remember);
+    try{
+      const cred = await auth.signInWithEmailAndPassword(email, pass);
+      me = cred.user;
+      await postLoginSetup();
+    }catch(e){ alert('Admin login failed: '+e.message); }
+  });
+
+  // post-login setup
+  async function postLoginSetup(){
+    // fetch role from users/{uid}
+    const doc = await db.collection('users').doc(me.uid).get();
+    meRole = doc.exists ? doc.data().role || 'user' : 'user';
+    // if doc absent, create with role user (for anon or regular email)
+    if(!doc.exists){
+      await db.collection('users').doc(me.uid).set({ role: meRole, email: me.email || null }, { merge:true });
+    } else {
+      // if email exists, update
+      if(me.email) await db.collection('users').doc(me.uid).set({ email: me.email }, { merge:true });
+    }
+
+    // show UI
+    showApp();
+    document.getElementById('chatIcon').style.display = 'none';
+    document.getElementById('btnLogout').style.display = 'inline-block';
+    document.getElementById('btnLogin').style.display = 'none';
+
+    // start behavior depending on role
+    if(meRole === 'admin'){
+      centerTitle.textContent = 'Admin Inbox';
+      centerSub.textContent = 'Open any user to reply — unread first';
+      startAdminView();
+    } else {
+      centerTitle.textContent = 'Your private chat';
+      centerSub.textContent = 'Only you and admin see this.';
+      startUserView();
+    }
+
+    // listen to conversation doc for badge updates (if user)
+    listenMyConversationBadge();
+  }
+
+  // logout
+  document.getElementById('btnLogout').addEventListener('click', async ()=>{
+    try{
+      if(messagesUnsub) messagesUnsub();
+      if(convsUnsub) convsUnsub();
+      if(myConvUnsub) myConvUnsub();
+      await auth.signOut();
+      me = null; meRole = 'guest';
+      messagesEl.innerHTML = '';
+      document.getElementById('chatIcon').style.display = 'flex';
+      hideApp();
+    }catch(e){ console.warn(e); }
+  });
+
+  // ========== USER behavior ==========
+  async function startUserView(){
+    // open user's own conversation
+    currentConversationId = me.uid;
+    // load messages & subscribe
+    subscribeToMessages(currentConversationId);
+    // reset unread-from-admin counter (user opened their chat)
+    await db.collection('conversations').doc(me.uid).set({ unreadFromAdmin: 0 }, { merge:true });
+  }
+
+  function subscribeToMessages(uid){
+    if(myConvUnsub) myConvUnsub();
+    const itemsRef = db.collection('messages').doc(uid).collection('items').orderBy('timestamp','asc');
+    myConvUnsub = itemsRef.onSnapshot(snapshot=>{
+      const msgs = [];
+      snapshot.forEach(d => msgs.push({ id:d.id, ...d.data() }));
+      renderMessages(msgs, me.uid);
+      // scroll to bottom
+      const container = document.getElementById('messages');
+      container.scrollTop = container.scrollHeight;
     });
-}
+  }
 
-function openUserChat(){
-  currentChatUser=currentUser.uid;
-  chatHeader.textContent='Private Chat';
-  unsubMessages=db.collection('messages').doc(currentUser.uid).collection('items')
-    .orderBy('timestamp','asc')
-    .onSnapshot(snap=>{
-      chatBox.innerHTML='';
-      snap.forEach(d=>renderMsg(d.data()));
-      chatBox.scrollTop=chatBox.scrollHeight;
+  // Listen conversation doc to set chat icon badge for unreadFromAdmin
+  function listenMyConversationBadge(){
+    if(!me) return;
+    db.collection('conversations').doc(me.uid).onSnapshot(d => {
+      const data = d.exists ? d.data() : {};
+      const unread = data.unreadFromAdmin || 0;
+      if(unread > 0){
+        chatBadge.style.display = 'block'; chatBadge.textContent = unread;
+      } else { chatBadge.style.display = 'none'; }
     });
-}
-
-function renderMsg(m,id){
-  const div=document.createElement('div');
-  div.className='msg '+(m.from===currentUser.uid?'self':'other');
-  div.innerHTML=`${m.text||''}`;
-  if(m.mediaUrl){
-    if(m.mediaType.startsWith('video/'))div.innerHTML+=`<video src="${m.mediaUrl}" controls></video>`;
-    else div.innerHTML+=`<img src="${m.mediaUrl}">`;
   }
-  if(role==='admin'){
-    const small=document.createElement('small');small.textContent='from: '+(m.fromName||m.from.slice(0,6));
-    div.appendChild(small);
-  }
-  chatBox.appendChild(div);
-}
 
-async function sendMessage(text,file){
-  if(!currentChatUser)return;
-  let mediaUrl='',mediaType='';
-  if(file){
-    const ref=storage.ref('chat/'+Date.now()+'_'+file.name);
-    await ref.put(file);
-    mediaUrl=await ref.getDownloadURL();
-    mediaType=file.type;
+  // render messages for center view
+  function renderMessages(messages, myUid){
+    messagesEl.innerHTML = '';
+    messages.forEach(m => {
+      const div = el('div', { className: 'msg ' + (m.from === myUid ? 'self' : 'other') });
+      if(m.text) div.appendChild(document.createTextNode(m.text));
+      if(m.mediaUrl){
+        if(m.mediaType && m.mediaType.startsWith('video/')){
+          const v = el('video',{controls:true, src:m.mediaUrl}); v.style.maxWidth='100%'; div.appendChild(v);
+        } else {
+          const img = el('img',{src:m.mediaUrl}); div.appendChild(img);
+        }
+      }
+      const meta = el('div',{className:'small'}, fmtTime(m.timestamp));
+      div.appendChild(meta);
+      messagesEl.appendChild(div);
+    });
   }
-  const msg={
-    from:currentUser.uid,
-    fromName:currentUser.email||'User',
-    text:text||'',
-    mediaUrl,mediaType,
-    timestamp:firebase.firestore.FieldValue.serverTimestamp()
-  };
-  await db.collection('messages').doc(currentChatUser).collection('items').add(msg);
-  await db.collection('conversations').doc(currentChatUser).set({
-    lastMessage:text||'media',lastTimestamp:firebase.firestore.FieldValue.serverTimestamp(),uid:currentChatUser
-  },{merge:true});
-}
 
-sendBtn.onclick=async()=>{
-  const text=msgInput.value.trim(),file=fileInput.files[0];
-  if(!text&&!file)return;
-  await sendMessage(text,file);
-  msgInput.value='';fileInput.value='';
-};
-msgInput.addEventListener('keydown',e=>{if(e.key==='Enter')sendBtn.click();});
-}
+  // sending message (user)
+  sendBtn.addEventListener('click', async ()=>{
+    const txt = textInput.value.trim();
+    const file = fileInput.files[0];
+    if(!txt && !file) return;
+    await sendPrivateMessage(me.uid, txt, file, me.uid, me.email || ('User-'+me.uid.slice(0,6)));
+    textInput.value = ''; fileInput.value = '';
+  });
+
+  async function sendPrivateMessage(conversationUid, text, file, fromUid, fromName){
+    // upload media if present
+    let mediaUrl = '', mediaType = '';
+    if(file){
+      const ref = storage.ref('chat/'+Date.now()+'_'+file.name);
+      await ref.put(file);
+      mediaUrl = await ref.getDownloadURL(); mediaType = file.type;
+    }
+    // message doc inside messages/{conversationUid}/items
+    await db.collection('messages').doc(conversationUid).collection('items').add({
+      from: fromUid,
+      fromName: fromName || null,
+      text: text || '',
+      mediaUrl: mediaUrl || null,
+      mediaType: mediaType || null,
+      timestamp: serverTimestamp()
+    });
+
+    // update conversations doc: increment unreadFromUser (for admin to see)
+    await db.collection('conversations').doc(conversationUid).set({
+      lastMessage: text || (mediaUrl ? 'Media' : ''),
+      lastTimestamp: serverTimestamp(),
+      unreadFromUser: FieldValue.increment(1)
+    }, { merge:true });
+
+    // Also make sure users/{uid} exists
+    await db.collection('users').doc(conversationUid).set({ role:'user', email: me.email || null }, { merge:true });
+  }
+
+  // ========== ADMIN behavior ==========
+  async function startAdminView(){
+    // populate conversations list (realtime) and sort by unreadFromUser desc then lastTimestamp desc
+    if(convsUnsub) convsUnsub();
+    convsUnsub = db.collection('conversations').onSnapshot(async snap=>{
+      const rows = [];
+      snap.forEach(d => rows.push({ id:d.id, ...d.data() }));
+      // ensure any missing fields are present
+      rows.forEach(r => { r.unreadFromUser = r.unreadFromUser || 0; r.lastTimestamp = r.lastTimestamp || null; });
+      // sort
+      rows.sort((a,b) => {
+        if((b.unreadFromUser||0) - (a.unreadFromUser||0) !== 0) return (b.unreadFromUser||0) - (a.unreadFromUser||0);
+        const ta = a.lastTimestamp ? a.lastTimestamp.toMillis ? a.lastTimestamp.toMillis() : new Date(a.lastTimestamp).getTime() : 0;
+        const tb = b.lastTimestamp ? b.lastTimestamp.toMillis ? b.lastTimestamp.toMillis() : new Date(b.lastTimestamp).getTime() : 0;
+        return tb - ta;
+      });
+      renderConversationsList(rows);
+    });
+  }
+
+  function renderConversationsList(rows){
+    conversationsList.innerHTML = '';
+    rows.forEach(r => {
+      const left = el('div', { className:'userLeft' },
+        el('div', { className:'avatar' }, (r.id||'U').slice(0,2).toUpperCase()),
+        el('div', { className:'userMeta' },
+          el('div', { className:'userName' }, (r.displayName || r.id)),
+          el('div', { className:'userLast' }, r.lastMessage || '')
+        )
+      );
+      const row = el('div', { className:'userRow' });
+      row.appendChild(left);
+      const right = el('div', {}, r.unreadFromUser ? el('div',{className:'unreadBadge'}, r.unreadFromUser) : null);
+      row.appendChild(right);
+      row.addEventListener('click', ()=> openConversationAsAdmin(r.id));
+      conversationsList.appendChild(row);
+    });
+  }
+
+  // when admin opens conversation
+  async function openConversationAsAdmin(userUid){
+    currentConversationId = userUid;
+    centerTitle.textContent = 'Chat with ' + (userUid);
+    centerSub.textContent = 'Admin view — you can reply';
+
+    // subscribe to messages under messages/{userUid}/items
+    if(messagesUnsub) messagesUnsub();
+    messagesUnsub = db.collection('messages').doc(userUid).collection('items').orderBy('timestamp','asc').onSnapshot(snapshot=>{
+      const msgs = []; snapshot.forEach(d => msgs.push({ id:d.id, ...d.data() }));
+      renderMessages(msgs, me.uid);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    });
+
+    // reset unreadFromUser -> 0 because admin is now reading
+    await db.collection('conversations').doc(userUid).set({ unreadFromUser: 0 }, { merge:true });
+  }
+
+  // admin can reply: send message to messages/{userUid}/items from admin
+  sendBtn.addEventListener('click', async ()=>{
+    // if admin, they must have currentConversationId set to a user
+    const txt = textInput.value.trim();
+    const file = fileInput.files[0];
+    if(!txt && !file) return;
+    if(meRole === 'admin'){
+      if(!currentConversationId){ alert('Open a user conversation from the left to reply'); return; }
+      await adminSendReply(currentConversationId, txt, file);
+    } else {
+      // normal user sending handled above earlier; but this handler catches both roles - avoid duplication
+      if(meRole !== 'admin'){
+        // user send handled already above in user branch - but include just-in-case
+        await sendPrivateMessage(me.uid, txt, file, me.uid, me.email || ('User-'+me.uid.slice(0,6)));
+      }
+    }
+    textInput.value=''; fileInput.value='';
+  });
+
+  // admin reply implementation
+  async function adminSendReply(userUid, text, file){
+    // upload media
+    let mediaUrl = '', mediaType = '';
+    if(file){
+      const ref = storage.ref('chat/'+Date.now()+'_'+file.name);
+      await ref.put(file);
+      mediaUrl = await ref.getDownloadURL(); mediaType = file.type;
+    }
+    // add message
+    await db.collection('messages').doc(userUid).collection('items').add({
+      from: me.uid,
+      fromName: me.email || 'Admin',
+      text: text || '',
+      mediaUrl: mediaUrl || null,
+      mediaType: mediaType || null,
+      timestamp: serverTimestamp()
+    });
+    // increment unreadForAdmin? Actually unreadFromAdmin belongs to user to indicate replies unread for user
+    await db.collection('conversations').doc(userUid).set({
+      lastMessage: text || (mediaUrl ? 'Media' : ''),
+      lastTimestamp: serverTimestamp(),
+      unreadFromAdmin: FieldValue.increment(1)
+    }, { merge:true });
+  }
+
+  // when admin opens a conversation, admin resets unreadFromUser (handled above). When user opens chat, we reset unreadFromAdmin
+  async function resetUserUnreadAdmin(uid){
+    await db.collection('conversations').doc(uid).set({ unreadFromAdmin: 0 }, { merge:true });
+  }
+
+  // when user signs in and opens their own chat, reset their unreadFromAdmin
+  // already called in startUserView()
+
+  // listen to current user's conversation doc for badge updates (done in postLoginSetup)
+
+  // ========== Admin list refresh button (optional) ==========
+  document.getElementById('refreshUsers').addEventListener('click', async ()=>{
+    if(meRole === 'admin') startAdminView();
+  });
+
+  // ========== initial auth state handling ==========
+  auth.onAuthStateChanged(async user => {
+    if(!user) {
+      // hide app if not logged
+      me = null; meRole = 'guest'; hideApp();
+      // show chat icon (with or without badge)
+      document.getElementById('chatIcon').style.display = 'flex';
+      // listen for nothing
+      return;
+    }
+    // if user already logged via persistence, perform post-login setup
+    me = user;
+    const doc = await db.collection('users').doc(me.uid).get();
+    meRole = doc.exists ? doc.data().role || 'user' : 'user';
+    if(!doc.exists){
+      await db.collection('users').doc(me.uid).set({ role: meRole, email: me.email || null }, { merge:true });
+    }
+    // auto open app for logged-in session
+    postLoginSetup();
+  });
+
+  // ========== render initial (no login) ==========
+  hideApp();
+
+  // ========== helper: open app when clicking chat icon and logged in or show modal ==========
+  chatIcon.addEventListener('dblclick', ()=> {
+    // quick sign-out helper (dev)
+    if(me) { auth.signOut(); location.reload(); }
+  });
+
+  // If user clicks chat icon while logged in, open app directly
+  chatIcon.addEventListener('click', async ()=>{
+    if(auth.currentUser){
+      // if user is already signed-in, show app
+      me = auth.currentUser;
+      // fetch role
+      const doc = await db.collection('users').doc(me.uid).get();
+      meRole = doc.exists ? doc.data().role || 'user' : 'user';
+      postLoginSetup();
+      closeModal();
+    } else {
+      // otherwise open login modal
+      openModal();
+    }
+  });
+
+  // ========== helper: formatting ==========
+  function fmtTime(ts){
+    if(!ts) return '';
+    if(ts.toDate) return ts.toDate().toLocaleString();
+    try { return new Date(ts).toLocaleString(); } catch(e){ return '';}
+  }
+
+  // ========== clean up on unload ==========
+  window.addEventListener('beforeunload', ()=> {
+    if(messagesUnsub) messagesUnsub(); if(convsUnsub) convsUnsub(); if(myConvUnsub) myConvUnsub();
+  });
+
+  // Expose some helpers for debugging
+  window._privateChat = { sendPrivateMessage, adminSendReply, startAdminView, startUserView };
+
+})();
 </script>
 </body>
 </html>
