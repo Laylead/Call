@@ -1,404 +1,669 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Firebase Chat (User ↔ Admin) — with blinded media unlock</title>
-  <style>
-    :root{--accent:#ff7a00;--bg:#f6f6f6}
-    body{font-family:Inter,system-ui,Arial;background:var(--bg);margin:0;height:100vh;display:flex;flex-direction:column}
-    header{background:white;padding:12px 16px;box-shadow:0 1px 3px rgba(0,0,0,.06);display:flex;justify-content:space-between;align-items:center}
-    .container{display:flex;flex-direction:column;flex:1;padding:12px;gap:12px;overflow:hidden}
-    #messages{flex:1;overflow:auto;background:white;padding:12px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
-    .msg{padding:8px;border-radius:8px;margin-bottom:8px;max-width:70%;}
-    .msg.user{background:#fffbe9;align-self:flex-end}
-    .msg.admin{background:#eef7ff;align-self:flex-start}
-    .meta{font-size:12px;color:#666;margin-top:6px}
-    .compose{display:flex;gap:8px}
-    .compose input[type=text]{flex:1;padding:10px;border-radius:8px;border:1px solid #ddd}
-    .compose button{background:var(--accent);color:white;border:none;padding:10px 14px;border-radius:8px;cursor:pointer}
-    #adminPanel{background:#fff;padding:12px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
-    .filePreview{max-width:260px;border-radius:6px;display:block}
-    .blur{filter:blur(14px);transform:scale(1.02);transition:filter .3s}
-    .unlockOverlay{position:relative;margin-top:8px}
-    .unlockBtn{position:absolute;left:8px;top:8px;background:#0008;color:white;padding:6px 8px;border-radius:6px;border:none;cursor:pointer}
-    /* modal */
-    .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:9999}
-    .modal.open{display:flex}
-    .modal .content{background:black;padding:0;border-radius:6px;max-width:95%;max-height:95%;display:flex;align-items:center;justify-content:center}
-    .modal img, .modal video{max-width:100%;max-height:100%;display:block}
-    footer{background:white;padding:12px;box-shadow:0 -1px 3px rgba(0,0,0,.04)}
-    small.note{color:#666}
-    .adminBadge{background:var(--accent);color:white;padding:6px 8px;border-radius:20px;font-size:13px}
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Camsilo • Models — Single File</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ---------- THEME & LAYOUT (WhatsApp-like inspired) ---------- */
+:root{
+  --primary:#ff6f2d; --accent:#ff4b98; --muted:#9aa2b2; --bg:#071024; --card:#0f1724;
+}
+*{box-sizing:border-box}
+body{font-family:Inter,system-ui,Arial;margin:0;min-height:100vh;background:linear-gradient(180deg,#071024 0%, #071a2a 100%);color:#e6eef6}
+header{position:fixed;top:0;left:0;right:0;background:rgba(6,10,18,0.7);backdrop-filter:blur(8px);border-bottom:1px solid rgba(255,255,255,0.03);padding:14px 18px;z-index:40}
+.nav{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;gap:12px;align-items:center}
+.mark{width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff}
+.controls{display:flex;gap:10px;align-items:center}
+.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px;border-radius:8px;color:inherit;cursor:pointer}
+
+/* container */
+.container{max-width:1200px;margin:88px auto 60px;padding:18px;display:grid;grid-template-columns:1fr 360px;gap:18px}
+@media(max-width:980px){ .container{grid-template-columns:1fr;padding:12px} .admin-panel{order:2} }
+
+/* gallery */
+.models-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}
+.model-card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.04);box-shadow:0 10px 30px rgba(2,6,23,0.6);transition:transform .25s}
+.model-card:hover{transform:translateY(-8px)}
+.model-media{position:relative;overflow:hidden;height:360px}
+.model-media img, .model-media video{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s}
+.model-card:hover .model-media img{transform:scale(1.04)}
+.badge{position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.55);padding:6px 10px;border-radius:20px;font-size:13px;display:flex;gap:8px;align-items:center}
+.model-body{padding:12px;display:flex;flex-direction:column;gap:10px}
+.model-name{display:flex;align-items:center;gap:8px;font-weight:700}
+.verified{color:#1da1f2;font-size:15px}
+.model-stats{display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid rgba(255,255,255,0.03)}
+.actions{display:flex;gap:8px;align-items:center}
+.like-btn,.comment-btn{background:transparent;border:none;color:inherit;cursor:pointer;font-size:18px;padding:8px;border-radius:8px}
+.book-btn{background:linear-gradient(45deg,var(--primary),var(--accent));padding:10px 12px;border-radius:10px;border:none;color:#fff;cursor:pointer}
+
+/* admin panel */
+.admin-panel{background:linear-gradient(180deg,#071427,#061025);padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.02)}
+.admin-panel h3{background:linear-gradient(45deg,var(--primary),var(--accent));-webkit-background-clip:text;color:transparent;margin:6px 0}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+input,textarea,select{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px;border-radius:8px;color:inherit;width:100%}
+textarea{min-height:80px}
+
+/* modals */
+.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.72);z-index:120}
+.modal.open{display:flex}
+.modal .box{background:#07101a;padding:18px;border-radius:12px;max-width:720px;width:94%;color:#e6eef6}
+.sexy-popup .box{background:linear-gradient(135deg,#1a1a2e,#16213e);border:2px solid var(--primary);box-shadow:0 10px 30px rgba(233,30,99,0.2)}
+
+/* small */
+.small{font-size:13px;color:var(--muted)}
+.top-badge{display:flex;gap:8px;align-items:center;padding:6px 10px;background:rgba(255,255,255,0.02);border-radius:999px}
+.comment-list{margin-top:8px;font-size:13px;color:var(--muted)}
+.kbd{background:#0b1220;padding:6px 8px;border-radius:6px;font-weight:600}
+
+/* responsive adjustments */
+@media(max-width:600px){ .model-media{height:260px} .nav .nav-links{display:none} }
+</style>
 </head>
 <body>
-  <header>
-    <div>
-      <strong>Firebase Chat</strong>
-      <small style="margin-left:8px; color:#666">User ↔ Admin</small>
-    </div>
-    <div>
-      <span id="userIdLabel">Not signed</span>
-      <button id="adminToggleBtn" style="margin-left:12px">Enter Admin</button>
-    </div>
-  </header>
 
-  <div class="container">
-    <div id="messages" aria-live="polite"></div>
-
-    <!-- Admin panel (hidden unless adminMode) -->
-    <div id="adminPanel" style="display:none">
-      <div style="display:flex;gap:8px;align-items:center">
-        <input id="adminText" placeholder="Admin message..." />
-        <input id="adminFile" type="file" accept="image/*,video/*" />
-        <input id="adminSecret" placeholder="9-digit secret (required for files)" maxlength="9" style="width:140px" />
-        <button id="adminSend">Send</button>
+<header>
+  <div class="nav">
+    <div class="logo">
+      <div class="mark">MG</div>
+      <div>
+        <div style="font-weight:800">Camsilo</div>
+        <div class="small">Models · Private shows · Bookings</div>
       </div>
-      <div style="margin-top:8px"><small class="note">When attaching media, provide a 9-digit secret — users must enter it to view.</small></div>
     </div>
 
-    <div id="composeRow" style="display:flex;gap:8px;align-items:center">
-      <input id="textInput" type="text" placeholder="Type a message..." />
-      <button id="sendBtn">Send</button>
-    </div>
-    <div id="bottomNote" style="display:flex;justify-content:space-between;align-items:center">
-      <small class="note">Messages are stored in Firestore; media in Storage.</small>
-      <div id="adminStatus"></div>
+    <div class="controls">
+      <div id="authInfo" class="small">Signing in…</div>
+      <button id="openUserLogin" class="ghost">Login</button>
+      <button id="openAdminLogin" class="ghost">Admin</button>
+      <button id="signOutBtn" class="ghost" style="display:none">Sign Out</button>
     </div>
   </div>
+</header>
 
-  <!-- Modal for unlocked media -->
-  <div id="modal" class="modal" role="dialog" aria-hidden="true">
-    <div class="content" id="modalContent">
-      <!-- image/video will be injected here -->
+<main class="container">
+  <!-- left: gallery -->
+  <section>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h2 style="font-size:22px">Featured Models</h2>
+      <div class="top-badge small" id="latestPostBadge" style="display:none"></div>
+    </div>
+
+    <div class="models-grid" id="modelsGrid"></div>
+
+    <section id="privateSection" style="margin-top:22px;display:none">
+      <h3 style="font-size:18px;margin-bottom:12px">Exclusive Members</h3>
+      <div class="models-grid" id="privateGrid"></div>
+    </section>
+  </section>
+
+  <!-- right: admin -->
+  <aside class="admin-panel" id="adminPanel" style="display:none">
+    <h3>Admin Control Panel</h3>
+
+    <label>Upload Photo / Video</label>
+    <input id="adminFile" type="file" accept="image/*,video/*">
+
+    <label style="margin-top:8px">Model name</label>
+    <input id="adminName" placeholder="Model name">
+
+    <div class="form-row" style="margin-top:8px">
+      <div>
+        <label>Verified</label>
+        <select id="adminVerified"><option value="true">Yes</option><option value="false" selected>No</option></select>
+      </div>
+      <div>
+        <label>Private content</label>
+        <select id="adminPrivate"><option value="false">No</option><option value="true">Yes</option></select>
+      </div>
+    </div>
+
+    <label style="margin-top:8px">Likes (simulated)</label>
+    <input id="adminLikes" placeholder="e.g. 1200">
+
+    <label style="margin-top:8px">Comments (one per line)</label>
+    <textarea id="adminComments" placeholder="Nice 😍"></textarea>
+
+    <label style="margin-top:8px">Booking link</label>
+    <input id="adminBooking" placeholder="https://zoom.us/..." />
+
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button id="saveModelBtn" class="book-btn" style="flex:1">Save Model</button>
+      <button id="clearModelBtn" class="ghost">Clear</button>
+    </div>
+
+    <hr style="margin:12px 0;border-color:rgba(255,255,255,0.03)">
+
+    <label>Broadcast post</label>
+    <textarea id="adminPost" placeholder="Message to all users..."></textarea>
+    <button id="pushPostBtn" class="book-btn" style="margin-top:8px">Push to Users</button>
+
+    <hr style="margin:12px 0;border-color:rgba(255,255,255,0.03)">
+
+    <label>Create user (server recommended)</label>
+    <input id="newUserEmail" placeholder="user@example.com">
+    <input id="newUserPassword" placeholder="initial password" style="margin-top:8px">
+    <button id="createUserBtn" class="book-btn" style="margin-top:8px">Create User (server)</button>
+
+    <div style="margin-top:12px" class="small">Use the Admin SDK on your server (not the client) to create users & set admin claims.</div>
+  </aside>
+</main>
+
+<!-- subscription modal -->
+<div id="subscriptionModal" class="modal sexy-popup">
+  <div class="box">
+    <div style="display:flex;gap:12px;align-items:center">
+      <img src="https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=500&q=80" style="width:120px;height:120px;border-radius:10px;object-fit:cover;border:3px solid var(--primary)" />
+      <div>
+        <h2 style="color:var(--primary)">Unlock Exclusive Content</h2>
+        <p class="small">Darling, subscribe now to like, comment and access private shows.</p>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="ghost" onclick="closeModal('subscriptionModal')">Maybe Later</button>
+          <button class="book-btn" onclick="redirectToSubscribe()">Yes, Subscribe</button>
+        </div>
+      </div>
     </div>
   </div>
+</div>
 
-  <!-- include Firebase compat libs -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+<!-- renewal modal -->
+<div id="renewalModal" class="modal sexy-popup">
+  <div class="box" id="renewalBox">
+    <div style="text-align:center">
+      <img id="renewalImg" src="" style="width:180px;height:180px;border-radius:12px;object-fit:cover;border:3px solid var(--primary)" />
+      <h2 style="color:var(--primary)">Renew Your Membership</h2>
+      <p class="small">Your access expired — renew to continue.</p>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:10px">
+        <button class="ghost" onclick="closeModal('renewalModal')">Not now</button>
+        <button class="book-btn" onclick="redirectToRenew()">Renew</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-  <!-- load your external configuration (create configuration.js per instructions) -->
-  <script src="configuration.js"></script>
+<!-- booking modal -->
+<div id="bookingModal" class="modal">
+  <div class="box">
+    <h3>Book a Private Video Call</h3>
+    <label class="small">Choose option</label>
+    <select id="bookingOption"></select>
+    <label class="small" style="margin-top:8px">Your email</label>
+    <input id="bookingEmail" type="email" placeholder="you@example.com" />
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="ghost" onclick="closeModal('bookingModal')">Cancel</button>
+      <button class="book-btn" onclick="confirmBooking()">Proceed</button>
+    </div>
+  </div>
+</div>
 
-  <script>
-  (async function(){
-    // ====== CONFIG CHECK ======
-    if (!window.FIREBASE_CONFIG) {
-      document.body.innerHTML = "<div style='padding:24px;font-family:Arial'>Missing configuration.js or FIREBASE_CONFIG variable. Create configuration.js and set window.FIREBASE_CONFIG. See instructions.</div>";
+<!-- comment modal -->
+<div id="commentModal" class="modal">
+  <div class="box">
+    <h3>Add Comment</h3>
+    <textarea id="commentText" rows="4" placeholder="Write your comment..."></textarea>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="ghost" onclick="closeModal('commentModal')">Cancel</button>
+      <button class="book-btn" onclick="submitComment()">Post Comment</button>
+    </div>
+  </div>
+</div>
+
+<!-- admin login modal -->
+<div id="adminLoginModal" class="modal">
+  <div class="box">
+    <h3>Admin Login</h3>
+    <label class="small">Email</label>
+    <input id="adminEmail" type="email" placeholder="admin@example.com">
+    <label class="small" style="margin-top:8px">Password</label>
+    <input id="adminPassword" type="password" placeholder="password">
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="ghost" onclick="closeModal('adminLoginModal')">Cancel</button>
+      <button class="book-btn" onclick="adminLogin()">Login</button>
+    </div>
+  </div>
+</div>
+
+<!-- user login modal -->
+<div id="userLoginModal" class="modal">
+  <div class="box">
+    <h3>User Login</h3>
+    <label class="small">Email</label><input id="userEmail" type="email">
+    <label class="small" style="margin-top:8px">Password</label><input id="userPass" type="password">
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="ghost" onclick="closeModal('userLoginModal')">Cancel</button>
+      <button class="book-btn" onclick="userLogin()">Login</button>
+    </div>
+  </div>
+</div>
+
+<!-- simplified admin chat modal -->
+<div id="adminChatModal" class="modal">
+  <div class="box">
+    <h3>Chat Management</h3>
+    <div style="display:flex;gap:12px">
+      <div style="flex:1"><div id="conversationsList" style="max-height:320px;overflow:auto"></div></div>
+      <div style="flex:2">
+        <div id="noChat" class="small">Select a conversation</div>
+        <div id="chatWindow" style="display:none">
+          <div id="chatMessages" style="max-height:260px;overflow:auto;margin-bottom:8px"></div>
+          <input id="adminChatInput" placeholder="Type message" />
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="ghost" onclick="closeModal('adminChatModal')">Close</button>
+            <button class="book-btn" onclick="sendAdminChat()">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase libs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+
+<!-- load external config (YOU MUST create this file next to index.html) -->
+<script src="configuration.js"></script>
+
+<script>
+/*
+  Single-file app logic
+  - Expects window.FIREBASE_CONFIG in configuration.js
+  - Uses Firestore collections: models, users, settings, posts, bookings, chats, conversations
+  - Admin accounts must have custom claim admin:true (set via Admin SDK on server)
+*/
+(async function(){
+  if(!window.FIREBASE_CONFIG){
+    document.body.innerHTML = '<div style="padding:20px;font-family:Inter">Missing configuration.js — create it and export window.FIREBASE_CONFIG. See comments in file.</div>';
+    return;
+  }
+
+  // Initialize Firebase
+  firebase.initializeApp(window.FIREBASE_CONFIG);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  const storage = firebase.storage();
+
+  // DOM refs
+  const modelsGrid = document.getElementById('modelsGrid');
+  const privateGrid = document.getElementById('privateGrid');
+  const privateSection = document.getElementById('privateSection');
+  const authInfo = document.getElementById('authInfo');
+  const openAdminLogin = document.getElementById('openAdminLogin');
+  const openUserLogin = document.getElementById('openUserLogin');
+  const signOutBtn = document.getElementById('signOutBtn');
+
+  const adminPanel = document.getElementById('adminPanel');
+  const adminFile = document.getElementById('adminFile');
+  const adminName = document.getElementById('adminName');
+  const adminVerified = document.getElementById('adminVerified');
+  const adminPrivate = document.getElementById('adminPrivate');
+  const adminLikes = document.getElementById('adminLikes');
+  const adminComments = document.getElementById('adminComments');
+  const adminBooking = document.getElementById('adminBooking');
+  const saveModelBtn = document.getElementById('saveModelBtn');
+  const clearModelBtn = document.getElementById('clearModelBtn');
+  const adminPost = document.getElementById('adminPost');
+  const pushPostBtn = document.getElementById('pushPostBtn');
+  const createUserBtn = document.getElementById('createUserBtn');
+  const newUserEmail = document.getElementById('newUserEmail');
+  const newUserPassword = document.getElementById('newUserPassword');
+
+  // modals & inputs
+  const subscriptionModal = document.getElementById('subscriptionModal');
+  const renewalModal = document.getElementById('renewalModal');
+  const bookingModal = document.getElementById('bookingModal');
+  const bookingOption = document.getElementById('bookingOption');
+  const bookingEmail = document.getElementById('bookingEmail');
+  const commentModal = document.getElementById('commentModal');
+  const commentText = document.getElementById('commentText');
+  const adminLoginModal = document.getElementById('adminLoginModal');
+  const adminEmail = document.getElementById('adminEmail');
+  const adminPassword = document.getElementById('adminPassword');
+  const userLoginModal = document.getElementById('userLoginModal');
+  const userEmailIn = document.getElementById('userEmail');
+  const userPassIn = document.getElementById('userPass');
+
+  const adminChatModal = document.getElementById('adminChatModal');
+  const conversationsList = document.getElementById('conversationsList');
+  const chatWindow = document.getElementById('chatWindow');
+  const chatMessages = document.getElementById('chatMessages');
+  const adminChatInput = document.getElementById('adminChatInput');
+
+  const latestPostBadge = document.getElementById('latestPostBadge');
+
+  // state
+  let currentUser = null;
+  let isAdmin = false;
+  let modelsUnsub = null;
+  let settings = {};
+  let selectedModelForComment = null;
+  let selectedModelForBooking = null;
+  let currentConversationId = null;
+  let chatUnsub = null;
+
+  // utility
+  function el(tag, props={}, ...kids){ const e=document.createElement(tag); Object.keys(props).forEach(k=>{ if(k in e) e[k]=props[k]; else e.setAttribute(k, props[k]); }); kids.forEach(k=>{ if(k==null) return; if(k instanceof Node) e.appendChild(k); else e.appendChild(document.createTextNode(k)); }); return e; }
+  function openModal(id){ const m=document.getElementById(id); if(!m) return; m.classList.add('open'); m.style.display='flex'; }
+  function closeModal(id){ const m=document.getElementById(id); if(!m) return; m.classList.remove('open'); m.style.display='none'; }
+  function showToast(msg){ try{ if(window.toastr) toastr.info(msg); else alert(msg); }catch(e){ console.log(msg); } }
+  window.openModal = openModal; window.closeModal = closeModal; window.redirectToSubscribe = ()=>{ window.open(settings.subscriptionLink || '#','_blank') }; window.redirectToRenew = ()=>{ window.open(settings.renewalLink || '#','_blank') };
+
+  // admin login
+  window.adminLogin = async function(){
+    const email = adminEmail.value.trim(); const pass = adminPassword.value;
+    if(!email||!pass) return alert('Enter credentials');
+    try { await auth.signInWithEmailAndPassword(email, pass); closeModal('adminLoginModal'); } catch(e){ alert('Admin login failed: '+e.message); }
+  };
+  window.userLogin = async function(){ const e=userEmailIn.value.trim(), p=userPassIn.value; if(!e||!p) return alert('Enter credentials'); try { await auth.signInWithEmailAndPassword(e,p); closeModal('userLoginModal'); } catch(e){ alert('Login failed: '+e.message); } };
+
+  // sign out to anonymous
+  signOutBtn.addEventListener('click', async ()=>{ await auth.signOut(); await auth.signInAnonymously(); });
+
+  // initial settings loader
+  async function loadSettings(){
+    try{
+      const snap = await db.collection('settings').doc('site').get();
+      if(snap.exists) settings = snap.data();
+      else { settings = { subscriptionLink:'#', renewalLink:'#', renewalImage:'' }; await db.collection('settings').doc('site').set(settings); }
+      if(settings.latestPost){ latestPostBadge.style.display='flex'; latestPostBadge.textContent = settings.latestPost; setTimeout(()=> latestPostBadge.style.display='none', 8000); }
+      if(settings.renewalImage) document.getElementById('renewalImg').src = settings.renewalImage;
+    }catch(e){ console.error('settings load', e); }
+  }
+
+  // auth state change
+  auth.onAuthStateChanged(async (user)=>{
+    if(!user){ try{ await auth.signInAnonymously(); return; }catch(e){ console.error(e); return; } }
+    currentUser = user;
+    try{
+      const tokenRes = await user.getIdTokenResult(true);
+      isAdmin = !!(tokenRes && tokenRes.claims && tokenRes.claims.admin);
+    }catch(e){ console.error('token', e); }
+    updateUIForAuth();
+    if(!isAdmin){
+      const udoc = await db.collection('users').doc(user.uid).get();
+      if(!udoc.exists){ const expires = firebase.firestore.Timestamp.fromDate(new Date(Date.now()+30*24*3600*1000)); await db.collection('users').doc(user.uid).set({ createdAt: firebase.firestore.FieldValue.serverTimestamp(), expiresAt: expires, banned:false, subscribed:false }); }
+      else {
+        const data = udoc.data();
+        if(data.banned){ showToast('Your account is banned'); }
+        else if(data.expiresAt && data.expiresAt.toDate && new Date() > data.expiresAt.toDate()){ openModal('renewalModal'); }
+      }
+    }
+    listenModels();
+    loadSettings();
+  });
+
+  function updateUIForAuth(){
+    if(isAdmin){
+      authInfo.textContent = `Admin: ${currentUser.email || currentUser.uid.slice(0,6)}`;
+      adminPanel.style.display = 'block';
+      openAdminLogin.style.display = 'none';
+      openUserLogin.style.display = 'none';
+      signOutBtn.style.display = 'inline-block';
+    } else {
+      authInfo.textContent = currentUser.isAnonymous ? `Guest: anon-${currentUser.uid.slice(0,6)}` : `User: ${currentUser.email || currentUser.uid}`;
+      adminPanel.style.display = 'none';
+      openAdminLogin.style.display = 'inline-block';
+      openUserLogin.style.display = 'inline-block';
+      signOutBtn.style.display = currentUser.isAnonymous ? 'none' : 'inline-block';
+    }
+  }
+
+  // Listen models
+  function listenModels(){
+    if(modelsUnsub) modelsUnsub();
+    modelsUnsub = db.collection('models').orderBy('createdAt','desc').onSnapshot(snapshot=>{
+      modelsGrid.innerHTML = ''; privateGrid.innerHTML = '';
+      snapshot.forEach(doc=>{
+        const m = { id: doc.id, ...doc.data() };
+        renderModelCard(m);
+      });
+      privateSection.style.display = privateGrid.children.length ? 'block' : 'none';
+    });
+  }
+
+  // Render model card
+  function renderModelCard(m){
+    const card = el('article',{className:'model-card'});
+    const mediaNode = el('div',{className:'model-media'});
+    if(m.mediaURL){
+      if(m.mediaType && m.mediaType.startsWith('video/')){
+        const v = el('video',{src:m.mediaURL, controls:true});
+        mediaNode.appendChild(v);
+      } else {
+        const img = el('img',{src:m.mediaURL, alt:m.name});
+        mediaNode.appendChild(img);
+      }
+    } else {
+      const img = el('img',{src:'https://images.unsplash.com/photo-1511285605577-4d62fb50d2f7?auto=format&fit=crop&w=800&q=80', alt:m.name});
+      mediaNode.appendChild(img);
+    }
+    mediaNode.appendChild(el('div',{className:'badge'}, m.private ? 'Premium' : 'Public'));
+
+    const body = el('div',{className:'model-body'});
+    const nameRow = el('div',{className:'model-name'}, m.name || 'Unnamed', m.verified ? el('span',{className:'verified'}, el('i',{className:'fas fa-check-circle'})) : null);
+
+    const commentsCount = (m.comments||[]).length;
+    const statsRow = el('div',{className:'model-stats'},
+      el('div',{className:'actions'},
+        el('button',{className:'like-btn', onclick: ()=> onLikeClicked(m)}, el('i',{className:'fas fa-heart'})),
+        el('span',{className:'small'}, m.likes || 0),
+        el('button',{className:'comment-btn', onclick: ()=> onCommentClicked(m), style:'margin-left:12px'}, el('i',{className:'fas fa-comment'})),
+        el('span',{className:'small'}, commentsCount)
+      ),
+      el('div',{}, el('div',{style:'display:flex;gap:8px'}, createBookingControls(m)))
+    );
+
+    body.appendChild(nameRow);
+    if(m.embedVideo) body.appendChild(el('div',{}, el('iframe',{src:m.embedVideo, width:'100%', height:'180', frameborder:'0', allowfullscreen:true})));
+    body.appendChild(statsRow);
+    if(m.comments && m.comments.length){
+      const list = el('div',{className:'comment-list'}, ...m.comments.slice(0,3).map(c => el('div',{}, c)));
+      body.appendChild(list);
+    }
+    if(isAdmin){
+      const adminOps = el('div', {style:'display:flex;gap:8px;margin-top:8px'}, 
+        el('button',{className:'ghost', onclick: ()=> boostLikes(m.id)}, 'Boost Likes'),
+        el('button',{className:'ghost', onclick: ()=> editModel(m.id)}, 'Edit')
+      );
+      body.appendChild(adminOps);
+    }
+
+    card.appendChild(mediaNode);
+    card.appendChild(body);
+
+    if(m.private) privateGrid.appendChild(card); else modelsGrid.appendChild(card);
+
+    // click media open
+    mediaNode.addEventListener('click', ()=>{
+      if(m.private && (!currentUser || currentUser.isAnonymous)){ openModal('subscriptionModal'); return; }
+      if(m.mediaType && m.mediaType.startsWith('video/')){
+        const v = el('video',{controls:true, autoplay:true, style:'max-width:90vw;max-height:80vh'}); v.src = m.mediaURL; showModalContent(v);
+      } else {
+        const img = el('img',{src:m.mediaURL, style:'max-width:90vw;max-height:80vh'});
+        showModalContent(img);
+      }
+    });
+  }
+
+  function createBookingControls(m){
+    const select = el('select',{className:'booking-select'});
+    const defaultOpt = el('option',{value:''}, 'Choose');
+    select.appendChild(defaultOpt);
+    if(m.bookingOptions && m.bookingOptions.length){
+      m.bookingOptions.forEach(o => select.appendChild(el('option',{value:o.value}, o.label)));
+    } else if(m.bookingLink){
+      select.appendChild(el('option',{value:m.bookingLink}, 'Standard'));
+    }
+    const bookBtn = el('button',{className:'book-btn', onclick: ()=> { openBookingModalFor(m.id); }}, 'Book');
+    const wrapper = el('div',{}, select, bookBtn);
+    // store selection element for later reading
+    wrapper.selectEl = select;
+    return wrapper;
+  }
+
+  function showModalContent(node){
+    const wrapper = el('div',{}, node, el('div',{style:'text-align:right;margin-top:10px'}, el('button',{className:'ghost', onclick: ()=> closeModalElement(node)}, 'Close')));
+    const tmpId = '__tmp_modal';
+    const box = el('div',{className:'box'}); box.appendChild(wrapper);
+    const modalEl = el('div',{className:'modal open', id:tmpId}); modalEl.appendChild(box);
+    document.body.appendChild(modalEl);
+    modalEl.addEventListener('click', (e)=> { if(e.target === modalEl){ modalEl.remove(); } });
+  }
+  function closeModalElement(node){ const ancestor = node.closest('.modal'); if(ancestor) ancestor.remove(); }
+
+  // like clicked
+  async function onLikeClicked(model){
+    if(isAdmin){
+      const n = prompt('Set likes for '+model.name, String(model.likes||0));
+      if(n!=null) await db.collection('models').doc(model.id).update({ likes: parseInt(n)||0 });
       return;
     }
+    // check subscription status
+    const u = (await db.collection('users').doc(currentUser.uid).get()).data();
+    if(!u || !u.subscribed){ openModal('subscriptionModal'); return; }
+    showToast('Likes are controlled by admin. Contact support to request a like change.');
+  }
 
-    // initialize firebase
-    firebase.initializeApp(window.FIREBASE_CONFIG);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-    const storage = firebase.storage();
-
-    // ====== UI hooks ======
-    const messagesEl = document.getElementById('messages');
-    const textInput = document.getElementById('textInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const adminToggleBtn = document.getElementById('adminToggleBtn');
-    const adminPanel = document.getElementById('adminPanel');
-    const adminText = document.getElementById('adminText');
-    const adminFile = document.getElementById('adminFile');
-    const adminSecret = document.getElementById('adminSecret');
-    const adminSend = document.getElementById('adminSend');
-    const modal = document.getElementById('modal');
-    const modalContent = document.getElementById('modalContent');
-    const userIdLabel = document.getElementById('userIdLabel');
-    const adminStatus = document.getElementById('adminStatus');
-
-    let currentUser = null;
-    let adminMode = false;
-
-    // ====== Helpers ======
-    function formatTime(ts) {
-      try{
-        const d = ts && ts.toDate ? ts.toDate() : new Date(ts);
-        return d.toLocaleString();
-      }catch(e){ return String(ts); }
+  function onCommentClicked(model){
+    if(isAdmin){
+      const txt = prompt('Admin: add simulated comment'); if(txt) { db.collection('models').doc(model.id).update({ comments: firebase.firestore.FieldValue.arrayUnion(txt) }); }
+      return;
     }
-
-    async function sha256hex(message) {
-      // returns hex string
-      const msgUint8 = new TextEncoder().encode(message);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
-    }
-
-    function el(tag, attrs={}, ...children){
-      const e = document.createElement(tag);
-      for(const k in attrs){
-        if(k === 'class') e.className = attrs[k];
-        else if(k === 'html') e.innerHTML = attrs[k];
-        else e.setAttribute(k, attrs[k]);
-      }
-      children.forEach(c => { if(c===null) return; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
-      return e;
-    }
-
-    // ====== AUTHENTICATE USER ANONYMOUSLY ======
-    auth.onAuthStateChanged(async (u) => {
-      if(u){
-        currentUser = u;
-        userIdLabel.textContent = "You: " + (u.isAnonymous ? "anon" : u.email || u.uid.slice(0,6));
-        userIdLabel.title = u.uid;
-      } else {
-        // sign in anonymously
-        try {
-          await auth.signInAnonymously();
-        } catch(e){
-          console.error("Auth error",e);
-          userIdLabel.textContent = "Auth error";
-        }
-      }
+    db.collection('users').doc(currentUser.uid).get().then(snap=>{
+      const u = snap.data();
+      if(!u || !u.subscribed){ openModal('subscriptionModal'); return; }
+      selectedModelForComment = model; commentText.value=''; openModal('commentModal');
     });
+  }
 
-    // ====== Admin toggle (simple) ======
-    adminToggleBtn.addEventListener('click', async () => {
-      if(!adminMode){
-        // attempt enter admin mode: prompt for 9-digit secret
-        const code = prompt("Enter admin 9-digit secret to enable admin mode");
-        if(!code) return;
-        if(code.length !== 9) { alert("Admin secret must be 9 digits."); return; }
-        let providedHash = await sha256hex(code);
-        // Accept either APP_ADMIN_SECRET_HASH (recommended) or APP_ADMIN_SECRET plaintext in config
-        const expectedHash = window.APP_ADMIN_SECRET_HASH || (window.APP_ADMIN_SECRET ? await sha256hex(window.APP_ADMIN_SECRET) : null);
-        if(!expectedHash){
-          alert("No admin secret configured on server (configuration.js missing APP_ADMIN_SECRET_HASH or APP_ADMIN_SECRET).");
-          return;
-        }
-        if(providedHash === expectedHash){
-          adminMode = true;
-          adminPanel.style.display = 'block';
-          adminToggleBtn.textContent = 'Exit Admin';
-          adminStatus.innerHTML = '<span class="adminBadge">Admin</span>';
-          alert("Admin mode enabled.");
-        } else {
-          alert("Wrong admin secret.");
-        }
-      } else {
-        adminMode = false;
-        adminPanel.style.display = 'none';
-        adminToggleBtn.textContent = 'Enter Admin';
-        adminStatus.innerHTML = '';
-      }
+  window.submitComment = async function(){
+    const text = commentText.value.trim(); if(!text) return alert('Write a comment');
+    const modelId = selectedModelForComment.id;
+    const doc = await db.collection('models').doc(modelId).get(); const m = doc.data();
+    const arr = m.comments || []; arr.unshift(text);
+    await db.collection('models').doc(modelId).update({ comments: arr });
+    closeModal('commentModal');
+  };
+
+  function boostLikes(id){ if(!isAdmin) return alert('Admin only'); const inc = parseInt(prompt('Boost by how many?', '100'))||0; db.collection('models').doc(id).update({ likes: firebase.firestore.FieldValue.increment(inc) }); }
+  function editModel(id){ if(!isAdmin) return; const newName = prompt('New name'); if(newName!=null) db.collection('models').doc(id).update({ name:newName }); }
+
+  // booking
+  function openBookingModalFor(modelId){
+    selectedModelForBooking = modelId;
+    db.collection('models').doc(modelId).get().then(snap=>{
+      const m = snap.data();
+      bookingOption.innerHTML = '';
+      if(m.bookingOptions && m.bookingOptions.length) m.bookingOptions.forEach(o=> bookingOption.appendChild(el('option',{value:o.value}, o.label)));
+      else if(m.bookingLink) bookingOption.appendChild(el('option',{value:m.bookingLink}, 'Standard'));
+      else bookingOption.appendChild(el('option',{value:''}, 'No booking'));
+      bookingEmail.value = '';
+      openModal('bookingModal');
     });
+  }
+  window.confirmBooking = async function(){
+    const link = bookingOption.value; const email = bookingEmail.value.trim(); if(!link) return alert('Choose option'); if(!email) return alert('Enter email');
+    await db.collection('bookings').add({ modelId:selectedModelForBooking, email, link, createdAt: firebase.firestore.FieldValue.serverTimestamp(), userId: currentUser.uid || null });
+    window.open(link.includes('?') ? `${link}&email=${encodeURIComponent(email)}` : `${link}?email=${encodeURIComponent(email)}`, '_blank');
+    closeModal('bookingModal');
+  };
 
-    // ====== Send user message ======
-    sendBtn.addEventListener('click', sendUserMessage);
-    textInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') sendUserMessage(); });
+  // Save model (admin)
+  saveModelBtn.addEventListener('click', async ()=>{
+    if(!isAdmin) return alert('Admin only');
+    const file = adminFile.files[0];
+    const name = adminName.value.trim() || 'Unnamed';
+    const verified = adminVerified.value === 'true';
+    const priv = adminPrivate.value === 'true';
+    const likes = parseInt(adminLikes.value||'0')||0;
+    const comments = adminComments.value ? adminComments.value.split(/\n/).map(s=>s.trim()).filter(Boolean) : [];
+    const bookingLink = adminBooking.value.trim();
 
-    async function sendUserMessage(){
-      const txt = textInput.value.trim();
-      if(!txt) return;
-      const doc = {
-        text: txt,
-        sender: 'user',
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        unlocked: true // no secret needed for plain user messages
-      };
-      try {
-        await db.collection('chats').add(doc);
-        textInput.value = '';
-      } catch (e) {
-        console.error(e);
-        alert("Failed to send message.");
-      }
-    }
-
-    // ====== Admin send (text or file) ======
-    adminSend.addEventListener('click', async () => {
-      const txt = adminText.value.trim();
-      const file = adminFile.files[0];
-      const secret = adminSecret.value.trim();
-
-      if(!txt && !file) { alert("Enter text or pick a file to send."); return; }
-      if(file && (!secret || secret.length !== 9)){ alert("For files provide a 9-digit secret."); return; }
-
+    let mediaURL=''; let mediaType='';
+    try{
       if(file){
-        // upload file
-        const path = `chat_files/${Date.now()}_${file.name.replace(/\s+/g,'_')}`;
+        const path = `models/${Date.now()}_${file.name.replace(/\s+/g,'_')}`;
         const ref = storage.ref().child(path);
-        const uploadTask = ref.put(file);
-        adminSend.disabled = true;
-        adminSend.textContent = "Uploading...";
-        try {
-          await uploadTask;
-          const url = await ref.getDownloadURL();
-          // store doc with file info and hashed secret
-          const secretHash = await sha256hex(secret);
-          await db.collection('chats').add({
-            text: txt || null,
-            sender: 'admin',
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            fileURL: url,
-            fileType: file.type,
-            filePath: path,
-            secretHash: secretHash,
-            unlocked: false
-          });
-          adminText.value = '';
-          adminFile.value = '';
-          adminSecret.value = '';
-        } catch(e){
-          console.error(e);
-          alert("Failed to upload/send file.");
-        } finally {
-          adminSend.disabled = false;
-          adminSend.textContent = "Send";
-        }
-      } else {
-        // text-only admin message
-        try {
-          await db.collection('chats').add({
-            text: txt,
-            sender: 'admin',
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            unlocked: true
-          });
-          adminText.value = '';
-        } catch(e){
-          console.error(e);
-          alert("Failed to send admin message.");
-        }
+        await ref.put(file);
+        mediaURL = await ref.getDownloadURL();
+        mediaType = file.type;
       }
-    });
-
-    // ====== Render messages real-time ======
-    const query = db.collection('chats').orderBy('timestamp', 'asc');
-    query.onSnapshot((snapshot) => {
-      messagesEl.innerHTML = '';
-      snapshot.forEach(doc => {
-        const data = { id: doc.id, ...doc.data() };
-        messagesEl.appendChild(renderMessage(data));
+      await db.collection('models').add({
+        name, verified, private:priv, likes, comments, bookingLink, mediaURL, mediaType, bookingOptions: bookingLink ? [{label:'Standard', value:bookingLink}] : [], createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+      showToast('Model saved');
+      adminFile.value=''; adminName.value=''; adminLikes.value=''; adminComments.value=''; adminBooking.value='';
+    }catch(e){ console.error(e); alert('Save failed: '+e.message); }
+  });
+
+  // Push post
+  pushPostBtn.addEventListener('click', async ()=>{
+    if(!isAdmin) return alert('Admin only');
+    const txt = adminPost.value.trim(); if(!txt) return alert('Write message');
+    await db.collection('posts').add({ text:txt, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    await db.collection('settings').doc('site').set({ latestPost: txt }, { merge:true });
+    adminPost.value=''; showToast('Post pushed');
+  });
+
+  // Create user (client -> instruct server)
+  createUserBtn.addEventListener('click', ()=> alert('Run admin-utils/create_user.js on your server (service account required) to securely create users & set admin claims.'));
+
+  // subscription modal helper
+  function openSubscribePopup(){ openModal('subscriptionModal'); }
+  window.redirectToSubscribe = ()=> { window.open(settings.subscriptionLink || '#','_blank'); };
+
+  // renewal check
+  async function checkUserExpiry(uid){
+    const snap = await db.collection('users').doc(uid).get();
+    if(!snap.exists) return;
+    const u = snap.data();
+    if(u.banned){ alert('Your account is banned'); }
+    else if(u.expiresAt && u.expiresAt.toDate && new Date() > u.expiresAt.toDate()){ openModal('renewalModal'); }
+  }
+
+  // admin chat simplified: list conversations & open chat
+  async function loadConversations(){
+    if(!isAdmin) return;
+    conversationsList.innerHTML = '';
+    const snap = await db.collection('conversations').orderBy('lastUpdated','desc').get();
+    snap.forEach(doc=>{
+      const c = doc.data();
+      const div = el('div',{}, el('div',{}, c.displayName || ('user-'+doc.id.slice(0,6))), el('div',{className:'small'}, c.lastMessage || ''));
+      div.style.padding='8px'; div.style.borderBottom='1px solid rgba(255,255,255,0.02)'; div.style.cursor='pointer';
+      div.addEventListener('click', ()=> openConversation(doc.id));
+      conversationsList.appendChild(div);
     });
-
-    // ====== Render single message ======
-    function renderMessage(m){
-      const wrapper = el('div',{class: 'msg ' + (m.sender === 'user' ? 'user' : 'admin')});
-      if(m.text) wrapper.appendChild(el('div',{}, m.text));
-      if(m.fileURL){
-        const fileType = m.fileType || '';
-        const preview = (fileType.startsWith('image/') ? el('img',{src:m.fileURL,class:'filePreview'}) : el('video',{controls:true, class:'filePreview'}));
-        if(fileType.startsWith('video/')){
-          preview.setAttribute('preload','metadata');
-          preview.innerHTML = ''; // for video tag element we will create element instead
-          const videoEl = document.createElement('video');
-          videoEl.setAttribute('playsinline','');
-          videoEl.setAttribute('preload','metadata');
-          videoEl.className = 'filePreview';
-          const source = document.createElement('source');
-          source.src = m.fileURL;
-          videoEl.appendChild(source);
-          // replace preview reference
-          preview = videoEl;
-        }
-
-        // if unlocked or admin user show normally
-        if(m.unlocked){
-          // unlocked content appears clickable to open fullscreen
-          const thumb = el('div',{}, preview);
-          thumb.style.position = 'relative';
-          thumb.style.cursor = 'zoom-in';
-          thumb.addEventListener('click', () => openModalWith(m.fileURL, m.fileType));
-          wrapper.appendChild(thumb);
-        } else {
-          // blurred view + overlay with "enter secret"
-          const container = el('div',{class:'unlockOverlay'});
-          // create blurred element clone for preview
-          let blurredEl;
-          if(m.fileType && m.fileType.startsWith('image/')){
-            blurredEl = el('img',{src:m.fileURL,class:'filePreview blur'});
-          } else {
-            blurredEl = document.createElement('video');
-            blurredEl.className = 'filePreview blur';
-            blurredEl.setAttribute('preload','metadata');
-            const s = document.createElement('source');
-            s.src = m.fileURL;
-            blurredEl.appendChild(s);
-          }
-          container.appendChild(blurredEl);
-
-          const btn = el('button',{class:'unlockBtn'}, 'Enter 9-digit code');
-          btn.addEventListener('click', async () => {
-            const code = prompt("Enter the 9-digit secret to unlock this media");
-            if(!code) return;
-            if(code.length !== 9){ alert("Secret must be 9 digits."); return; }
-            const hash = await sha256hex(code);
-            // fetch the message doc to compare hash (to ensure latest)
-            const doc = await db.collection('chats').doc(m.id).get();
-            if(!doc.exists){ alert("Message no longer exists."); return; }
-            const data = doc.data();
-            if(!data.secretHash){ alert("This file has no secret configured."); return; }
-            if(hash === data.secretHash){
-              // mark unlocked on DB
-              await db.collection('chats').doc(m.id).update({ unlocked: true });
-              // open modal with full file
-              openModalWith(m.fileURL, m.fileType);
-            } else {
-              alert("Wrong code.");
-            }
-          });
-
-          container.appendChild(btn);
-          wrapper.appendChild(container);
-        }
-      } // fileURL
-
-      const meta = el('div',{class:'meta'}, `${m.sender} • ${m.timestamp ? formatTime(m.timestamp) : ''}`);
-      if(m.fileURL && !m.unlocked) {
-        meta.appendChild(el('span',{style:'margin-left:8px;color:#aa0000'},' (locked)'));
-      }
-      wrapper.appendChild(meta);
-      return wrapper;
-    }
-
-    // ====== Modal for full-screen media ======
-    function openModalWith(url, type){
-      modalContent.innerHTML = '';
-      if(type && type.startsWith('image/')){
-        const img = document.createElement('img');
-        img.src = url;
-        modalContent.appendChild(img);
-      } else {
-        const videoEl = document.createElement('video');
-        videoEl.controls = true;
-        videoEl.autoplay = true;
-        videoEl.setAttribute('playsinline','');
-        videoEl.style.maxHeight = '90vh';
-        const source = document.createElement('source');
-        source.src = url;
-        videoEl.appendChild(source);
-        modalContent.appendChild(videoEl);
-      }
-      modal.classList.add('open');
-      modal.setAttribute('aria-hidden','false');
-    }
-    modal.addEventListener('click', (e) => {
-      if(e.target === modal) {
-        modal.classList.remove('open');
-        modal.setAttribute('aria-hidden','true');
-        modalContent.innerHTML = '';
-      }
+  }
+  async function openConversation(convId){
+    currentConversationId = convId; chatMessages.innerHTML=''; chatWindow.style.display='block'; document.getElementById('noChat').style.display='none';
+    if(chatUnsub) chatUnsub();
+    chatUnsub = db.collection('chats').where('conversationId','==',convId).orderBy('timestamp').onSnapshot(snapshot=>{
+      chatMessages.innerHTML=''; snapshot.forEach(d=>{
+        const m = d.data();
+        chatMessages.appendChild(el('div',{}, el('div',{className:'small'}, m.sender||''), el('div',{}, m.text || '')));
+      }); chatMessages.scrollTop = chatMessages.scrollHeight;
     });
+  }
+  window.sendAdminChat = async function(){ if(!currentConversationId) return alert('Select conversation'); const t = adminChatInput.value.trim(); if(!t) return; await db.collection('chats').add({ conversationId: currentConversationId, text: t, sender: 'admin', timestamp: firebase.firestore.FieldValue.serverTimestamp() }); adminChatInput.value=''; };
 
-    // ====== small UX: press Enter to admin send too ======
-    adminText.addEventListener('keydown', (e) => { if(e.key === 'Enter') adminSend.click(); });
+  // Load settings
+  await loadSettings();
 
-    // ====== initial focus ======
-    textInput.focus();
+  // Hook login buttons
+  openAdminLogin.addEventListener('click', ()=> openModal('adminLoginModal'));
+  openUserLogin.addEventListener('click', ()=> openModal('userLoginModal'));
 
-    // ====== done ======
-  })();
-  </script>
+  // small UI utilities exposed globally
+  window.closeModal = closeModal;
+
+  console.log('Single-file app initialized');
+})();
+</script>
+
 </body>
 </html>
