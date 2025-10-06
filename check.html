@@ -1,872 +1,254 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Camsilo — Models & Chat (WhatsApp-style)</title>
-
-<!-- icons + fonts -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kheemz Chat</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <style>
-:root{
-  --bg-1:#071024; --bg-2:#071a2a; --panel:#0b1220;
-  --accent:#25D366; --accent2:#ff6f2d; --muted:#9aa2b2;
-  --glass: rgba(255,255,255,0.02);
+body{
+  font-family:'Inter',sans-serif;
+  margin:0;
+  background:linear-gradient(180deg,#131c2b,#090f18);
+  color:#fff;
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  overflow:hidden;
 }
-*{box-sizing:border-box}
-body{font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,var(--bg-1),var(--bg-2));color:#e6eef6;margin:0;height:100vh;overflow:hidden}
-header{position:fixed;top:0;left:0;right:0;padding:12px 16px;background:rgba(6,10,18,0.75);backdrop-filter:blur(6px);border-bottom:1px solid rgba(255,255,255,0.03);z-index:50}
-.header-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
-.brand{display:flex;align-items:center;gap:12px}
-.logo{width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,#ff6f2d,#ff4b98);display:flex;align-items:center;justify-content:center;font-weight:800}
-.controls{display:flex;gap:8px;align-items:center}
-.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px;border-radius:8px;color:inherit;cursor:pointer}
-
-.app{max-width:1200px;margin:80px auto 12px;display:grid;grid-template-columns:320px 1fr 360px;gap:12px;padding:12px;height:calc(100vh - 120px)}
-@media(max-width:1100px){ .app{grid-template-columns:260px 1fr; } .right-panel{display:none} }
-@media(max-width:720px){ .app{grid-template-columns:1fr; } .sidebar {order:2} .content {order:1} .right-panel {display:none} header .controls{display:flex;gap:6px} }
-
-/* ---------- Sidebar (WhatsApp-style) ---------- */
-.sidebar{background:linear-gradient(180deg,#071427,#061025);border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.02);display:flex;flex-direction:column;gap:10px;overflow:auto}
-.search{display:flex;gap:8px;align-items:center}
-.search input{flex:1;padding:8px;border-radius:10px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:inherit}
-.conversations{margin-top:6px;display:flex;flex-direction:column;gap:8px}
-.conv-item{display:flex;gap:10px;align-items:center;padding:8px;border-radius:10px;cursor:pointer}
-.conv-item:hover{background:rgba(255,255,255,0.02)}
-.conv-avatar{width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,#ff6f2d,#ff4b98);display:flex;align-items:center;justify-content:center;font-weight:700}
-.conv-meta{flex:1;display:flex;flex-direction:column}
-.conv-name{font-weight:700}
-.conv-last{font-size:12px;color:var(--muted)}
-
-/* ---------- Main content: gallery + chat pane ---------- */
-.content{display:flex;flex-direction:column;gap:12px;overflow:hidden}
-.topbar{display:flex;justify-content:space-between;align-items:center}
-.models-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;overflow:auto;padding-bottom:8px}
-.model-card{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.03);box-shadow:0 8px 26px rgba(2,6,23,0.6);display:flex;flex-direction:column}
-.model-media{height:300px;background:#0c1220;overflow:hidden;position:relative}
-.model-media img,.model-media video{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s}
-.model-card:hover .model-media img{transform:scale(1.04)}
-.model-body{padding:12px;display:flex;flex-direction:column;gap:8px}
-.name-row{display:flex;align-items:center;justify-content:space-between}
-.model-name{font-weight:700;display:flex;gap:8px;align-items:center}
-.verified{color:#1da1f2;font-size:14px}
-.stats-row{display:flex;align-items:center;gap:8px;justify-content:space-between}
-.actions{display:flex;gap:8px;align-items:center}
-
-/* ---------- Chat pane (center-right overlay inside content) ---------- */
-.chat-pane{background:linear-gradient(180deg,#071a24,#061029);border-radius:12px;padding:10px;border:1px solid rgba(255,255,255,0.02);display:flex;flex-direction:column;gap:8px;height:100%}
-.chat-messages{flex:1;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:10px}
-.msg{max-width:70%;padding:10px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.4)}
-.msg.user{background:linear-gradient(180deg,#fffbe6,#fff4d6);align-self:flex-end;color:#021}
-.msg.admin{background:linear-gradient(180deg,#eaf7ff,#dff3ff);align-self:flex-start;color:#021}
-.chat-compose{display:flex;gap:8px;align-items:center}
-.chat-compose input{flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
-
-/* ---------- Right admin slide panel (WhatsApp-like drawer) ---------- */
-.right-panel{display:flex;flex-direction:column;gap:12px}
-.admin-panel{background:linear-gradient(180deg,#071427,#061025);padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.02);height:100%;overflow:auto}
-.admin-panel h3{background:linear-gradient(45deg,#ff6f2d,#ff4b98);-webkit-background-clip:text;color:transparent;margin:6px 0}
-
-/* ---------- Modals ---------- */
-.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.72);z-index:200}
-.modal.open{display:flex}
-.modal .box{background:#07101a;padding:16px;border-radius:10px;max-width:740px;width:94%;color:#e6eef6}
-.sexy{border:2px solid var(--accent);box-shadow:0 18px 40px rgba(37,211,102,0.12)}
-
-/* small util */
-.small{font-size:13px;color:var(--muted)}
-.kbd{background:#0b1220;padding:6px 8px;border-radius:6px}
-.btn{background:linear-gradient(45deg,#ff6f2d,#ff4b98);border:none;color:white;padding:8px 12px;border-radius:8px;cursor:pointer}
-.btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06)}
+#chatApp{
+  position:fixed;
+  bottom:20px;
+  right:20px;
+  width:400px;
+  max-width:95%;
+  height:550px;
+  border-radius:16px;
+  display:none;
+  flex-direction:column;
+  background:rgba(0,0,0,0.6);
+  backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,0.1);
+  overflow:hidden;
+}
+header{
+  background:rgba(255,255,255,0.05);
+  padding:10px;
+  text-align:center;
+  font-weight:600;
+  border-bottom:1px solid rgba(255,255,255,0.1);
+}
+#chat-box{
+  flex:1;
+  overflow-y:auto;
+  padding:12px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.msg{
+  max-width:75%;
+  padding:10px 14px;
+  border-radius:14px;
+  word-wrap:break-word;
+  animation:fadeIn .3s;
+}
+.msg.self{align-self:flex-end;background:linear-gradient(45deg,#ff6f2d,#ff4b98);}
+.msg.other{align-self:flex-start;background:rgba(255,255,255,0.08);}
+.msg img,.msg video{max-width:100%;border-radius:10px;margin-top:6px;}
+small{display:block;font-size:11px;opacity:0.6;margin-top:3px;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+#input-area{display:flex;gap:8px;padding:10px;background:rgba(255,255,255,0.06);border-top:1px solid rgba(255,255,255,0.1);}
+#msg-input{flex:1;border:none;border-radius:10px;padding:10px;background:rgba(255,255,255,0.1);color:#fff;}
+#msg-input:focus{outline:none;}
+button,label{border:none;background:linear-gradient(45deg,#ff6f2d,#ff4b98);color:white;border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:600;}
+#file-input{display:none;}
+#chatIcon{
+  position:fixed;
+  bottom:25px;
+  right:25px;
+  width:60px;
+  height:60px;
+  border-radius:50%;
+  background:linear-gradient(45deg,#ff6f2d,#ff4b98);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  font-size:26px;
+  cursor:pointer;
+  box-shadow:0 4px 20px rgba(0,0,0,0.4);
+  z-index:100;
+}
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.8);
+  display:none;
+  justify-content:center;
+  align-items:center;
+  z-index:200;
+}
+.modal-content{
+  background:#0e1624;
+  padding:20px;
+  border-radius:12px;
+  width:90%;
+  max-width:360px;
+  color:#fff;
+}
+.modal input{
+  width:100%;
+  padding:10px;
+  margin:6px 0;
+  border:none;
+  border-radius:8px;
+  background:rgba(255,255,255,0.1);
+  color:#fff;
+}
 </style>
 </head>
 <body>
 
-<header>
-  <div class="header-inner">
-    <div class="brand">
-      <div class="logo">MG</div>
-      <div>
-        <div style="font-weight:800">Camsilo</div>
-        <div class="small">Models • Booking • Private shows</div>
-      </div>
-    </div>
+<!-- floating chat icon -->
+<div id="chatIcon">💬</div>
 
-    <div class="controls">
-      <div id="authInfo" class="small">Signing in…</div>
-      <button id="btnOpenUserLogin" class="ghost">Login</button>
-      <button id="btnOpenAdminLogin" class="ghost">Admin</button>
-      <button id="btnSignOut" class="ghost" style="display:none">Sign out</button>
-    </div>
-  </div>
-</header>
-
-<div class="app">
-  <!-- Sidebar: conversations & quick nav -->
-  <aside class="sidebar" id="sidebar">
-    <div class="search">
-      <input id="searchInput" placeholder="Search models or chats..." />
-      <button id="openChatMgmt" class="ghost" title="Chat management"><i class="fas fa-comments"></i></button>
-    </div>
-
-    <div style="margin-top:8px" class="small">Recent conversations</div>
-    <div class="conversations" id="conversationsList">
-      <!-- populated dynamically -->
-    </div>
-
-    <hr style="border-color:rgba(255,255,255,0.03)">
-
-    <div style="display:flex;gap:8px;align-items:center;justify-content:space-between">
-      <div class="small">Members</div>
-      <div id="latestPostBadge" class="small top-badge" style="display:none"></div>
-    </div>
-
-    <div style="margin-top:8px">
-      <button id="btnCreateUser" class="ghost" style="width:100%">Create user (server)</button>
-    </div>
-  </aside>
-
-  <!-- Content: gallery + chat pane -->
-  <section class="content">
-    <div class="topbar">
-      <div>
-        <h2 style="margin:0">Featured</h2>
-        <div class="small">Public models are visible before login</div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input id="filterInput" placeholder="Filter..." class="kbd" />
-        <button id="btnShowPublicPosts" class="ghost">Posts</button>
-      </div>
-    </div>
-
-    <div style="display:flex;gap:12px;align-items:stretch;height:100%">
-      <div style="flex:1;display:flex;flex-direction:column;gap:12px;overflow:hidden">
-        <div class="models-grid" id="modelsGrid"></div>
-        <section id="privateSection" style="display:none">
-          <h3 style="margin-top:12px">Private content</h3>
-          <div class="models-grid" id="privateGrid"></div>
-        </section>
-      </div>
-
-      <!-- Chat pane -->
-      <div style="width:360px;min-width:300px">
-        <div class="chat-pane">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div style="font-weight:700">Chat</div>
-            <div class="small">Live support</div>
-          </div>
-
-          <div class="chat-messages" id="chatMessages" aria-live="polite">
-            <!-- real-time messages -->
-          </div>
-
-          <div style="display:flex;gap:8px;align-items:center">
-            <input id="chatInput" placeholder="Type a message..." />
-            <button id="chatSend" class="btn">Send</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Right admin sliding panel -->
-  <aside class="right-panel">
-    <div class="admin-panel" id="adminPanel" style="display:none">
-      <h3>Admin • Controls</h3>
-
-      <label class="small">Upload model photo/video</label>
-      <input id="adminFile" type="file" accept="image/*,video/*" />
-
-      <label class="small">Model name</label>
-      <input id="adminName" placeholder="Model name" />
-
-      <div class="form-row">
-        <div>
-          <label class="small">Verified</label>
-          <select id="adminVerified"><option value="true">Yes</option><option value="false" selected>No</option></select>
-        </div>
-        <div>
-          <label class="small">Private</label>
-          <select id="adminPrivate"><option value="false">No</option><option value="true">Yes</option></select>
-        </div>
-      </div>
-
-      <label class="small">Likes (simulated)</label>
-      <input id="adminLikes" placeholder="e.g. 1200" />
-
-      <label class="small">Comments (one per line)</label>
-      <textarea id="adminComments" placeholder="Nice 😍"></textarea>
-
-      <label class="small">Booking link (add & press Save)</label>
-      <input id="adminBooking" placeholder="https://zoom.us/..." />
-
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button id="saveModelBtn" class="btn" style="flex:1">Save Model</button>
-        <button id="clearModelBtn" class="ghost" style="flex:1">Clear</button>
-      </div>
-
-      <hr style="border-color:rgba(255,255,255,0.03)" />
-
-      <label class="small">Push post to users</label>
-      <textarea id="adminPost" placeholder="Message to all users" style="width:100%"></textarea>
-      <button id="pushPostBtn" class="btn" style="width:100%;margin-top:8px">Push Post</button>
-
-      <hr style="border-color:rgba(255,255,255,0.03)" />
-
-      <label class="small">Manage user (server)</label>
-      <div style="display:flex;gap:8px">
-        <input id="newUserEmail" placeholder="user@example.com" />
-        <input id="newUserPassword" placeholder="initial password" />
-      </div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button id="createUserBtn" class="ghost" style="flex:1">Create user (server)</button>
-        <button id="banUserBtn" class="ghost" style="flex:1">Ban user</button>
-      </div>
-
-      <hr style="border-color:rgba(255,255,255,0.03)" />
-
-      <div style="display:flex;gap:8px;align-items:center">
-        <div class="small">Site renewal image</div>
-        <input id="renewImage" placeholder="renew image url" />
-      </div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <input id="renewLink" placeholder="renew link" />
-        <button id="saveRenewBtn" class="ghost">Save</button>
-      </div>
-
-      <div style="height:16px"></div>
-      <div class="small">Admin operations that require server-side Admin SDK: creating Auth users, setting admin claims, banning/renewing (create_user.js). Use service account.</div>
-    </div>
-  </aside>
-</div>
-
-<!-- Modals -->
-<div id="subscriptionModal" class="modal sexy">
-  <div class="box">
-    <div style="display:flex;gap:12px;align-items:center">
-      <img src="https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=500&q=80" style="width:120px;height:120px;border-radius:10px;object-fit:cover;border:3px solid var(--accent)" />
-      <div>
-        <h2 style="color:var(--accent)">Subscribe to interact</h2>
-        <p class="small">Subscribe to like, comment and access private shows. Click subscribe to open the subscription link.</p>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button class="ghost" onclick="closeModal('subscriptionModal')">Maybe Later</button>
-          <button class="btn" onclick="redirectToSubscribe()">Subscribe</button>
-        </div>
-      </div>
-    </div>
+<!-- chat window -->
+<div id="chatApp">
+  <header>🔥 Kheemz Chat</header>
+  <div id="chat-box"></div>
+  <div id="input-area">
+    <label for="file-input"><i>📎</i></label>
+    <input type="file" id="file-input" accept="image/*,video/*">
+    <input type="text" id="msg-input" placeholder="Type a message...">
+    <button id="send-btn">Send</button>
   </div>
 </div>
 
-<div id="renewalModal" class="modal sexy">
-  <div class="box" id="renewalBox">
-    <div style="text-align:center">
-      <img id="renewalImg" src="" style="width:160px;height:160px;border-radius:12px;object-fit:cover;border:3px solid var(--accent)" />
-      <h2 style="color:var(--accent)">Your subscription expired</h2>
-      <p class="small">Renew to continue accessing private content.</p>
-      <div style="display:flex;gap:8px;justify-content:center;margin-top:10px">
-        <button class="ghost" onclick="closeModal('renewalModal')">Not now</button>
-        <button class="btn" onclick="redirectToRenew()">Renew</button>
-      </div>
-    </div>
+<!-- login popup -->
+<div class="modal" id="loginModal">
+  <div class="modal-content">
+    <h3>Login to Chat</h3>
+    <input type="email" id="loginEmail" placeholder="Email">
+    <input type="password" id="loginPass" placeholder="Password">
+    <button id="loginBtn">Login</button>
+    <p style="text-align:center;font-size:13px;opacity:0.7;margin-top:8px">or use <b>anonymous</b> chat</p>
+    <button id="anonBtn" class="ghost" style="background:rgba(255,255,255,0.15)">Continue as Guest</button>
   </div>
 </div>
 
-<div id="bookingModal" class="modal">
-  <div class="box">
-    <h3>Book video call</h3>
-    <label class="small">Choose option</label>
-    <select id="bookingOption"></select>
-    <label class="small">Your email</label>
-    <input id="bookingEmail" type="email"/>
-    <div style="display:flex;gap:8px;margin-top:10px">
-      <button class="ghost" onclick="closeModal('bookingModal')">Cancel</button>
-      <button class="btn" onclick="confirmBooking()">Proceed</button>
-    </div>
-  </div>
-</div>
-
-<div id="commentModal" class="modal">
-  <div class="box">
-    <h3>Add comment</h3>
-    <textarea id="commentText" rows="4" style="width:100%"></textarea>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="ghost" onclick="closeModal('commentModal')">Cancel</button>
-      <button class="btn" onclick="submitComment()">Post</button>
-    </div>
-  </div>
-</div>
-
-<div id="adminLoginModal" class="modal">
-  <div class="box">
-    <h3>Admin login</h3>
-    <label class="small">Email</label>
-    <input id="adminEmail" type="email"/><br>
-    <label class="small">Password</label>
-    <input id="adminPassword" type="password"/><br>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="ghost" onclick="closeModal('adminLoginModal')">Cancel</button>
-      <button class="btn" onclick="adminLogin()">Login</button>
-    </div>
-  </div>
-</div>
-
-<div id="userLoginModal" class="modal">
-  <div class="box">
-    <h3>User login</h3>
-    <label class="small">Email</label>
-    <input id="userEmail" type="email"/><br>
-    <label class="small">Password</label>
-    <input id="userPass" type="password"/><br>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="ghost" onclick="closeModal('userLoginModal')">Cancel</button>
-      <button class="btn" onclick="userLogin()">Login</button>
-    </div>
-  </div>
-</div>
-
-<div id="publicPostsModal" class="modal">
-  <div class="box">
-    <h3>Public posts</h3>
-    <div id="publicPostsContainer"></div>
-    <div style="display:flex;justify-content:flex-end;margin-top:10px">
-      <button class="ghost" onclick="closeModal('publicPostsModal')">Close</button>
-    </div>
-  </div>
-</div>
-
-<div id="chatMgmtModal" class="modal">
-  <div class="box">
-    <h3>Chat management</h3>
-    <div style="display:flex;gap:12px">
-      <div style="flex:1;max-height:320px;overflow:auto" id="chatConversations"></div>
-      <div style="flex:2">
-        <div id="chatWindowArea">
-          <div id="chatWindow" style="height:240px;overflow:auto;border:1px solid rgba(255,255,255,0.03);padding:8px"></div>
-          <input id="adminChatInput" placeholder="Type message..." />
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <button class="ghost" onclick="closeModal('chatMgmtModal')">Close</button>
-            <button class="btn" onclick="sendAdminChat()">Send</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Firebase libs -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
-
-<!-- external config -->
 <script src="configuration.js"></script>
 
 <script>
-/* ========== SINGLE-FILE APP LOGIC ========== 
-   - Expects configuration.js to define window.FIREBASE_CONFIG
-   - Collections used: models, users, settings, posts, chats, conversations, bookings
-   - Admin must be given custom claim admin:true via server-side Admin SDK.
-*/
-(async function(){
-  // ---------- sanity check for configuration.js ----------
-  if(!window.FIREBASE_CONFIG){
-    document.body.innerHTML = '<div style="padding:20px;font-family:Inter">Missing configuration.js — create it and export window.FIREBASE_CONFIG. See instructions.</div>';
-    return;
-  }
+if(!window.FIREBASE_CONFIG){
+  alert("Missing configuration.js file");
+}else{
+firebase.initializeApp(window.FIREBASE_CONFIG);
+const auth=firebase.auth(),db=firebase.firestore(),storage=firebase.storage();
 
-  // initialize firebase
-  firebase.initializeApp(window.FIREBASE_CONFIG);
-  const auth = firebase.auth();
-  const db = firebase.firestore();
-  const storage = firebase.storage();
+const chatIcon=document.getElementById('chatIcon');
+const chatApp=document.getElementById('chatApp');
+const loginModal=document.getElementById('loginModal');
+const loginBtn=document.getElementById('loginBtn');
+const anonBtn=document.getElementById('anonBtn');
+const emailInput=document.getElementById('loginEmail');
+const passInput=document.getElementById('loginPass');
+const chatBox=document.getElementById('chat-box');
+const msgInput=document.getElementById('msg-input');
+const sendBtn=document.getElementById('send-btn');
+const fileInput=document.getElementById('file-input');
 
-  // ---------- DOM refs ----------
-  const authInfo = document.getElementById('authInfo');
-  const btnOpenAdminLogin = document.getElementById('btnOpenAdminLogin');
-  const btnOpenUserLogin = document.getElementById('btnOpenUserLogin');
-  const btnSignOut = document.getElementById('btnSignOut');
-  const btnCreateUser = document.getElementById('btnCreateUser');
+let currentUser=null;
+let role='guest';
 
-  const modelsGrid = document.getElementById('modelsGrid');
-  const privateGrid = document.getElementById('privateGrid');
-  const privateSection = document.getElementById('privateSection');
-  const latestPostBadge = document.getElementById('latestPostBadge');
+chatIcon.onclick=()=>{ loginModal.style.display='flex'; };
 
-  const adminPanel = document.getElementById('adminPanel');
-  const adminFile = document.getElementById('adminFile');
-  const adminName = document.getElementById('adminName');
-  const adminVerified = document.getElementById('adminVerified');
-  const adminPrivate = document.getElementById('adminPrivate');
-  const adminLikes = document.getElementById('adminLikes');
-  const adminComments = document.getElementById('adminComments');
-  const adminBooking = document.getElementById('adminBooking');
-  const saveModelBtn = document.getElementById('saveModelBtn');
-  const clearModelBtn = document.getElementById('clearModelBtn');
-  const pushPostBtn = document.getElementById('pushPostBtn');
-  const adminPost = document.getElementById('adminPost');
-  const createUserBtn = document.getElementById('createUserBtn');
-  const newUserEmail = document.getElementById('newUserEmail');
-  const newUserPassword = document.getElementById('newUserPassword');
-  const banUserBtn = document.getElementById('banUserBtn');
-  const renewImageInput = document.getElementById('renewImage');
-  const renewLinkInput = document.getElementById('renewLink');
-  const saveRenewBtn = document.getElementById('saveRenewBtn');
+loginBtn.onclick=async()=>{
+  try{
+    const cred=await auth.signInWithEmailAndPassword(emailInput.value,passInput.value);
+    currentUser=cred.user;
+    await checkRole();
+    startChat();
+  }catch(e){alert(e.message);}
+};
 
-  const chatMessagesEl = document.getElementById('chatMessages');
-  const chatInput = document.getElementById('chatInput');
-  const chatSend = document.getElementById('chatSend');
+anonBtn.onclick=async()=>{
+  const cred=await auth.signInAnonymously();
+  currentUser=cred.user;
+  role='guest';
+  startChat();
+};
 
-  const bookingModal = document.getElementById('bookingModal');
-  const bookingOption = document.getElementById('bookingOption');
-  const bookingEmail = document.getElementById('bookingEmail');
+async function checkRole(){
+  const doc=await db.collection('users').doc(currentUser.uid).get();
+  role=doc.exists?doc.data().role||'user':'user';
+}
 
-  const commentModal = document.getElementById('commentModal');
-  const commentText = document.getElementById('commentText');
+function startChat(){
+  loginModal.style.display='none';
+  chatApp.style.display='flex';
+  chatIcon.style.display='none';
+  listenMessages();
+}
 
-  const subscriptionModal = document.getElementById('subscriptionModal');
-  const renewalModal = document.getElementById('renewalModal');
-
-  const adminLoginModal = document.getElementById('adminLoginModal');
-  const adminEmail = document.getElementById('adminEmail');
-  const adminPassword = document.getElementById('adminPassword');
-
-  const userLoginModal = document.getElementById('userLoginModal');
-  const userEmail = document.getElementById('userEmail');
-  const userPass = document.getElementById('userPass');
-
-  const publicPostsModal = document.getElementById('publicPostsModal');
-  const publicPostsContainer = document.getElementById('publicPostsContainer');
-  const btnShowPublicPosts = document.getElementById('btnShowPublicPosts');
-
-  const conversationsList = document.getElementById('conversationsList');
-  const chatMgmtModal = document.getElementById('chatMgmtModal');
-  const chatConversations = document.getElementById('chatConversations');
-  const chatWindow = document.getElementById('chatWindow');
-  const adminChatInput = document.getElementById('adminChatInput');
-
-  const btnOpenChatMgmt = document.getElementById('openChatMgmt');
-
-  // ---------- state ----------
-  let currentUser = null;
-  let isAdmin = false;
-  let modelsUnsub = null;
-  let settings = {};
-  let selectedModelForComment = null;
-  let selectedModelForBooking = null;
-  let selectedConversationId = null;
-  let chatUnsub = null;
-
-  // ---------- helpers ----------
-  function el(tag, props={}, ...kids){ const e = document.createElement(tag); Object.keys(props).forEach(k=>{ if(k in e) e[k] = props[k]; else e.setAttribute(k, props[k]); }); kids.forEach(k=>{ if(k==null) return; if(k instanceof Node) e.appendChild(k); else e.appendChild(document.createTextNode(k)) }); return e; }
-  function openModal(id){ const m = document.getElementById(id); if(!m) return; m.classList.add('open'); m.style.display = 'flex'; }
-  function closeModal(id){ const m = document.getElementById(id); if(!m) return; m.classList.remove('open'); m.style.display = 'none'; }
-  function showToast(txt){ try{ if(window.toastr) toastr.info(txt); else window.alert(txt); }catch(e){ console.log(txt); } }
-  function fmt(ts){ if(!ts) return ''; try { return ts.toDate ? ts.toDate().toLocaleString() : new Date(ts).toLocaleString(); } catch(e){ return String(ts); } }
-  function sha256hex(msg){ return crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg)).then(buf=>Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('')); }
-
-  // redirect helpers
-  window.redirectToSubscribe = ()=> window.open(settings.subscriptionLink || '#','_blank');
-  window.redirectToRenew = ()=> window.open(settings.renewalLink || '#','_blank');
-
-  // ---------- init: load settings ----------
-  async function loadSettings(){
-    try{
-      const snap = await db.collection('settings').doc('site').get();
-      if(snap.exists) settings = snap.data();
-      else { settings = { subscriptionLink:'#', renewalLink:'#', renewalImage:'', latestPost:'' }; await db.collection('settings').doc('site').set(settings); }
-      if(settings.latestPost){ latestPostBadge.style.display = 'flex'; latestPostBadge.textContent = settings.latestPost; setTimeout(()=> latestPostBadge.style.display='none', 7000); }
-      if(settings.renewalImage) document.getElementById('renewalImg').src = settings.renewalImage;
-    }catch(e){ console.error('loadSettings', e); }
-  }
-
-  // ---------- Auth state ----------
-  auth.onAuthStateChanged(async (u)=>{
-    if(!u){ try{ await auth.signInAnonymously(); return; } catch(e){ console.error(e); return; } }
-    currentUser = u;
-    try{
-      const token = await u.getIdTokenResult(true);
-      isAdmin = !!(token && token.claims && token.claims.admin);
-    }catch(e){ console.error('token error', e); }
-    updateUIForAuth();
-    if(!isAdmin){
-      // ensure user document exists
-      const userDocRef = db.collection('users').doc(u.uid);
-      const ud = await userDocRef.get();
-      if(!ud.exists){
-        const expires = firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 30*24*3600*1000));
-        await userDocRef.set({ createdAt: firebase.firestore.FieldValue.serverTimestamp(), expiresAt: expires, banned:false, subscribed:false });
-      } else {
-        const data = ud.data();
-        if(data.banned){ openModal('renewalModal'); showToast('Your account is banned'); }
-        else if(data.expiresAt && data.expiresAt.toDate && new Date() > data.expiresAt.toDate()){ openModal('renewalModal'); }
-      }
-    }
-    // listeners
-    listenModels();
-    loadSettings();
-    loadConversationsPreview();
+function listenMessages(){
+  db.collection('messages').orderBy('timestamp','asc').onSnapshot(snap=>{
+    chatBox.innerHTML='';
+    snap.forEach(d=>renderMsg(d.data(),d.id));
+    chatBox.scrollTop=chatBox.scrollHeight;
   });
+}
 
-  function updateUIForAuth(){
-    if(isAdmin){
-      authInfo.textContent = `Admin: ${currentUser.email || currentUser.uid.slice(0,6)}`;
-      adminPanel.style.display = 'block';
-      btnOpenAdminLogin.style.display = 'none';
-      btnOpenUserLogin.style.display = 'none';
-      btnSignOut.style.display = 'inline-block';
-    } else {
-      authInfo.textContent = currentUser.isAnonymous ? `Guest: anon-${currentUser.uid.slice(0,6)}` : `User: ${currentUser.email||currentUser.uid}`;
-      adminPanel.style.display = 'none';
-      btnOpenAdminLogin.style.display = 'inline-block';
-      btnOpenUserLogin.style.display = 'inline-block';
-      btnSignOut.style.display = currentUser.isAnonymous ? 'none' : 'inline-block';
-    }
+function renderMsg(m,id){
+  const div=document.createElement('div');
+  div.className='msg '+(m.uid===currentUser?.uid?'self':'other');
+  div.innerHTML=`<strong>${m.sender||'User'}</strong><br>${m.text||''}`;
+  if(m.mediaUrl){
+    if(m.mediaType.startsWith('video/')) div.innerHTML+=`<video src="${m.mediaUrl}" controls></video>`;
+    else div.innerHTML+=`<img src="${m.mediaUrl}">`;
   }
-
-  // ---------- listen models & render ----------
-  function listenModels(){
-    if(modelsUnsub) modelsUnsub();
-    modelsUnsub = db.collection('models').orderBy('createdAt','desc').onSnapshot(snapshot=>{
-      modelsGrid.innerHTML = '';
-      privateGrid.innerHTML = '';
-      snapshot.forEach(doc=>{
-        const m = { id: doc.id, ...doc.data() };
-        renderModel(m);
-      });
-      privateSection.style.display = privateGrid.children.length ? 'block' : 'none';
-    });
+  if(role==='admin'){ // admin delete power
+    const del=document.createElement('button');
+    del.textContent='🗑️';
+    del.style='background:transparent;border:none;color:white;cursor:pointer;margin-left:8px;';
+    del.onclick=()=>db.collection('messages').doc(id).delete();
+    div.appendChild(del);
   }
+  div.innerHTML+=`<small>${new Date(m.timestamp?.toDate?.()||Date.now()).toLocaleTimeString()}</small>`;
+  chatBox.appendChild(div);
+}
 
-  function renderModel(m){
-    const card = el('article', { className:'model-card' });
-    const mediaWrap = el('div', { className:'model-media' });
-    if(m.mediaURL){
-      if(m.mediaType && m.mediaType.startsWith('video/')){
-        const v = el('video', { src:m.mediaURL, controls:true });
-        mediaWrap.appendChild(v);
-      } else {
-        const img = el('img', { src:m.mediaURL, alt:m.name });
-        mediaWrap.appendChild(img);
-      }
-    } else {
-      const img = el('img', { src:'https://images.unsplash.com/photo-1511285605577-4d62fb50d2f7?auto=format&fit=crop&w=800&q=80', alt:'placeholder' });
-      mediaWrap.appendChild(img);
-    }
-    mediaWrap.appendChild(el('div', { className:'badge' }, m.private ? 'Premium' : 'Public'));
-
-    const body = el('div', { className:'model-body' });
-    const nameRow = el('div', { className:'name-row' }, el('div', { className:'model-name' }, m.name || 'Unnamed', m.verified ? el('span', { className:'verified' }, el('i', { className:'fas fa-check-circle' })) : null ), null);
-
-    const commentsCount = (m.comments || []).length;
-    const actions = el('div', { className:'actions' });
-    const likeBtn = el('button', { className:'like-btn' }, el('i',{className:'fas fa-heart'}));
-    likeBtn.addEventListener('click', ()=> onLikeClicked(m));
-    const likeCount = el('span', { className:'small' }, m.likes||0);
-    const commentBtn = el('button', { className:'comment-btn' }, el('i',{className:'fas fa-comment'}));
-    commentBtn.addEventListener('click', ()=> onCommentClicked(m));
-    const commentCount = el('span', { className:'small' }, commentsCount);
-
-    actions.appendChild(likeBtn); actions.appendChild(likeCount); actions.appendChild(commentBtn); actions.appendChild(commentCount);
-
-    const bookingControls = el('div', {});
-    const select = el('select', { className:'booking-select' });
-    select.appendChild(el('option', { value:'' }, 'Choose'));
-    if(m.bookingOptions && m.bookingOptions.length){
-      m.bookingOptions.forEach(o=> select.appendChild(el('option',{value:o.value}, o.label)));
-    } else if(m.bookingLink){
-      select.appendChild(el('option',{value:m.bookingLink}, 'Standard'));
-    }
-    const bookBtn = el('button', { className:'book-btn' }, 'Book');
-    bookBtn.addEventListener('click', ()=> openBooking(m.id, select));
-
-    bookingControls.appendChild(select); bookingControls.appendChild(bookBtn);
-
-    const stats = el('div', { className:'stats-row' }, actions, bookingControls);
-
-    body.appendChild(nameRow);
-    if(m.embedVideo) body.appendChild(el('div', {}, el('iframe',{ src:m.embedVideo, width:'100%', height:180, frameborder:0, allowfullscreen:true })));
-    body.appendChild(stats);
-
-    if(m.comments && m.comments.length){
-      const list = el('div', { className:'comment-list' });
-      m.comments.slice(0,3).forEach(c=> list.appendChild(el('div', {}, c)));
-      body.appendChild(list);
-    }
-
-    if(isAdmin){
-      const adminOps = el('div', { style:'display:flex;gap:8px;margin-top:8px' },
-        el('button', { className:'ghost', onclick: ()=> boostLikes(m.id) }, 'Boost'),
-        el('button', { className:'ghost', onclick: ()=> editModel(m.id) }, 'Edit')
-      );
-      body.appendChild(adminOps);
-    }
-
-    card.appendChild(mediaWrap); card.appendChild(body);
-    if(m.private) privateGrid.appendChild(card); else modelsGrid.appendChild(card);
-
-    // media click => view or require subscription
-    mediaWrap.addEventListener('click', async ()=>{
-      if(m.private && (!currentUser || currentUser.isAnonymous)){
-        openModal('subscriptionModal'); return;
-      }
-      if(m.mediaType && m.mediaType.startsWith('video/')){
-        showLargeVideo(m.mediaURL);
-      } else {
-        showLargeImage(m.mediaURL);
-      }
-    });
+async function sendMessage(text,file){
+  let mediaUrl='',mediaType='';
+  if(file){
+    const ref=storage.ref('chat/'+Date.now()+'_'+file.name);
+    await ref.put(file);
+    mediaUrl=await ref.getDownloadURL();
+    mediaType=file.type;
   }
-
-  function showLargeImage(url){
-    const outer = el('div',{className:'box'});
-    outer.appendChild(el('img',{src:url, style:'width:100%;height:auto;border-radius:8px'}));
-    const modal = el('div',{className:'modal open'}); modal.appendChild(outer);
-    modal.addEventListener('click', (e)=>{ if(e.target===modal) modal.remove(); });
-    document.body.appendChild(modal);
-  }
-  function showLargeVideo(url){
-    const outer = el('div',{className:'box'});
-    outer.appendChild(el('video',{src:url, controls:true, autoplay:true, style:'width:100%'}));
-    const modal = el('div',{className:'modal open'}); modal.appendChild(outer);
-    modal.addEventListener('click', (e)=>{ if(e.target===modal) modal.remove(); });
-    document.body.appendChild(modal);
-  }
-
-  // ---------- Likes and Comments ----------
-  async function onLikeClicked(model){
-    if(isAdmin){
-      const n = prompt('Set likes for ' + (model.name||''), String(model.likes||0));
-      if(n!=null) await db.collection('models').doc(model.id).update({ likes: parseInt(n)||0 });
-      return;
-    }
-    const udoc = await db.collection('users').doc(currentUser.uid).get();
-    const u = udoc.exists ? udoc.data() : null;
-    if(!u || !u.subscribed){ openModal('subscriptionModal'); return; }
-    showToast('Likes are admin-controlled. Request admin to change.');
-  }
-
-  async function onCommentClicked(model){
-    if(isAdmin){
-      const txt = prompt('Admin: add simulated comment'); if(txt) await db.collection('models').doc(model.id).update({ comments: firebase.firestore.FieldValue.arrayUnion(txt) });
-      return;
-    }
-    const u = (await db.collection('users').doc(currentUser.uid).get()).data();
-    if(!u || !u.subscribed){ openModal('subscriptionModal'); return; }
-    selectedModelForComment = model;
-    commentText.value = '';
-    openModal('commentModal');
-  }
-
-  window.submitComment = async function(){
-    const text = commentText.value.trim(); if(!text) return alert('Write comment');
-    const modelId = selectedModelForComment.id;
-    await db.collection('models').doc(modelId).update({ comments: firebase.firestore.FieldValue.arrayUnion(text) });
-    closeModal('commentModal');
-  };
-
-  // ---------- Bookings ----------
-  function openBooking(modelId, selectEl){
-    selectedModelForBooking = modelId;
-    // populate bookingOption with the select choices
-    bookingOption.innerHTML = '';
-    Array.from(selectEl.options).forEach(opt => bookingOption.appendChild(opt.cloneNode(true)));
-    bookingEmail.value = '';
-    openModal('bookingModal');
-  }
-
-  window.confirmBooking = async function(){
-    const link = bookingOption.value; const email = bookingEmail.value.trim();
-    if(!link) return alert('Choose option'); if(!email) return alert('Enter email');
-    await db.collection('bookings').add({ modelId:selectedModelForBooking, email, link, createdAt: firebase.firestore.FieldValue.serverTimestamp(), userId: currentUser.uid||null });
-    window.open(link.includes('?') ? `${link}&email=${encodeURIComponent(email)}` : `${link}?email=${encodeURIComponent(email)}`, '_blank');
-    closeModal('bookingModal');
-  };
-
-  // ---------- Admin: Save model ----------
-  saveModelBtn.addEventListener('click', async ()=>{
-    if(!isAdmin) return alert('Admin only');
-    const file = adminFile.files[0];
-    const name = adminName.value.trim() || 'Unnamed';
-    const verified = adminVerified.value === 'true';
-    const priv = adminPrivate.value === 'true';
-    const likes = parseInt(adminLikes.value || '0') || 0;
-    const comments = adminComments.value ? adminComments.value.split(/\n/).map(s=>s.trim()).filter(Boolean) : [];
-    const bookingLink = adminBooking.value.trim();
-    let mediaURL = '', mediaType = '';
-    try{
-      if(file){
-        const path = `models/${Date.now()}_${file.name.replace(/\s+/g,'_')}`;
-        const ref = storage.ref().child(path);
-        await ref.put(file);
-        mediaURL = await ref.getDownloadURL();
-        mediaType = file.type;
-      }
-      await db.collection('models').add({
-        name, verified, private: priv, likes, comments, bookingLink, bookingOptions: bookingLink ? [{label:'Standard', value: bookingLink}] : [], mediaURL, mediaType, createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      showToast('Model saved');
-      adminFile.value=''; adminName.value=''; adminLikes.value=''; adminComments.value=''; adminBooking.value='';
-    }catch(e){ console.error(e); alert('Save failed: '+e.message); }
+  await db.collection('messages').add({
+    uid:currentUser.uid,
+    sender:role==='admin'?'Admin':(currentUser.email||'User-'+currentUser.uid.slice(0,5)),
+    text:text||'',
+    mediaUrl,mediaType,
+    timestamp:firebase.firestore.FieldValue.serverTimestamp()
   });
+}
 
-  clearModelBtn.addEventListener('click', ()=> { adminFile.value=''; adminName.value=''; adminLikes.value=''; adminComments.value=''; adminBooking.value=''; });
+sendBtn.onclick=async()=>{
+  const text=msgInput.value.trim();
+  const file=fileInput.files[0];
+  if(!text && !file)return;
+  await sendMessage(text,file);
+  msgInput.value=''; fileInput.value='';
+};
+msgInput.addEventListener('keydown',e=>{if(e.key==='Enter')sendBtn.click();});
 
-  // ---------- Admin push post ----------
-  pushPostBtn.addEventListener('click', async ()=>{
-    if(!isAdmin) return alert('Admin only');
-    const txt = adminPost.value.trim(); if(!txt) return alert('Write message');
-    await db.collection('posts').add({ text:txt, createdAt: firebase.firestore.FieldValue.serverTimestamp(), by: currentUser.uid });
-    await db.collection('settings').doc('site').set({ latestPost: txt }, { merge:true });
-    adminPost.value=''; showToast('Broadcast pushed');
-  });
-
-  // ---------- Admin create/ban user (client only warns) ----------
-  createUserBtn.addEventListener('click', ()=> alert('Create users & set admin/expiry via server-side script (admin-utils/create_user.js). Do not create privileged users from client.'));
-  banUserBtn.addEventListener('click', ()=> alert('Banning must be done server-side (use Admin SDK) OR update users doc from admin server. Use create_user.js to ban/unban.'));
-
-  // ---------- renewal save ----------
-  saveRenewBtn.addEventListener('click', async ()=>{
-    if(!isAdmin) return alert('Admin only');
-    const img = renewImageInput.value.trim(); const link = renewLinkInput.value.trim();
-    await db.collection('settings').doc('site').set({ renewalImage: img, renewalLink: link }, { merge:true });
-    showToast('Renewal settings saved');
-  });
-
-  // ---------- Chat functionality (user -> admin) ----------
-  chatSend.addEventListener('click', sendUserChat);
-  chatInput.addEventListener('keydown', (e)=> { if(e.key==='Enter') sendUserChat(); });
-
-  async function sendUserChat(){
-    const text = chatInput.value.trim(); if(!text) return;
-    const conversationId = currentUser ? currentUser.uid : 'guest';
-    const doc = {
-      conversationId,
-      userId: currentUser.uid || null,
-      text,
-      sender: 'user',
-      timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    await db.collection('chats').add(doc);
-    // ensure conversations doc for admin preview
-    await db.collection('conversations').doc(conversationId).set({
-      userId: conversationId,
-      displayName: currentUser.isAnonymous ? ('guest-'+conversationId.slice(0,6)) : currentUser.email || conversationId,
-      lastMessage: text,
-      lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge:true });
-    chatInput.value = '';
-  }
-
-  // listen for messages relevant to this user (their conversation)
-  function listenUserConversation(){
-    if(!currentUser) return;
-    const convId = currentUser.uid;
-    db.collection('chats').where('conversationId','==',convId).orderBy('timestamp','asc').onSnapshot(snapshot=>{
-      chatMessagesEl.innerHTML = '';
-      snapshot.forEach(d => {
-        const m = d.data();
-        const node = el('div', { className: 'msg ' + (m.sender === 'admin' ? 'admin' : 'user') }, m.text || '');
-        chatMessagesEl.appendChild(node);
-      });
-      chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
-    });
-  }
-
-  // ---------- Admin chat management ----------
-  btnOpenChatMgmt.addEventListener('click', ()=> openModal('chatMgmtModal'));
-  async function loadConversationsPreview(){
-    if(!isAdmin) return;
-    chatConversations.innerHTML = '';
-    const snap = await db.collection('conversations').orderBy('lastUpdated','desc').get();
-    snap.forEach(doc => {
-      const c = doc.data();
-      const div = el('div', { style:'padding:8px;border-bottom:1px solid rgba(255,255,255,0.02);cursor:pointer' }, el('div',{}, c.displayName || ('user-'+doc.id.slice(0,6))), el('div',{className:'small'}, c.lastMessage || ''));
-      div.addEventListener('click', ()=> openConversation(doc.id));
-      chatConversations.appendChild(div);
-    });
-  }
-
-  async function openConversation(convId){
-    selectedConversationId = convId;
-    chatWindow.innerHTML = '';
-    if(chatUnsub) chatUnsub();
-    chatUnsub = db.collection('chats').where('conversationId','==',convId).orderBy('timestamp','asc').onSnapshot(snapshot=>{
-      chatWindow.innerHTML = '';
-      snapshot.forEach(d=>{
-        const m = d.data();
-        chatWindow.appendChild(el('div', {}, el('div',{className:'small'}, m.sender), el('div',{}, m.text || '')));
-      });
-      chatWindow.scrollTop = chatWindow.scrollHeight;
-    });
-  }
-
-  window.sendAdminChat = async function(){
-    if(!selectedConversationId) return alert('Select a conversation');
-    const text = adminChatInput.value.trim(); if(!text) return;
-    await db.collection('chats').add({ conversationId: selectedConversationId, text, sender:'admin', timestamp: firebase.firestore.FieldValue.serverTimestamp() });
-    await db.collection('conversations').doc(selectedConversationId).set({ lastMessage: text, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
-    adminChatInput.value = '';
-  };
-
-  // ---------- Admin send email/password sign-in ----------
-  window.adminLogin = async function(){
-    const email = adminEmail.value.trim(); const pass = adminPassword.value;
-    if(!email || !pass) return alert('Enter credentials');
-    try{ await auth.signInWithEmailAndPassword(email, pass); closeModal('adminLoginModal'); loadConversationsPreview(); }
-    catch(e){ alert('Admin sign-in failed: '+e.message); }
-  };
-
-  window.userLogin = async function(){
-    const e = userEmail.value.trim(), p = userPass.value;
-    if(!e || !p) return alert('Enter credentials'); 
-    try{ await auth.signInWithEmailAndPassword(e,p); closeModal('userLoginModal'); listenUserConversation(); }
-    catch(e){ alert('User login failed: '+e.message); }
-  };
-
-  // ---------- admin convenience functions ----------
-  async function boostLikes(id){
-    if(!isAdmin) return alert('Admin only');
-    const n = parseInt(prompt('Boost by how many?', '100'))||0;
-    await db.collection('models').doc(id).update({ likes: firebase.firestore.FieldValue.increment(n) });
-    showToast('Boosted likes');
-  }
-  async function editModel(id){
-    if(!isAdmin) return alert('Admin only');
-    const newName = prompt('New name for model'); if(newName==null) return;
-    await db.collection('models').doc(id).update({ name: newName });
-    showToast('Model updated');
-  }
-
-  // ---------- helper: load public posts ----------
-  btnShowPublicPosts.addEventListener('click', async ()=>{
-    publicPostsContainer.innerHTML = '';
-    const snap = await db.collection('posts').orderBy('createdAt','desc').limit(10).get();
-    snap.forEach(d => publicPostsContainer.appendChild(el('div', { className:'small', style:'padding:8px;border-bottom:1px solid rgba(255,255,255,0.03)' }, d.data().text || '')));
-    openModal('publicPostsModal');
-  });
-
-  // ---------- load initial settings & UI wiring ----------
-  await loadSettings();
-
-  // wire UI buttons
-  btnOpenAdminLogin.addEventListener('click', ()=> openModal('adminLoginModal'));
-  btnOpenUserLogin.addEventListener('click', ()=> openModal('userLoginModal'));
-  btnSignOut.addEventListener('click', async ()=>{ await auth.signOut(); await auth.signInAnonymously(); });
-  btnCreateUser.addEventListener('click', ()=> alert('Use server-side admin-utils/create_user.js to create users & set claims (service account required).'));
-
-  // load conversations preview if admin
-  setTimeout(()=> { if(isAdmin) loadConversationsPreview(); }, 1200);
-
-  // listen user conversation if not admin
-  auth.onAuthStateChanged(u => { if(u && !isAdmin) listenUserConversation(); });
-
-  // final log
-  console.log('App initialized');
-
-})();
+}
 </script>
 </body>
 </html>
