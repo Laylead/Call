@@ -282,6 +282,14 @@
             }
         }
 
+        /* Public Models Section */
+        .public-models-section {
+            padding: 6rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            animation: fadeIn 1s ease-out;
+        }
+
         /* Enhanced Models Grid */
         .models-section {
             padding: 6rem 2rem;
@@ -517,7 +525,7 @@
             letter-spacing: 1.2px;
         }
 
-        /* Enhanced Modal Styles */
+        /* Enhanced Modal Styles - FIXED Z-INDEX */
         .modal {
             display: none;
             position: fixed;
@@ -526,7 +534,7 @@
             width: 100%;
             height: 100%;
             background: rgba(0, 0, 0, 0.9);
-            z-index: 2000;
+            z-index: 9999;
             backdrop-filter: blur(10px);
             animation: modalFadeIn 0.4s ease-out;
             overflow-y: auto;
@@ -558,6 +566,7 @@
             text-align: center;
             animation: modalSlideIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
             box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6);
+            z-index: 10000;
         }
 
         @keyframes modalSlideIn {
@@ -1273,7 +1282,8 @@
             <div class="logo">Camsilo</div>
             <nav class="nav-links">
                 <a href="#home" class="active">Home</a>
-                <a href="#models">Models</a>
+                <a href="#public-models">Public Models</a>
+                <a href="#models">Premium Models</a>
                 <a href="#premium">Premium</a>
                 <a href="#about">About</a>
             </nav>
@@ -1291,16 +1301,29 @@
             <h1>Camsilo models</h1>
             <p>Experience the ultimate in adult entertainment with our exclusive models. Premium content, private shows, and unforgettable experiences.</p>
             <button class="btn btn-primary" onclick="openModelsGallery()">
-                <i class="fas fa-star"></i>Explore Models
+                <i class="fas fa-star"></i>Explore All Models
             </button>
         </div>
     </section>
 
-    <!-- Public Models Section -->
-    <section class="models-section" id="models">
-        <h2 class="section-title">Featured Models</h2>
-        <div class="models-grid" id="modelsGrid">
+    <!-- Public Models Section - NEW SECTION -->
+    <section class="public-models-section" id="public-models">
+        <h2 class="section-title">Public Models</h2>
+        <div class="models-grid" id="publicModelsGrid">
             <!-- Public models will be loaded here -->
+        </div>
+        <div style="text-align: center; margin-top: 2rem;">
+            <button class="btn btn-primary" onclick="openModelsGallery()">
+                <i class="fas fa-images"></i> View All Models in Gallery
+            </button>
+        </div>
+    </section>
+
+    <!-- Premium Models Section -->
+    <section class="models-section" id="models">
+        <h2 class="section-title">Premium Models</h2>
+        <div class="models-grid" id="modelsGrid">
+            <!-- Premium models will be loaded here -->
         </div>
     </section>
 
@@ -1916,14 +1939,16 @@
             }
         }
 
-        // Load Models - FIXED: Show ONLY public models to everyone, private models only for members
+        // Load Models - UPDATED: Separate public models from premium models
         async function loadModels() {
             try {
                 const snapshot = await modelsRef.orderBy('createdAt', 'desc').get();
                 allModels = [];
+                const publicModelsGrid = document.getElementById('publicModelsGrid');
                 const modelsGrid = document.getElementById('modelsGrid');
                 const privateContentGrid = document.getElementById('privateContentGrid');
                 
+                publicModelsGrid.innerHTML = '';
                 modelsGrid.innerHTML = '';
                 privateContentGrid.innerHTML = '';
 
@@ -1938,15 +1963,17 @@
                     modelCard.style.setProperty('--card-index', cardIndex);
                     cardIndex++;
                     
-                    // FIX: Only show public models in the main grid for everyone
-                    // Only show private models in private section for logged-in users with active subscription
-                    if (model.contentType === 'private') {
+                    // NEW: Separate public models from premium models
+                    if (model.contentType === 'public') {
+                        publicModelsGrid.appendChild(modelCard);
+                    } else if (model.contentType === 'private') {
                         if ((currentUser && isSubscriptionActive(currentUser)) || adminUser) {
                             privateContentGrid.appendChild(modelCard);
+                        } else {
+                            // For non-subscribed users, show private models in premium section with blurred preview
+                            const blurredCard = createBlurredModelCard(model);
+                            modelsGrid.appendChild(blurredCard);
                         }
-                    } else {
-                        // Public models always show in main grid for everyone
-                        modelsGrid.appendChild(modelCard);
                     }
                 });
 
@@ -1970,6 +1997,52 @@
                 console.error('Error loading models:', error);
                 toastr.error('Failed to load models');
             }
+        }
+
+        // Create blurred model card for premium models
+        function createBlurredModelCard(model) {
+            const card = document.createElement('div');
+            card.className = 'model-card';
+            
+            card.innerHTML = `
+                <div class="model-image-container">
+                    <img src="${model.image}" alt="${model.name}" class="model-image" style="filter: blur(15px);">
+                    <div class="model-badge">
+                        <i class="fas fa-crown"></i> Premium
+                    </div>
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 5; color: white;">
+                        <i class="fas fa-lock" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                        <h3>Premium Content</h3>
+                        <p>Subscribe to unlock</p>
+                    </div>
+                </div>
+                <div class="model-info">
+                    <div class="model-name">
+                        <h3>${model.name}</h3>
+                        ${model.verified ? '<i class="fas fa-check-circle verified"></i>' : ''}
+                    </div>
+                    
+                    <div class="model-stats">
+                        <div class="likes">
+                            <button class="like-btn" onclick="openModal('subscriptionModal')">
+                                <i class="fas fa-heart"></i>
+                            </button>
+                            <span>${model.likes || 0}</span>
+                        </div>
+                        <div class="comments">
+                            <button class="comment-btn" onclick="openModal('subscriptionModal')">
+                                <i class="fas fa-comment"></i>
+                            </button>
+                            <span>${model.comments ? model.comments.length : 0}</span>
+                        </div>
+                    </div>
+
+                    <button class="book-btn" onclick="openModal('subscriptionModal')">
+                        <i class="fas fa-crown"></i> Subscribe to Unlock
+                    </button>
+                </div>
+            `;
+            return card;
         }
 
         // Check if user subscription is active
@@ -2929,7 +3002,7 @@
             redirectToRenewal();
         }
 
-        // Enhanced Modal Functions
+        // Enhanced Modal Functions - FIXED: Higher z-index to ensure visibility
         function openModal(modalId) {
             document.getElementById(modalId).style.display = 'block';
             document.body.style.overflow = 'hidden';
@@ -2965,7 +3038,7 @@
             }
         }
 
-        // FIXED: Update Auth Buttons - REMOVED admin login button
+        // FIXED: Update Auth Buttons - Show logout button when user is logged in
         function updateAuthButtons() {
             const authButtons = document.getElementById('authButtons');
             
