@@ -290,6 +290,55 @@
             animation: fadeIn 1s ease-out;
         }
 
+        .public-models-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2.5rem;
+        }
+
+        .public-model-card {
+            background: var(--surface);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            position: relative;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+            animation: cardAppear 0.6s ease-out both;
+            animation-delay: calc(var(--card-index) * 0.1s);
+        }
+
+        .public-model-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 15px 35px rgba(233, 30, 99, 0.2);
+            border-color: rgba(233, 30, 99, 0.3);
+        }
+
+        .public-model-image {
+            width: 100%;
+            height: 280px;
+            object-fit: cover;
+            transition: all 0.6s ease;
+        }
+
+        .public-model-card:hover .public-model-image {
+            transform: scale(1.08);
+            filter: brightness(1.1);
+        }
+
+        .public-model-info {
+            padding: 1.5rem;
+        }
+
+        .public-model-name {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+            transition: all 0.3s ease;
+        }
+
         /* Enhanced Models Grid */
         .models-section {
             padding: 6rem 2rem;
@@ -525,7 +574,7 @@
             letter-spacing: 1.2px;
         }
 
-        /* Enhanced Modal Styles - FIXED Z-INDEX */
+        /* Enhanced Modal Styles */
         .modal {
             display: none;
             position: fixed;
@@ -1160,7 +1209,7 @@
 
         /* Responsive Design with enhanced animations */
         @media (max-width: 1024px) {
-            .models-grid {
+            .models-grid, .public-models-grid {
                 grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             }
         }
@@ -1186,11 +1235,11 @@
                 font-size: 1.1rem;
             }
 
-            .models-section {
+            .models-section, .public-models-section {
                 padding: 3rem 1rem;
             }
 
-            .models-grid {
+            .models-grid, .public-models-grid {
                 grid-template-columns: 1fr;
             }
 
@@ -1232,7 +1281,7 @@
                 gap: 0.5rem;
             }
             
-            .model-card:hover {
+            .model-card:hover, .public-model-card:hover {
                 transform: translateY(-5px);
             }
             
@@ -1250,7 +1299,7 @@
                 font-size: 1.8rem;
             }
 
-            .model-image {
+            .model-image, .public-model-image {
                 height: 300px;
             }
 
@@ -1301,21 +1350,16 @@
             <h1>Camsilo models</h1>
             <p>Experience the ultimate in adult entertainment with our exclusive models. Premium content, private shows, and unforgettable experiences.</p>
             <button class="btn btn-primary" onclick="openModelsGallery()">
-                <i class="fas fa-star"></i>Explore All Models
+                <i class="fas fa-star"></i>Explore Models
             </button>
         </div>
     </section>
 
-    <!-- Public Models Section - NEW SECTION -->
+    <!-- NEW: Public Models Section -->
     <section class="public-models-section" id="public-models">
-        <h2 class="section-title">Public Models</h2>
-        <div class="models-grid" id="publicModelsGrid">
+        <h2 class="section-title">Public Models & Posts</h2>
+        <div class="public-models-grid" id="publicModelsGrid">
             <!-- Public models will be loaded here -->
-        </div>
-        <div style="text-align: center; margin-top: 2rem;">
-            <button class="btn btn-primary" onclick="openModelsGallery()">
-                <i class="fas fa-images"></i> View All Models in Gallery
-            </button>
         </div>
     </section>
 
@@ -1830,7 +1874,7 @@
                 }
                 
                 // Add fade-in animation for elements when they come into view
-                const elements = document.querySelectorAll('.model-card, .section-title');
+                const elements = document.querySelectorAll('.model-card, .section-title, .public-model-card');
                 elements.forEach(element => {
                     const elementTop = element.getBoundingClientRect().top;
                     const elementVisible = 150;
@@ -1939,18 +1983,18 @@
             }
         }
 
-        // Load Models - UPDATED: Separate public models from premium models
+        // Load Models - UPDATED: Separate public and premium models
         async function loadModels() {
             try {
                 const snapshot = await modelsRef.orderBy('createdAt', 'desc').get();
                 allModels = [];
-                const publicModelsGrid = document.getElementById('publicModelsGrid');
                 const modelsGrid = document.getElementById('modelsGrid');
                 const privateContentGrid = document.getElementById('privateContentGrid');
+                const publicModelsGrid = document.getElementById('publicModelsGrid');
                 
-                publicModelsGrid.innerHTML = '';
                 modelsGrid.innerHTML = '';
                 privateContentGrid.innerHTML = '';
+                publicModelsGrid.innerHTML = '';
 
                 let cardIndex = 0;
                 
@@ -1960,20 +2004,21 @@
                     
                     // Create model card for every model
                     const modelCard = createModelCard(model);
+                    const publicModelCard = createPublicModelCard(model);
+                    
                     modelCard.style.setProperty('--card-index', cardIndex);
+                    publicModelCard.style.setProperty('--card-index', cardIndex);
                     cardIndex++;
                     
-                    // NEW: Separate public models from premium models
-                    if (model.contentType === 'public') {
-                        publicModelsGrid.appendChild(modelCard);
-                    } else if (model.contentType === 'private') {
+                    // Separate models by type
+                    if (model.contentType === 'private') {
                         if ((currentUser && isSubscriptionActive(currentUser)) || adminUser) {
                             privateContentGrid.appendChild(modelCard);
-                        } else {
-                            // For non-subscribed users, show private models in premium section with blurred preview
-                            const blurredCard = createBlurredModelCard(model);
-                            modelsGrid.appendChild(blurredCard);
                         }
+                    } else {
+                        // Public models
+                        modelsGrid.appendChild(modelCard);
+                        publicModelsGrid.appendChild(publicModelCard);
                     }
                 });
 
@@ -1999,46 +2044,46 @@
             }
         }
 
-        // Create blurred model card for premium models
-        function createBlurredModelCard(model) {
+        // Create Public Model Card (simpler version for front page)
+        function createPublicModelCard(model) {
             const card = document.createElement('div');
-            card.className = 'model-card';
+            card.className = 'public-model-card';
+            
+            const modelComments = model.comments || [];
+            const publicPosts = model.publicPosts || [];
             
             card.innerHTML = `
                 <div class="model-image-container">
-                    <img src="${model.image}" alt="${model.name}" class="model-image" style="filter: blur(15px);">
+                    <img src="${model.image}" alt="${model.name}" class="public-model-image" onerror="this.src='https://images.unsplash.com/photo-1511285605577-4d62fb50d2f7?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'">
                     <div class="model-badge">
-                        <i class="fas fa-crown"></i> Premium
-                    </div>
-                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 5; color: white;">
-                        <i class="fas fa-lock" style="font-size: 3rem; margin-bottom: 1rem;"></i>
-                        <h3>Premium Content</h3>
-                        <p>Subscribe to unlock</p>
+                        <i class="fas fa-eye"></i> Public
                     </div>
                 </div>
-                <div class="model-info">
-                    <div class="model-name">
+                <div class="public-model-info">
+                    <div class="public-model-name">
                         <h3>${model.name}</h3>
                         ${model.verified ? '<i class="fas fa-check-circle verified"></i>' : ''}
                     </div>
                     
                     <div class="model-stats">
                         <div class="likes">
-                            <button class="like-btn" onclick="openModal('subscriptionModal')">
-                                <i class="fas fa-heart"></i>
-                            </button>
+                            <i class="fas fa-heart" style="color: var(--primary);"></i>
                             <span>${model.likes || 0}</span>
                         </div>
                         <div class="comments">
-                            <button class="comment-btn" onclick="openModal('subscriptionModal')">
-                                <i class="fas fa-comment"></i>
-                            </button>
-                            <span>${model.comments ? model.comments.length : 0}</span>
+                            <i class="fas fa-comment" style="color: var(--secondary);"></i>
+                            <span>${modelComments.length}</span>
                         </div>
                     </div>
 
-                    <button class="book-btn" onclick="openModal('subscriptionModal')">
-                        <i class="fas fa-crown"></i> Subscribe to Unlock
+                    ${publicPosts.length > 0 ? `
+                        <button class="btn btn-outline" style="width: 100%; margin-bottom: 1rem;" onclick="openPublicPostsModal('${model.id}')">
+                            <i class="fas fa-images"></i> View Posts (${publicPosts.length})
+                        </button>
+                    ` : ''}
+
+                    <button class="btn btn-primary" onclick="openVideoCallModal('${model.id}')" style="width: 100%;">
+                        <i class="fas fa-video"></i> Book Show
                     </button>
                 </div>
             `;
@@ -2053,7 +2098,7 @@
             return now < expires && user.isActive !== false;
         }
 
-        // Create Model Card with enhanced animations
+        // Create Model Card with enhanced animations (for premium section)
         function createModelCard(model) {
             const card = document.createElement('div');
             card.className = 'model-card';
@@ -3002,7 +3047,28 @@
             redirectToRenewal();
         }
 
-        // Enhanced Modal Functions - FIXED: Higher z-index to ensure visibility
+        // FIXED: Update Auth Buttons - Show logout button when user is logged in
+        function updateAuthButtons() {
+            const authButtons = document.getElementById('authButtons');
+            
+            if (currentUser || adminUser) {
+                // User is logged in (either regular user or admin)
+                authButtons.innerHTML = `
+                    <button class="btn btn-outline" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                `;
+            } else {
+                // User is not logged in - show login button
+                authButtons.innerHTML = `
+                    <button class="btn btn-outline" onclick="openLoginModal()">
+                        <i class="fas fa-user"></i> Login
+                    </button>
+                `;
+            }
+        }
+
+        // Enhanced Modal Functions
         function openModal(modalId) {
             document.getElementById(modalId).style.display = 'block';
             document.body.style.overflow = 'hidden';
@@ -3035,27 +3101,6 @@
             } catch (error) {
                 console.error('Login error:', error);
                 toastr.error('Login failed: ' + error.message);
-            }
-        }
-
-        // FIXED: Update Auth Buttons - Show logout button when user is logged in
-        function updateAuthButtons() {
-            const authButtons = document.getElementById('authButtons');
-            
-            if (currentUser || adminUser) {
-                // User is logged in (either regular user or admin)
-                authButtons.innerHTML = `
-                    <button class="btn btn-outline" onclick="logout()">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
-                `;
-            } else {
-                // User is not logged in - ONLY show login button
-                authButtons.innerHTML = `
-                    <button class="btn btn-outline" onclick="openLoginModal()">
-                        <i class="fas fa-user"></i> Login
-                    </button>
-                `;
             }
         }
 
