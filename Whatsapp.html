@@ -2126,6 +2126,18 @@
             return now < expires && user.isActive !== false;
         }
 
+        // Check if user should see subscription popup
+        function shouldShowSubscriptionPopup() {
+            // Don't show popup to admin users
+            if (adminUser) return false;
+            
+            // Don't show popup to logged-in users with active subscriptions
+            if (currentUser && isSubscriptionActive(currentUser)) return false;
+            
+            // Show popup to everyone else (non-logged-in users or users with expired subscriptions)
+            return true;
+        }
+
         // Create Model Card with enhanced animations
         function createModelCard(model) {
             const card = document.createElement('div');
@@ -2291,19 +2303,28 @@
             return card;
         }
 
-        // Handle Hard-coded Model Interaction - Show subscription popup
+        // Handle Hard-coded Model Interaction - Show subscription popup only if needed
         function handleHardcodedModelInteraction() {
-            openModal('subscriptionModal');
+            if (shouldShowSubscriptionPopup()) {
+                openModal('subscriptionModal');
+            } else {
+                // If user is logged in with active subscription, show appropriate message
+                if (currentUser && isSubscriptionActive(currentUser)) {
+                    toastr.info('This is a featured model. Explore our premium models for full functionality!');
+                } else if (adminUser) {
+                    toastr.info('Admin mode: This would normally trigger model interaction');
+                }
+            }
         }
 
         // Open Chat Page (External)
         function openChatPage(modelId) {
-            if (!currentUser && !adminUser) {
+            if (shouldShowSubscriptionPopup()) {
                 openModal('subscriptionModal');
                 return;
             }
             
-            // Open external chat page
+            // Open external chat page for subscribed users
             window.open('chat.html?model=' + modelId, '_blank');
         }
 
@@ -2369,7 +2390,7 @@
 
         // Handle Like
         async function handleLike(modelId) {
-            if (!currentUser && !adminUser) {
+            if (shouldShowSubscriptionPopup()) {
                 openModal('subscriptionModal');
                 return;
             }
@@ -2464,7 +2485,7 @@
 
         // Comment Functions
         function openCommentModal(modelId) {
-            if (!currentUser && !adminUser) {
+            if (shouldShowSubscriptionPopup()) {
                 openModal('subscriptionModal');
                 return;
             }
@@ -2646,7 +2667,7 @@
 
         // Video Call Booking
         function openVideoCallModal(modelId) {
-            if (!currentUser && !adminUser) {
+            if (shouldShowSubscriptionPopup()) {
                 openModal('subscriptionModal');
                 return;
             }
