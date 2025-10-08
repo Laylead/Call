@@ -1969,7 +1969,7 @@
             }
         }
 
-        // Load Models - FIXED: Show ONLY public models to everyone, private models only for members
+        // Load Models - FIXED: Show public models to everyone, private models only for members
         async function loadModels() {
             try {
                 const snapshot = await modelsRef.orderBy('createdAt', 'desc').get();
@@ -1991,17 +1991,16 @@
                     modelCard.style.setProperty('--card-index', cardIndex);
                     cardIndex++;
                     
-                    // FIX: Only show public models in the main grid for everyone
-                    // Only show private models in private section for logged-in users with active subscription
+                    // FIXED: Show public models to everyone, private models only to logged-in users
                     if (model.contentType === 'private') {
                         if ((currentUser && isSubscriptionActive(currentUser)) || adminUser) {
                             privateContentGrid.appendChild(modelCard);
                         }
-                    } else if (model.contentType === 'public') {
-                        // Public models always show in main grid for everyone
+                        // Don't show private models in public grid for non-logged-in users
+                    } else {
+                        // Public and frontpage models always show in main grid for everyone
                         modelsGrid.appendChild(modelCard);
                     }
-                    // Front page models are handled separately
                 });
 
                 // Update admin models list
@@ -2027,7 +2026,7 @@
             }
         }
 
-        // Load Front Page Models
+        // Load Front Page Models - FIXED: Show frontpage models to everyone
         async function loadFrontpageModels() {
             try {
                 const snapshot = await frontpageModelsRef.orderBy('order', 'asc').get();
@@ -2042,7 +2041,7 @@
                     const model = { id: doc.id, ...doc.data() };
                     frontpageModels.push(model);
                     
-                    // Create model card for front page
+                    // Create model card for front page - show to everyone
                     const modelCard = createModelCard(model);
                     modelCard.style.setProperty('--card-index', cardIndex);
                     cardIndex++;
@@ -2057,7 +2056,7 @@
 
             } catch (error) {
                 console.error('Error loading frontpage models:', error);
-                toastr.error('Failed to load frontpage models');
+                // Don't show error toast for frontpage models to avoid confusion
             }
         }
 
@@ -2166,18 +2165,19 @@
             window.open('chat.html?model=' + modelId, '_blank');
         }
 
-        // Open Models Gallery
+        // Open Models Gallery - FIXED: Show all public models to everyone
         function openModelsGallery() {
             openModal('modelsGalleryModal');
             loadModelsGallery();
         }
 
-        // Load Models for Gallery
+        // Load Models for Gallery - FIXED: Show public models to everyone
         function loadModelsGallery() {
             const galleryGrid = document.getElementById('modelsGalleryGrid');
             galleryGrid.innerHTML = '';
 
             allModels.forEach(model => {
+                // Show public and frontpage models to everyone, private models only to logged-in users
                 if (model.contentType === 'public' || model.contentType === 'frontpage' || (currentUser && isSubscriptionActive(currentUser)) || adminUser) {
                     const galleryCard = document.createElement('div');
                     galleryCard.className = 'gallery-model-card';
@@ -2202,7 +2202,7 @@
             });
         }
 
-        // Handle Like - FIXED: One like per user per model
+        // Handle Like - FIXED: Show subscription modal for non-logged-in users
         async function handleLike(modelId) {
             if (!currentUser && !adminUser) {
                 openModal('subscriptionModal');
