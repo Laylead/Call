@@ -1380,7 +1380,7 @@
         </div>
     </section>
 
-    <!-- Front Page Links Section -->
+    <!-- Front Page Links Section - Only visible to non-logged-in users -->
     <section class="frontpage-links-section" id="frontpageLinks">
         <h2 class="section-title">Featured Content</h2>
         <div class="frontpage-links-grid" id="frontpageLinksGrid">
@@ -1622,7 +1622,7 @@
             
             <div class="form-group">
                 <label>Subscription Link</label>
-                <input type="text" id="subscriptionLink" placeholder="https://your-payment-page.com">
+                <input type="text" id="subscriptionLink" placeholder="subscription1.html">
             </div>
 
             <div class="form-group">
@@ -1632,7 +1632,7 @@
             
             <div class="form-group">
                 <label>Renewal Link</label>
-                <input type="text" id="renewalLink" placeholder="https://your-renewal-page.com">
+                <input type="text" id="renewalLink" placeholder="subscription1.html">
             </div>
 
             <button class="btn btn-primary" onclick="updateContentSettings()">
@@ -1971,6 +1971,7 @@
             checkAuthState();
             setupEventListeners();
             updateAuthButtons();
+            toggleFrontpageLinksVisibility(); // Set initial visibility
         }
 
         function setupEventListeners() {
@@ -1979,6 +1980,18 @@
             document.getElementById('userForm').addEventListener('submit', handleUserCreate);
             document.getElementById('postForm').addEventListener('submit', handlePostSubmit);
             document.getElementById('frontpageLinkForm').addEventListener('submit', handleFrontpageLinkSubmit);
+        }
+
+        // Toggle Front Page Links Visibility - Only show for non-logged-in users
+        function toggleFrontpageLinksVisibility() {
+            const frontpageLinksSection = document.getElementById('frontpageLinks');
+            if (currentUser || adminUser) {
+                // User is logged in - hide featured content
+                frontpageLinksSection.style.display = 'none';
+            } else {
+                // User is not logged in - show featured content
+                frontpageLinksSection.style.display = 'block';
+            }
         }
 
         // Authentication State Listener
@@ -2003,11 +2016,13 @@
                         await auth.signOut();
                     }
                     updateAuthButtons();
+                    toggleFrontpageLinksVisibility(); // Update visibility after login
                     await loadModels(); // Reload models to show private content if applicable
                 } else {
                     currentUser = null;
                     adminUser = null;
                     updateAuthButtons();
+                    toggleFrontpageLinksVisibility(); // Update visibility after logout
                     hideAdminPanel();
                     hideUserInterface();
                     await loadModels(); // Reload models to hide private content
