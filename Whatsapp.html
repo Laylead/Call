@@ -1166,7 +1166,7 @@
 
         /* Responsive Design with enhanced animations */
         @media (max-width: 1024px) {
-            .models-grid {
+            .frontpage-models-grid {
                 grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             }
         }
@@ -1192,11 +1192,11 @@
                 font-size: 1.1rem;
             }
 
-            .models-section {
+            .frontpage-models {
                 padding: 3rem 1rem;
             }
 
-            .models-grid {
+            .frontpage-models-grid {
                 grid-template-columns: 1fr;
             }
 
@@ -1288,7 +1288,6 @@
             <div class="logo">Camsilo</div>
             <nav class="nav-links">
                 <a href="#home" class="active">Home</a>
-                <a href="#models">Models</a>
                 <a href="#premium">Premium</a>
                 <a href="#about">About</a>
             </nav>
@@ -1316,14 +1315,6 @@
         <h2 class="section-title">Front Page Models</h2>
         <div class="frontpage-models-grid" id="frontpageModelsGrid">
             <!-- Front page models will be loaded here -->
-        </div>
-    </section>
-
-    <!-- Public Models Section -->
-    <section class="models-section" id="models">
-        <h2 class="section-title">Featured Models</h2>
-        <div class="models-grid" id="modelsGrid">
-            <!-- Public models will be loaded here -->
         </div>
     </section>
 
@@ -1407,7 +1398,7 @@
                 
                 <div class="form-group">
                     <label>Image URL *</label>
-                    <input type="text" id="modelImage" required placeholder="https://example.com/image.jpg">
+                    <input type="text" id="modelImage" required value="https://i.postimg.cc/cHB5zQYM/1758636933933.jpg">
                 </div>
 
                 <div class="form-row">
@@ -1808,7 +1799,20 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.1.4/toastr.min.js"></script>
-    <script src="config.js"></script>
+    <script>
+        // Firebase configuration - replace with your actual Firebase config
+        const firebaseConfig = {
+            apiKey: "your-api-key",
+            authDomain: "your-auth-domain",
+            projectId: "your-project-id",
+            storageBucket: "your-storage-bucket",
+            messagingSenderId: "your-sender-id",
+            appId: "your-app-id"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+    </script>
     <script>
         // Firebase Initialization
         const auth = firebase.auth();
@@ -1974,10 +1978,8 @@
             try {
                 const snapshot = await modelsRef.orderBy('createdAt', 'desc').get();
                 allModels = [];
-                const modelsGrid = document.getElementById('modelsGrid');
                 const privateContentGrid = document.getElementById('privateContentGrid');
                 
-                modelsGrid.innerHTML = '';
                 privateContentGrid.innerHTML = '';
 
                 let cardIndex = 0;
@@ -1991,15 +1993,12 @@
                     modelCard.style.setProperty('--card-index', cardIndex);
                     cardIndex++;
                     
-                    // FIXED: Show public models to everyone, private models only to logged-in users
+                    // FIXED: Show private models only to logged-in users
                     if (model.contentType === 'private') {
                         if ((currentUser && isSubscriptionActive(currentUser)) || adminUser) {
                             privateContentGrid.appendChild(modelCard);
                         }
                         // Don't show private models in public grid for non-logged-in users
-                    } else {
-                        // Public and frontpage models always show in main grid for everyone
-                        modelsGrid.appendChild(modelCard);
                     }
                 });
 
