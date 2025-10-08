@@ -1164,10 +1164,63 @@
             gap: 2.5rem;
         }
 
+        /* Enhanced Hard-coded Models Section */
+        .hardcoded-models-section {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 2rem;
+            border-radius: 12px;
+            margin: 2rem 0;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .hardcoded-models-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .hardcoded-model-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--primary);
+            transition: all 0.3s ease;
+        }
+
+        .hardcoded-model-card:hover {
+            transform: translateX(5px);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .hardcoded-model-image {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-right: 1rem;
+        }
+
+        .hardcoded-model-info {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .hardcoded-model-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
         /* Responsive Design with enhanced animations */
         @media (max-width: 1024px) {
             .frontpage-models-grid {
                 grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            }
+            
+            .hardcoded-models-controls {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -1244,6 +1297,16 @@
             
             .btn:hover {
                 transform: translateY(-2px);
+            }
+            
+            .hardcoded-model-info {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .hardcoded-model-image {
+                margin-right: 0;
+                margin-bottom: 1rem;
             }
         }
 
@@ -1361,6 +1424,9 @@
             <button class="admin-tab" onclick="switchAdminTab('frontpageModels')">
                 <i class="fas fa-home"></i>Front Page Models
             </button>
+            <button class="admin-tab" onclick="switchAdminTab('hardcodedFrontpage')">
+                <i class="fas fa-link"></i>Hard-coded Front Page
+            </button>
             <button class="admin-tab" onclick="switchAdminTab('users')">
                 <i class="fas fa-user-friends"></i>Manage Users
             </button>
@@ -1472,6 +1538,39 @@
                 <button class="btn btn-primary" onclick="addModelToFrontPage()">
                     <i class="fas fa-plus"></i> Add to Front Page
                 </button>
+            </div>
+        </div>
+
+        <!-- Hard-coded Front Page Models Tab -->
+        <div class="admin-content" id="hardcodedFrontpageTab">
+            <h3><i class="fas fa-link"></i> Hard-coded Front Page Models</h3>
+            <p>Add hard-coded model links that will appear immediately on the front page for all users.</p>
+            
+            <div class="hardcoded-models-section">
+                <div class="hardcoded-models-controls">
+                    <div class="form-group">
+                        <label>Model Image URL *</label>
+                        <input type="text" id="hardcodedModelImage" placeholder="https://example.com/model-image.jpg" class="form-group input">
+                    </div>
+                    <div class="form-group">
+                        <label>Model Name *</label>
+                        <input type="text" id="hardcodedModelName" placeholder="Enter model name" class="form-group input">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Description (Optional)</label>
+                    <textarea id="hardcodedModelDescription" rows="3" placeholder="Brief description of the model..." class="form-group input"></textarea>
+                </div>
+                
+                <button class="btn btn-primary" onclick="addHardcodedModel()">
+                    <i class="fas fa-plus"></i> Add Hard-coded Model
+                </button>
+            </div>
+
+            <h4 style="margin-top: 2rem;">Current Hard-coded Models</h4>
+            <div id="hardcodedModelsList">
+                <!-- Hard-coded models will be listed here -->
             </div>
         </div>
 
@@ -1821,6 +1920,7 @@
         const bookingsRef = db.collection('bookings');
         const commentsRef = db.collection('comments');
         const frontpageModelsRef = db.collection('frontpageModels');
+        const hardcodedModelsRef = db.collection('hardcodedFrontpageModels'); // NEW
 
         // State Management
         let currentUser = null;
@@ -1828,6 +1928,7 @@
         let websiteSettings = {};
         let allModels = [];
         let frontpageModels = [];
+        let hardcodedModels = []; // NEW
         let currentEditingModel = null;
         let currentCommentModelId = null;
         let currentModelId = null;
@@ -1866,6 +1967,7 @@
             await loadWebsiteSettings();
             await loadModels();
             await loadFrontpageModels();
+            await loadHardcodedModels(); // NEW
             checkAuthState();
             setupEventListeners();
             updateAuthButtons();
@@ -1993,6 +2095,7 @@
                 if (adminUser) {
                     updateAdminModelsList();
                     updateFrontpageModelsList();
+                    updateHardcodedModelsList(); // NEW
                 }
 
                 // Show private content section if user is logged in and there's private content
@@ -2043,6 +2146,286 @@
             } catch (error) {
                 console.error('Error loading frontpage models:', error);
                 // Don't show error toast for frontpage models to avoid confusion
+            }
+        }
+
+        // NEW: Load Hard-coded Models
+        async function loadHardcodedModels() {
+            try {
+                const snapshot = await hardcodedModelsRef.orderBy('createdAt', 'desc').get();
+                hardcodedModels = [];
+                const frontpageGrid = document.getElementById('frontpageModelsGrid');
+                
+                snapshot.forEach(doc => {
+                    const model = { id: doc.id, ...doc.data() };
+                    hardcodedModels.push(model);
+                    
+                    // Create hardcoded model card for front page - show to everyone immediately
+                    const modelCard = createHardcodedModelCard(model);
+                    frontpageGrid.appendChild(modelCard);
+                });
+
+                // Add the default hard-coded model if none exist
+                if (hardcodedModels.length === 0) {
+                    await addDefaultHardcodedModel();
+                }
+
+                // Update admin hardcoded models list
+                if (adminUser) {
+                    updateHardcodedModelsList();
+                }
+
+            } catch (error) {
+                console.error('Error loading hardcoded models:', error);
+                // Don't show error to users
+            }
+        }
+
+        // NEW: Add Default Hard-coded Model
+        async function addDefaultHardcodedModel() {
+            try {
+                const defaultModel = {
+                    name: "Hot Model",
+                    image: "https://i.postimg.cc/cHB5zQYM/1758636933933.jpg",
+                    description: "Available for private shows and exclusive content",
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    order: 0,
+                    likes: 0,
+                    comments: []
+                };
+                
+                await hardcodedModelsRef.add(defaultModel);
+                await loadHardcodedModels(); // Reload to display
+                
+            } catch (error) {
+                console.error('Error adding default model:', error);
+            }
+        }
+
+        // NEW: Create Hard-coded Model Card
+        function createHardcodedModelCard(model) {
+            const card = document.createElement('div');
+            card.className = 'model-card';
+            card.style.setProperty('--card-index', Math.floor(Math.random() * 10));
+            
+            card.innerHTML = `
+                <div class="model-image-container">
+                    <img src="${model.image}" alt="${model.name}" class="model-image" onerror="this.src='https://images.unsplash.com/photo-1511285605577-4d62fb50d2f7?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'">
+                    <div class="model-badge">
+                        <i class="fas fa-star"></i> Featured
+                    </div>
+                </div>
+                <div class="model-info">
+                    <div class="model-name">
+                        <h3>${model.name}</h3>
+                        <i class="fas fa-check-circle verified"></i>
+                    </div>
+                    
+                    ${model.description ? `<p style="margin-bottom: 1rem; color: rgba(255,255,255,0.7); font-size: 0.9rem;">${model.description}</p>` : ''}
+
+                    <div class="model-stats">
+                        <div class="likes">
+                            <button class="like-btn" onclick="handleLikeHardcoded('${model.id}')">
+                                <i class="fas fa-heart"></i>
+                            </button>
+                            <span>${model.likes || 0}</span>
+                        </div>
+                        <div class="comments">
+                            <button class="comment-btn" onclick="openCommentModal('hardcoded_${model.id}')">
+                                <i class="fas fa-comment"></i>
+                            </button>
+                            <span>${model.comments ? model.comments.length : 0}</span>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                        <button class="book-btn" onclick="openVideoCallModal('hardcoded_${model.id}')" style="flex: 1;">
+                            <i class="fas fa-video"></i> Book Show
+                        </button>
+                        <button class="btn btn-outline" onclick="openChatPage('hardcoded_${model.id}')" style="flex: 1;">
+                            <i class="fas fa-comments"></i> Chat
+                        </button>
+                    </div>
+                </div>
+            `;
+            return card;
+        }
+
+        // NEW: Add Hard-coded Model Function
+        async function addHardcodedModel() {
+            const image = document.getElementById('hardcodedModelImage').value;
+            const name = document.getElementById('hardcodedModelName').value;
+            const description = document.getElementById('hardcodedModelDescription').value;
+
+            if (!image || !name) {
+                toastr.error('Please provide both image URL and model name');
+                return;
+            }
+
+            try {
+                const modelData = {
+                    name: name,
+                    image: image,
+                    description: description,
+                    likes: 0,
+                    comments: [],
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    order: hardcodedModels.length
+                };
+
+                await hardcodedModelsRef.add(modelData);
+                
+                toastr.success('Hard-coded model added successfully!');
+                
+                // Clear form
+                document.getElementById('hardcodedModelImage').value = '';
+                document.getElementById('hardcodedModelName').value = '';
+                document.getElementById('hardcodedModelDescription').value = '';
+                
+                // Reload and update display
+                await loadHardcodedModels();
+                updateHardcodedModelsList();
+                
+            } catch (error) {
+                console.error('Error adding hardcoded model:', error);
+                toastr.error('Failed to add hard-coded model');
+            }
+        }
+
+        // NEW: Update Hard-coded Models List in Admin
+        function updateHardcodedModelsList() {
+            const hardcodedList = document.getElementById('hardcodedModelsList');
+            hardcodedList.innerHTML = '';
+
+            if (hardcodedModels.length === 0) {
+                hardcodedList.innerHTML = '<p>No hard-coded models added yet.</p>';
+                return;
+            }
+
+            hardcodedModels.forEach(model => {
+                const modelCard = document.createElement('div');
+                modelCard.className = 'hardcoded-model-card';
+                modelCard.innerHTML = `
+                    <div class="hardcoded-model-info">
+                        <img src="${model.image}" alt="${model.name}" class="hardcoded-model-image" onerror="this.src='https://images.unsplash.com/photo-1511285605577-4d62fb50d2f7?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'">
+                        <div>
+                            <h4>${model.name}</h4>
+                            <p>${model.description || 'No description'}</p>
+                            <p><small>Image: ${model.image}</small></p>
+                        </div>
+                    </div>
+                    <div class="hardcoded-model-actions">
+                        <button class="btn btn-danger btn-sm" onclick="deleteHardcodedModel('${model.id}')">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                        <button class="btn btn-warning btn-sm" onclick="editHardcodedModel('${model.id}')">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                    </div>
+                `;
+                hardcodedList.appendChild(modelCard);
+            });
+        }
+
+        // NEW: Delete Hard-coded Model
+        async function deleteHardcodedModel(modelId) {
+            if (!confirm('Are you sure you want to delete this hard-coded model?')) {
+                return;
+            }
+
+            try {
+                await hardcodedModelsRef.doc(modelId).delete();
+                toastr.success('Hard-coded model deleted successfully!');
+                await loadHardcodedModels();
+                updateHardcodedModelsList();
+            } catch (error) {
+                console.error('Error deleting hardcoded model:', error);
+                toastr.error('Failed to delete hard-coded model');
+            }
+        }
+
+        // NEW: Edit Hard-coded Model
+        async function editHardcodedModel(modelId) {
+            const model = hardcodedModels.find(m => m.id === modelId);
+            if (!model) return;
+
+            // Populate form with existing data
+            document.getElementById('hardcodedModelImage').value = model.image;
+            document.getElementById('hardcodedModelName').value = model.name;
+            document.getElementById('hardcodedModelDescription').value = model.description || '';
+
+            // Change button behavior to update instead of add
+            const addButton = document.querySelector('#hardcodedFrontpageTab .btn-primary');
+            addButton.innerHTML = '<i class="fas fa-save"></i> Update Model';
+            addButton.onclick = function() { updateHardcodedModel(modelId); };
+
+            toastr.info('Editing model: ' + model.name);
+        }
+
+        // NEW: Update Hard-coded Model
+        async function updateHardcodedModel(modelId) {
+            const image = document.getElementById('hardcodedModelImage').value;
+            const name = document.getElementById('hardcodedModelName').value;
+            const description = document.getElementById('hardcodedModelDescription').value;
+
+            if (!image || !name) {
+                toastr.error('Please provide both image URL and model name');
+                return;
+            }
+
+            try {
+                await hardcodedModelsRef.doc(modelId).update({
+                    name: name,
+                    image: image,
+                    description: description,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                toastr.success('Hard-coded model updated successfully!');
+                
+                // Reset form and button
+                document.getElementById('hardcodedModelImage').value = '';
+                document.getElementById('hardcodedModelName').value = '';
+                document.getElementById('hardcodedModelDescription').value = '';
+                
+                const addButton = document.querySelector('#hardcodedFrontpageTab .btn-primary');
+                addButton.innerHTML = '<i class="fas fa-plus"></i> Add Hard-coded Model';
+                addButton.onclick = addHardcodedModel;
+                
+                await loadHardcodedModels();
+                updateHardcodedModelsList();
+                
+            } catch (error) {
+                console.error('Error updating hardcoded model:', error);
+                toastr.error('Failed to update hard-coded model');
+            }
+        }
+
+        // NEW: Handle likes for hard-coded models
+        async function handleLikeHardcoded(modelId) {
+            if (!currentUser && !adminUser) {
+                openModal('subscriptionModal');
+                return;
+            }
+
+            try {
+                const model = hardcodedModels.find(m => m.id === modelId);
+                const newLikes = (model.likes || 0) + 1;
+                
+                await hardcodedModelsRef.doc(modelId).update({
+                    likes: newLikes
+                });
+
+                // Update local state
+                model.likes = newLikes;
+                
+                // Update UI
+                await loadHardcodedModels();
+                toastr.success('Liked! ❤️');
+
+            } catch (error) {
+                console.error('Error liking hardcoded model:', error);
+                toastr.error('Failed to like model');
             }
         }
 
@@ -2485,6 +2868,7 @@
             loadPostsList();
             loadSessionsList();
             updateExistingModelsSelect();
+            updateHardcodedModelsList(); // NEW
         }
 
         function hideAdminPanel() {
@@ -2522,6 +2906,8 @@
                 loadPostsList();
             } else if (tabName === 'frontpageModels') {
                 updateExistingModelsSelect();
+            } else if (tabName === 'hardcodedFrontpage') {
+                updateHardcodedModelsList(); // NEW
             }
         }
 
