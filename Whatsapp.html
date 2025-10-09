@@ -1164,21 +1164,6 @@
             gap: 2.5rem;
         }
 
-        /* Private Model Premium Styles */
-        .premium-access-prompt {
-            background: rgba(233, 30, 99, 0.1);
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-            text-align: center;
-            border: 1px solid rgba(233, 30, 99, 0.3);
-        }
-
-        .premium-access-prompt h4 {
-            color: var(--primary);
-            margin-bottom: 0.5rem;
-        }
-
         /* Responsive Design with enhanced animations */
         @media (max-width: 1024px) {
             .frontpage-models-grid {
@@ -1325,15 +1310,15 @@
         </div>
     </section>
 
-    <!-- Front Page Models Section -->
+    <!-- Front Page Models Section - FOR NON-SUBSCRIBED USERS ONLY -->
     <section class="frontpage-models" id="frontpageModels">
-        <h2 class="section-title">Front Page Models</h2>
+        <h2 class="section-title">Featured Models</h2>
         <div class="frontpage-models-grid" id="frontpageModelsGrid">
             <!-- Hard-coded models will be loaded here for non-subscribed users -->
         </div>
     </section>
 
-    <!-- Private Content Section -->
+    <!-- Private Content Section - FOR SUBSCRIBED USERS ONLY -->
     <section class="private-content" id="privateContent">
         <h2 class="section-title">Exclusive Members Content</h2>
         <div id="privateContentGrid" class="models-grid">
@@ -1700,23 +1685,6 @@
         </div>
     </div>
 
-    <!-- Private Model Premium Modal -->
-    <div class="modal sexy-popup" id="privateModelModal">
-        <div class="modal-content">
-            <img src="https://images.unsplash.com/photo-1519699047748-de8e457a634e?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80" alt="Private Model Access" class="modal-image">
-            <h2>Unlock Premium Private Model</h2>
-            <p>This exclusive model requires special premium access. For just $100, unlock intimate private sessions and exclusive content with our most sought-after models.</p>
-            <div class="modal-buttons">
-                <button class="btn btn-outline" onclick="closeModal('privateModelModal')">
-                    <i class="fas fa-times"></i> Maybe Later
-                </button>
-                <button class="btn btn-primary" onclick="redirectToPrivateModelPayment()">
-                    <i class="fas fa-gem"></i> Unlock for $100
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- Video Call Modal -->
     <div class="modal" id="videoCallModal">
         <div class="modal-content">
@@ -1894,19 +1862,17 @@
         const postsRef = db.collection('posts');
         const bookingsRef = db.collection('bookings');
         const commentsRef = db.collection('comments');
-        const privateModelAccessRef = db.collection('privateModelAccess');
 
         // State Management
         let currentUser = null;
         let adminUser = null;
         let websiteSettings = {};
-        let allFirestoreModels = [];
+        let allModels = [];
         let hardcodedFrontpageModels = [];
         let currentEditingModel = null;
         let currentEditingHardcodedModel = null;
         let currentCommentModelId = null;
         let currentModelId = null;
-        let userPrivateModelAccess = [];
 
         // Initialize Hard-coded Models (stored in JavaScript array)
         function initializeHardcodedModels() {
@@ -1951,15 +1917,24 @@
             localStorage.setItem('hardcodedFrontpageModels', JSON.stringify(hardcodedFrontpageModels));
         }
 
-        // Display hard-coded front page models
+        // Display hard-coded front page models - ONLY FOR NON-LOGGED-IN USERS
         function displayHardcodedFrontpageModels() {
             const frontpageGrid = document.getElementById('frontpageModelsGrid');
+            const frontpageSection = document.getElementById('frontpageModels');
             frontpageGrid.innerHTML = '';
+
+            // Only show hard-coded models to non-logged-in users
+            if (currentUser || adminUser) {
+                frontpageSection.style.display = 'none';
+                return;
+            }
+
+            frontpageSection.style.display = 'block';
 
             let cardIndex = 0;
             
             hardcodedFrontpageModels.forEach(model => {
-                // Create model card for front page - show to everyone
+                // Create model card for front page - show to non-subscribed users only
                 const modelCard = createHardcodedModelCard(model);
                 modelCard.style.setProperty('--card-index', cardIndex);
                 cardIndex++;
@@ -2006,7 +1981,7 @@
 
         async function initializeWebsite() {
             await loadWebsiteSettings();
-            await loadFirestoreModels();
+            await loadModels();
             checkAuthState();
             setupEventListeners();
             updateAuthButtons();
@@ -2033,7 +2008,6 @@
                             toastr.success('Welcome back, Admin!');
                         } else {
                             currentUser = { uid: user.uid, ...userData };
-                            await loadUserPrivateModelAccess(); // Load user's private model access
                             showUserInterface();
                             checkAccountExpiry();
                             toastr.success('Welcome back!');
@@ -2041,42 +2015,20 @@
                     } else {
                         // User not in users collection - might be Firebase auth user but not in our system
                         await auth.signOut();
-                        toastr.error('Account not found. Please contact admin.');
                     }
                     updateAuthButtons();
-                    await loadFirestoreModels(); // Reload models to show private content if applicable
+                    await loadModels(); // Reload models to show private content if applicable
+                    displayHardcodedFrontpageModels(); // Update front page models display
                 } else {
                     currentUser = null;
                     adminUser = null;
-                    userPrivateModelAccess = [];
                     updateAuthButtons();
                     hideAdminPanel();
                     hideUserInterface();
-                    await loadFirestoreModels(); // Reload models to hide private content
+                    await loadModels(); // Reload models to hide private content
+                    displayHardcodedFrontpageModels(); // Show front page models for non-logged-in users
                 }
             });
-        }
-
-        // Load user's private model access
-        async function loadUserPrivateModelAccess() {
-            if (!currentUser) return;
-            
-            try {
-                const snapshot = await privateModelAccessRef
-                    .where('userId', '==', currentUser.uid)
-                    .where('isActive', '==', true)
-                    .get();
-                
-                userPrivateModelAccess = snapshot.docs.map(doc => doc.data().modelId);
-            } catch (error) {
-                console.error('Error loading private model access:', error);
-                userPrivateModelAccess = [];
-            }
-        }
-
-        // Check if user has access to private model
-        function hasPrivateModelAccess(modelId) {
-            return userPrivateModelAccess.includes(modelId) || (adminUser !== null);
         }
 
         // Load Website Settings
@@ -2127,12 +2079,13 @@
             }
         }
 
-        // Load Models from Firebase (FOR SUBSCRIBED USERS ONLY)
-        async function loadFirestoreModels() {
+        // Load Models from Firebase - ONLY FOR LOGGED-IN USERS
+        async function loadModels() {
             try {
                 const snapshot = await modelsRef.orderBy('createdAt', 'desc').get();
-                allFirestoreModels = [];
+                allModels = [];
                 const privateContentGrid = document.getElementById('privateContentGrid');
+                const privateContentSection = document.getElementById('privateContent');
                 
                 privateContentGrid.innerHTML = '';
 
@@ -2140,32 +2093,33 @@
                 
                 snapshot.forEach(doc => {
                     const model = { id: doc.id, ...doc.data() };
-                    allFirestoreModels.push(model);
-                    
-                    // Only show Firestore models to logged-in users with active subscriptions
-                    if ((currentUser && isSubscriptionActive(currentUser)) || adminUser) {
+                    allModels.push(model);
+                });
+
+                // Show Firestore models ONLY to logged-in users with active subscriptions
+                if ((currentUser && isSubscriptionActive(currentUser)) || adminUser) {
+                    allModels.forEach(model => {
                         // Create model card for every Firebase model
-                        const modelCard = createFirestoreModelCard(model);
+                        const modelCard = createModelCard(model);
                         modelCard.style.setProperty('--card-index', cardIndex);
                         cardIndex++;
                         privateContentGrid.appendChild(modelCard);
+                    });
+                    
+                    // Show private content section if there are models
+                    if (allModels.length > 0) {
+                        privateContentSection.style.display = 'block';
+                    } else {
+                        privateContentSection.style.display = 'none';
                     }
-                });
+                } else {
+                    // Hide private content for non-logged-in users
+                    privateContentSection.style.display = 'none';
+                }
 
                 // Update admin models list
                 if (adminUser) {
                     updateAdminModelsList();
-                }
-
-                // Show private content section if user is logged in and there are models
-                const privateContent = document.getElementById('privateContent');
-                const hasModels = allFirestoreModels.length > 0;
-                const userIsLoggedIn = (currentUser && isSubscriptionActive(currentUser)) || adminUser;
-                
-                if (userIsLoggedIn && hasModels) {
-                    privateContent.style.display = 'block';
-                } else {
-                    privateContent.style.display = 'none';
                 }
 
             } catch (error) {
@@ -2182,23 +2136,20 @@
             return now < expires && user.isActive !== false;
         }
 
-        // Create Firestore Model Card (ONLY FOR SUBSCRIBED USERS)
-        function createFirestoreModelCard(model) {
+        // Create Model Card with enhanced animations (Firebase Models Only) - FOR LOGGED-IN USERS
+        function createModelCard(model) {
             const card = document.createElement('div');
             card.className = 'model-card';
             
             // Get comments for this model
             const modelComments = model.comments || [];
             const publicPosts = model.publicPosts || [];
-            const isPrivateModel = model.contentType === 'private';
-            const hasAccess = !isPrivateModel || hasPrivateModelAccess(model.id);
             
             card.innerHTML = `
                 <div class="model-image-container">
                     <img src="${model.image}" alt="${model.name}" class="model-image" onerror="this.src='https://images.unsplash.com/photo-1511285605577-4d62fb50d2f7?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'">
                     <div class="model-badge">
-                        <i class="fas fa-crown"></i> ${isPrivateModel ? 'Premium Private' : 'Exclusive'}
-                        ${isPrivateModel && !hasAccess ? ' <i class="fas fa-lock"></i>' : ''}
+                        <i class="fas fa-crown"></i> ${model.contentType === 'private' ? 'Premium' : 'Public'}
                     </div>
                 </div>
                 <div class="model-info">
@@ -2215,13 +2166,13 @@
 
                     <div class="model-stats">
                         <div class="likes">
-                            <button class="like-btn ${model.userLiked ? 'liked' : ''}" onclick="handleLike('${model.id}')" ${isPrivateModel && !hasAccess ? 'disabled' : ''}>
+                            <button class="like-btn ${model.userLiked ? 'liked' : ''}" onclick="handleLike('${model.id}')">
                                 <i class="fas fa-heart"></i>
                             </button>
                             <span>${model.likes || 0}</span>
                         </div>
                         <div class="comments">
-                            <button class="comment-btn" onclick="openCommentModal('${model.id}')" ${isPrivateModel && !hasAccess ? 'disabled' : ''}>
+                            <button class="comment-btn" onclick="openCommentModal('${model.id}')">
                                 <i class="fas fa-comment"></i>
                             </button>
                             <span>${modelComments.length}</span>
@@ -2229,19 +2180,9 @@
                     </div>
 
                     ${publicPosts.length > 0 ? `
-                        <button class="btn btn-outline" style="width: 100%; margin-bottom: 1rem;" onclick="openPublicPostsModal('${model.id}')" ${isPrivateModel && !hasAccess ? 'disabled' : ''}>
+                        <button class="btn btn-outline" style="width: 100%; margin-bottom: 1rem;" onclick="openPublicPostsModal('${model.id}')">
                             <i class="fas fa-images"></i> View Public Posts (${publicPosts.length})
                         </button>
-                    ` : ''}
-
-                    ${isPrivateModel && !hasAccess ? `
-                        <div class="premium-access-prompt">
-                            <h4><i class="fas fa-gem"></i> Premium Model</h4>
-                            <p style="margin-bottom: 1rem;">Unlock exclusive private access for $100</p>
-                            <button class="btn btn-primary" onclick="openPrivateModelModal('${model.id}')" style="width: 100%;">
-                                <i class="fas fa-lock-open"></i> Unlock Premium Access
-                            </button>
-                        </div>
                     ` : ''}
 
                     ${modelComments.length > 0 ? `
@@ -2264,10 +2205,10 @@
                     ` : ''}
 
                     <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                        <button class="book-btn" onclick="openVideoCallModal('${model.id}')" style="flex: 1;" ${isPrivateModel && !hasAccess ? 'disabled' : ''}>
+                        <button class="book-btn" onclick="openVideoCallModal('${model.id}')" style="flex: 1;">
                             <i class="fas fa-video"></i> Book Show
                         </button>
-                        <button class="btn btn-outline" onclick="openChatPage('${model.id}')" style="flex: 1;" ${isPrivateModel && !hasAccess ? 'disabled' : ''}>
+                        <button class="btn btn-outline" onclick="openChatPage()" style="flex: 1;">
                             <i class="fas fa-comments"></i> Chat
                         </button>
                     </div>
@@ -2276,7 +2217,7 @@
             return card;
         }
 
-        // Create Hard-coded Model Card for Front Page (FOR NON-SUBSCRIBED USERS)
+        // Create Hard-coded Model Card for Front Page - FOR NON-SUBSCRIBED USERS ONLY
         function createHardcodedModelCard(model) {
             const card = document.createElement('div');
             card.className = 'model-card';
@@ -2360,53 +2301,39 @@
             return card;
         }
 
-        // Handle Hard-coded Model Interaction - Show subscription popup
+        // Handle Hard-coded Model Interaction - Show subscription popup for non-subscribed users
         function handleHardcodedModelInteraction() {
             openModal('subscriptionModal');
         }
 
-        // Open Private Model Premium Access Modal
-        function openPrivateModelModal(modelId) {
-            currentModelId = modelId;
-            openModal('privateModelModal');
-        }
-
-        // Redirect to private model payment
-        function redirectToPrivateModelPayment() {
-            // You can implement the payment flow for private models here
-            toastr.info('Redirecting to private model payment...');
-            // window.location.href = 'private_model_payment.html?model=' + currentModelId;
-            closeModal('privateModelModal');
-        }
-
-        // Open Chat Page (External) - chat1.html
-        function openChatPage(modelId) {
+        // Open Chat Page (External) - chat1.html - FOR LOGGED-IN USERS ONLY
+        function openChatPage() {
             if (!currentUser && !adminUser) {
                 openModal('subscriptionModal');
                 return;
             }
             
-            // Check if model is private and user doesn't have access
-            const model = allFirestoreModels.find(m => m.id === modelId);
-            if (model && model.contentType === 'private' && !hasPrivateModelAccess(modelId)) {
-                openPrivateModelModal(modelId);
-                return;
-            }
-            
-            // Check subscription status
+            // Check subscription status for regular users
             if (currentUser && !isSubscriptionActive(currentUser)) {
                 openModal('renewalModal');
                 return;
             }
-
+            
             // Open external chat page - chat1.html
-            window.open('chat1.html?model=' + modelId, '_blank');
+            window.open('chat1.html', '_blank');
         }
 
         // Open Models Gallery
         function openModelsGallery() {
+            // Check if user is logged in
             if (!currentUser && !adminUser) {
                 openModal('subscriptionModal');
+                return;
+            }
+            
+            // Check subscription status for regular users
+            if (currentUser && !isSubscriptionActive(currentUser)) {
+                openModal('renewalModal');
                 return;
             }
             
@@ -2414,16 +2341,13 @@
             loadModelsGallery();
         }
 
-        // Load Models for Gallery (Firestore Models Only for Subscribed Users)
+        // Load Models for Gallery (Firebase Models Only) - FOR LOGGED-IN USERS
         function loadModelsGallery() {
             const galleryGrid = document.getElementById('modelsGalleryGrid');
             galleryGrid.innerHTML = '';
 
-            // Only show Firestore models to subscribed users
-            allFirestoreModels.forEach(model => {
-                const isPrivateModel = model.contentType === 'private';
-                const hasAccess = !isPrivateModel || hasPrivateModelAccess(model.id);
-                
+            // Only show Firebase models to logged-in users
+            allModels.forEach(model => {
                 const galleryCard = document.createElement('div');
                 galleryCard.className = 'gallery-model-card';
                 
@@ -2431,17 +2355,12 @@
                     <img src="${model.image}" alt="${model.name}" class="gallery-model-image">
                     <div class="gallery-model-info">
                         <h3>${model.name} ${model.verified ? '<i class="fas fa-check-circle verified"></i>' : ''}</h3>
-                        <p>${isPrivateModel ? 'Premium Private Model' : 'Exclusive Model'}</p>
-                        ${isPrivateModel && !hasAccess ? `
-                            <div style="background: rgba(233, 30, 99, 0.1); padding: 0.5rem; border-radius: 5px; margin: 0.5rem 0; text-align: center;">
-                                <small><i class="fas fa-lock"></i> Premium Access Required</small>
-                            </div>
-                        ` : ''}
+                        <p>${model.contentType === 'private' ? 'Premium Model' : 'Public Model'}</p>
                         <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                            <button class="btn btn-primary" onclick="openVideoCallModal('${model.id}')" style="flex: 1;" ${isPrivateModel && !hasAccess ? 'disabled' : ''}>
+                            <button class="btn btn-primary" onclick="openVideoCallModal('${model.id}')" style="flex: 1;">
                                 <i class="fas fa-video"></i> Book
                             </button>
-                            <button class="btn btn-outline" onclick="openChatPage('${model.id}')" style="flex: 1;" ${isPrivateModel && !hasAccess ? 'disabled' : ''}>
+                            <button class="btn btn-outline" onclick="openChatPage()" style="flex: 1;">
                                 <i class="fas fa-comments"></i> Chat
                             </button>
                         </div>
@@ -2450,14 +2369,13 @@
                 galleryGrid.appendChild(galleryCard);
             });
 
-            // Show subscription modal for non-logged in users when they try to access gallery
-            if (!currentUser && !adminUser && allFirestoreModels.length > 0) {
-                closeModal('modelsGalleryModal');
-                openModal('subscriptionModal');
+            // Show message if no models
+            if (allModels.length === 0) {
+                galleryGrid.innerHTML = '<p style="text-align: center; padding: 2rem;">No models available yet.</p>';
             }
         }
 
-        // Handle Like for Firestore Models
+        // Handle Like - FOR LOGGED-IN USERS ONLY
         async function handleLike(modelId) {
             if (!currentUser && !adminUser) {
                 openModal('subscriptionModal');
@@ -2470,15 +2388,8 @@
                 return;
             }
 
-            // Check if model is private and user doesn't have access
-            const model = allFirestoreModels.find(m => m.id === modelId);
-            if (model && model.contentType === 'private' && !hasPrivateModelAccess(modelId)) {
-                openPrivateModelModal(modelId);
-                return;
-            }
-
             try {
-                const model = allFirestoreModels.find(m => m.id === modelId);
+                const model = allModels.find(m => m.id === modelId);
                 
                 // Check if user already liked this model
                 const likeDoc = await db.collection('likes').doc(`${modelId}_${currentUser ? currentUser.uid : 'admin'}`).get();
@@ -2507,7 +2418,7 @@
                 model.userLiked = true;
                 
                 // Update UI
-                await loadFirestoreModels();
+                await loadModels();
                 toastr.success('Liked! ❤️');
 
             } catch (error) {
@@ -2521,7 +2432,7 @@
             if (!adminUser) return;
             
             try {
-                const model = allFirestoreModels.find(m => m.id === modelId);
+                const model = allModels.find(m => m.id === modelId);
                 const boostAmount = Math.floor(Math.random() * 50) + 10; // Random boost between 10-60
                 const newLikes = (model.likes || 0) + boostAmount;
                 
@@ -2533,7 +2444,7 @@
                 model.likes = newLikes;
                 
                 // Update UI
-                await loadFirestoreModels();
+                await loadModels();
                 toastr.success(`Boosted ${model.name}'s likes by ${boostAmount}!`);
             } catch (error) {
                 console.error('Error boosting likes:', error);
@@ -2577,13 +2488,6 @@
                 openModal('renewalModal');
                 return;
             }
-
-            // Check if model is private and user doesn't have access
-            const model = allFirestoreModels.find(m => m.id === modelId);
-            if (model && model.contentType === 'private' && !hasPrivateModelAccess(modelId)) {
-                openPrivateModelModal(modelId);
-                return;
-            }
             
             currentCommentModelId = modelId;
             document.getElementById('commentText').value = '';
@@ -2599,7 +2503,7 @@
             }
 
             try {
-                const model = allFirestoreModels.find(m => m.id === currentCommentModelId);
+                const model = allModels.find(m => m.id === currentCommentModelId);
                 const currentComments = model.comments || [];
                 
                 // Add new comment
@@ -2612,7 +2516,7 @@
 
                 toastr.success('Comment added successfully!');
                 closeModal('commentModal');
-                await loadFirestoreModels();
+                await loadModels();
                 
             } catch (error) {
                 console.error('Error adding comment:', error);
@@ -2637,7 +2541,7 @@
             }
 
             try {
-                const model = allFirestoreModels.find(m => m.id === currentCommentModelId);
+                const model = allModels.find(m => m.id === currentCommentModelId);
                 const currentComments = model.comments || [];
                 
                 // Generate fake username if not provided
@@ -2658,7 +2562,7 @@
 
                 toastr.success('Fake comment added successfully!');
                 closeModal('adminCommentModal');
-                await loadFirestoreModels();
+                await loadModels();
                 
             } catch (error) {
                 console.error('Error adding fake comment:', error);
@@ -2727,14 +2631,7 @@
                 return;
             }
 
-            // Check if model is private and user doesn't have access
-            const model = allFirestoreModels.find(m => m.id === modelId);
-            if (model && model.contentType === 'private' && !hasPrivateModelAccess(modelId)) {
-                openPrivateModelModal(modelId);
-                return;
-            }
-
-            const model = allFirestoreModels.find(m => m.id === modelId);
+            const model = allModels.find(m => m.id === modelId);
             if (!model) return;
 
             const publicPosts = model.publicPosts || [];
@@ -2790,13 +2687,6 @@
                 openModal('renewalModal');
                 return;
             }
-
-            // Check if model is private and user doesn't have access
-            const model = allFirestoreModels.find(m => m.id === modelId);
-            if (model && model.contentType === 'private' && !hasPrivateModelAccess(modelId)) {
-                openPrivateModelModal(modelId);
-                return;
-            }
             
             currentModelId = modelId;
             openModal('videoCallModal');
@@ -2813,7 +2703,7 @@
             }
 
             try {
-                const model = allFirestoreModels.find(m => m.id === currentModelId);
+                const model = allModels.find(m => m.id === currentModelId);
                 
                 await bookingsRef.add({
                     modelId: currentModelId,
@@ -2955,7 +2845,7 @@
                 }
                 
                 document.getElementById('modelForm').reset();
-                await loadFirestoreModels();
+                await loadModels();
                 
             } catch (error) {
                 console.error('Error saving model:', error);
@@ -2964,7 +2854,7 @@
         }
 
         function editModel(modelId) {
-            const model = allFirestoreModels.find(m => m.id === modelId);
+            const model = allModels.find(m => m.id === modelId);
             if (!model) return;
 
             currentEditingModel = modelId;
@@ -2996,7 +2886,7 @@
             try {
                 await modelsRef.doc(modelId).delete();
                 toastr.success('Model deleted successfully!');
-                await loadFirestoreModels();
+                await loadModels();
             } catch (error) {
                 console.error('Error deleting model:', error);
                 toastr.error('Failed to delete model');
@@ -3007,7 +2897,7 @@
             const modelsList = document.getElementById('modelsList');
             modelsList.innerHTML = '';
 
-            allFirestoreModels.forEach(model => {
+            allModels.forEach(model => {
                 const modelCard = document.createElement('div');
                 modelCard.className = 'card';
                 modelCard.innerHTML = `
@@ -3642,7 +3532,7 @@
 
         // Initialize UI with enhanced effects
         function initializeUI() {
-            console.log('Camsilo website initialized successfully with separate model systems');
+            console.log('Camsilo website initialized successfully with proper user access control');
         }
 
         // Call initialization
