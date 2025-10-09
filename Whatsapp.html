@@ -1972,50 +1972,10 @@
 
         async function initializeWebsite() {
             await loadWebsiteSettings();
-            checkAuthState(); // Check auth first
+            await loadModels();
+            checkAuthState();
             setupEventListeners();
             updateAuthButtons();
-        }
-
-        // Enhanced Authentication State Listener
-        function checkAuthState() {
-            auth.onAuthStateChanged(async (user) => {
-                if (user) {
-                    try {
-                        const userDoc = await usersRef.doc(user.uid).get();
-                        if (userDoc.exists) {
-                            const userData = userDoc.data();
-                            if (userData.role === 'admin') {
-                                adminUser = { uid: user.uid, ...userData };
-                                showAdminPanel();
-                                await loadModels(); // Load models for admin
-                                toastr.success('Welcome back, Admin!');
-                            } else {
-                                currentUser = { uid: user.uid, ...userData };
-                                showUserInterface();
-                                await loadModels(); // Load models for regular user
-                                checkAccountExpiry();
-                                toastr.success('Welcome back!');
-                            }
-                        } else {
-                            // User not in users collection
-                            await auth.signOut();
-                            toastr.error('User account not found');
-                        }
-                    } catch (error) {
-                        console.error('Error checking user data:', error);
-                        await auth.signOut();
-                        toastr.error('Error loading user data');
-                    }
-                } else {
-                    currentUser = null;
-                    adminUser = null;
-                    hideAdminPanel();
-                    hideUserInterface();
-                    await loadModels(); // Reload models for public view
-                }
-                updateAuthButtons();
-            });
         }
 
         function setupEventListeners() {
@@ -2024,6 +1984,40 @@
             document.getElementById('hardcodedModelForm').addEventListener('submit', handleHardcodedModelSubmit);
             document.getElementById('userForm').addEventListener('submit', handleUserCreate);
             document.getElementById('postForm').addEventListener('submit', handlePostSubmit);
+        }
+
+        // Authentication State Listener
+        function checkAuthState() {
+            auth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    const userDoc = await usersRef.doc(user.uid).get();
+                    if (userDoc.exists) {
+                        const userData = userDoc.data();
+                        if (userData.role === 'admin') {
+                            adminUser = { uid: user.uid, ...userData };
+                            showAdminPanel();
+                            toastr.success('Welcome back, Admin!');
+                        } else {
+                            currentUser = { uid: user.uid, ...userData };
+                            showUserInterface();
+                            checkAccountExpiry();
+                            toastr.success('Welcome back!');
+                        }
+                    } else {
+                        // User not in users collection - might be Firebase auth user but not in our system
+                        await auth.signOut();
+                    }
+                    updateAuthButtons();
+                    await loadModels(); // Reload models to show private content if applicable
+                } else {
+                    currentUser = null;
+                    adminUser = null;
+                    updateAuthButtons();
+                    hideAdminPanel();
+                    hideUserInterface();
+                    await loadModels(); // Reload models to hide private content
+                }
+            });
         }
 
         // Load Website Settings
@@ -2074,16 +2068,14 @@
             }
         }
 
-        // Enhanced Load Models Function
+        // Load Models
         async function loadModels() {
             try {
                 const snapshot = await modelsRef.orderBy('createdAt', 'desc').get();
                 allModels = [];
                 const privateContentGrid = document.getElementById('privateContentGrid');
-                const frontpageGrid = document.getElementById('frontpageModelsGrid');
                 
                 privateContentGrid.innerHTML = '';
-                frontpageGrid.innerHTML = '';
 
                 let cardIndex = 0;
                 
@@ -2091,36 +2083,30 @@
                     const model = { id: doc.id, ...doc.data() };
                     allModels.push(model);
                     
-                    // Create model card
+                    // Create model card for every model
                     const modelCard = createModelCard(model);
                     modelCard.style.setProperty('--card-index', cardIndex);
+                    cardIndex++;
                     
-                    // Show public models to everyone on front page
-                    if (model.contentType === 'public') {
-                        frontpageGrid.appendChild(modelCard.cloneNode(true));
-                    }
-                    
-                    // Show private models only to subscribed users or admin
+                    // Show private models only to logged-in users
                     if (model.contentType === 'private') {
                         if ((currentUser && isSubscriptionActive(currentUser)) || adminUser) {
                             privateContentGrid.appendChild(modelCard);
                         }
                     }
-                    
-                    cardIndex++;
                 });
 
-                // Update admin models list if admin is logged in
+                // Update admin models list
                 if (adminUser) {
                     updateAdminModelsList();
                 }
 
-                // Show/hide private content section based on user status and content availability
+                // Show private content section if user is logged in and there's private content
                 const privateContent = document.getElementById('privateContent');
                 const hasPrivateContent = privateContentGrid.children.length > 0;
-                const userIsSubscribed = (currentUser && isSubscriptionActive(currentUser)) || adminUser;
+                const userIsLoggedIn = (currentUser && isSubscriptionActive(currentUser)) || adminUser;
                 
-                if (userIsSubscribed && hasPrivateContent) {
+                if (userIsLoggedIn && hasPrivateContent) {
                     privateContent.style.display = 'block';
                 } else {
                     privateContent.style.display = 'none';
@@ -2132,38 +2118,22 @@
             }
         }
 
-        // Enhanced Subscription Check Function
+        // Check if user subscription is active
         function isSubscriptionActive(user) {
-            if (!user || !user.expiresAt) return false;
-            
-            try {
-                const now = new Date();
-                let expires;
-                
-                // Handle both Firestore timestamp and regular date
-                if (user.expiresAt.toDate) {
-                    expires = user.expiresAt.toDate();
-                } else if (user.expiresAt instanceof Date) {
-                    expires = user.expiresAt;
-                } else {
-                    expires = new Date(user.expiresAt);
-                }
-                
-                return now < expires && user.isActive !== false;
-            } catch (error) {
-                console.error('Error checking subscription:', error);
-                return false;
-            }
+            if (!user.expiresAt) return false;
+            const now = new Date();
+            const expires = user.expiresAt.toDate();
+            return now < expires && user.isActive !== false;
         }
 
-        // Enhanced Create Model Card with Subscription Checks
+        // Create Model Card with enhanced animations
         function createModelCard(model) {
             const card = document.createElement('div');
             card.className = 'model-card';
             
+            // Get comments for this model
             const modelComments = model.comments || [];
             const publicPosts = model.publicPosts || [];
-            const userCanInteract = (currentUser && isSubscriptionActive(currentUser)) || adminUser;
             
             card.innerHTML = `
                 <div class="model-image-container">
@@ -2186,15 +2156,13 @@
 
                     <div class="model-stats">
                         <div class="likes">
-                            <button class="like-btn ${model.userLiked ? 'liked' : ''}" 
-                                    onclick="${userCanInteract ? `handleLike('${model.id}')` : `openModal('subscriptionModal')`}">
+                            <button class="like-btn ${model.userLiked ? 'liked' : ''}" onclick="handleLike('${model.id}')">
                                 <i class="fas fa-heart"></i>
                             </button>
                             <span>${model.likes || 0}</span>
                         </div>
                         <div class="comments">
-                            <button class="comment-btn" 
-                                    onclick="${userCanInteract ? `openCommentModal('${model.id}')` : `openModal('subscriptionModal')`}">
+                            <button class="comment-btn" onclick="openCommentModal('${model.id}')">
                                 <i class="fas fa-comment"></i>
                             </button>
                             <span>${modelComments.length}</span>
@@ -2202,8 +2170,7 @@
                     </div>
 
                     ${publicPosts.length > 0 ? `
-                        <button class="btn btn-outline" style="width: 100%; margin-bottom: 1rem;" 
-                                onclick="${userCanInteract ? `openPublicPostsModal('${model.id}')` : `openModal('subscriptionModal')`}">
+                        <button class="btn btn-outline" style="width: 100%; margin-bottom: 1rem;" onclick="openPublicPostsModal('${model.id}')">
                             <i class="fas fa-images"></i> View Public Posts (${publicPosts.length})
                         </button>
                     ` : ''}
@@ -2228,14 +2195,10 @@
                     ` : ''}
 
                     <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                        <button class="book-btn" 
-                                onclick="${userCanInteract ? `openVideoCallModal('${model.id}')` : `openModal('subscriptionModal')`}" 
-                                style="flex: 1;">
+                        <button class="book-btn" onclick="openVideoCallModal('${model.id}')" style="flex: 1;">
                             <i class="fas fa-video"></i> Book Show
                         </button>
-                        <button class="btn btn-outline" 
-                                onclick="${userCanInteract ? `openChatPage('${model.id}')` : `openModal('subscriptionModal')`}" 
-                                style="flex: 1;">
+                        <button class="btn btn-outline" onclick="openChatPage('${model.id}')" style="flex: 1;">
                             <i class="fas fa-comments"></i> Chat
                         </button>
                     </div>
@@ -2340,12 +2303,6 @@
                 return;
             }
             
-            // Additional subscription check for regular users
-            if (currentUser && !isSubscriptionActive(currentUser)) {
-                openModal('renewalModal');
-                return;
-            }
-            
             // Open external chat page
             window.open('chat.html?model=' + modelId, '_blank');
         }
@@ -2410,16 +2367,10 @@
             });
         }
 
-        // Enhanced Handle Like Function with Subscription Check
+        // Handle Like
         async function handleLike(modelId) {
             if (!currentUser && !adminUser) {
                 openModal('subscriptionModal');
-                return;
-            }
-
-            // Additional subscription check for regular users
-            if (currentUser && !isSubscriptionActive(currentUser)) {
-                openModal('renewalModal');
                 return;
             }
 
@@ -2453,7 +2404,7 @@
                 model.userLiked = true;
                 
                 // Update UI
-                await loadModels();
+                loadModels();
                 toastr.success('Liked! ❤️');
 
             } catch (error) {
@@ -2511,16 +2462,10 @@
             }
         }
 
-        // Enhanced Open Comment Modal with Subscription Check
+        // Comment Functions
         function openCommentModal(modelId) {
             if (!currentUser && !adminUser) {
                 openModal('subscriptionModal');
-                return;
-            }
-
-            // Additional subscription check for regular users
-            if (currentUser && !isSubscriptionActive(currentUser)) {
-                openModal('renewalModal');
                 return;
             }
             
@@ -2699,16 +2644,10 @@
             openModal('publicPostsModal');
         }
 
-        // Enhanced Open Video Call Modal with Subscription Check
+        // Video Call Booking
         function openVideoCallModal(modelId) {
             if (!currentUser && !adminUser) {
                 openModal('subscriptionModal');
-                return;
-            }
-
-            // Additional subscription check for regular users
-            if (currentUser && !isSubscriptionActive(currentUser)) {
-                openModal('renewalModal');
                 return;
             }
             
@@ -3377,13 +3316,10 @@
             }
         }
 
-        // Enhanced User Interface Functions
+        // User Interface Functions
         function showUserInterface() {
             document.getElementById('userInfo').style.display = 'block';
             updateUserInfo();
-            
-            // Reload models to show private content
-            loadModels();
         }
 
         function hideUserInterface() {
@@ -3406,19 +3342,7 @@
                 if (!currentUser || !currentUser.expiresAt) return;
                 
                 const now = new Date();
-                let expires;
-                
-                try {
-                    if (currentUser.expiresAt.toDate) {
-                        expires = currentUser.expiresAt.toDate();
-                    } else {
-                        expires = new Date(currentUser.expiresAt);
-                    }
-                } catch (error) {
-                    console.error('Error parsing expiry date:', error);
-                    return;
-                }
-                
+                const expires = currentUser.expiresAt.toDate();
                 const diff = expires - now;
 
                 const timerElement = document.getElementById('accountTimer');
@@ -3444,25 +3368,14 @@
             setInterval(updateTimer, 1000);
         }
 
-        // Enhanced Check Account Expiry
         function checkAccountExpiry() {
             if (!currentUser || !currentUser.expiresAt) return;
             
             const now = new Date();
-            let expires;
-            
-            try {
-                if (currentUser.expiresAt.toDate) {
-                    expires = currentUser.expiresAt.toDate();
-                } else {
-                    expires = new Date(currentUser.expiresAt);
-                }
+            const expires = currentUser.expiresAt.toDate();
 
-                if (now > expires) {
-                    openModal('renewalModal');
-                }
-            } catch (error) {
-                console.error('Error checking account expiry:', error);
+            if (now > expires) {
+                openModal('renewalModal');
             }
         }
 
@@ -3494,29 +3407,13 @@
             openModal('userLoginModal');
         }
 
-        // Enhanced User Login Function
         async function userLogin() {
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
 
-            if (!email || !password) {
-                toastr.error('Please enter email and password');
-                return;
-            }
-
             try {
-                const userCredential = await auth.signInWithEmailAndPassword(email, password);
-                const user = userCredential.user;
-                
-                // Verify user exists in users collection
-                const userDoc = await usersRef.doc(user.uid).get();
-                if (userDoc.exists) {
-                    closeModal('userLoginModal');
-                    toastr.success('Login successful!');
-                } else {
-                    await auth.signOut();
-                    toastr.error('User account not found in system');
-                }
+                await auth.signInWithEmailAndPassword(email, password);
+                closeModal('userLoginModal');
             } catch (error) {
                 console.error('Login error:', error);
                 toastr.error('Login failed: ' + error.message);
