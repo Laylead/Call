@@ -282,19 +282,6 @@
             }
         }
 
-        /* Hard-coded Models Section */
-        .hardcoded-models {
-            padding: 6rem 2rem;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .hardcoded-models-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 2.5rem;
-        }
-
         /* Enhanced Models Grid */
         .models-section {
             padding: 6rem 2rem;
@@ -1323,14 +1310,6 @@
         </div>
     </section>
 
-    <!-- Hard-coded Models Section -->
-    <section class="hardcoded-models" id="hardcodedModels">
-        <h2 class="section-title">Featured Models</h2>
-        <div class="hardcoded-models-grid" id="hardcodedModelsGrid">
-            <!-- Hard-coded models will be loaded here -->
-        </div>
-    </section>
-
     <!-- Front Page Models Section -->
     <section class="frontpage-models" id="frontpageModels">
         <h2 class="section-title">Front Page Models</h2>
@@ -1379,11 +1358,8 @@
             <button class="admin-tab active" onclick="switchAdminTab('models')">
                 <i class="fas fa-users"></i>Manage Models
             </button>
-            <button class="admin-tab" onclick="switchAdminTab('hardcodedModels')">
-                <i class="fas fa-image"></i>Hard-coded Models
-            </button>
-            <button class="admin-tab" onclick="switchAdminTab('frontpageModels')">
-                <i class="fas fa-home"></i>Front Page Models
+            <button class="admin-tab" onclick="switchAdminTab('hardcodedFrontpageModels')">
+                <i class="fas fa-home"></i>Hard-coded Front Page Models
             </button>
             <button class="admin-tab" onclick="switchAdminTab('users')">
                 <i class="fas fa-user-friends"></i>Manage Users
@@ -1456,7 +1432,6 @@
                         <select id="contentType">
                             <option value="public">Public</option>
                             <option value="private">Private (Members Only)</option>
-                            <option value="frontpage">Front Page</option>
                         </select>
                     </div>
                 </div>
@@ -1476,10 +1451,10 @@
             </div>
         </div>
 
-        <!-- Hard-coded Models Tab -->
-        <div class="admin-content" id="hardcodedModelsTab">
-            <h3><i class="fas fa-image"></i> Hard-coded Models Management</h3>
-            <p>These models appear immediately on the homepage without Firebase dependency.</p>
+        <!-- Hard-coded Front Page Models Tab -->
+        <div class="admin-content" id="hardcodedFrontpageModelsTab">
+            <h3><i class="fas fa-home"></i> Hard-coded Front Page Models Management</h3>
+            <p>Models added here will appear immediately on the front page when users visit the site. These are stored locally and not in Firebase.</p>
             
             <form id="hardcodedModelForm">
                 <div class="form-row">
@@ -1498,7 +1473,7 @@
                 
                 <div class="form-group">
                     <label>Image URL *</label>
-                    <input type="text" id="hardcodedModelImage" required placeholder="https://example.com/image.jpg">
+                    <input type="text" id="hardcodedModelImage" required placeholder="https://example.com/model.jpg">
                 </div>
 
                 <div class="form-row">
@@ -1522,15 +1497,9 @@
                     <textarea id="hardcodedModelPublicPosts" rows="4" placeholder="https://example.com/image1.jpg|My sexy public post description"></textarea>
                 </div>
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Video Call Link</label>
-                        <input type="text" id="hardcodedVideoCallLink" placeholder="https://zoom.us/j/...">
-                    </div>
-                    <div class="form-group">
-                        <label>Order Priority</label>
-                        <input type="number" id="hardcodedModelOrder" value="0" min="0">
-                    </div>
+                <div class="form-group">
+                    <label>Video Call Link</label>
+                    <input type="text" id="hardcodedVideoCallLink" placeholder="https://zoom.us/j/...">
                 </div>
 
                 <div class="form-group">
@@ -1543,32 +1512,8 @@
                 </button>
             </form>
 
-            <h4 style="margin-top: 2rem;">Existing Hard-coded Models</h4>
             <div class="card-grid" id="hardcodedModelsList">
                 <!-- Hard-coded models will be listed here -->
-            </div>
-        </div>
-
-        <!-- Front Page Models Tab -->
-        <div class="admin-content" id="frontpageModelsTab">
-            <h3><i class="fas fa-home"></i> Front Page Models Management</h3>
-            <p>Models added here will appear on the front page when users first visit the site.</p>
-            
-            <div class="card-grid" id="frontpageModelsList">
-                <!-- Front page models will be listed here -->
-            </div>
-            
-            <div style="margin-top: 2rem; padding: 1.5rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
-                <h4>Add Existing Model to Front Page</h4>
-                <div class="form-group">
-                    <label>Select Model</label>
-                    <select id="existingModelsSelect" class="form-group input">
-                        <option value="">-- Select a model --</option>
-                    </select>
-                </div>
-                <button class="btn btn-primary" onclick="addModelToFrontPage()">
-                    <i class="fas fa-plus"></i> Add to Front Page
-                </button>
             </div>
         </div>
 
@@ -1716,7 +1661,7 @@
                 <button class="btn btn-outline" onclick="closeModal('subscriptionModal')">
                     <i class="fas fa-times"></i> Maybe Later
                 </button>
-                <button class="btn btn-primary" onclick="redirectToSubscribe()">
+                <button class="btn btn-primary" onclick="redirectToHardcodedSubscribe()">
                     <i class="fas fa-gem"></i> Yes, I Want It All!
                 </button>
             </div>
@@ -1917,25 +1862,88 @@
         const postsRef = db.collection('posts');
         const bookingsRef = db.collection('bookings');
         const commentsRef = db.collection('comments');
-        const frontpageModelsRef = db.collection('frontpageModels');
-        const hardcodedModelsRef = db.collection('hardcodedModels');
 
         // State Management
         let currentUser = null;
         let adminUser = null;
         let websiteSettings = {};
         let allModels = [];
-        let frontpageModels = [];
-        let hardcodedModels = [];
+        let hardcodedFrontpageModels = [];
         let currentEditingModel = null;
+        let currentEditingHardcodedModel = null;
         let currentCommentModelId = null;
         let currentModelId = null;
-        let currentEditingHardcodedModel = null;
+
+        // Initialize Hard-coded Models (stored in JavaScript array)
+        function initializeHardcodedModels() {
+            // Check if we have hardcoded models in localStorage
+            const storedModels = localStorage.getItem('hardcodedFrontpageModels');
+            
+            if (storedModels) {
+                hardcodedFrontpageModels = JSON.parse(storedModels);
+            } else {
+                // Initial hard-coded model with your image
+                hardcodedFrontpageModels = [
+                    {
+                        id: '1',
+                        name: 'Premium Model',
+                        image: 'https://i.postimg.cc/cHB5zQYM/1758636933933.jpg',
+                        verified: true,
+                        likes: 1250,
+                        comments: [
+                            "Stunning beauty! 😍",
+                            "Can't wait for your next show!",
+                            "Absolutely incredible 🔥"
+                        ],
+                        publicPosts: [
+                            "https://i.postimg.cc/cHB5zQYM/1758636933933.jpg|My exclusive content for you!",
+                            "https://images.unsplash.com/photo-1519699047748-de8e457a634e?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80|Behind the scenes 😉"
+                        ],
+                        commentsCount: 3,
+                        videoCallLink: "https://zoom.us/j/123456789",
+                        embedVideo: "",
+                        createdAt: new Date().toISOString()
+                    }
+                ];
+                saveHardcodedModels();
+            }
+            
+            // Display hard-coded models immediately
+            displayHardcodedFrontpageModels();
+        }
+
+        // Save hard-coded models to localStorage
+        function saveHardcodedModels() {
+            localStorage.setItem('hardcodedFrontpageModels', JSON.stringify(hardcodedFrontpageModels));
+        }
+
+        // Display hard-coded front page models
+        function displayHardcodedFrontpageModels() {
+            const frontpageGrid = document.getElementById('frontpageModelsGrid');
+            frontpageGrid.innerHTML = '';
+
+            let cardIndex = 0;
+            
+            hardcodedFrontpageModels.forEach(model => {
+                // Create model card for front page - show to everyone
+                const modelCard = createHardcodedModelCard(model);
+                modelCard.style.setProperty('--card-index', cardIndex);
+                cardIndex++;
+                
+                frontpageGrid.appendChild(modelCard);
+            });
+
+            // Update admin hardcoded models list
+            if (adminUser) {
+                updateHardcodedModelsList();
+            }
+        }
 
         // Initialize Website
         document.addEventListener('DOMContentLoaded', function() {
             initializeWebsite();
             setupScrollEffects();
+            initializeHardcodedModels(); // Initialize hard-coded models immediately
         });
 
         // Enhanced scroll effects
@@ -1964,9 +1972,7 @@
 
         async function initializeWebsite() {
             await loadWebsiteSettings();
-            await loadHardcodedModels(); // Load hard-coded models first
             await loadModels();
-            await loadFrontpageModels();
             checkAuthState();
             setupEventListeners();
             updateAuthButtons();
@@ -2062,74 +2068,7 @@
             }
         }
 
-        // Load Hard-coded Models - These appear immediately without Firebase dependency
-        async function loadHardcodedModels() {
-            try {
-                const snapshot = await hardcodedModelsRef.orderBy('order', 'asc').get();
-                hardcodedModels = [];
-                const hardcodedGrid = document.getElementById('hardcodedModelsGrid');
-                
-                hardcodedGrid.innerHTML = '';
-
-                // If no hardcoded models exist, create the initial one
-                if (snapshot.empty) {
-                    await createInitialHardcodedModel();
-                    await loadHardcodedModels(); // Reload after creating
-                    return;
-                }
-
-                let cardIndex = 0;
-                
-                snapshot.forEach(doc => {
-                    const model = { id: doc.id, ...doc.data() };
-                    hardcodedModels.push(model);
-                    
-                    // Create model card for hard-coded models
-                    const modelCard = createModelCard(model, true);
-                    modelCard.style.setProperty('--card-index', cardIndex);
-                    cardIndex++;
-                    
-                    hardcodedGrid.appendChild(modelCard);
-                });
-
-                // Update admin hardcoded models list
-                if (adminUser) {
-                    updateHardcodedModelsList();
-                }
-
-            } catch (error) {
-                console.error('Error loading hardcoded models:', error);
-                // Create initial model even if there's an error
-                await createInitialHardcodedModel();
-                await loadHardcodedModels();
-            }
-        }
-
-        // Create initial hard-coded model
-        async function createInitialHardcodedModel() {
-            try {
-                const initialModel = {
-                    name: "Luxury Model",
-                    image: "https://i.postimg.cc/cHB5zQYM/1758636933933.jpg",
-                    verified: true,
-                    likes: 1245,
-                    comments: ["Absolutely stunning!", "Best model ever!", "Can't get enough of her content"],
-                    publicPosts: [],
-                    commentsCount: 3,
-                    videoCallLink: "",
-                    embedVideo: "",
-                    order: 0,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                };
-
-                await hardcodedModelsRef.add(initialModel);
-                console.log("Initial hard-coded model created");
-            } catch (error) {
-                console.error("Error creating initial hard-coded model:", error);
-            }
-        }
-
-        // Load Models - FIXED: Show public models to everyone, private models only for members
+        // Load Models
         async function loadModels() {
             try {
                 const snapshot = await modelsRef.orderBy('createdAt', 'desc').get();
@@ -2145,24 +2084,21 @@
                     allModels.push(model);
                     
                     // Create model card for every model
-                    const modelCard = createModelCard(model, false);
+                    const modelCard = createModelCard(model);
                     modelCard.style.setProperty('--card-index', cardIndex);
                     cardIndex++;
                     
-                    // FIXED: Show private models only to logged-in users
+                    // Show private models only to logged-in users
                     if (model.contentType === 'private') {
                         if ((currentUser && isSubscriptionActive(currentUser)) || adminUser) {
                             privateContentGrid.appendChild(modelCard);
                         }
-                        // Don't show private models in public grid for non-logged-in users
                     }
                 });
 
                 // Update admin models list
                 if (adminUser) {
                     updateAdminModelsList();
-                    updateFrontpageModelsList();
-                    updateHardcodedModelsList();
                 }
 
                 // Show private content section if user is logged in and there's private content
@@ -2182,40 +2118,6 @@
             }
         }
 
-        // Load Front Page Models - FIXED: Show frontpage models to everyone
-        async function loadFrontpageModels() {
-            try {
-                const snapshot = await frontpageModelsRef.orderBy('order', 'asc').get();
-                frontpageModels = [];
-                const frontpageGrid = document.getElementById('frontpageModelsGrid');
-                
-                frontpageGrid.innerHTML = '';
-
-                let cardIndex = 0;
-                
-                snapshot.forEach(doc => {
-                    const model = { id: doc.id, ...doc.data() };
-                    frontpageModels.push(model);
-                    
-                    // Create model card for front page - show to everyone
-                    const modelCard = createModelCard(model, false);
-                    modelCard.style.setProperty('--card-index', cardIndex);
-                    cardIndex++;
-                    
-                    frontpageGrid.appendChild(modelCard);
-                });
-
-                // Update admin frontpage models list
-                if (adminUser) {
-                    updateFrontpageModelsList();
-                }
-
-            } catch (error) {
-                console.error('Error loading frontpage models:', error);
-                // Don't show error toast for frontpage models to avoid confusion
-            }
-        }
-
         // Check if user subscription is active
         function isSubscriptionActive(user) {
             if (!user.expiresAt) return false;
@@ -2225,7 +2127,7 @@
         }
 
         // Create Model Card with enhanced animations
-        function createModelCard(model, isHardcoded = false) {
+        function createModelCard(model) {
             const card = document.createElement('div');
             card.className = 'model-card';
             
@@ -2237,7 +2139,7 @@
                 <div class="model-image-container">
                     <img src="${model.image}" alt="${model.name}" class="model-image" onerror="this.src='https://images.unsplash.com/photo-1511285605577-4d62fb50d2f7?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'">
                     <div class="model-badge">
-                        <i class="fas fa-crown"></i> ${isHardcoded ? 'Featured' : (model.contentType === 'private' ? 'Premium' : (model.contentType === 'frontpage' ? 'Front Page' : 'Public'))}
+                        <i class="fas fa-crown"></i> ${model.contentType === 'private' ? 'Premium' : 'Public'}
                     </div>
                 </div>
                 <div class="model-info">
@@ -2254,13 +2156,13 @@
 
                     <div class="model-stats">
                         <div class="likes">
-                            <button class="like-btn ${model.userLiked ? 'liked' : ''}" onclick="handleLike('${model.id}', ${isHardcoded})">
+                            <button class="like-btn ${model.userLiked ? 'liked' : ''}" onclick="handleLike('${model.id}')">
                                 <i class="fas fa-heart"></i>
                             </button>
                             <span>${model.likes || 0}</span>
                         </div>
                         <div class="comments">
-                            <button class="comment-btn" onclick="openCommentModal('${model.id}', ${isHardcoded})">
+                            <button class="comment-btn" onclick="openCommentModal('${model.id}')">
                                 <i class="fas fa-comment"></i>
                             </button>
                             <span>${modelComments.length}</span>
@@ -2268,7 +2170,7 @@
                     </div>
 
                     ${publicPosts.length > 0 ? `
-                        <button class="btn btn-outline" style="width: 100%; margin-bottom: 1rem;" onclick="openPublicPostsModal('${model.id}', ${isHardcoded})">
+                        <button class="btn btn-outline" style="width: 100%; margin-bottom: 1rem;" onclick="openPublicPostsModal('${model.id}')">
                             <i class="fas fa-images"></i> View Public Posts (${publicPosts.length})
                         </button>
                     ` : ''}
@@ -2283,25 +2185,20 @@
 
                     ${adminUser ? `
                         <div class="fake-interaction-controls">
-                            <button class="btn btn-sm btn-warning" onclick="boostLikes('${model.id}', ${isHardcoded})">
+                            <button class="btn btn-sm btn-warning" onclick="boostLikes('${model.id}')">
                                 <i class="fas fa-rocket"></i> Boost Likes
                             </button>
-                            <button class="btn btn-sm btn-primary" onclick="openAdminCommentModal('${model.id}', ${isHardcoded})">
+                            <button class="btn btn-sm btn-primary" onclick="openAdminCommentModal('${model.id}')">
                                 <i class="fas fa-comment"></i> Add Fake Comment
                             </button>
-                            ${!isHardcoded && model.contentType !== 'frontpage' ? `
-                                <button class="btn btn-sm btn-success" onclick="addModelToFrontPage('${model.id}')">
-                                    <i class="fas fa-home"></i> Add to Front Page
-                                </button>
-                            ` : ''}
                         </div>
                     ` : ''}
 
                     <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                        <button class="book-btn" onclick="handleModelInteraction('${model.id}', ${isHardcoded})" style="flex: 1;">
+                        <button class="book-btn" onclick="openVideoCallModal('${model.id}')" style="flex: 1;">
                             <i class="fas fa-video"></i> Book Show
                         </button>
-                        <button class="btn btn-outline" onclick="handleModelInteraction('${model.id}', ${isHardcoded})" style="flex: 1;">
+                        <button class="btn btn-outline" onclick="openChatPage('${model.id}')" style="flex: 1;">
                             <i class="fas fa-comments"></i> Chat
                         </button>
                     </div>
@@ -2310,47 +2207,144 @@
             return card;
         }
 
-        // Handle model interaction - show subscription for non-logged-in users
-        function handleModelInteraction(modelId, isHardcoded = false) {
-            if (!currentUser && !adminUser) {
-                openModal('subscriptionModal');
-                return;
-            }
+        // Create Hard-coded Model Card for Front Page
+        function createHardcodedModelCard(model) {
+            const card = document.createElement('div');
+            card.className = 'model-card';
             
-            // For logged-in users, allow free interaction
-            if (isHardcoded) {
-                // For hard-coded models, logged-in users can book video calls
-                openVideoCallModal(modelId, true);
-            } else {
-                // For regular models, logged-in users can book video calls
-                openVideoCallModal(modelId, false);
-            }
+            // Get comments for this model
+            const modelComments = model.comments || [];
+            const publicPosts = model.publicPosts || [];
+            
+            card.innerHTML = `
+                <div class="model-image-container">
+                    <img src="${model.image}" alt="${model.name}" class="model-image" onerror="this.src='https://images.unsplash.com/photo-1511285605577-4d62fb50d2f7?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'">
+                    <div class="model-badge">
+                        <i class="fas fa-star"></i> Featured
+                    </div>
+                </div>
+                <div class="model-info">
+                    <div class="model-name">
+                        <h3>${model.name}</h3>
+                        ${model.verified ? '<i class="fas fa-check-circle verified"></i>' : ''}
+                    </div>
+                    
+                    ${model.embedVideo ? `
+                        <div style="margin: 1rem 0;">
+                            <iframe width="100%" height="200" src="${model.embedVideo}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                        </div>
+                    ` : ''}
+
+                    <div class="model-stats">
+                        <div class="likes">
+                            <button class="like-btn" onclick="handleHardcodedModelInteraction()">
+                                <i class="fas fa-heart"></i>
+                            </button>
+                            <span>${model.likes || 0}</span>
+                        </div>
+                        <div class="comments">
+                            <button class="comment-btn" onclick="handleHardcodedModelInteraction()">
+                                <i class="fas fa-comment"></i>
+                            </button>
+                            <span>${modelComments.length}</span>
+                        </div>
+                    </div>
+
+                    ${publicPosts.length > 0 ? `
+                        <button class="btn btn-outline" style="width: 100%; margin-bottom: 1rem;" onclick="handleHardcodedModelInteraction()">
+                            <i class="fas fa-images"></i> View Public Posts (${publicPosts.length})
+                        </button>
+                    ` : ''}
+
+                    ${modelComments.length > 0 ? `
+                        <div class="comments-section">
+                            ${modelComments.slice(0, model.commentsCount || 3).map(comment => `
+                                <div class="comment">${comment}</div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+
+                    ${adminUser ? `
+                        <div class="fake-interaction-controls">
+                            <button class="btn btn-sm btn-warning" onclick="boostHardcodedLikes('${model.id}')">
+                                <i class="fas fa-rocket"></i> Boost Likes
+                            </button>
+                            <button class="btn btn-sm btn-primary" onclick="openAdminHardcodedCommentModal('${model.id}')">
+                                <i class="fas fa-comment"></i> Add Fake Comment
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteHardcodedModel('${model.id}')">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
+                    ` : ''}
+
+                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                        <button class="book-btn" onclick="handleHardcodedModelInteraction()" style="flex: 1;">
+                            <i class="fas fa-video"></i> Book Show
+                        </button>
+                        <button class="btn btn-outline" onclick="handleHardcodedModelInteraction()" style="flex: 1;">
+                            <i class="fas fa-comments"></i> Chat
+                        </button>
+                    </div>
+                </div>
+            `;
+            return card;
+        }
+
+        // Handle Hard-coded Model Interaction - Show subscription popup
+        function handleHardcodedModelInteraction() {
+            openModal('subscriptionModal');
         }
 
         // Open Chat Page (External)
-        function openChatPage(modelId, isHardcoded = false) {
+        function openChatPage(modelId) {
             if (!currentUser && !adminUser) {
                 openModal('subscriptionModal');
                 return;
             }
             
             // Open external chat page
-            window.open('chat.html?model=' + modelId + '&hardcoded=' + isHardcoded, '_blank');
+            window.open('chat.html?model=' + modelId, '_blank');
         }
 
-        // Open Models Gallery - FIXED: Show all public models to everyone
+        // Open Models Gallery
         function openModelsGallery() {
             openModal('modelsGalleryModal');
             loadModelsGallery();
         }
 
-        // Load Models for Gallery - FIXED: Show public models to everyone
+        // Load Models for Gallery
         function loadModelsGallery() {
             const galleryGrid = document.getElementById('modelsGalleryGrid');
             galleryGrid.innerHTML = '';
 
-            // Add hard-coded models
-            hardcodedModels.forEach(model => {
+            allModels.forEach(model => {
+                // Show public models to everyone, private models only to logged-in users
+                if (model.contentType === 'public' || (currentUser && isSubscriptionActive(currentUser)) || adminUser) {
+                    const galleryCard = document.createElement('div');
+                    galleryCard.className = 'gallery-model-card';
+                    
+                    galleryCard.innerHTML = `
+                        <img src="${model.image}" alt="${model.name}" class="gallery-model-image">
+                        <div class="gallery-model-info">
+                            <h3>${model.name} ${model.verified ? '<i class="fas fa-check-circle verified"></i>' : ''}</h3>
+                            <p>${model.contentType === 'private' ? 'Premium Model' : 'Public Model'}</p>
+                            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                                <button class="btn btn-primary" onclick="openVideoCallModal('${model.id}')" style="flex: 1;">
+                                    <i class="fas fa-video"></i> Book
+                                </button>
+                                <button class="btn btn-outline" onclick="openChatPage('${model.id}')" style="flex: 1;">
+                                    <i class="fas fa-comments"></i> Chat
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    galleryGrid.appendChild(galleryCard);
+                }
+            });
+
+            // Also add hardcoded models to gallery
+            hardcodedFrontpageModels.forEach(model => {
                 const galleryCard = document.createElement('div');
                 galleryCard.className = 'gallery-model-card';
                 
@@ -2360,10 +2354,10 @@
                         <h3>${model.name} ${model.verified ? '<i class="fas fa-check-circle verified"></i>' : ''}</h3>
                         <p>Featured Model</p>
                         <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                            <button class="btn btn-primary" onclick="handleModelInteraction('${model.id}', true)" style="flex: 1;">
+                            <button class="btn btn-primary" onclick="handleHardcodedModelInteraction()" style="flex: 1;">
                                 <i class="fas fa-video"></i> Book
                             </button>
-                            <button class="btn btn-outline" onclick="handleModelInteraction('${model.id}', true)" style="flex: 1;">
+                            <button class="btn btn-outline" onclick="handleHardcodedModelInteraction()" style="flex: 1;">
                                 <i class="fas fa-comments"></i> Chat
                             </button>
                         </div>
@@ -2371,60 +2365,20 @@
                 `;
                 galleryGrid.appendChild(galleryCard);
             });
-
-            // Add regular models
-            allModels.forEach(model => {
-                // Show public and frontpage models to everyone, private models only to logged-in users
-                if (model.contentType === 'public' || model.contentType === 'frontpage' || (currentUser && isSubscriptionActive(currentUser)) || adminUser) {
-                    const galleryCard = document.createElement('div');
-                    galleryCard.className = 'gallery-model-card';
-                    
-                    galleryCard.innerHTML = `
-                        <img src="${model.image}" alt="${model.name}" class="gallery-model-image">
-                        <div class="gallery-model-info">
-                            <h3>${model.name} ${model.verified ? '<i class="fas fa-check-circle verified"></i>' : ''}</h3>
-                            <p>${model.contentType === 'private' ? 'Premium Model' : (model.contentType === 'frontpage' ? 'Front Page Model' : 'Public Model')}</p>
-                            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                                <button class="btn btn-primary" onclick="handleModelInteraction('${model.id}')" style="flex: 1;">
-                                    <i class="fas fa-video"></i> Book
-                                </button>
-                                <button class="btn btn-outline" onclick="handleModelInteraction('${model.id}')" style="flex: 1;">
-                                    <i class="fas fa-comments"></i> Chat
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    galleryGrid.appendChild(galleryCard);
-                }
-            });
         }
 
-        // Handle Like - FIXED: Show subscription modal for non-logged-in users
-        async function handleLike(modelId, isHardcoded = false) {
+        // Handle Like
+        async function handleLike(modelId) {
             if (!currentUser && !adminUser) {
                 openModal('subscriptionModal');
                 return;
             }
 
             try {
-                let model;
-                let ref;
+                const model = allModels.find(m => m.id === modelId);
                 
-                if (isHardcoded) {
-                    model = hardcodedModels.find(m => m.id === modelId);
-                    ref = hardcodedModelsRef;
-                } else {
-                    model = allModels.find(m => m.id === modelId);
-                    ref = modelsRef;
-                }
-                
-                if (!model) {
-                    toastr.error('Model not found');
-                    return;
-                }
-
                 // Check if user already liked this model
-                const likeDoc = await db.collection('likes').doc(`${modelId}_${currentUser ? currentUser.uid : 'admin'}_${isHardcoded ? 'hardcoded' : 'regular'}`).get();
+                const likeDoc = await db.collection('likes').doc(`${modelId}_${currentUser ? currentUser.uid : 'admin'}`).get();
                 if (likeDoc.exists) {
                     toastr.info('You already liked this model!');
                     return;
@@ -2433,16 +2387,15 @@
                 const newLikes = (model.likes || 0) + 1;
                 
                 // Update model likes
-                await ref.doc(modelId).update({
+                await modelsRef.doc(modelId).update({
                     likes: newLikes,
                     lastLiked: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
                 // Record the like to prevent duplicate likes
-                await db.collection('likes').doc(`${modelId}_${currentUser ? currentUser.uid : 'admin'}_${isHardcoded ? 'hardcoded' : 'regular'}`).set({
+                await db.collection('likes').doc(`${modelId}_${currentUser ? currentUser.uid : 'admin'}`).set({
                     modelId: modelId,
                     userId: currentUser ? currentUser.uid : 'admin',
-                    isHardcoded: isHardcoded,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
@@ -2451,12 +2404,7 @@
                 model.userLiked = true;
                 
                 // Update UI
-                if (isHardcoded) {
-                    await loadHardcodedModels();
-                } else {
-                    await loadModels();
-                    await loadFrontpageModels();
-                }
+                loadModels();
                 toastr.success('Liked! ❤️');
 
             } catch (error) {
@@ -2466,30 +2414,15 @@
         }
 
         // Boost Likes (Admin Only)
-        async function boostLikes(modelId, isHardcoded = false) {
+        async function boostLikes(modelId) {
             if (!adminUser) return;
             
             try {
-                let model;
-                let ref;
-                
-                if (isHardcoded) {
-                    model = hardcodedModels.find(m => m.id === modelId);
-                    ref = hardcodedModelsRef;
-                } else {
-                    model = allModels.find(m => m.id === modelId);
-                    ref = modelsRef;
-                }
-                
-                if (!model) {
-                    toastr.error('Model not found');
-                    return;
-                }
-
+                const model = allModels.find(m => m.id === modelId);
                 const boostAmount = Math.floor(Math.random() * 50) + 10; // Random boost between 10-60
                 const newLikes = (model.likes || 0) + boostAmount;
                 
-                await ref.doc(modelId).update({
+                await modelsRef.doc(modelId).update({
                     likes: newLikes
                 });
 
@@ -2497,12 +2430,7 @@
                 model.likes = newLikes;
                 
                 // Update UI
-                if (isHardcoded) {
-                    await loadHardcodedModels();
-                } else {
-                    await loadModels();
-                    await loadFrontpageModels();
-                }
+                loadModels();
                 toastr.success(`Boosted ${model.name}'s likes by ${boostAmount}!`);
             } catch (error) {
                 console.error('Error boosting likes:', error);
@@ -2510,22 +2438,44 @@
             }
         }
 
+        // Boost Hard-coded Model Likes (Admin Only)
+        function boostHardcodedLikes(modelId) {
+            if (!adminUser) return;
+            
+            try {
+                const model = hardcodedFrontpageModels.find(m => m.id === modelId);
+                const boostAmount = Math.floor(Math.random() * 50) + 10; // Random boost between 10-60
+                const newLikes = (model.likes || 0) + boostAmount;
+                
+                // Update model likes
+                model.likes = newLikes;
+                
+                // Save to localStorage
+                saveHardcodedModels();
+                
+                // Update UI
+                displayHardcodedFrontpageModels();
+                toastr.success(`Boosted ${model.name}'s likes by ${boostAmount}!`);
+            } catch (error) {
+                console.error('Error boosting hardcoded model likes:', error);
+                toastr.error('Failed to boost likes');
+            }
+        }
+
         // Comment Functions
-        function openCommentModal(modelId, isHardcoded = false) {
+        function openCommentModal(modelId) {
             if (!currentUser && !adminUser) {
                 openModal('subscriptionModal');
                 return;
             }
             
             currentCommentModelId = modelId;
-            window.currentCommentIsHardcoded = isHardcoded;
             document.getElementById('commentText').value = '';
             openModal('commentModal');
         }
 
         async function submitComment() {
             const commentText = document.getElementById('commentText').value.trim();
-            const isHardcoded = window.currentCommentIsHardcoded || false;
             
             if (!commentText) {
                 toastr.error('Please enter a comment');
@@ -2533,41 +2483,20 @@
             }
 
             try {
-                let model;
-                let ref;
-                
-                if (isHardcoded) {
-                    model = hardcodedModels.find(m => m.id === currentCommentModelId);
-                    ref = hardcodedModelsRef;
-                } else {
-                    model = allModels.find(m => m.id === currentCommentModelId);
-                    ref = modelsRef;
-                }
-                
-                if (!model) {
-                    toastr.error('Model not found');
-                    return;
-                }
-
+                const model = allModels.find(m => m.id === currentCommentModelId);
                 const currentComments = model.comments || [];
                 
                 // Add new comment
                 currentComments.unshift(commentText);
                 
                 // Update model with new comments
-                await ref.doc(currentCommentModelId).update({
+                await modelsRef.doc(currentCommentModelId).update({
                     comments: currentComments
                 });
 
                 toastr.success('Comment added successfully!');
                 closeModal('commentModal');
-                
-                if (isHardcoded) {
-                    await loadHardcodedModels();
-                } else {
-                    await loadModels();
-                    await loadFrontpageModels();
-                }
+                await loadModels();
                 
             } catch (error) {
                 console.error('Error adding comment:', error);
@@ -2576,9 +2505,8 @@
         }
 
         // Admin Fake Comment Functions
-        function openAdminCommentModal(modelId, isHardcoded = false) {
+        function openAdminCommentModal(modelId) {
             currentCommentModelId = modelId;
-            window.currentCommentIsHardcoded = isHardcoded;
             document.getElementById('adminCommentText').value = '';
             document.getElementById('fakeUsername').value = '';
             openModal('adminCommentModal');
@@ -2586,7 +2514,6 @@
 
         async function submitAdminComment() {
             const commentText = document.getElementById('adminCommentText').value.trim();
-            const isHardcoded = window.currentCommentIsHardcoded || false;
             
             if (!commentText) {
                 toastr.error('Please enter a comment');
@@ -2594,22 +2521,7 @@
             }
 
             try {
-                let model;
-                let ref;
-                
-                if (isHardcoded) {
-                    model = hardcodedModels.find(m => m.id === currentCommentModelId);
-                    ref = hardcodedModelsRef;
-                } else {
-                    model = allModels.find(m => m.id === currentCommentModelId);
-                    ref = modelsRef;
-                }
-                
-                if (!model) {
-                    toastr.error('Model not found');
-                    return;
-                }
-
+                const model = allModels.find(m => m.id === currentCommentModelId);
                 const currentComments = model.comments || [];
                 
                 // Generate fake username if not provided
@@ -2624,19 +2536,13 @@
                 currentComments.unshift(fakeComment);
                 
                 // Update model with new comments
-                await ref.doc(currentCommentModelId).update({
+                await modelsRef.doc(currentCommentModelId).update({
                     comments: currentComments
                 });
 
                 toastr.success('Fake comment added successfully!');
                 closeModal('adminCommentModal');
-                
-                if (isHardcoded) {
-                    await loadHardcodedModels();
-                } else {
-                    await loadModels();
-                    await loadFrontpageModels();
-                }
+                await loadModels();
                 
             } catch (error) {
                 console.error('Error adding fake comment:', error);
@@ -2644,16 +2550,57 @@
             }
         }
 
-        // Open Public Posts Modal
-        function openPublicPostsModal(modelId, isHardcoded = false) {
-            let model;
+        // Admin Hard-coded Fake Comment Functions
+        function openAdminHardcodedCommentModal(modelId) {
+            currentCommentModelId = modelId;
+            document.getElementById('adminCommentText').value = '';
+            document.getElementById('fakeUsername').value = '';
+            openModal('adminCommentModal');
+        }
+
+        function submitAdminHardcodedComment() {
+            const commentText = document.getElementById('adminCommentText').value.trim();
             
-            if (isHardcoded) {
-                model = hardcodedModels.find(m => m.id === modelId);
-            } else {
-                model = allModels.find(m => m.id === modelId);
+            if (!commentText) {
+                toastr.error('Please enter a comment');
+                return;
             }
-            
+
+            try {
+                const model = hardcodedFrontpageModels.find(m => m.id === currentCommentModelId);
+                const currentComments = model.comments || [];
+                
+                // Generate fake username if not provided
+                let username = document.getElementById('fakeUsername').value.trim();
+                if (!username) {
+                    const fakeNames = ['HotFan123', 'SecretAdmirer', 'LoyalViewer', 'NightOwl', 'DreamClient', 'MysteryMan'];
+                    username = fakeNames[Math.floor(Math.random() * fakeNames.length)];
+                }
+                
+                // Add fake comment with username
+                const fakeComment = `${username}: ${commentText}`;
+                currentComments.unshift(fakeComment);
+                
+                // Update model with new comments
+                model.comments = currentComments;
+                
+                // Save to localStorage
+                saveHardcodedModels();
+                
+                // Update UI
+                displayHardcodedFrontpageModels();
+                toastr.success('Fake comment added successfully!');
+                closeModal('adminCommentModal');
+                
+            } catch (error) {
+                console.error('Error adding fake comment to hardcoded model:', error);
+                toastr.error('Failed to add fake comment');
+            }
+        }
+
+        // Open Public Posts Modal
+        function openPublicPostsModal(modelId) {
+            const model = allModels.find(m => m.id === modelId);
             if (!model) return;
 
             const publicPosts = model.publicPosts || [];
@@ -2676,13 +2623,13 @@
                             <p class="public-post-description">${description || 'No description'}</p>
                             <div class="public-post-stats">
                                 <div class="likes">
-                                    <button class="like-btn" onclick="handleLike('${model.id}', ${isHardcoded})">
+                                    <button class="like-btn" onclick="handleLike('${model.id}')">
                                         <i class="fas fa-heart"></i>
                                     </button>
                                     <span>0</span>
                                 </div>
                                 <div class="comments">
-                                    <button class="comment-btn" onclick="openCommentModal('${model.id}', ${isHardcoded})">
+                                    <button class="comment-btn" onclick="openCommentModal('${model.id}')">
                                         <i class="fas fa-comment"></i>
                                     </button>
                                     <span>0</span>
@@ -2698,14 +2645,13 @@
         }
 
         // Video Call Booking
-        function openVideoCallModal(modelId, isHardcoded = false) {
+        function openVideoCallModal(modelId) {
             if (!currentUser && !adminUser) {
                 openModal('subscriptionModal');
                 return;
             }
             
             currentModelId = modelId;
-            window.currentVideoCallIsHardcoded = isHardcoded;
             openModal('videoCallModal');
         }
 
@@ -2713,7 +2659,6 @@
             const email = document.getElementById('userEmailInput').value;
             const datetime = document.getElementById('callDateTime').value;
             const requests = document.getElementById('callRequests').value;
-            const isHardcoded = window.currentVideoCallIsHardcoded || false;
 
             if (!email) {
                 toastr.error('Please enter your email');
@@ -2721,13 +2666,7 @@
             }
 
             try {
-                let model;
-                
-                if (isHardcoded) {
-                    model = hardcodedModels.find(m => m.id === currentModelId);
-                } else {
-                    model = allModels.find(m => m.id === currentModelId);
-                }
+                const model = allModels.find(m => m.id === currentModelId);
                 
                 await bookingsRef.add({
                     modelId: currentModelId,
@@ -2737,8 +2676,7 @@
                     specialRequests: requests,
                     status: 'pending',
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    userId: currentUser ? currentUser.uid : null,
-                    isHardcoded: isHardcoded
+                    userId: currentUser ? currentUser.uid : null
                 });
 
                 toastr.success('Video call booking request sent! We will contact you soon.');
@@ -2793,7 +2731,7 @@
             loadUsersList();
             loadPostsList();
             loadSessionsList();
-            updateExistingModelsSelect();
+            updateHardcodedModelsList();
         }
 
         function hideAdminPanel() {
@@ -2829,9 +2767,7 @@
                 loadUsersList();
             } else if (tabName === 'posts') {
                 loadPostsList();
-            } else if (tabName === 'frontpageModels') {
-                updateExistingModelsSelect();
-            } else if (tabName === 'hardcodedModels') {
+            } else if (tabName === 'hardcodedFrontpageModels') {
                 updateHardcodedModelsList();
             }
         }
@@ -2873,7 +2809,6 @@
                 
                 document.getElementById('modelForm').reset();
                 await loadModels();
-                await loadFrontpageModels();
                 
             } catch (error) {
                 console.error('Error saving model:', error);
@@ -2915,7 +2850,6 @@
                 await modelsRef.doc(modelId).delete();
                 toastr.success('Model deleted successfully!');
                 await loadModels();
-                await loadFrontpageModels();
             } catch (error) {
                 console.error('Error deleting model:', error);
                 toastr.error('Failed to delete model');
@@ -2935,7 +2869,7 @@
                     <p><strong>Likes:</strong> ${model.likes || 0}</p>
                     <p><strong>Comments:</strong> ${model.comments ? model.comments.length : 0}</p>
                     <p><strong>Public Posts:</strong> ${model.publicPosts ? model.publicPosts.length : 0}</p>
-                    <p><strong>Type:</strong> ${model.contentType === 'private' ? 'Private' : (model.contentType === 'frontpage' ? 'Front Page' : 'Public')}</p>
+                    <p><strong>Type:</strong> ${model.contentType === 'private' ? 'Private' : 'Public'}</p>
                     <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
                         <button class="btn btn-primary" onclick="editModel('${model.id}')" style="flex: 1;">
                             <i class="fas fa-edit"></i> Edit
@@ -2949,11 +2883,12 @@
             });
         }
 
-        // Hard-coded Models Management
-        async function handleHardcodedModelSubmit(e) {
+        // Hard-coded Front Page Models Management
+        function handleHardcodedModelSubmit(e) {
             e.preventDefault();
             
             const modelData = {
+                id: currentEditingHardcodedModel || 'model_' + Date.now(),
                 name: document.getElementById('hardcodedModelName').value,
                 image: document.getElementById('hardcodedModelImage').value,
                 verified: document.getElementById('hardcodedModelVerified').value === 'true',
@@ -2963,38 +2898,44 @@
                 commentsCount: parseInt(document.getElementById('hardcodedModelCommentsCount').value) || 3,
                 videoCallLink: document.getElementById('hardcodedVideoCallLink').value,
                 embedVideo: document.getElementById('hardcodedEmbedVideo').value,
-                order: parseInt(document.getElementById('hardcodedModelOrder').value) || 0,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                createdAt: currentEditingHardcodedModel ? 
+                    hardcodedFrontpageModels.find(m => m.id === currentEditingHardcodedModel).createdAt : 
+                    new Date().toISOString()
             };
 
             try {
                 if (currentEditingHardcodedModel) {
-                    // Update existing hard-coded model
-                    await hardcodedModelsRef.doc(currentEditingHardcodedModel).update(modelData);
-                    toastr.success('Hard-coded model updated successfully!');
+                    // Update existing hardcoded model
+                    const index = hardcodedFrontpageModels.findIndex(m => m.id === currentEditingHardcodedModel);
+                    if (index !== -1) {
+                        hardcodedFrontpageModels[index] = modelData;
+                        toastr.success('Hard-coded model updated successfully!');
+                    }
                     currentEditingHardcodedModel = null;
                     
                     // Reset button text
                     const submitBtn = document.querySelector('#hardcodedModelForm button[type="submit"]');
                     submitBtn.innerHTML = '<i class="fas fa-save"></i> Add Hard-coded Model';
                 } else {
-                    // Add new hard-coded model
-                    await hardcodedModelsRef.add(modelData);
+                    // Add new hardcoded model
+                    hardcodedFrontpageModels.push(modelData);
                     toastr.success('Hard-coded model added successfully!');
                 }
                 
+                // Save to localStorage
+                saveHardcodedModels();
+                
                 document.getElementById('hardcodedModelForm').reset();
-                await loadHardcodedModels();
+                displayHardcodedFrontpageModels();
                 
             } catch (error) {
-                console.error('Error saving hard-coded model:', error);
-                toastr.error('Failed to save hard-coded model: ' + error.message);
+                console.error('Error saving hardcoded model:', error);
+                toastr.error('Failed to save hardcoded model: ' + error.message);
             }
         }
 
         function editHardcodedModel(modelId) {
-            const model = hardcodedModels.find(m => m.id === modelId);
+            const model = hardcodedFrontpageModels.find(m => m.id === modelId);
             if (!model) return;
 
             currentEditingHardcodedModel = modelId;
@@ -3008,7 +2949,6 @@
             document.getElementById('hardcodedModelComments').value = model.comments ? model.comments.join('\n') : '';
             document.getElementById('hardcodedModelPublicPosts').value = model.publicPosts ? model.publicPosts.join('\n') : '';
             document.getElementById('hardcodedVideoCallLink').value = model.videoCallLink || '';
-            document.getElementById('hardcodedModelOrder').value = model.order || 0;
             document.getElementById('hardcodedEmbedVideo').value = model.embedVideo || '';
 
             // Change button text
@@ -3018,15 +2958,20 @@
             toastr.info('Editing hard-coded model: ' + model.name);
         }
 
-        async function deleteHardcodedModel(modelId) {
+        function deleteHardcodedModel(modelId) {
             if (!confirm('Are you sure you want to delete this hard-coded model? This action cannot be undone.')) {
                 return;
             }
 
             try {
-                await hardcodedModelsRef.doc(modelId).delete();
+                // Remove from array
+                hardcodedFrontpageModels = hardcodedFrontpageModels.filter(m => m.id !== modelId);
+                
+                // Save to localStorage
+                saveHardcodedModels();
+                
                 toastr.success('Hard-coded model deleted successfully!');
-                await loadHardcodedModels();
+                displayHardcodedFrontpageModels();
             } catch (error) {
                 console.error('Error deleting hard-coded model:', error);
                 toastr.error('Failed to delete hard-coded model');
@@ -3034,10 +2979,10 @@
         }
 
         function updateHardcodedModelsList() {
-            const hardcodedList = document.getElementById('hardcodedModelsList');
-            hardcodedList.innerHTML = '';
+            const hardcodedModelsList = document.getElementById('hardcodedModelsList');
+            hardcodedModelsList.innerHTML = '';
 
-            hardcodedModels.forEach(model => {
+            hardcodedFrontpageModels.forEach(model => {
                 const modelCard = document.createElement('div');
                 modelCard.className = 'card';
                 modelCard.innerHTML = `
@@ -3046,7 +2991,6 @@
                     <p><strong>Likes:</strong> ${model.likes || 0}</p>
                     <p><strong>Comments:</strong> ${model.comments ? model.comments.length : 0}</p>
                     <p><strong>Public Posts:</strong> ${model.publicPosts ? model.publicPosts.length : 0}</p>
-                    <p><strong>Order:</strong> ${model.order || 0}</p>
                     <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
                         <button class="btn btn-primary" onclick="editHardcodedModel('${model.id}')" style="flex: 1;">
                             <i class="fas fa-edit"></i> Edit
@@ -3056,102 +3000,7 @@
                         </button>
                     </div>
                 `;
-                hardcodedList.appendChild(modelCard);
-            });
-        }
-
-        // Front Page Models Management
-        async function addModelToFrontPage(modelId) {
-            if (!modelId) {
-                // Get from select
-                modelId = document.getElementById('existingModelsSelect').value;
-                if (!modelId) {
-                    toastr.error('Please select a model');
-                    return;
-                }
-            }
-            
-            const model = allModels.find(m => m.id === modelId);
-            if (!model) {
-                toastr.error('Model not found');
-                return;
-            }
-
-            try {
-                // Check if model is already on front page
-                const existing = await frontpageModelsRef.doc(modelId).get();
-                if (existing.exists) {
-                    toastr.info('Model is already on the front page');
-                    return;
-                }
-
-                // Add to front page collection
-                await frontpageModelsRef.doc(modelId).set({
-                    ...model,
-                    order: frontpageModels.length,
-                    addedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                toastr.success('Model added to front page!');
-                await loadFrontpageModels();
-                updateFrontpageModelsList();
-                
-            } catch (error) {
-                console.error('Error adding model to front page:', error);
-                toastr.error('Failed to add model to front page');
-            }
-        }
-
-        async function removeFromFrontPage(modelId) {
-            if (!confirm('Remove this model from the front page?')) {
-                return;
-            }
-
-            try {
-                await frontpageModelsRef.doc(modelId).delete();
-                toastr.success('Model removed from front page');
-                await loadFrontpageModels();
-                updateFrontpageModelsList();
-            } catch (error) {
-                console.error('Error removing model from front page:', error);
-                toastr.error('Failed to remove model from front page');
-            }
-        }
-
-        function updateFrontpageModelsList() {
-            const frontpageList = document.getElementById('frontpageModelsList');
-            frontpageList.innerHTML = '';
-
-            frontpageModels.forEach(model => {
-                const modelCard = document.createElement('div');
-                modelCard.className = 'card';
-                modelCard.innerHTML = `
-                    <img src="${model.image}" alt="${model.name}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 1rem;">
-                    <h4>${model.name} ${model.verified ? '<i class="fas fa-check-circle verified"></i>' : ''}</h4>
-                    <p><strong>Likes:</strong> ${model.likes || 0}</p>
-                    <p><strong>Comments:</strong> ${model.comments ? model.comments.length : 0}</p>
-                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                        <button class="btn btn-danger" onclick="removeFromFrontPage('${model.id}')" style="flex: 1;">
-                            <i class="fas fa-times"></i> Remove from Front Page
-                        </button>
-                    </div>
-                `;
-                frontpageList.appendChild(modelCard);
-            });
-        }
-
-        function updateExistingModelsSelect() {
-            const select = document.getElementById('existingModelsSelect');
-            select.innerHTML = '<option value="">-- Select a model --</option>';
-            
-            allModels.forEach(model => {
-                // Only show models that are not already on front page
-                if (!frontpageModels.find(m => m.id === model.id)) {
-                    const option = document.createElement('option');
-                    option.value = model.id;
-                    option.textContent = model.name;
-                    select.appendChild(option);
-                }
+                hardcodedModelsList.appendChild(modelCard);
             });
         }
 
@@ -3535,7 +3384,7 @@
             redirectToRenewal();
         }
 
-        // Enhanced Modal Functions - FIXED Z-INDEX ISSUES
+        // Enhanced Modal Functions
         function openModal(modalId) {
             document.getElementById(modalId).style.display = 'block';
             document.body.style.overflow = 'hidden';
@@ -3571,7 +3420,7 @@
             }
         }
 
-        // FIXED: Update Auth Buttons - Show logout button when logged in
+        // Update Auth Buttons
         function updateAuthButtons() {
             const authButtons = document.getElementById('authButtons');
             
@@ -3593,7 +3442,14 @@
         }
 
         function redirectToSubscribe() {
-            // Redirect to subscription1.html as requested
+            if (websiteSettings.subscriptionLink) {
+                window.location.href = websiteSettings.subscriptionLink;
+            } else {
+                toastr.error('Subscription link not configured');
+            }
+        }
+
+        function redirectToHardcodedSubscribe() {
             window.location.href = 'subscription1.html';
         }
 
@@ -3639,7 +3495,7 @@
 
         // Initialize UI with enhanced effects
         function initializeUI() {
-            console.log('Camsilo website initialized successfully with enhanced effects');
+            console.log('Camsilo website initialized successfully with hard-coded front page models');
         }
 
         // Call initialization
