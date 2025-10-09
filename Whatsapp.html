@@ -2068,7 +2068,7 @@
             }
         }
 
-        // Load Models
+        // Load Models from Firebase
         async function loadModels() {
             try {
                 const snapshot = await modelsRef.orderBy('createdAt', 'desc').get();
@@ -2083,16 +2083,13 @@
                     const model = { id: doc.id, ...doc.data() };
                     allModels.push(model);
                     
-                    // Create model card for every model
-                    const modelCard = createModelCard(model);
-                    modelCard.style.setProperty('--card-index', cardIndex);
-                    cardIndex++;
-                    
-                    // Show private models only to logged-in users
-                    if (model.contentType === 'private') {
-                        if ((currentUser && isSubscriptionActive(currentUser)) || adminUser) {
-                            privateContentGrid.appendChild(modelCard);
-                        }
+                    // Only show models to logged-in users with active subscriptions
+                    if ((currentUser && isSubscriptionActive(currentUser)) || adminUser) {
+                        // Create model card for every Firebase model
+                        const modelCard = createModelCard(model);
+                        modelCard.style.setProperty('--card-index', cardIndex);
+                        cardIndex++;
+                        privateContentGrid.appendChild(modelCard);
                     }
                 });
 
@@ -2101,12 +2098,12 @@
                     updateAdminModelsList();
                 }
 
-                // Show private content section if user is logged in and there's private content
+                // Show private content section if user is logged in and there are models
                 const privateContent = document.getElementById('privateContent');
-                const hasPrivateContent = privateContentGrid.children.length > 0;
+                const hasModels = allModels.length > 0;
                 const userIsLoggedIn = (currentUser && isSubscriptionActive(currentUser)) || adminUser;
                 
-                if (userIsLoggedIn && hasPrivateContent) {
+                if (userIsLoggedIn && hasModels) {
                     privateContent.style.display = 'block';
                 } else {
                     privateContent.style.display = 'none';
@@ -2126,7 +2123,7 @@
             return now < expires && user.isActive !== false;
         }
 
-        // Create Model Card with enhanced animations
+        // Create Model Card with enhanced animations (Firebase Models Only)
         function createModelCard(model) {
             const card = document.createElement('div');
             card.className = 'model-card';
@@ -2296,15 +2293,15 @@
             openModal('subscriptionModal');
         }
 
-        // Open Chat Page (External)
+        // Open Chat Page (External) - chat1.html
         function openChatPage(modelId) {
             if (!currentUser && !adminUser) {
                 openModal('subscriptionModal');
                 return;
             }
             
-            // Open external chat page
-            window.open('chat.html?model=' + modelId, '_blank');
+            // Open external chat page - chat1.html
+            window.open('chat1.html?model=' + modelId, '_blank');
         }
 
         // Open Models Gallery
@@ -2313,38 +2310,13 @@
             loadModelsGallery();
         }
 
-        // Load Models for Gallery
+        // Load Models for Gallery (Firebase Models Only)
         function loadModelsGallery() {
             const galleryGrid = document.getElementById('modelsGalleryGrid');
             galleryGrid.innerHTML = '';
 
+            // Only show Firebase models to logged-in users
             allModels.forEach(model => {
-                // Show public models to everyone, private models only to logged-in users
-                if (model.contentType === 'public' || (currentUser && isSubscriptionActive(currentUser)) || adminUser) {
-                    const galleryCard = document.createElement('div');
-                    galleryCard.className = 'gallery-model-card';
-                    
-                    galleryCard.innerHTML = `
-                        <img src="${model.image}" alt="${model.name}" class="gallery-model-image">
-                        <div class="gallery-model-info">
-                            <h3>${model.name} ${model.verified ? '<i class="fas fa-check-circle verified"></i>' : ''}</h3>
-                            <p>${model.contentType === 'private' ? 'Premium Model' : 'Public Model'}</p>
-                            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                                <button class="btn btn-primary" onclick="openVideoCallModal('${model.id}')" style="flex: 1;">
-                                    <i class="fas fa-video"></i> Book
-                                </button>
-                                <button class="btn btn-outline" onclick="openChatPage('${model.id}')" style="flex: 1;">
-                                    <i class="fas fa-comments"></i> Chat
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    galleryGrid.appendChild(galleryCard);
-                }
-            });
-
-            // Also add hardcoded models to gallery
-            hardcodedFrontpageModels.forEach(model => {
                 const galleryCard = document.createElement('div');
                 galleryCard.className = 'gallery-model-card';
                 
@@ -2352,12 +2324,12 @@
                     <img src="${model.image}" alt="${model.name}" class="gallery-model-image">
                     <div class="gallery-model-info">
                         <h3>${model.name} ${model.verified ? '<i class="fas fa-check-circle verified"></i>' : ''}</h3>
-                        <p>Featured Model</p>
+                        <p>${model.contentType === 'private' ? 'Premium Model' : 'Public Model'}</p>
                         <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                            <button class="btn btn-primary" onclick="handleHardcodedModelInteraction()" style="flex: 1;">
+                            <button class="btn btn-primary" onclick="openVideoCallModal('${model.id}')" style="flex: 1;">
                                 <i class="fas fa-video"></i> Book
                             </button>
-                            <button class="btn btn-outline" onclick="handleHardcodedModelInteraction()" style="flex: 1;">
+                            <button class="btn btn-outline" onclick="openChatPage('${model.id}')" style="flex: 1;">
                                 <i class="fas fa-comments"></i> Chat
                             </button>
                         </div>
@@ -2365,12 +2337,24 @@
                 `;
                 galleryGrid.appendChild(galleryCard);
             });
+
+            // Show subscription modal for non-logged in users when they try to access gallery
+            if (!currentUser && !adminUser && allModels.length > 0) {
+                closeModal('modelsGalleryModal');
+                openModal('subscriptionModal');
+            }
         }
 
         // Handle Like
         async function handleLike(modelId) {
             if (!currentUser && !adminUser) {
                 openModal('subscriptionModal');
+                return;
+            }
+
+            // Check subscription status
+            if (currentUser && !isSubscriptionActive(currentUser)) {
+                openModal('renewalModal');
                 return;
             }
 
@@ -2466,6 +2450,12 @@
         function openCommentModal(modelId) {
             if (!currentUser && !adminUser) {
                 openModal('subscriptionModal');
+                return;
+            }
+
+            // Check subscription status
+            if (currentUser && !isSubscriptionActive(currentUser)) {
+                openModal('renewalModal');
                 return;
             }
             
@@ -2600,6 +2590,17 @@
 
         // Open Public Posts Modal
         function openPublicPostsModal(modelId) {
+            if (!currentUser && !adminUser) {
+                openModal('subscriptionModal');
+                return;
+            }
+
+            // Check subscription status
+            if (currentUser && !isSubscriptionActive(currentUser)) {
+                openModal('renewalModal');
+                return;
+            }
+
             const model = allModels.find(m => m.id === modelId);
             if (!model) return;
 
@@ -2648,6 +2649,12 @@
         function openVideoCallModal(modelId) {
             if (!currentUser && !adminUser) {
                 openModal('subscriptionModal');
+                return;
+            }
+
+            // Check subscription status
+            if (currentUser && !isSubscriptionActive(currentUser)) {
+                openModal('renewalModal');
                 return;
             }
             
