@@ -1909,6 +1909,38 @@
             localStorage.setItem('hardcodedFrontpageModels', JSON.stringify(hardcodedFrontpageModels));
         }
 
+        // Enhanced Subscription Validation Function
+        function validateSubscription() {
+            if (!currentUser && !adminUser) {
+                openModal('subscriptionModal');
+                return false;
+            }
+            
+            // Admin users don't need subscription
+            if (adminUser) return true;
+            
+            // Regular users need active subscription
+            if (currentUser && !isSubscriptionActive(currentUser)) {
+                openModal('renewalModal');
+                return false;
+            }
+            
+            return true;
+        }
+
+        // Enhanced 1-month subscription validation
+        function isSubscriptionActive(user) {
+            if (!user.expiresAt) return false;
+            
+            const now = new Date();
+            const expires = user.expiresAt.toDate();
+            const oneMonthFromNow = new Date();
+            oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
+            
+            // Subscription is active if it hasn't expired and has at least 1 month validity
+            return now < expires && expires >= oneMonthFromNow && user.isActive !== false;
+        }
+
         // Update models display based on login status
         function updateModelsDisplay() {
             const modelsGrid = document.getElementById('modelsGrid');
@@ -1953,7 +1985,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             initializeWebsite();
             setupScrollEffects();
-            initializeHardcodedModels(); // Initialize hard-coded models immediately
+            initializeHardcodedModels();
         });
 
         // Enhanced scroll effects
@@ -1996,7 +2028,7 @@
             document.getElementById('postForm').addEventListener('submit', handlePostSubmit);
         }
 
-        // Authentication State Listener
+        // Enhanced Authentication State Listener
         function checkAuthState() {
             auth.onAuthStateChanged(async (user) => {
                 if (user) {
@@ -2006,28 +2038,28 @@
                         if (userData.role === 'admin') {
                             adminUser = { uid: user.uid, ...userData };
                             showAdminPanel();
+                            updateModelsDisplay();
                             toastr.success('Welcome back, Admin!');
                         } else {
                             currentUser = { uid: user.uid, ...userData };
                             showUserInterface();
                             checkAccountExpiry();
+                            updateModelsDisplay();
                             toastr.success('Welcome back!');
                         }
                     } else {
-                        // User not in users collection - might be Firebase auth user but not in our system
                         await auth.signOut();
                     }
                     updateAuthButtons();
-                    await loadModels(); // Reload models to show private content if applicable
-                    updateModelsDisplay(); // Update models display based on login status
+                    await loadModels();
                 } else {
                     currentUser = null;
                     adminUser = null;
                     updateAuthButtons();
                     hideAdminPanel();
                     hideUserInterface();
-                    await loadModels(); // Reload models to hide private content
-                    updateModelsDisplay(); // Update models display for non-logged-in users
+                    updateModelsDisplay();
+                    await loadModels();
                 }
             });
         }
@@ -2100,18 +2132,6 @@
                 console.error('Error loading models:', error);
                 toastr.error('Failed to load models');
             }
-        }
-
-        // Check if user subscription is active (1 month validation)
-        function isSubscriptionActive(user) {
-            if (!user.expiresAt) return false;
-            const now = new Date();
-            const expires = user.expiresAt.toDate();
-            const oneMonthFromNow = new Date();
-            oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
-            
-            // Subscription is active if it hasn't expired and has at least 1 month validity
-            return now < expires && expires >= oneMonthFromNow && user.isActive !== false;
         }
 
         // Create Model Card with enhanced animations (Firebase Models Only) - FOR LOGGED-IN USERS
@@ -2286,16 +2306,7 @@
 
         // Open Chat Page (External) - chat1.html - FOR LOGGED-IN USERS ONLY
         function openChatPage() {
-            if (!currentUser && !adminUser) {
-                openModal('subscriptionModal');
-                return;
-            }
-            
-            // Check subscription status for regular users
-            if (currentUser && !isSubscriptionActive(currentUser)) {
-                openModal('renewalModal');
-                return;
-            }
+            if (!validateSubscription()) return;
             
             // Open external chat page - chat1.html
             window.open('chat1.html', '_blank');
@@ -2303,17 +2314,7 @@
 
         // Open Models Gallery
         function openModelsGallery() {
-            // Check if user is logged in
-            if (!currentUser && !adminUser) {
-                openModal('subscriptionModal');
-                return;
-            }
-            
-            // Check subscription status for regular users
-            if (currentUser && !isSubscriptionActive(currentUser)) {
-                openModal('renewalModal');
-                return;
-            }
+            if (!validateSubscription()) return;
             
             openModal('modelsGalleryModal');
             loadModelsGallery();
@@ -2355,16 +2356,7 @@
 
         // Handle Like - FOR LOGGED-IN USERS ONLY
         async function handleLike(modelId) {
-            if (!currentUser && !adminUser) {
-                openModal('subscriptionModal');
-                return;
-            }
-
-            // Check subscription status
-            if (currentUser && !isSubscriptionActive(currentUser)) {
-                openModal('renewalModal');
-                return;
-            }
+            if (!validateSubscription()) return;
 
             try {
                 const model = allModels.find(m => m.id === modelId);
@@ -2458,16 +2450,7 @@
 
         // Comment Functions
         function openCommentModal(modelId) {
-            if (!currentUser && !adminUser) {
-                openModal('subscriptionModal');
-                return;
-            }
-
-            // Check subscription status
-            if (currentUser && !isSubscriptionActive(currentUser)) {
-                openModal('renewalModal');
-                return;
-            }
+            if (!validateSubscription()) return;
             
             currentCommentModelId = modelId;
             document.getElementById('commentText').value = '';
@@ -2602,16 +2585,7 @@
 
         // Open Public Posts Modal
         function openPublicPostsModal(modelId) {
-            if (!currentUser && !adminUser) {
-                openModal('subscriptionModal');
-                return;
-            }
-
-            // Check subscription status
-            if (currentUser && !isSubscriptionActive(currentUser)) {
-                openModal('renewalModal');
-                return;
-            }
+            if (!validateSubscription()) return;
 
             const model = allModels.find(m => m.id === modelId);
             if (!model) return;
@@ -2659,16 +2633,7 @@
 
         // Video Call Booking
         function openVideoCallModal(modelId) {
-            if (!currentUser && !adminUser) {
-                openModal('subscriptionModal');
-                return;
-            }
-
-            // Check subscription status
-            if (currentUser && !isSubscriptionActive(currentUser)) {
-                openModal('renewalModal');
-                return;
-            }
+            if (!validateSubscription()) return;
             
             currentModelId = modelId;
             openModal('videoCallModal');
