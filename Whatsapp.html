@@ -1310,19 +1310,11 @@
         </div>
     </section>
 
-    <!-- Front Page Models Section - FOR NON-SUBSCRIBED USERS ONLY -->
-    <section class="frontpage-models" id="frontpageModels">
-        <h2 class="section-title">Featured Models</h2>
-        <div class="frontpage-models-grid" id="frontpageModelsGrid">
-            <!-- Hard-coded models will be loaded here for non-subscribed users -->
-        </div>
-    </section>
-
-    <!-- Private Content Section - FOR SUBSCRIBED USERS ONLY -->
-    <section class="private-content" id="privateContent">
-        <h2 class="section-title">Exclusive Members Content</h2>
-        <div id="privateContentGrid" class="models-grid">
-            <!-- Firestore models will be loaded here for subscribed users -->
+    <!-- Dynamic Models Section - Changes based on login status -->
+    <section class="frontpage-models" id="modelsSection">
+        <h2 class="section-title" id="modelsSectionTitle">Featured Models</h2>
+        <div class="frontpage-models-grid" id="modelsGrid">
+            <!-- Content changes based on login status -->
         </div>
     </section>
 
@@ -1908,8 +1900,8 @@
                 saveHardcodedModels();
             }
             
-            // Display hard-coded models immediately
-            displayHardcodedFrontpageModels();
+            // Display models based on login status
+            updateModelsDisplay();
         }
 
         // Save hard-coded models to localStorage
@@ -1917,30 +1909,39 @@
             localStorage.setItem('hardcodedFrontpageModels', JSON.stringify(hardcodedFrontpageModels));
         }
 
-        // Display hard-coded front page models - ONLY FOR NON-LOGGED-IN USERS
-        function displayHardcodedFrontpageModels() {
-            const frontpageGrid = document.getElementById('frontpageModelsGrid');
-            const frontpageSection = document.getElementById('frontpageModels');
-            frontpageGrid.innerHTML = '';
+        // Update models display based on login status
+        function updateModelsDisplay() {
+            const modelsGrid = document.getElementById('modelsGrid');
+            const modelsSectionTitle = document.getElementById('modelsSectionTitle');
+            modelsGrid.innerHTML = '';
 
-            // Only show hard-coded models to non-logged-in users
             if (currentUser || adminUser) {
-                frontpageSection.style.display = 'none';
-                return;
-            }
-
-            frontpageSection.style.display = 'block';
-
-            let cardIndex = 0;
-            
-            hardcodedFrontpageModels.forEach(model => {
-                // Create model card for front page - show to non-subscribed users only
-                const modelCard = createHardcodedModelCard(model);
-                modelCard.style.setProperty('--card-index', cardIndex);
-                cardIndex++;
+                // User is logged in - show "Camsilo Models" with Firebase models
+                modelsSectionTitle.textContent = 'Camsilo Models';
                 
-                frontpageGrid.appendChild(modelCard);
-            });
+                let cardIndex = 0;
+                allModels.forEach(model => {
+                    const modelCard = createModelCard(model);
+                    modelCard.style.setProperty('--card-index', cardIndex);
+                    cardIndex++;
+                    modelsGrid.appendChild(modelCard);
+                });
+
+                if (allModels.length === 0) {
+                    modelsGrid.innerHTML = '<p style="text-align: center; padding: 2rem; grid-column: 1 / -1;">No models available yet.</p>';
+                }
+            } else {
+                // User is not logged in - show "Featured Models" with hard-coded models
+                modelsSectionTitle.textContent = 'Featured Models';
+                
+                let cardIndex = 0;
+                hardcodedFrontpageModels.forEach(model => {
+                    const modelCard = createHardcodedModelCard(model);
+                    modelCard.style.setProperty('--card-index', cardIndex);
+                    cardIndex++;
+                    modelsGrid.appendChild(modelCard);
+                });
+            }
 
             // Update admin hardcoded models list
             if (adminUser) {
@@ -2018,7 +2019,7 @@
                     }
                     updateAuthButtons();
                     await loadModels(); // Reload models to show private content if applicable
-                    displayHardcodedFrontpageModels(); // Update front page models display
+                    updateModelsDisplay(); // Update models display based on login status
                 } else {
                     currentUser = null;
                     adminUser = null;
@@ -2026,7 +2027,7 @@
                     hideAdminPanel();
                     hideUserInterface();
                     await loadModels(); // Reload models to hide private content
-                    displayHardcodedFrontpageModels(); // Show front page models for non-logged-in users
+                    updateModelsDisplay(); // Update models display for non-logged-in users
                 }
             });
         }
@@ -2079,43 +2080,16 @@
             }
         }
 
-        // Load Models from Firebase - ONLY FOR LOGGED-IN USERS
+        // Load Models from Firebase
         async function loadModels() {
             try {
                 const snapshot = await modelsRef.orderBy('createdAt', 'desc').get();
                 allModels = [];
-                const privateContentGrid = document.getElementById('privateContentGrid');
-                const privateContentSection = document.getElementById('privateContent');
-                
-                privateContentGrid.innerHTML = '';
-
-                let cardIndex = 0;
                 
                 snapshot.forEach(doc => {
                     const model = { id: doc.id, ...doc.data() };
                     allModels.push(model);
                 });
-
-                // Show Firestore models ONLY to logged-in users with active subscriptions
-                if ((currentUser && isSubscriptionActive(currentUser)) || adminUser) {
-                    allModels.forEach(model => {
-                        // Create model card for every Firebase model
-                        const modelCard = createModelCard(model);
-                        modelCard.style.setProperty('--card-index', cardIndex);
-                        cardIndex++;
-                        privateContentGrid.appendChild(modelCard);
-                    });
-                    
-                    // Show private content section if there are models
-                    if (allModels.length > 0) {
-                        privateContentSection.style.display = 'block';
-                    } else {
-                        privateContentSection.style.display = 'none';
-                    }
-                } else {
-                    // Hide private content for non-logged-in users
-                    privateContentSection.style.display = 'none';
-                }
 
                 // Update admin models list
                 if (adminUser) {
@@ -2128,12 +2102,16 @@
             }
         }
 
-        // Check if user subscription is active
+        // Check if user subscription is active (1 month validation)
         function isSubscriptionActive(user) {
             if (!user.expiresAt) return false;
             const now = new Date();
             const expires = user.expiresAt.toDate();
-            return now < expires && user.isActive !== false;
+            const oneMonthFromNow = new Date();
+            oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
+            
+            // Subscription is active if it hasn't expired and has at least 1 month validity
+            return now < expires && expires >= oneMonthFromNow && user.isActive !== false;
         }
 
         // Create Model Card with enhanced animations (Firebase Models Only) - FOR LOGGED-IN USERS
@@ -2419,6 +2397,7 @@
                 
                 // Update UI
                 await loadModels();
+                updateModelsDisplay();
                 toastr.success('Liked! ❤️');
 
             } catch (error) {
@@ -2445,6 +2424,7 @@
                 
                 // Update UI
                 await loadModels();
+                updateModelsDisplay();
                 toastr.success(`Boosted ${model.name}'s likes by ${boostAmount}!`);
             } catch (error) {
                 console.error('Error boosting likes:', error);
@@ -2468,7 +2448,7 @@
                 saveHardcodedModels();
                 
                 // Update UI
-                displayHardcodedFrontpageModels();
+                updateModelsDisplay();
                 toastr.success(`Boosted ${model.name}'s likes by ${boostAmount}!`);
             } catch (error) {
                 console.error('Error boosting hardcoded model likes:', error);
@@ -2517,6 +2497,7 @@
                 toastr.success('Comment added successfully!');
                 closeModal('commentModal');
                 await loadModels();
+                updateModelsDisplay();
                 
             } catch (error) {
                 console.error('Error adding comment:', error);
@@ -2563,6 +2544,7 @@
                 toastr.success('Fake comment added successfully!');
                 closeModal('adminCommentModal');
                 await loadModels();
+                updateModelsDisplay();
                 
             } catch (error) {
                 console.error('Error adding fake comment:', error);
@@ -2608,7 +2590,7 @@
                 saveHardcodedModels();
                 
                 // Update UI
-                displayHardcodedFrontpageModels();
+                updateModelsDisplay();
                 toastr.success('Fake comment added successfully!');
                 closeModal('adminCommentModal');
                 
@@ -2846,6 +2828,7 @@
                 
                 document.getElementById('modelForm').reset();
                 await loadModels();
+                updateModelsDisplay();
                 
             } catch (error) {
                 console.error('Error saving model:', error);
@@ -2887,6 +2870,7 @@
                 await modelsRef.doc(modelId).delete();
                 toastr.success('Model deleted successfully!');
                 await loadModels();
+                updateModelsDisplay();
             } catch (error) {
                 console.error('Error deleting model:', error);
                 toastr.error('Failed to delete model');
@@ -2963,7 +2947,7 @@
                 saveHardcodedModels();
                 
                 document.getElementById('hardcodedModelForm').reset();
-                displayHardcodedFrontpageModels();
+                updateModelsDisplay();
                 
             } catch (error) {
                 console.error('Error saving hardcoded model:', error);
@@ -3008,7 +2992,7 @@
                 saveHardcodedModels();
                 
                 toastr.success('Hard-coded model deleted successfully!');
-                displayHardcodedFrontpageModels();
+                updateModelsDisplay();
             } catch (error) {
                 console.error('Error deleting hard-coded model:', error);
                 toastr.error('Failed to delete hard-coded model');
@@ -3361,7 +3345,6 @@
 
         function hideUserInterface() {
             document.getElementById('userInfo').style.display = 'none';
-            document.getElementById('privateContent').style.display = 'none';
         }
 
         function updateUserInfo() {
@@ -3532,7 +3515,7 @@
 
         // Initialize UI with enhanced effects
         function initializeUI() {
-            console.log('Camsilo website initialized successfully with proper user access control');
+            console.log('Camsilo website initialized successfully with dynamic models display');
         }
 
         // Call initialization
