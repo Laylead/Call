@@ -92,6 +92,7 @@
     display: flex;
     flex: 1;
     overflow: hidden;
+    position: relative;
   }
 
   /* left: inbox (admin) */
@@ -102,13 +103,33 @@
     border-right:1px solid rgba(255,255,255,0.03);
     width: 300px;
     flex-shrink: 0;
+    transition: transform 0.3s ease;
   }
   @media (max-width:768px){ 
+    .main-content.mobile-chat-active .leftCol {
+      transform: translateX(-100%);
+    }
+    .main-content.mobile-chat-active .rightCol {
+      transform: translateX(0);
+    }
     .leftCol{
       width: 100%;
       border-right: none;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      max-height: 40vh;
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      z-index: 1;
+      transform: translateX(0);
+    }
+    .rightCol {
+      width: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
     }
   }
 
@@ -392,7 +413,7 @@
     gap: 8px;
     width: 200px;
     margin-bottom: 8px;
-    z-index: 10;
+    z-index: 100;
   }
   .attachment-options.open {
     display: flex;
@@ -411,7 +432,7 @@
     background: rgba(255,255,255,0.05);
   }
 
-  /* URL input modal */
+  /* URL input modal - FIXED Z-INDEX */
   .url-modal {
     position: fixed;
     top: 50%;
@@ -424,7 +445,7 @@
     max-width: 450px;
     box-shadow: var(--shadow-lg);
     border: 1px solid rgba(255,255,255,0.05);
-    z-index: 1000;
+    z-index: 1001; /* Increased z-index to appear above everything */
     display: none;
   }
   .url-modal.open {
@@ -439,7 +460,7 @@
     bottom: 0;
     background: rgba(0,0,0,0.5);
     backdrop-filter: blur(2px);
-    z-index: 999;
+    z-index: 1000; /* Increased z-index to appear above chat */
     display: none;
   }
   .url-modal-overlay.open {
@@ -581,6 +602,50 @@
     max-width: 400px;
     line-height: 1.5;
   }
+
+  /* Back button for mobile */
+  .back-btn {
+    display: none;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: var(--transition);
+    margin-right: 12px;
+  }
+  .back-btn:hover {
+    color: white;
+    background: rgba(255,255,255,0.05);
+  }
+  @media (max-width:768px){ 
+    .back-btn {
+      display: flex;
+    }
+  }
+
+  /* Media type selector */
+  .media-type-selector {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .media-type-option {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.05);
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .media-type-option.active {
+    border-color: rgba(255,111,45,0.4);
+    background: rgba(255,111,45,0.1);
+  }
 </style>
 </head>
 <body>
@@ -610,7 +675,7 @@
   </div>
 
   <div class="container">
-    <div class="main-content">
+    <div class="main-content" id="mainContent">
       <!-- left: conversation list (admin only) -->
       <div class="leftCol" id="leftCol">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -623,9 +688,12 @@
       <!-- right: current thread -->
       <div class="rightCol">
         <div class="threadHeader">
-          <div>
-            <div id="threadTitle" style="font-weight:800">Welcome to Camsilo</div>
-            <div id="threadSub" class="small">Login to start private conversations</div>
+          <div style="display: flex; align-items: center;">
+            <button id="backBtn" class="back-btn">←</button>
+            <div>
+              <div id="threadTitle" style="font-weight:800">Welcome to Camsilo</div>
+              <div id="threadSub" class="small">Login to start private conversations</div>
+            </div>
           </div>
           <div>
             <button id="openLoginBtn" class="ghost">Login</button>
@@ -648,7 +716,7 @@
                 <span>📁</span> Upload File
               </div>
               <div class="attachment-option" id="insertUrlOption">
-                <span>🔗</span> Insert Image URL
+                <span>🔗</span> Insert Media URL
               </div>
             </div>
           </div>
@@ -666,13 +734,18 @@
   </div>
 </div>
 
-<!-- URL Input Modal -->
+<!-- URL Input Modal - FIXED Z-INDEX -->
 <div id="urlModalOverlay" class="url-modal-overlay"></div>
 <div id="urlModal" class="url-modal">
-  <div class="url-modal-title">Insert Image URL</div>
+  <div class="url-modal-title">Insert Media URL</div>
+  
+  <div class="media-type-selector">
+    <div class="media-type-option active" data-type="image">Image</div>
+    <div class="media-type-option" data-type="video">Video</div>
+  </div>
   
   <div class="url-input-group">
-    <label for="urlInput">Image URL</label>
+    <label for="urlInput">Media URL</label>
     <input id="urlInput" class="input" placeholder="https://example.com/image.jpg" />
   </div>
   
@@ -681,13 +754,13 @@
     <label for="expiringMedia">View once (expires after viewing)</label>
   </div>
   
-  <div class="timer-input">
+  <div id="timerInputContainer" class="timer-input" style="display: none;">
     <label for="expireSeconds">Expire after (seconds):</label>
     <input id="expireSeconds" type="number" min="5" max="300" value="30" />
   </div>
   
   <div style="display:flex;gap:8px;margin-top:20px">
-    <button id="confirmUrl" class="btn" style="flex:1">Insert Image</button>
+    <button id="confirmUrl" class="btn" style="flex:1">Insert Media</button>
     <button id="cancelUrl" class="ghost">Cancel</button>
   </div>
 </div>
@@ -757,6 +830,8 @@
   const messagesEl = document.getElementById('messages');
   const threadTitle = document.getElementById('threadTitle');
   const threadSub = document.getElementById('threadSub');
+  const mainContent = document.getElementById('mainContent');
+  const backBtn = document.getElementById('backBtn');
 
   const fileInput = document.getElementById('fileInput');
   const textInput = document.getElementById('textInput');
@@ -772,8 +847,10 @@
   const urlInput = document.getElementById('urlInput');
   const expiringMedia = document.getElementById('expiringMedia');
   const expireSecondsInput = document.getElementById('expireSeconds');
+  const timerInputContainer = document.getElementById('timerInputContainer');
   const confirmUrl = document.getElementById('confirmUrl');
   const cancelUrl = document.getElementById('cancelUrl');
+  const mediaTypeOptions = document.querySelectorAll('.media-type-option');
 
   // State
   let me = null;
@@ -786,7 +863,8 @@
   let pendingMedia = {
     url: '',
     isExpiring: false,
-    expireSeconds: 30
+    expireSeconds: 30,
+    mediaType: 'image' // 'image' or 'video'
   };
 
   // Helper functions
@@ -838,6 +916,18 @@
       popup.setAttribute('aria-hidden', 'true'); 
       chatIcon.style.display = 'flex'; // Show chat icon when popup is closed
     }, 300);
+  }
+
+  function showChatView() {
+    if (window.innerWidth <= 768) {
+      mainContent.classList.add('mobile-chat-active');
+    }
+  }
+
+  function showInboxView() {
+    if (window.innerWidth <= 768) {
+      mainContent.classList.remove('mobile-chat-active');
+    }
   }
 
   function formatTimestamp(ts) {
@@ -896,6 +986,8 @@
   openLoginBtn.addEventListener('click', () => openLoginModal());
   closeLogin.addEventListener('click', closeLoginModal);
 
+  backBtn.addEventListener('click', showInboxView);
+
   doLogin.addEventListener('click', async () => {
     const email = emailInp.value.trim();
     const pw = passInp.value;
@@ -941,6 +1033,7 @@
       threadSub.textContent = 'Login to start private conversations';
       textInput.disabled = true;
       sendBtn.disabled = true;
+      showInboxView();
       
       // Show welcome screen
       messagesEl.innerHTML = `
@@ -990,8 +1083,34 @@
       urlInput.value = '';
       expiringMedia.checked = false;
       expireSecondsInput.value = '30';
+      timerInputContainer.style.display = 'none';
     }, 300);
   }
+
+  // Media type selection
+  mediaTypeOptions.forEach(option => {
+    option.addEventListener('click', () => {
+      mediaTypeOptions.forEach(opt => opt.classList.remove('active'));
+      option.classList.add('active');
+      pendingMedia.mediaType = option.dataset.type;
+      
+      // Update placeholder based on media type
+      if (pendingMedia.mediaType === 'image') {
+        urlInput.placeholder = 'https://example.com/image.jpg';
+      } else {
+        urlInput.placeholder = 'https://example.com/video.mp4';
+      }
+    });
+  });
+
+  // Expiring media checkbox handler
+  expiringMedia.addEventListener('change', () => {
+    if (expiringMedia.checked) {
+      timerInputContainer.style.display = 'flex';
+    } else {
+      timerInputContainer.style.display = 'none';
+    }
+  });
 
   confirmUrl.addEventListener('click', () => {
     const url = urlInput.value.trim();
@@ -1060,7 +1179,7 @@
         mediaType = file.type || '';
       } else if (pendingMedia.url) {
         mediaUrl = pendingMedia.url;
-        mediaType = 'image/url';
+        mediaType = pendingMedia.mediaType === 'image' ? 'image/url' : 'video/url';
         isExpiring = pendingMedia.isExpiring;
         expireSeconds = pendingMedia.expireSeconds;
         pendingMedia.url = '';
@@ -1134,6 +1253,7 @@
     
     try {
       const mediaUrl = pendingMedia.url;
+      const mediaType = pendingMedia.mediaType === 'image' ? 'image/url' : 'video/url';
       const isExpiring = pendingMedia.isExpiring;
       const expireSeconds = pendingMedia.expireSeconds;
       
@@ -1148,14 +1268,14 @@
           from: me.uid,
           text: '',
           mediaUrl: mediaUrl,
-          mediaType: 'image/url',
+          mediaType: mediaType,
           isExpiring: isExpiring,
           expireSeconds: expireSeconds,
           timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
         
         await db.collection('conversations').doc(currentUid).set({
-          lastMessage: 'Image',
+          lastMessage: 'Media',
           lastTimestamp: firebase.firestore.FieldValue.serverTimestamp(),
           unreadFromAdmin: firebase.firestore.FieldValue.increment(1)
         }, { merge: true });
@@ -1166,14 +1286,14 @@
           from: me.uid,
           text: '',
           mediaUrl: mediaUrl,
-          mediaType: 'image/url',
+          mediaType: mediaType,
           isExpiring: isExpiring,
           expireSeconds: expireSeconds,
           timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
         
         await db.collection('conversations').doc(convUid).set({
-          lastMessage: 'Image',
+          lastMessage: 'Media',
           lastTimestamp: firebase.firestore.FieldValue.serverTimestamp(),
           unreadFromUser: firebase.firestore.FieldValue.increment(1)
         }, { merge: true });
@@ -1257,6 +1377,7 @@
       subscribeToThread(me.uid, true);
       // Reset unreadFromAdmin to 0 when opening
       await db.collection('conversations').doc(me.uid).set({ unreadFromAdmin: 0 }, { merge: true });
+      showChatView();
     }
 
     // Set badge: show unreadFromAdmin for current user on icon
@@ -1365,6 +1486,8 @@
           } catch (e) { 
             console.error('Reset unread error', e); 
           }
+          
+          showChatView();
         });
         
         conversationsEl.appendChild(row);
@@ -1424,7 +1547,7 @@
       if (m.mediaUrl) {
         const mediaContainer = el('div', { className: 'media-container' });
         
-        if (m.mediaType && m.mediaType.startsWith('video/')) {
+        if (m.mediaType && (m.mediaType.startsWith('video/') || m.mediaType === 'video/url')) {
           const v = document.createElement('video'); 
           v.controls = true; 
           v.src = m.mediaUrl; 
