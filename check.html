@@ -182,6 +182,13 @@
     /* Ensure messages area has proper spacing for composer */
     padding-bottom: 90px;
   }
+  @media (max-width:768px){ 
+    .messages {
+      padding-bottom: 100px; /* More space on mobile */
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+  }
   .bubble{
     max-width:78%;
     padding:12px 16px;
@@ -213,7 +220,7 @@
     color: rgba(255,255,255,0.5);
   }
 
-  /* COMPOSER - FIXED POSITION AT BOTTOM */
+  /* COMPOSER - FIXED POSITION AT BOTTOM WITH MOBILE OPTIMIZATION */
   .composer{
     display:flex;
     gap:12px;
@@ -229,12 +236,34 @@
     z-index: 100;
     backdrop-filter: blur(10px);
     transition: var(--transition);
+    /* Mobile-specific optimizations */
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
   }
   
   /* When input is focused, lift up the composer */
   .composer.focused {
     transform: translateY(-10px);
     box-shadow: 0 -10px 30px rgba(0,0,0,0.3);
+  }
+
+  /* Mobile-specific adjustments */
+  @media (max-width:768px){ 
+    .composer {
+      padding-left: 16px;
+      padding-right: 16px;
+      /* Ensure composer stays above mobile browser UI */
+      padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+    }
+    
+    .composer input[type="text"] {
+      font-size: 16px; /* Prevents zoom on iOS */
+      padding: 12px 16px;
+    }
+    
+    .send-btn {
+      padding: 12px 16px;
+      height: 48px;
+    }
   }
 
   .composer input[type="text"]{
@@ -965,6 +994,52 @@
     return e;
   };
 
+  // Mobile keyboard handling
+  function setupMobileKeyboardHandling() {
+    if (window.innerWidth > 768) return; // Only for mobile
+    
+    const messagesEl = document.getElementById('messages');
+    const composer = document.getElementById('composer');
+    const textInput = document.getElementById('textInput');
+    
+    let isKeyboardVisible = false;
+    
+    // Detect keyboard show/hide on iOS
+    textInput.addEventListener('focus', () => {
+      isKeyboardVisible = true;
+      composer.classList.add('focused');
+      
+      // Scroll to bottom when keyboard appears
+      setTimeout(() => {
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }, 300);
+    });
+    
+    textInput.addEventListener('blur', () => {
+      isKeyboardVisible = false;
+      composer.classList.remove('focused');
+    });
+    
+    // Handle window resize (keyboard showing/hiding on Android)
+    let initialHeight = window.innerHeight;
+    window.addEventListener('resize', () => {
+      if (window.innerHeight < initialHeight) {
+        // Keyboard is showing
+        isKeyboardVisible = true;
+        composer.classList.add('focused');
+        
+        // Scroll to bottom
+        setTimeout(() => {
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+        }, 100);
+      } else {
+        // Keyboard is hiding
+        isKeyboardVisible = false;
+        composer.classList.remove('focused');
+      }
+    });
+  }
+
   function openLoginModal() { 
     loginModal.style.display = 'flex'; 
     setTimeout(() => {
@@ -989,6 +1064,7 @@
     setTimeout(() => {
       popup.classList.add('open');
       textInput.focus();
+      setupMobileKeyboardHandling(); // Re-setup for mobile
     }, 10);
   }
   
@@ -1750,6 +1826,11 @@
       e.preventDefault();
       return false;
     }
+  });
+
+  // Call setupMobileKeyboardHandling when DOM is ready
+  document.addEventListener('DOMContentLoaded', () => {
+    setupMobileKeyboardHandling();
   });
 
   // Expose popup open for convenience when user logged in
