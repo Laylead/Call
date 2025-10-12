@@ -86,7 +86,6 @@
     flex-direction: column;
     height: calc(100vh - 70px);
     overflow: hidden;
-    position: relative;
   }
 
   /* Main content area */
@@ -95,7 +94,6 @@
     flex: 1;
     overflow: hidden;
     position: relative;
-    height: 100%;
   }
 
   /* left: inbox (admin) */
@@ -107,7 +105,6 @@
     width: 300px;
     flex-shrink: 0;
     transition: transform 0.3s ease;
-    height: 100%;
   }
   @media (max-width:768px){ 
     .main-content.mobile-chat-active .leftCol {
@@ -157,14 +154,13 @@
   .uLast{font-size:12px;color:var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
   .uBadge{background:var(--accent1);color:white;padding:6px 10px;border-radius:999px;font-weight:700;font-size:12px; min-width: 24px; text-align: center;}
 
-  /* right: chat thread */
+  /* right: chat thread - FIXED LAYOUT */
   .rightCol{
     display:flex;
     flex-direction:column; 
     flex: 1;
     overflow:hidden; 
     position: relative;
-    height: 100%;
   }
   .threadHeader{
     display:flex;
@@ -183,7 +179,8 @@
     display:flex;
     flex-direction:column;
     gap:16px;
-    min-height: 0; /* Important for flex scrolling */
+    /* Ensure messages area has proper spacing for composer */
+    padding-bottom: 90px;
   }
   .bubble{
     max-width:78%;
@@ -215,16 +212,31 @@
   .bubble.other small {
     color: rgba(255,255,255,0.5);
   }
+
+  /* COMPOSER - FIXED POSITION AT BOTTOM */
   .composer{
     display:flex;
     gap:12px;
     padding:16px 20px;
     border-top:1px solid rgba(255,255,255,0.05);
     align-items:flex-end; 
-    background: rgba(7, 20, 39, 0.9); 
+    background: rgba(7, 20, 39, 0.95); 
     flex-shrink: 0;
-    min-height: 80px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+    transition: var(--transition);
   }
+  
+  /* When input is focused, lift up the composer */
+  .composer.focused {
+    transform: translateY(-10px);
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.3);
+  }
+
   .composer input[type="text"]{
     flex:1;
     padding:14px 18px;
@@ -557,7 +569,7 @@
     background: rgba(255,255,255,0.05);
   }
 
-  /* Send button in composer - FIXED PADDING */
+  /* Send button in composer */
   .send-btn {
     background: linear-gradient(45deg, var(--accent1), var(--accent2));
     border: none;
@@ -774,30 +786,31 @@
             <div class="welcome-subtitle">Secure, private conversations between you and the model. All messages are encrypted and can't be downloaded or saved.</div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
 
-        <div class="composer">
-          <div style="position: relative;">
-            <button id="attachBtn" class="ghost">📎</button>
-            <div id="attachmentOptions" class="attachment-options">
-              <div class="attachment-option" id="uploadFileOption">
-                <span>📁</span> Upload File
-              </div>
-              <div class="attachment-option" id="insertUrlOption">
-                <span>🔗</span> Insert Media URL
-              </div>
-            </div>
-          </div>
-          <input id="fileInput" type="file" accept="image/*,video/*" style="display:none"/>
-          <input id="textInput" type="text" placeholder="Write a message..." autocomplete="off" disabled/>
-          <button id="sendBtn" class="send-btn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
+  <!-- COMPOSER MOVED OUTSIDE THE MAIN CONTENT - FIXED AT BOTTOM -->
+  <div class="composer" id="composer">
+    <div style="position: relative;">
+      <button id="attachBtn" class="ghost">📎</button>
+      <div id="attachmentOptions" class="attachment-options">
+        <div class="attachment-option" id="uploadFileOption">
+          <span>📁</span> Upload File
+        </div>
+        <div class="attachment-option" id="insertUrlOption">
+          <span>🔗</span> Insert Media URL
         </div>
       </div>
     </div>
+    <input id="fileInput" type="file" accept="image/*,video/*" style="display:none"/>
+    <input id="textInput" type="text" placeholder="Write a message..." autocomplete="off" disabled/>
+    <button id="sendBtn" class="send-btn">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
   </div>
 </div>
 
@@ -905,6 +918,7 @@
   const fileInput = document.getElementById('fileInput');
   const textInput = document.getElementById('textInput');
   const sendBtn = document.getElementById('sendBtn');
+  const composer = document.getElementById('composer');
   
   // New elements for URL input
   const attachBtn = document.getElementById('attachBtn');
@@ -1069,6 +1083,15 @@
         showChatView();
       }
     }
+  });
+
+  // Input focus/blur for composer lift effect
+  textInput.addEventListener('focus', () => {
+    composer.classList.add('focused');
+  });
+
+  textInput.addEventListener('blur', () => {
+    composer.classList.remove('focused');
   });
 
   doLogin.addEventListener('click', async () => {
