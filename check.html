@@ -75,10 +75,6 @@
     backdrop-filter: blur(10px);
     height: 70px;
     flex-shrink: 0;
-    /* Safe area for mobile */
-    padding-top: max(16px, env(safe-area-inset-top));
-    padding-left: max(20px, env(safe-area-inset-left));
-    padding-right: max(20px, env(safe-area-inset-right));
   }
   .brand{display:flex;gap:12px;align-items:center}
   .logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--accent1),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;box-shadow:0 4px 12px rgba(255,111,45,0.3)}
@@ -89,8 +85,6 @@
     display: flex;
     flex-direction: column;
     height: calc(100vh - 70px);
-    /* Account for safe areas */
-    padding-bottom: env(safe-area-inset-bottom);
     overflow: hidden;
   }
 
@@ -111,9 +105,6 @@
     width: 300px;
     flex-shrink: 0;
     transition: transform 0.3s ease;
-    /* Safe area for mobile */
-    padding-left: max(16px, env(safe-area-inset-left));
-    padding-right: max(16px, env(safe-area-inset-right));
   }
   @media (max-width:768px){ 
     .main-content.mobile-chat-active .leftCol {
@@ -179,9 +170,6 @@
     border-bottom: 1px solid rgba(255,255,255,0.03); 
     background: rgba(7, 20, 39, 0.5);
     flex-shrink: 0;
-    /* Safe area for mobile */
-    padding-left: max(20px, env(safe-area-inset-left));
-    padding-right: max(20px, env(safe-area-inset-right));
   }
   .messages{
     flex:1;
@@ -190,10 +178,6 @@
     display:flex;
     flex-direction:column;
     gap:16px;
-    /* Safe area for mobile */
-    padding-left: max(20px, env(safe-area-inset-left));
-    padding-right: max(20px, env(safe-area-inset-right));
-    padding-bottom: max(20px, env(safe-area-inset-bottom));
   }
   .bubble{
     max-width:78%;
@@ -233,10 +217,6 @@
     align-items:flex-end; 
     background: rgba(7, 20, 39, 0.8); 
     flex-shrink: 0;
-    /* Safe area for mobile */
-    padding-left: max(20px, env(safe-area-inset-left));
-    padding-right: max(20px, env(safe-area-inset-right));
-    padding-bottom: max(20px, env(safe-area-inset-bottom));
   }
   .composer input[type="text"]{
     flex:1;
@@ -324,8 +304,6 @@
     backdrop-filter: blur(5px);
     opacity: 0;
     transition: opacity 0.3s ease;
-    /* Safe area for mobile */
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
   #loginModal.open {
     opacity: 1;
@@ -455,7 +433,7 @@
     background: rgba(255,255,255,0.05);
   }
 
-  /* URL input modal - FIXED Z-INDEX */
+  /* URL input modal */
   .url-modal {
     position: fixed;
     top: 50%;
@@ -468,7 +446,7 @@
     max-width: 450px;
     box-shadow: var(--shadow-lg);
     border: 1px solid rgba(255,255,255,0.05);
-    z-index: 1001; /* Increased z-index to appear above everything */
+    z-index: 1001;
     display: none;
   }
   .url-modal.open {
@@ -483,7 +461,7 @@
     bottom: 0;
     background: rgba(0,0,0,0.5);
     backdrop-filter: blur(2px);
-    z-index: 1000; /* Increased z-index to appear above chat */
+    z-index: 1000;
     display: none;
   }
   .url-modal-overlay.open {
@@ -716,13 +694,12 @@
     box-shadow: 0 6px 16px rgba(45, 212, 191, 0.4);
   }
 
-  /* Header actions container - FIXED for proper spacing */
+  /* Header actions container */
   .header-actions {
     display: flex;
     align-items: center;
     gap: 12px;
     flex-wrap: nowrap;
-    overflow: visible;
   }
 </style>
 </head>
@@ -814,7 +791,7 @@
   </div>
 </div>
 
-<!-- URL Input Modal - FIXED Z-INDEX -->
+<!-- URL Input Modal -->
 <div id="urlModalOverlay" class="url-modal-overlay"></div>
 <div id="urlModal" class="url-modal">
   <div class="url-modal-title">Insert Media URL</div>
@@ -1457,9 +1434,12 @@
     if (role === 'admin') {
       adminBadge.classList.remove('hidden');
       adminPanelBtn.classList.remove('hidden');
+      // Show admin panel by default for admin users
+      leftCol.style.display = 'block';
     } else {
       adminBadge.classList.add('hidden');
       adminPanelBtn.classList.add('hidden');
+      leftCol.style.display = 'none';
     }
     logoutBtn.classList.remove('hidden');
 
@@ -1469,12 +1449,12 @@
 
     // Show/hide left column (admin only)
     if (role === 'admin') {
-      leftCol.style.display = 'block';
       await startAdminInbox();
       threadTitle.textContent = 'Admin Inbox';
       threadSub.textContent = 'Select a user to reply privately';
+      // Make sure admin panel is visible
+      showInboxView();
     } else {
-      leftCol.style.display = 'none';
       // Open user's own thread
       currentUid = me.uid;
       threadTitle.textContent = 'Your Camsilo Chat';
@@ -1691,7 +1671,7 @@
       
       bubble.appendChild(el('small', {}, formatTimestamp(m.timestamp)));
       
-      // Admin moderation: delete button - FIXED
+      // Admin moderation: delete button
       if (role === 'admin' && m.id) {
         const del = el('button', { 
           className: 'delete-btn'
