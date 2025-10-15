@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Camsilo — Premium Adult Entertainment</title>
+<title>Camsilo — Private Platform</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -18,564 +18,713 @@
   *{box-sizing:border-box;font-family:Inter,system-ui,Arial;margin:0;padding:0}
   body{margin:0;background:linear-gradient(180deg,var(--bg),#021020);color:#eaf2ff;min-height:100vh;overflow-x:hidden}
 
-  /* App container */
-  .app-container {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
+  /* Floating icon with enhanced animation */
+  #chatIcon{
+    position:fixed; right:24px; bottom:24px; width:68px; height:68px; border-radius:50%;
+    background:linear-gradient(45deg,var(--accent1),var(--accent2)); 
+    display:flex; align-items:center; justify-content:center;
+    font-size:28px; cursor:pointer; box-shadow:var(--shadow-lg); z-index:999;
+    transition: var(--transition);
+    border: 2px solid rgba(255,255,255,0.15);
+    animation: float 6s ease-in-out infinite;
+  }
+  #chatIcon:hover {
+    transform: scale(1.08) translateY(-5px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.7);
+    animation-play-state: paused;
+  }
+  @keyframes float {
+    0% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-12px) rotate(2deg); }
+    100% { transform: translateY(0px) rotate(0deg); }
+  }
+  #chatBadge{
+    position:absolute; top:-6px; right:-6px; background:var(--danger); color:white; border-radius:999px;
+    padding:6px 9px; font-weight:700; font-size:12px; display:none;
+    border: 2px solid var(--bg);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
   }
 
-  /* Header */
-  .app-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
+  /* Fullscreen popup window */
+  #popup {
+    position:fixed; 
+    top:0; left:0; right:0; bottom:0; 
+    width:100vw; height:100vh;
+    background:linear-gradient(180deg,#071427,#061025); 
+    display:none; 
+    z-index:998; 
+    overflow:hidden; 
+    border:none;
+    transform: translateY(20px);
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  #popup.open {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  .header{
+    display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.05);
     background: rgba(7, 20, 39, 0.9);
     backdrop-filter: blur(10px);
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    position: relative;
-    z-index: 100;
+    height: 70px;
     flex-shrink: 0;
+    /* Safe area for mobile */
+    padding-top: max(16px, env(safe-area-inset-top, 16px));
+    padding-left: max(20px, env(safe-area-inset-left, 20px));
+    padding-right: max(20px, env(safe-area-inset-right, 20px));
   }
-  .app-brand {
+  .brand{display:flex;gap:12px;align-items:center}
+  .logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--accent1),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;box-shadow:0 4px 12px rgba(255,111,45,0.3)}
+  .title{font-weight:800;font-size:18px;background:linear-gradient(90deg,var(--accent1),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .subtitle{font-size:12px;color:var(--muted)}
+
+  .container{
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 70px);
+    /* Account for safe areas */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Main content area */
+  .main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+  }
+
+  /* left: inbox (admin) */
+  .leftCol{
+    background:transparent;
+    padding:16px;
+    overflow:auto;
+    border-right:1px solid rgba(255,255,255,0.03);
+    width: 300px;
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+    /* Safe area for mobile */
+    padding-left: max(16px, env(safe-area-inset-left, 16px));
+    padding-right: max(16px, env(safe-area-inset-right, 16px));
+  }
+  @media (max-width:768px){ 
+    .main-content.mobile-chat-active .leftCol {
+      transform: translateX(-100%);
+    }
+    .main-content.mobile-chat-active .rightCol {
+      transform: translateX(0);
+    }
+    .leftCol{
+      width: 100%;
+      border-right: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      z-index: 1;
+      transform: translateX(0);
+    }
+    .rightCol {
+      width: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      z-index: 2;
+    }
+  }
+
+  .userRow{
+    display:flex;align-items:center;justify-content:space-between;padding:12px;border-radius:var(--radius-sm);cursor:pointer;
+    transition: var(--transition);
+    margin-bottom: 8px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid transparent;
+  }
+  .userRow:hover{background:rgba(255,255,255,0.05); transform: translateY(-2px);}
+  .userRow.active {
+    background: rgba(255,111,45,0.1);
+    border: 1px solid rgba(255,111,45,0.3);
+    box-shadow: 0 4px 12px rgba(255,111,45,0.15);
+  }
+  .uMeta{display:flex;gap:12px;align-items:center}
+  .uAvatar{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent1),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:0 4px 8px rgba(0,0,0,0.2)}
+  .uInfo{display:flex;flex-direction:column; overflow: hidden; flex: 1;}
+  .uEmail{font-weight:700;font-size:14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+  .uLast{font-size:12px;color:var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+  .uBadge{background:var(--accent1);color:white;padding:6px 10px;border-radius:999px;font-weight:700;font-size:12px; min-width: 24px; text-align: center;}
+
+  /* right: chat thread */
+  .rightCol{
+    display:flex;
+    flex-direction:column; 
+    flex: 1;
+    overflow:hidden; 
+    position: relative;
+    width: 100%;
+  }
+  .threadHeader{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:16px 20px; 
+    border-bottom: 1px solid rgba(255,255,255,0.03); 
+    background: rgba(7, 20, 39, 0.5);
+    flex-shrink: 0;
+    min-height: 70px;
+    /* Safe area for mobile */
+    padding-left: max(20px, env(safe-area-inset-left, 20px));
+    padding-right: max(20px, env(safe-area-inset-right, 20px));
+  }
+  .messages{
+    flex:1;
+    overflow:auto;
+    padding:20px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    /* Safe area for mobile */
+    padding-left: max(20px, env(safe-area-inset-left, 20px));
+    padding-right: max(20px, env(safe-area-inset-right, 20px));
+    padding-bottom: max(20px, env(safe-area-inset-bottom, 20px));
+  }
+  .bubble{
+    max-width:85%;
+    padding:12px 16px;
+    border-radius:18px;
+    word-break:break-word; 
+    position: relative; 
+    animation: messageAppear 0.3s ease-out;
+  }
+  @media (max-width: 480px) {
+    .bubble {
+      max-width: 90%;
+    }
+  }
+  .bubble.self{
+    align-self:flex-end;
+    background:linear-gradient(45deg,var(--accent1),var(--accent2));
+    color:#06111a; 
+    border-bottom-right-radius: 6px;
+  }
+  .bubble.other{
+    align-self:flex-start;
+    background:rgba(255,255,255,0.06);
+    color:#eaf2ff; 
+    border-bottom-left-radius: 6px;
+  }
+  .bubble small{
+    display:block;
+    font-size:11px;
+    color:rgba(0,0,0,0.6);
+    margin-top:6px; 
+    font-weight: 500;
+  }
+  .bubble.other small {
+    color: rgba(255,255,255,0.5);
+  }
+  .composer{
+    display:flex;
+    gap:12px;
+    padding:16px 20px;
+    border-top:1px solid rgba(255,255,255,0.05);
+    align-items:flex-end; 
+    background: rgba(7, 20, 39, 0.8); 
+    flex-shrink: 0;
+    /* Safe area for mobile - increased bottom padding */
+    padding-left: max(20px, env(safe-area-inset-left, 20px));
+    padding-right: max(20px, env(safe-area-inset-right, 20px));
+    padding-bottom: max(20px, calc(20px + env(safe-area-inset-bottom, 0px)));
+  }
+  @media (max-width: 480px) {
+    .composer {
+      padding: 12px 16px;
+      gap: 8px;
+    }
+  }
+  .composer input[type="text"]{
+    flex:1;
+    padding:14px 18px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,0.06);
+    background:rgba(255,255,255,0.05);
+    color:inherit;
+    transition: var(--transition);
+    font-size: 15px;
+    min-width: 0;
+  }
+  @media (max-width: 480px) {
+    .composer input[type="text"] {
+      padding: 12px 16px;
+      font-size: 14px;
+    }
+  }
+  .composer input[type="text"]:focus {
+    outline: none;
+    border-color: rgba(255,111,45,0.4);
+    background: rgba(255,255,255,0.08);
+    box-shadow: 0 0 0 3px rgba(255,111,45,0.1);
+  }
+  .btn{
+    background:linear-gradient(45deg,var(--accent1),var(--accent2));
+    padding:14px 20px;
+    border-radius:12px;
+    border:none;
+    color:white;
+    cursor:pointer;
+    font-weight:600;
+    font-size:14px;
+    transition: var(--transition);
+    box-shadow: 0 4px 12px rgba(255,111,45,0.2);
+    white-space: nowrap;
+  }
+  .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(255,111,45,0.3);
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    transform: none;
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+  @media (max-width: 480px) {
+    .btn {
+      padding: 12px 16px;
+      font-size: 13px;
+    }
+  }
+  .ghost{
+    background:transparent;
+    border:1px solid rgba(255,255,255,0.08);
+    padding:10px 14px;
+    border-radius:10px;
+    color:inherit;
+    cursor:pointer; 
+    transition: var(--transition); 
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  .ghost:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.12);
+  }
+  @media (max-width: 480px) {
+    .ghost {
+      padding: 8px 12px;
+      font-size: 13px;
+    }
+  }
+
+  /* small helpers */
+  .small{font-size:13px;color:var(--muted)}
+  .hidden{display:none !important}
+
+  /* Empty state */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 40px 20px;
+    color: var(--muted);
+    text-align: center;
+  }
+  .empty-state .icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+  }
+
+  /* Login modal */
+  #loginModal {
+    display:none;
+    position:fixed;
+    top:0;left:0;right:0;bottom:0;
+    align-items:center;
+    justify-content:center;
+    background:rgba(0,0,0,0.7);
+    z-index:10000; 
+    backdrop-filter: blur(5px);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    /* Safe area for mobile */
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  }
+  #loginModal.open {
+    opacity: 1;
+  }
+  .card {
+    background:linear-gradient(180deg,#071427,#061025); 
+    border-radius:var(--radius); 
+    padding:24px; 
+    width: 90%; 
+    max-width: 420px;
+    border: 1px solid rgba(255,255,255,0.05); 
+    box-shadow: var(--shadow-lg);
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+    margin: 20px;
+  }
+  #loginModal.open .card {
+    transform: translateY(0);
+  }
+  .input {
+    width: 100%; 
+    padding: 12px 16px; 
+    border-radius: 10px; 
+    border: 1px solid rgba(255,255,255,0.06); 
+    background: rgba(255,255,255,0.05); 
+    color: inherit;
+    margin-top: 12px; 
+    font-size: 14px;
+    transition: var(--transition);
+  }
+  .input:focus {
+    outline: none;
+    border-color: rgba(255,111,45,0.4);
+    background: rgba(255,255,255,0.08);
+    box-shadow: 0 0 0 3px rgba(255,111,45,0.1);
+  }
+  .checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    font-size: 14px;
+  }
+  .actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+  }
+  .actions .btn {
+    flex: 1;
+  }
+
+  /* Media preview */
+  .media-preview {
+    max-width: 100%;
+    border-radius: 10px;
+    margin-top: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    pointer-events: none;
+    user-select: none;
+  }
+  .media-container {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+  }
+  .media-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    z-index: 1;
+  }
+
+  /* Loading indicator */
+  .loader {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Message animation */
+  @keyframes messageAppear {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Attachment options */
+  .attachment-options {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    background: var(--panel);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(255,255,255,0.05);
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    width: 200px;
+    margin-bottom: 8px;
+    z-index: 100;
+  }
+  .attachment-options.open {
+    display: flex;
+    animation: messageAppear 0.2s ease-out;
+  }
+  .attachment-option {
     display: flex;
     align-items: center;
     gap: 10px;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: var(--transition);
   }
-  .app-logo {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, var(--accent1), var(--accent2));
+  .attachment-option:hover {
+    background: rgba(255,255,255,0.05);
+  }
+
+  /* URL input modal */
+  .url-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--panel);
+    border-radius: var(--radius);
+    padding: 24px;
+    width: 90%;
+    max-width: 450px;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid rgba(255,255,255,0.05);
+    z-index: 1001;
+    display: none;
+  }
+  .url-modal.open {
+    display: block;
+    animation: messageAppear 0.3s ease-out;
+  }
+  .url-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(2px);
+    z-index: 1000;
+    display: none;
+  }
+  .url-modal-overlay.open {
+    display: block;
+  }
+  .url-modal-title {
+    font-weight: 700;
+    margin-bottom: 16px;
+    font-size: 18px;
+  }
+  .url-input-group {
+    margin-bottom: 16px;
+  }
+  .url-input-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .timer-input {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .timer-input input {
+    width: 80px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.05);
+    color: inherit;
+  }
+
+  /* Expiring media indicator */
+  .expiring-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255,255,255,0.1);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    margin-top: 6px;
+  }
+
+  /* Typing indicator */
+  .typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    width: fit-content;
+    margin-bottom: 8px;
+  }
+  .typing-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    animation: typing 1.4s infinite ease-in-out;
+  }
+  .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+  .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+  @keyframes typing {
+    0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+
+  /* Close button for fullscreen */
+  .close-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: var(--transition);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 800;
-    font-size: 14px;
   }
-  .app-title {
-    font-weight: 800;
-    font-size: 18px;
+  .close-btn:hover {
+    color: white;
+    background: rgba(255,255,255,0.05);
+  }
+
+  /* Send button in composer */
+  .send-btn {
+    background: linear-gradient(45deg, var(--accent1), var(--accent2));
+    border: none;
+    border-radius: 12px;
+    color: white;
+    cursor: pointer;
+    padding: 14px 18px;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(255,111,45,0.2);
+    flex-shrink: 0;
+  }
+  .send-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(255,111,45,0.3);
+  }
+  .send-btn:disabled {
+    opacity: 0.5;
+    transform: none;
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+
+  /* Welcome screen */
+  .welcome-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 40px;
+    text-align: center;
+  }
+  .welcome-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    opacity: 0.7;
+  }
+  .welcome-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 12px;
     background: linear-gradient(90deg, var(--accent1), var(--accent2));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
-  .header-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  /* Stories section */
-  .stories-container {
-    padding: 12px 16px;
-    background: rgba(7, 20, 39, 0.5);
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    overflow-x: auto;
-    white-space: nowrap;
-    flex-shrink: 0;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  .stories-container::-webkit-scrollbar {
-    display: none;
-  }
-  .story-circle {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    margin-right: 16px;
-    cursor: pointer;
-    transition: var(--transition);
-  }
-  .story-circle:last-child {
-    margin-right: 0;
-  }
-  .story-avatar {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent1), var(--accent2));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    position: relative;
-    border: 2px solid transparent;
-    transition: var(--transition);
-  }
-  .story-circle.active .story-avatar {
-    border-color: var(--accent1);
-    box-shadow: 0 0 0 2px var(--accent1);
-  }
-  .story-circle:hover .story-avatar {
-    transform: scale(1.05);
-  }
-  .story-live {
-    position: absolute;
-    bottom: -4px;
-    right: -4px;
-    background: var(--danger);
-    color: white;
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 10px;
-    font-weight: 700;
-  }
-  .story-name {
-    margin-top: 6px;
-    font-size: 12px;
-    color: var(--muted);
-    max-width: 64px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  /* Story viewer */
-  .story-viewer {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0,0,0,0.9);
-    z-index: 1000;
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-  }
-  .story-viewer.open {
-    display: flex;
-  }
-  .story-content {
-    max-width: 90%;
-    max-height: 80%;
-    border-radius: var(--radius);
-    overflow: hidden;
-    position: relative;
-  }
-  .story-content img,
-  .story-content video {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
-  .story-actions {
-    display: flex;
-    gap: 16px;
-    margin-top: 20px;
-  }
-  .story-close {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    background: rgba(0,0,0,0.5);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 18px;
-    transition: var(--transition);
-  }
-  .story-close:hover {
-    background: rgba(0,0,0,0.7);
-  }
-
-  /* Main content area with swipe */
-  .main-content {
-    flex: 1;
-    overflow: hidden;
-    position: relative;
-  }
-  .pages-container {
-    display: flex;
-    width: 100%;
-    height: 100%;
-    transition: transform 0.4s ease;
-  }
-  .page {
-    min-width: 100%;
-    height: 100%;
-    overflow-y: auto;
-    padding: 16px;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* Models grid */
-  .models-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 16px;
-    margin-top: 16px;
-  }
-  .model-card {
-    background: rgba(255,255,255,0.05);
-    border-radius: var(--radius);
-    overflow: hidden;
-    transition: var(--transition);
-    cursor: pointer;
-    border: 1px solid rgba(255,255,255,0.05);
-  }
-  .model-card:hover {
-    transform: translateY(-5px);
-    background: rgba(255,255,255,0.08);
-    box-shadow: var(--shadow);
-  }
-  .model-image {
-    width: 100%;
-    height: 180px;
-    object-fit: cover;
-  }
-  .model-info {
-    padding: 12px;
-  }
-  .model-name {
-    font-weight: 700;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .verified-badge {
-    color: var(--accent1);
-    font-size: 12px;
-  }
-  .model-stats {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 8px;
-    font-size: 12px;
-    color: var(--muted);
-  }
-
-  /* Profile page */
-  .profile-header {
-    display: flex;
-    gap: 16px;
-    margin-bottom: 20px;
-  }
-  .profile-avatar {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent1), var(--accent2));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 24px;
-    flex-shrink: 0;
-  }
-  .profile-info {
-    flex: 1;
-  }
-  .profile-name {
-    font-weight: 800;
-    font-size: 20px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 6px;
-  }
-  .profile-bio {
-    color: var(--muted);
-    margin-bottom: 12px;
-    line-height: 1.4;
-  }
-  .profile-stats {
-    display: flex;
-    gap: 16px;
-  }
-  .stat {
-    text-align: center;
-  }
-  .stat-value {
-    font-weight: 700;
-    font-size: 18px;
-  }
-  .stat-label {
-    font-size: 12px;
-    color: var(--muted);
-  }
-
-  /* Posts grid */
-  .posts-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 16px;
-    margin-top: 20px;
-  }
-  .post-card {
-    background: rgba(255,255,255,0.05);
-    border-radius: var(--radius);
-    overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.05);
-  }
-  .post-media {
-    position: relative;
-    width: 100%;
-    height: 200px;
-    overflow: hidden;
-  }
-  .post-media img,
-  .post-media video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  .locked-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0,0,0,0.7);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    backdrop-filter: blur(5px);
-  }
-  .lock-icon {
-    font-size: 32px;
-    margin-bottom: 8px;
-  }
-  .unlock-btn {
-    background: linear-gradient(45deg, var(--accent1), var(--accent2));
-    border: none;
-    border-radius: 20px;
-    color: white;
-    padding: 8px 16px;
-    font-weight: 600;
-    font-size: 12px;
-    cursor: pointer;
-    margin-top: 8px;
-    transition: var(--transition);
-  }
-  .unlock-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(255,111,45,0.3);
-  }
-  .post-info {
-    padding: 12px;
-  }
-  .post-caption {
-    font-size: 14px;
-    margin-bottom: 8px;
-  }
-  .post-price {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 12px;
-    color: var(--muted);
-  }
-  .post-price-value {
-    color: var(--accent1);
-    font-weight: 700;
-  }
-
-  /* Wallet page */
-  .wallet-balance {
-    background: linear-gradient(135deg, var(--accent1), var(--accent2));
-    border-radius: var(--radius);
-    padding: 20px;
-    text-align: center;
-    margin-bottom: 20px;
-    box-shadow: var(--shadow);
-  }
-  .balance-label {
-    font-size: 14px;
-    opacity: 0.9;
-    margin-bottom: 8px;
-  }
-  .balance-amount {
-    font-size: 32px;
-    font-weight: 800;
-  }
-  .wallet-actions {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
-    margin-bottom: 20px;
-  }
-  .wallet-action {
-    background: rgba(255,255,255,0.05);
-    border-radius: var(--radius-sm);
-    padding: 16px;
-    text-align: center;
-    cursor: pointer;
-    transition: var(--transition);
-    border: 1px solid rgba(255,255,255,0.05);
-  }
-  .wallet-action:hover {
-    background: rgba(255,255,255,0.08);
-    transform: translateY(-2px);
-  }
-  .wallet-action-icon {
-    font-size: 24px;
-    margin-bottom: 8px;
-  }
-  .wallet-action-label {
-    font-size: 12px;
-    font-weight: 600;
-  }
-  .transactions-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .transaction {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px;
-    background: rgba(255,255,255,0.05);
-    border-radius: var(--radius-sm);
-  }
-  .transaction-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .transaction-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-  }
-  .transaction-details {
-    display: flex;
-    flex-direction: column;
-  }
-  .transaction-title {
-    font-weight: 600;
-    font-size: 14px;
-  }
-  .transaction-date {
-    font-size: 12px;
-    color: var(--muted);
-  }
-  .transaction-amount {
-    font-weight: 700;
-  }
-  .transaction-amount.positive {
-    color: var(--success);
-  }
-  .transaction-amount.negative {
-    color: var(--danger);
-  }
-
-  /* Sidebar */
-  .sidebar {
-    position: fixed;
-    top: 0;
-    left: -280px;
-    width: 280px;
-    height: 100vh;
-    background: var(--panel);
-    z-index: 200;
-    transition: left 0.3s ease;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 2px 0 10px rgba(0,0,0,0.3);
-  }
-  .sidebar.open {
-    left: 0;
-  }
-  .sidebar-header {
-    padding: 20px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .sidebar-user-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent1), var(--accent2));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-  }
-  .sidebar-user-info {
-    flex: 1;
-  }
-  .sidebar-user-name {
-    font-weight: 700;
+  .welcome-subtitle {
     font-size: 16px;
-  }
-  .sidebar-user-email {
-    font-size: 12px;
     color: var(--muted);
+    max-width: 400px;
+    line-height: 1.5;
   }
-  .sidebar-close {
+
+  /* Back button for mobile */
+  .back-btn {
+    display: none;
     background: transparent;
     border: none;
     color: var(--muted);
     font-size: 20px;
     cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: var(--transition);
+    margin-right: 12px;
+    flex-shrink: 0;
   }
-  .sidebar-menu {
-    flex: 1;
-    padding: 20px 0;
-    overflow-y: auto;
+  .back-btn:hover {
+    color: white;
+    background: rgba(255,255,255,0.05);
   }
-  .menu-item {
+  @media (max-width:768px){ 
+    .back-btn {
+      display: flex;
+    }
+  }
+
+  /* Media type selector */
+  .media-type-selector {
     display: flex;
-    align-items: center;
     gap: 12px;
-    padding: 14px 20px;
+    margin-bottom: 16px;
+  }
+  .media-type-option {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.05);
+    text-align: center;
     cursor: pointer;
     transition: var(--transition);
   }
-  .menu-item:hover {
-    background: rgba(255,255,255,0.05);
-  }
-  .menu-item.active {
+  .media-type-option.active {
+    border-color: rgba(255,111,45,0.4);
     background: rgba(255,111,45,0.1);
-    border-right: 3px solid var(--accent1);
   }
-  .menu-icon {
-    font-size: 18px;
-    width: 24px;
-    text-align: center;
+
+  /* Delete button for messages */
+  .delete-btn {
+    background: rgba(224, 35, 35, 0.1);
+    border: 1px solid rgba(224, 35, 35, 0.3);
+    color: var(--danger);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: var(--transition);
   }
-  .menu-label {
-    font-weight: 500;
-  }
-  .sidebar-footer {
-    padding: 20px;
-    border-top: 1px solid rgba(255,255,255,0.05);
-  }
-  .sidebar-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0,0,0,0.5);
-    z-index: 199;
-    display: none;
-  }
-  .sidebar-overlay.open {
-    display: block;
+  .delete-btn:hover {
+    background: rgba(224, 35, 35, 0.2);
   }
 
   /* Admin panel */
@@ -608,122 +757,6 @@
     overflow: auto;
     padding: 20px;
   }
-  .admin-tabs {
-    display: flex;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    margin-bottom: 20px;
-  }
-  .admin-tab {
-    padding: 12px 16px;
-    cursor: pointer;
-    transition: var(--transition);
-    border-bottom: 2px solid transparent;
-  }
-  .admin-tab.active {
-    border-bottom-color: var(--accent1);
-    color: var(--accent1);
-  }
-  .admin-section {
-    display: none;
-  }
-  .admin-section.active {
-    display: block;
-  }
-  .admin-form {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-  .admin-input {
-    width: 100%;
-    padding: 12px 16px;
-    border-radius: var(--radius-sm);
-    border: 1px solid rgba(255,255,255,0.06);
-    background: rgba(255,255,255,0.05);
-    color: inherit;
-    font-size: 14px;
-  }
-  .admin-input:focus {
-    outline: none;
-    border-color: rgba(255,111,45,0.4);
-    background: rgba(255,255,255,0.08);
-  }
-  .admin-select {
-    width: 100%;
-    padding: 12px 16px;
-    border-radius: var(--radius-sm);
-    border: 1px solid rgba(255,255,255,0.06);
-    background: rgba(255,255,255,0.05);
-    color: inherit;
-    font-size: 14px;
-  }
-  .admin-textarea {
-    width: 100%;
-    padding: 12px 16px;
-    border-radius: var(--radius-sm);
-    border: 1px solid rgba(255,255,255,0.06);
-    background: rgba(255,255,255,0.05);
-    color: inherit;
-    font-size: 14px;
-    min-height: 100px;
-    resize: vertical;
-  }
-  .admin-checkbox {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .admin-actions {
-    display: flex;
-    gap: 12px;
-    margin-top: 20px;
-  }
-  .admin-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-top: 20px;
-  }
-  .admin-list-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px;
-    background: rgba(255,255,255,0.05);
-    border-radius: var(--radius-sm);
-  }
-  .admin-list-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .admin-list-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent1), var(--accent2));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 14px;
-  }
-  .admin-list-details {
-    display: flex;
-    flex-direction: column;
-  }
-  .admin-list-name {
-    font-weight: 600;
-    font-size: 14px;
-  }
-  .admin-list-stats {
-    font-size: 12px;
-    color: var(--muted);
-  }
-  .admin-list-actions {
-    display: flex;
-    gap: 8px;
-  }
   .admin-overlay {
     position: fixed;
     top: 0;
@@ -744,759 +777,814 @@
     }
   }
 
-  /* Buttons */
-  .btn {
-    background: linear-gradient(45deg, var(--accent1), var(--accent2));
-    border: none;
-    border-radius: var(--radius-sm);
-    color: white;
-    padding: 12px 20px;
-    font-weight: 600;
-    font-size: 14px;
+  /* Header actions */
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  @media (max-width: 480px) {
+    .header-actions {
+      gap: 8px;
+    }
+    .header-actions .ghost {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+    .header-actions .small {
+      font-size: 11px;
+    }
+  }
+
+  /* Improved responsive design */
+  @media (max-width: 480px) {
+    .header {
+      padding: 12px 16px;
+      height: 60px;
+    }
+    .logo {
+      width: 36px;
+      height: 36px;
+      font-size: 14px;
+    }
+    .title {
+      font-size: 16px;
+    }
+    .subtitle {
+      font-size: 10px;
+    }
+    .threadHeader {
+      padding: 12px 16px;
+      min-height: 60px;
+    }
+    .messages {
+      padding: 16px;
+    }
+    .uAvatar {
+      width: 36px;
+      height: 36px;
+      font-size: 12px;
+    }
+    .uEmail {
+      font-size: 13px;
+    }
+    .uLast {
+      font-size: 11px;
+    }
+  }
+
+  /* Ensure proper scrolling on mobile */
+  .messages {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* NEW STYLES FOR ADDED FEATURES */
+
+  /* Stories Section */
+  .stories-container {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    overflow-x: auto;
+    background: rgba(7, 20, 39, 0.5);
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+  .story-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
     cursor: pointer;
-    transition: var(--transition);
-    box-shadow: 0 4px 12px rgba(255,111,45,0.2);
-    display: inline-flex;
+    min-width: 70px;
+  }
+  .story-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, var(--accent1), var(--accent2));
+    display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    font-weight: 700;
+    position: relative;
+    border: 2px solid transparent;
+    background-clip: padding-box;
   }
-  .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(255,111,45,0.3);
+  .story-avatar::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, var(--accent1), var(--accent2));
+    border-radius: 50%;
+    z-index: -1;
   }
-  .btn:disabled {
-    opacity: 0.5;
-    transform: none;
-    box-shadow: none;
-    cursor: not-allowed;
-  }
-  .btn-sm {
-    padding: 8px 16px;
-    font-size: 12px;
-  }
-  .btn-ghost {
-    background: transparent;
-    border: 1px solid rgba(255,255,255,0.08);
-    color: inherit;
-    box-shadow: none;
-  }
-  .btn-ghost:hover {
-    background: rgba(255,255,255,0.05);
-    border-color: rgba(255,255,255,0.12);
-    transform: translateY(-2px);
-  }
-  .btn-danger {
+  .story-avatar.live::before {
+    content: 'LIVE';
+    position: absolute;
+    bottom: -5px;
     background: var(--danger);
-    box-shadow: 0 4px 12px rgba(224, 35, 35, 0.2);
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 700;
   }
-  .btn-danger:hover {
-    box-shadow: 0 6px 16px rgba(224, 35, 35, 0.3);
-  }
-
-  /* Utility classes */
-  .hidden {
-    display: none !important;
-  }
-  .text-muted {
-    color: var(--muted);
-  }
-  .text-center {
+  .story-name {
+    font-size: 12px;
+    font-weight: 500;
     text-align: center;
+    max-width: 70px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  .mt-1 { margin-top: 8px; }
-  .mt-2 { margin-top: 16px; }
-  .mt-3 { margin-top: 24px; }
-  .mb-1 { margin-bottom: 8px; }
-  .mb-2 { margin-bottom: 16px; }
-  .mb-3 { margin-bottom: 24px; }
 
-  /* Swipe indicator */
-  .swipe-indicator {
+  /* Story Viewer */
+  .story-viewer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.9);
+    z-index: 1003;
+    display: none;
+    flex-direction: column;
+  }
+  .story-viewer.open {
+    display: flex;
+  }
+  .story-progress {
+    display: flex;
+    gap: 4px;
+    padding: 16px;
+  }
+  .story-progress-bar {
+    flex: 1;
+    height: 3px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .story-progress-fill {
+    height: 100%;
+    background: white;
+    width: 0%;
+    transition: width 0.1s linear;
+  }
+  .story-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .story-media {
+    max-width: 100%;
+    max-height: 80vh;
+    border-radius: 10px;
+  }
+  .story-actions {
     position: absolute;
     bottom: 20px;
     left: 0;
     right: 0;
     display: flex;
     justify-content: center;
-    z-index: 10;
-    pointer-events: none;
+    gap: 20px;
   }
-  .swipe-dots {
+  .story-nav {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 30%;
+    cursor: pointer;
+  }
+  .story-nav.prev {
+    left: 0;
+  }
+  .story-nav.next {
+    right: 0;
+  }
+
+  /* Sidebar Menu */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -300px;
+    width: 300px;
+    height: 100vh;
+    background: var(--panel);
+    z-index: 1004;
+    transition: left 0.3s ease;
     display: flex;
-    gap: 8px;
+    flex-direction: column;
+    box-shadow: 5px 0 25px rgba(0,0,0,0.3);
+  }
+  .sidebar.open {
+    left: 0;
+  }
+  .sidebar-header {
+    padding: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .sidebar-content {
+    flex: 1;
+    overflow: auto;
+    padding: 20px;
+  }
+  .sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     background: rgba(0,0,0,0.5);
-    padding: 8px 12px;
-    border-radius: 20px;
+    z-index: 1003;
+    display: none;
   }
-  .swipe-dot {
-    width: 8px;
-    height: 8px;
+  .sidebar-overlay.open {
+    display: block;
+  }
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: var(--transition);
+    margin-bottom: 8px;
+  }
+  .menu-item:hover {
+    background: rgba(255,255,255,0.05);
+  }
+  .menu-item.active {
+    background: rgba(255,111,45,0.1);
+    color: var(--accent1);
+  }
+
+  /* Model Profile */
+  .profile-header {
+    padding: 20px;
+    background: rgba(7, 20, 39, 0.5);
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+  .profile-info {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .profile-avatar {
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
-    background: rgba(255,255,255,0.3);
-    transition: var(--transition);
+    background: linear-gradient(45deg, var(--accent1), var(--accent2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 24px;
   }
-  .swipe-dot.active {
-    background: var(--accent1);
-    transform: scale(1.2);
+  .profile-stats {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 16px;
   }
-
-  /* Responsive adjustments */
-  @media (max-width: 768px) {
-    .models-grid {
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    }
-    .model-image {
-      height: 140px;
-    }
-    .posts-grid {
-      grid-template-columns: 1fr;
-    }
-    .profile-header {
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-    }
-    .profile-avatar {
-      width: 80px;
-      height: 80px;
-    }
-    .wallet-actions {
-      grid-template-columns: repeat(2, 1fr);
-    }
+  .stat {
+    text-align: center;
   }
-
-  /* Prevent content download */
-  .no-download {
-    pointer-events: none;
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-touch-callout: none;
+  .stat-value {
+    font-weight: 700;
+    font-size: 18px;
   }
-  .no-context-menu {
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
+  .stat-label {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .profile-bio {
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 16px;
+  }
+  .verified-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(32, 148, 243, 0.1);
+    color: #2094f3;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
   }
 
-  /* Chat icon (kept from original) */
-  #chatIcon{
-    position:fixed; right:24px; bottom:24px; width:68px; height:68px; border-radius:50%;
-    background:linear-gradient(45deg,var(--accent1),var(--accent2)); 
-    display:flex; align-items:center; justify-content:center;
-    font-size:28px; cursor:pointer; box-shadow:var(--shadow-lg); z-index:999;
-    transition: var(--transition);
-    border: 2px solid rgba(255,255,255,0.15);
-    animation: float 6s ease-in-out infinite;
+  /* Posts Grid */
+  .posts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+    padding: 16px;
   }
-  #chatIcon:hover {
-    transform: scale(1.08) translateY(-5px);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.7);
-    animation-play-state: paused;
+  .post-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
   }
-  @keyframes float {
-    0% { transform: translateY(0px) rotate(0deg); }
-    50% { transform: translateY(-12px) rotate(2deg); }
-    100% { transform: translateY(0px) rotate(0deg); }
+  .post-media {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
-  #chatBadge{
-    position:absolute; top:-6px; right:-6px; background:var(--danger); color:white; border-radius:999px;
-    padding:6px 9px; font-weight:700; font-size:12px; display:none;
-    border: 2px solid var(--bg);
-    animation: pulse 2s infinite;
+  .post-locked {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: white;
   }
-  @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-    100% { transform: scale(1); }
+  .lock-icon {
+    font-size: 24px;
   }
 
-  /* Chat popup (kept from original but adjusted) */
-  #popup {
-    position:fixed; 
-    top:0; left:0; right:0; bottom:0; 
-    width:100vw; height:100vh;
-    background:linear-gradient(180deg,#071427,#061025); 
-    display:none; 
-    z-index:998; 
-    overflow:hidden; 
-    border:none;
-    transform: translateY(20px);
+  /* Wallet Section */
+  .wallet-balance {
+    background: linear-gradient(135deg, var(--accent1), var(--accent2));
+    padding: 20px;
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  .balance-label {
+    font-size: 14px;
+    opacity: 0.9;
+    margin-bottom: 8px;
+  }
+  .balance-amount {
+    font-size: 32px;
+    font-weight: 700;
+  }
+  .wallet-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .transaction-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .transaction-amount.positive {
+    color: var(--success);
+  }
+  .transaction-amount.negative {
+    color: var(--danger);
+  }
+
+  /* Reels Section */
+  .reels-container {
+    position: relative;
+    height: 100vh;
+    overflow: hidden;
+  }
+  .reel-item {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     opacity: 0;
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transition: opacity 0.3s ease;
   }
-  #popup.open {
-    transform: translateY(0);
+  .reel-item.active {
+    opacity: 1;
+  }
+  .reel-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .reel-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 20px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.7));
+  }
+  .reel-actions {
+    position: absolute;
+    right: 20px;
+    bottom: 100px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    align-items: center;
+  }
+  .reel-action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: white;
+    cursor: pointer;
+  }
+  .reel-action-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    backdrop-filter: blur(10px);
+  }
+
+  /* Page Swipe */
+  .page-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+  .page {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+  }
+  .page.active {
+    transform: translateX(0);
+  }
+  .page.prev {
+    transform: translateX(-100%);
+  }
+  .swipe-indicator {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255,255,255,0.1);
+    padding: 12px 8px;
+    border-radius: 20px;
+    color: white;
+    font-size: 14px;
+    z-index: 10;
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .swipe-indicator.left {
+    left: 10px;
+  }
+  .swipe-indicator.right {
+    right: 10px;
+  }
+  .swipe-indicator.show {
     opacity: 1;
   }
 
-  .chat-header{
-    display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.05);
-    background: rgba(7, 20, 39, 0.9);
-    backdrop-filter: blur(10px);
-    height: 70px;
-    flex-shrink: 0;
+  /* Admin Story Management */
+  .admin-section {
+    margin-bottom: 24px;
   }
-  .chat-brand{display:flex;gap:12px;align-items:center}
-  .chat-logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--accent1),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;box-shadow:0 4px 12px rgba(255,111,45,0.3)}
-  .chat-title{font-weight:800;font-size:18px;background:linear-gradient(90deg,var(--accent1),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-  .chat-subtitle{font-size:12px;color:var(--muted)}
-
-  .chat-container{
+  .admin-section-title {
+    font-weight: 600;
+    margin-bottom: 12px;
+    font-size: 16px;
+  }
+  .model-select {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.05);
+    color: inherit;
+    margin-bottom: 12px;
+  }
+  .story-list {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 70px);
+    gap: 12px;
   }
-
-  .chat-main-content {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-    position: relative;
-    width: 100%;
-  }
-
-  .chat-leftCol{
-    background:transparent;
-    padding:16px;
-    overflow:auto;
-    border-right:1px solid rgba(255,255,255,0.03);
-    width: 300px;
-    flex-shrink: 0;
-    transition: transform 0.3s ease;
-  }
-  @media (max-width:768px){ 
-    .chat-main-content.mobile-chat-active .chat-leftCol {
-      transform: translateX(-100%);
-    }
-    .chat-main-content.mobile-chat-active .chat-rightCol {
-      transform: translateX(0);
-    }
-    .chat-leftCol{
-      width: 100%;
-      border-right: none;
-      position: absolute;
-      top: 0;
-      left: 0;
-      bottom: 0;
-      z-index: 1;
-      transform: translateX(0);
-    }
-    .chat-rightCol {
-      width: 100%;
-      position: absolute;
-      top: 0;
-      left: 0;
-      bottom: 0;
-      transform: translateX(100%);
-      transition: transform 0.3s ease;
-      z-index: 2;
-    }
-  }
-
-  .chat-userRow{
-    display:flex;align-items:center;justify-content:space-between;padding:12px;border-radius:var(--radius-sm);cursor:pointer;
-    transition: var(--transition);
-    margin-bottom: 8px;
-    background: rgba(255,255,255,0.02);
-    border: 1px solid transparent;
-  }
-  .chat-userRow:hover{background:rgba(255,255,255,0.05); transform: translateY(-2px);}
-  .chat-userRow.active {
-    background: rgba(255,111,45,0.1);
-    border: 1px solid rgba(255,111,45,0.3);
-    box-shadow: 0 4px 12px rgba(255,111,45,0.15);
-  }
-  .chat-uMeta{display:flex;gap:12px;align-items:center}
-  .chat-uAvatar{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent1),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:0 4px 8px rgba(0,0,0,0.2)}
-  .chat-uInfo{display:flex;flex-direction:column; overflow: hidden; flex: 1;}
-  .chat-uEmail{font-weight:700;font-size:14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
-  .chat-uLast{font-size:12px;color:var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
-  .chat-uBadge{background:var(--accent1);color:white;padding:6px 10px;border-radius:999px;font-weight:700;font-size:12px; min-width: 24px; text-align: center;}
-
-  .chat-rightCol{
-    display:flex;
-    flex-direction:column; 
-    flex: 1;
-    overflow:hidden; 
-    position: relative;
-    width: 100%;
-  }
-  .chat-threadHeader{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    padding:16px 20px; 
-    border-bottom: 1px solid rgba(255,255,255,0.03); 
-    background: rgba(7, 20, 39, 0.5);
-    flex-shrink: 0;
-    min-height: 70px;
-  }
-  .chat-messages{
-    flex:1;
-    overflow:auto;
-    padding:20px;
-    display:flex;
-    flex-direction:column;
-    gap:16px;
-  }
-  .chat-bubble{
-    max-width:85%;
-    padding:12px 16px;
-    border-radius:18px;
-    word-break:break-word; 
-    position: relative; 
-    animation: messageAppear 0.3s ease-out;
-  }
-  .chat-bubble.self{
-    align-self:flex-end;
-    background:linear-gradient(45deg,var(--accent1),var(--accent2));
-    color:#06111a; 
-    border-bottom-right-radius: 6px;
-  }
-  .chat-bubble.other{
-    align-self:flex-start;
-    background:rgba(255,255,255,0.06);
-    color:#eaf2ff; 
-    border-bottom-left-radius: 6px;
-  }
-  .chat-bubble small{
-    display:block;
-    font-size:11px;
-    color:rgba(0,0,0,0.6);
-    margin-top:6px; 
-    font-weight: 500;
-  }
-  .chat-bubble.other small {
-    color: rgba(255,255,255,0.5);
-  }
-  .chat-composer{
-    display:flex;
-    gap:12px;
-    padding:16px 20px;
-    border-top:1px solid rgba(255,255,255,0.05);
-    align-items:flex-end; 
-    background: rgba(7, 20, 39, 0.8); 
-    flex-shrink: 0;
-  }
-  .chat-composer input[type="text"]{
-    flex:1;
-    padding:14px 18px;
-    border-radius:12px;
-    border:1px solid rgba(255,255,255,0.06);
-    background:rgba(255,255,255,0.05);
-    color:inherit;
-    transition: var(--transition);
-    font-size: 15px;
-    min-width: 0;
-  }
-  .chat-composer input[type="text"]:focus {
-    outline: none;
-    border-color: rgba(255,111,45,0.4);
-    background: rgba(255,255,255,0.08);
-    box-shadow: 0 0 0 3px rgba(255,111,45,0.1);
-  }
-  .chat-send-btn{
-    background:linear-gradient(45deg,var(--accent1),var(--accent2));
-    padding:14px 20px;
-    border-radius:12px;
-    border:none;
-    color:white;
-    cursor:pointer;
-    font-weight:600;
-    font-size:14px;
-    transition: var(--transition);
-    box-shadow: 0 4px 12px rgba(255,111,45,0.2);
-    white-space: nowrap;
+  .story-list-item {
     display: flex;
     align-items: center;
-    justify-content: center;
-  }
-  .chat-send-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(255,111,45,0.3);
-  }
-  .chat-send-btn:disabled {
-    opacity: 0.5;
-    transform: none;
-    box-shadow: none;
-    cursor: not-allowed;
-  }
-  .chat-close-btn {
-    background: transparent;
-    border: none;
-    color: var(--muted);
-    font-size: 24px;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    transition: var(--transition);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .chat-close-btn:hover {
-    color: white;
-    background: rgba(255,255,255,0.05);
-  }
-  .chat-back-btn {
-    display: none;
-    background: transparent;
-    border: none;
-    color: var(--muted);
-    font-size: 20px;
-    cursor: pointer;
-    padding: 8px;
+    gap: 12px;
+    padding: 12px;
     border-radius: 8px;
-    transition: var(--transition);
-    margin-right: 12px;
-    flex-shrink: 0;
+    background: rgba(255,255,255,0.02);
   }
-  .chat-back-btn:hover {
-    color: white;
-    background: rgba(255,255,255,0.05);
-  }
-  @media (max-width:768px){ 
-    .chat-back-btn {
-      display: flex;
-    }
+  .story-thumbnail {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    object-fit: cover;
   }
 </style>
 </head>
-<body class="no-context-menu">
-<div class="app-container">
-  <!-- App Header -->
-  <header class="app-header">
-    <div class="app-brand">
-      <button id="menuToggle" class="btn-ghost btn-sm">☰</button>
-      <div class="app-logo">C</div>
-      <div class="app-title">Camsilo</div>
-    </div>
-    <div class="header-actions">
-      <span id="walletBalance" class="text-muted">0 credits</span>
-      <button id="adminPanelBtn" class="btn-ghost btn-sm hidden">Admin</button>
-      <button id="logoutBtn" class="btn-ghost btn-sm hidden">Logout</button>
-    </div>
-  </header>
+<body>
 
-  <!-- Stories Section -->
-  <div id="storiesContainer" class="stories-container hidden">
-    <!-- Stories will be populated here -->
-  </div>
-
-  <!-- Main Content with Swipe Pages -->
-  <main class="main-content">
-    <div class="pages-container" id="pagesContainer">
-      <!-- Page 1: Models/Home -->
-      <div class="page" id="pageHome">
-        <h2>Featured Models</h2>
-        <div class="models-grid" id="modelsGrid">
-          <!-- Models will be populated here -->
-        </div>
-      </div>
-
-      <!-- Page 2: Profile -->
-      <div class="page" id="pageProfile">
-        <div class="profile-header">
-          <div class="profile-avatar" id="profileAvatar">MD</div>
-          <div class="profile-info">
-            <div class="profile-name">
-              <span id="profileName">Model Name</span>
-              <span class="verified-badge">✓</span>
-            </div>
-            <div class="profile-bio" id="profileBio">Model bio will appear here...</div>
-            <div class="profile-stats">
-              <div class="stat">
-                <div class="stat-value" id="profilePosts">0</div>
-                <div class="stat-label">Posts</div>
-              </div>
-              <div class="stat">
-                <div class="stat-value" id="profileFollowers">0</div>
-                <div class="stat-label">Followers</div>
-              </div>
-              <div class="stat">
-                <div class="stat-value" id="profileLikes">0</div>
-                <div class="stat-label">Likes</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="posts-grid" id="profilePostsGrid">
-          <!-- Profile posts will be populated here -->
-        </div>
-      </div>
-
-      <!-- Page 3: Wallet -->
-      <div class="page" id="pageWallet">
-        <div class="wallet-balance">
-          <div class="balance-label">Your Balance</div>
-          <div class="balance-amount" id="walletBalanceAmount">0 credits</div>
-        </div>
-        <div class="wallet-actions">
-          <div class="wallet-action" id="addFundsBtn">
-            <div class="wallet-action-icon">💳</div>
-            <div class="wallet-action-label">Add Funds</div>
-          </div>
-          <div class="wallet-action" id="withdrawBtn">
-            <div class="wallet-action-icon">🏦</div>
-            <div class="wallet-action-label">Withdraw</div>
-          </div>
-          <div class="wallet-action" id="transactionsBtn">
-            <div class="wallet-action-icon">📊</div>
-            <div class="wallet-action-label">Transactions</div>
-          </div>
-          <div class="wallet-action" id="giftBtn">
-            <div class="wallet-action-icon">🎁</div>
-            <div class="wallet-action-label">Send Gift</div>
-          </div>
-        </div>
-        <div id="walletContent">
-          <h3>Recent Transactions</h3>
-          <div class="transactions-list" id="transactionsList">
-            <!-- Transactions will be populated here -->
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Swipe Indicator -->
-    <div class="swipe-indicator">
-      <div class="swipe-dots">
-        <div class="swipe-dot active" data-page="0"></div>
-        <div class="swipe-dot" data-page="1"></div>
-        <div class="swipe-dot" data-page="2"></div>
-      </div>
-    </div>
-  </main>
-</div>
-
-<!-- Sidebar Navigation -->
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
-<div class="sidebar" id="sidebar">
-  <div class="sidebar-header">
-    <div class="sidebar-user-avatar" id="sidebarUserAvatar">U</div>
-    <div class="sidebar-user-info">
-      <div class="sidebar-user-name" id="sidebarUserName">User</div>
-      <div class="sidebar-user-email" id="sidebarUserEmail">user@example.com</div>
-    </div>
-    <button class="sidebar-close" id="sidebarClose">✕</button>
-  </div>
-  <div class="sidebar-menu">
-    <div class="menu-item active" data-page="home">
-      <div class="menu-icon">🏠</div>
-      <div class="menu-label">Home</div>
-    </div>
-    <div class="menu-item" data-page="profile">
-      <div class="menu-icon">👤</div>
-      <div class="menu-label">My Profile</div>
-    </div>
-    <div class="menu-item" data-page="wallet">
-      <div class="menu-icon">💰</div>
-      <div class="menu-label">Wallet</div>
-    </div>
-    <div class="menu-item" id="openChatFromSidebar">
-      <div class="menu-icon">💬</div>
-      <div class="menu-label">Messages</div>
-    </div>
-    <div class="menu-item" id="openAdminFromSidebar" class="hidden">
-      <div class="menu-icon">⚙️</div>
-      <div class="menu-label">Admin Panel</div>
-    </div>
-  </div>
-  <div class="sidebar-footer">
-    <button class="btn btn-sm btn-ghost" id="sidebarLogout">Logout</button>
-  </div>
-</div>
-
-<!-- Story Viewer -->
-<div class="story-viewer" id="storyViewer">
-  <button class="story-close" id="storyClose">✕</button>
-  <div class="story-content" id="storyContent">
-    <!-- Story content will be placed here -->
-  </div>
-  <div class="story-actions">
-    <button class="btn" id="viewModelBtn">View Model</button>
-    <button class="btn btn-ghost" id="sendTipBtn">Send Tip</button>
-  </div>
-</div>
-
-<!-- Admin Panel -->
-<div class="admin-overlay" id="adminOverlay"></div>
-<div class="admin-panel" id="adminPanel">
-  <div class="admin-header">
-    <div style="font-weight: 700; font-size: 18px;">Admin Panel</div>
-    <button id="closeAdminPanel" class="chat-close-btn">✕</button>
-  </div>
-  <div class="admin-tabs">
-    <div class="admin-tab active" data-tab="stories">Stories</div>
-    <div class="admin-tab" data-tab="models">Models</div>
-    <div class="admin-tab" data-tab="posts">Posts</div>
-    <div class="admin-tab" data-tab="wallet">Wallet</div>
-  </div>
-  <div class="admin-content">
-    <!-- Stories Tab -->
-    <div class="admin-section active" id="adminStories">
-      <h3>Manage Stories</h3>
-      <div class="admin-form">
-        <select class="admin-select" id="storyModelSelect">
-          <option value="">Select Model</option>
-        </select>
-        <input type="text" class="admin-input" id="storyMediaUrl" placeholder="Media URL (image or video)">
-        <input type="text" class="admin-input" id="storyActionUrl" placeholder="Action URL (optional)">
-        <div class="admin-checkbox">
-          <input type="checkbox" id="storyIsLive">
-          <label for="storyIsLive">Mark as Live</label>
-        </div>
-        <div class="admin-actions">
-          <button class="btn" id="addStoryBtn">Add Story</button>
-        </div>
-      </div>
-      <div class="admin-list" id="storiesList">
-        <!-- Stories list will be populated here -->
-      </div>
-    </div>
-
-    <!-- Models Tab -->
-    <div class="admin-section" id="adminModels">
-      <h3>Manage Models</h3>
-      <div class="admin-form">
-        <input type="text" class="admin-input" id="modelName" placeholder="Model Name">
-        <input type="text" class="admin-input" id="modelAvatar" placeholder="Avatar URL">
-        <textarea class="admin-textarea" id="modelBio" placeholder="Bio"></textarea>
-        <input type="number" class="admin-input" id="modelFollowers" placeholder="Followers Count">
-        <div class="admin-checkbox">
-          <input type="checkbox" id="modelVerified">
-          <label for="modelVerified">Verified</label>
-        </div>
-        <div class="admin-actions">
-          <button class="btn" id="addModelBtn">Add Model</button>
-        </div>
-      </div>
-      <div class="admin-list" id="modelsList">
-        <!-- Models list will be populated here -->
-      </div>
-    </div>
-
-    <!-- Posts Tab -->
-    <div class="admin-section" id="adminPosts">
-      <h3>Manage Posts</h3>
-      <div class="admin-form">
-        <select class="admin-select" id="postModelSelect">
-          <option value="">Select Model</option>
-        </select>
-        <input type="text" class="admin-input" id="postMediaUrl" placeholder="Media URL">
-        <textarea class="admin-textarea" id="postCaption" placeholder="Caption"></textarea>
-        <div class="admin-checkbox">
-          <input type="checkbox" id="postIsLocked">
-          <label for="postIsLocked">Lock Content</label>
-        </div>
-        <input type="number" class="admin-input" id="postUnlockPrice" placeholder="Unlock Price (credits)" value="10">
-        <div class="admin-actions">
-          <button class="btn" id="addPostBtn">Add Post</button>
-        </div>
-      </div>
-      <div class="admin-list" id="postsList">
-        <!-- Posts list will be populated here -->
-      </div>
-    </div>
-
-    <!-- Wallet Tab -->
-    <div class="admin-section" id="adminWallet">
-      <h3>Wallet Settings</h3>
-      <div class="admin-form">
-        <input type="text" class="admin-input" id="walletFundingUrl" placeholder="Funding URL">
-        <input type="text" class="admin-input" id="walletWithdrawalUrl" placeholder="Withdrawal URL">
-        <div class="admin-actions">
-          <button class="btn" id="saveWalletUrlsBtn">Save URLs</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Chat Popup (original functionality preserved) -->
+<!-- Floating chat icon -->
 <div id="chatIcon" title="Open Camsilo Chat">
   💬
   <div id="chatBadge">0</div>
 </div>
 
+<!-- Sidebar Menu -->
+<div id="sidebarOverlay" class="sidebar-overlay"></div>
+<div id="sidebar" class="sidebar">
+  <div class="sidebar-header">
+    <div style="font-weight: 700; font-size: 18px;">Menu</div>
+    <button id="closeSidebar" class="close-btn">✕</button>
+  </div>
+  <div class="sidebar-content">
+    <div class="menu-item active" data-page="models">
+      <span>👥</span> Models
+    </div>
+    <div class="menu-item" data-page="reels">
+      <span>🎥</span> Reels
+    </div>
+    <div class="menu-item" data-page="wallet">
+      <span>💰</span> Wallet
+    </div>
+    <div class="menu-item" data-page="chat">
+      <span>💬</span> Messages
+    </div>
+  </div>
+</div>
+
+<!-- Fullscreen Popup -->
 <div id="popup">
-  <div class="chat-header">
-    <div class="chat-brand">
-      <div class="chat-logo">CC</div>
+  <div class="header">
+    <div class="brand">
+      <button id="menuBtn" class="ghost" style="margin-right: 12px;">☰</button>
+      <div class="logo">CC</div>
       <div>
-        <div class="chat-title">Camsilo Chat</div>
-        <div class="chat-subtitle">Private conversations only you and model can see</div>
+        <div class="title" id="mainTitle">Camsilo</div>
+        <div class="subtitle">Private Platform</div>
       </div>
     </div>
+
     <div class="header-actions">
-      <span id="meLabel" class="text-muted">Not signed in</span>
-      <button id="chatAdminPanelBtn" class="btn-ghost btn-sm hidden">Admin Panel</button>
-      <button id="chatLogoutBtn" class="btn-ghost btn-sm hidden">Sign out</button>
-      <button id="closePopup" class="chat-close-btn" title="Close chat">✕</button>
+      <span id="meLabel" class="small">Not signed in</span>
+      <button id="adminPanelBtn" class="ghost hidden" title="Admin Panel">Admin Panel</button>
+      <button id="logoutBtn" class="ghost hidden">Sign out</button>
+      <button id="closePopup" class="close-btn" title="Close chat">✕</button>
     </div>
   </div>
 
-  <div class="chat-container">
-    <div class="chat-main-content" id="chatMainContent">
-      <div class="chat-leftCol" id="chatLeftCol">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <div style="font-weight:800">Inbox</div>
-          <div class="text-muted">Unread first</div>
-        </div>
-        <div id="conversations" style="display:flex;flex-direction:column;gap:8px"></div>
-      </div>
+  <div class="container">
+    <!-- Stories Section -->
+    <div id="storiesSection" class="stories-container">
+      <!-- Stories will be populated here -->
+    </div>
 
-      <div class="chat-rightCol">
-        <div class="chat-threadHeader">
-          <div style="display: flex; align-items: center;">
-            <button id="chatBackBtn" class="chat-back-btn">←</button>
-            <div>
-              <div id="threadTitle" style="font-weight:800">Welcome to Camsilo</div>
-              <div id="threadSub" class="text-muted">Login to start private conversations</div>
+    <!-- Page Container -->
+    <div class="page-container" id="pageContainer">
+      <!-- Models Page -->
+      <div class="page active" id="pageModels">
+        <div class="main-content" id="mainContent">
+          <!-- left: conversation list (admin only) -->
+          <div class="leftCol" id="leftCol">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <div style="font-weight:800">Inbox</div>
+              <div class="small">Unread first</div>
+            </div>
+            <div id="conversations" style="display:flex;flex-direction:column;gap:8px"></div>
+          </div>
+
+          <!-- right: current thread -->
+          <div class="rightCol">
+            <div class="threadHeader">
+              <div style="display: flex; align-items: center;">
+                <button id="backBtn" class="back-btn">←</button>
+                <div>
+                  <div id="threadTitle" style="font-weight:800">Welcome to Camsilo</div>
+                  <div id="threadSub" class="small">Login to start private conversations</div>
+                </div>
+              </div>
+              <div>
+                <button id="openLoginBtn" class="ghost">Login</button>
+              </div>
+            </div>
+
+            <div id="messages" class="messages">
+              <div class="welcome-screen">
+                <div class="welcome-icon">💬</div>
+                <div class="welcome-title">Camsilo Private Chat</div>
+                <div class="welcome-subtitle">Secure, private conversations between you and the model. All messages are encrypted and can't be downloaded or saved.</div>
+              </div>
+            </div>
+
+            <div class="composer">
+              <div style="position: relative;">
+                <button id="attachBtn" class="ghost">📎</button>
+                <div id="attachmentOptions" class="attachment-options">
+                  <div class="attachment-option" id="uploadFileOption">
+                    <span>📁</span> Upload File
+                  </div>
+                  <div class="attachment-option" id="insertUrlOption">
+                    <span>🔗</span> Insert Media URL
+                  </div>
+                </div>
+              </div>
+              <input id="fileInput" type="file" accept="image/*,video/*" style="display:none"/>
+              <input id="textInput" type="text" placeholder="Write a message..." autocomplete="off" disabled/>
+              <button id="sendBtn" class="send-btn" disabled>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Reels Page -->
+      <div class="page" id="pageReels">
+        <div class="reels-container" id="reelsContainer">
+          <!-- Reels will be populated here -->
+        </div>
+        <div class="swipe-indicator left" id="swipeLeft">
+          ← Models
+        </div>
+        <div class="swipe-indicator right" id="swipeRight">
+          Wallet →
+        </div>
+      </div>
+
+      <!-- Wallet Page -->
+      <div class="page" id="pageWallet">
+        <div class="wallet-container">
+          <div class="wallet-balance">
+            <div class="balance-label">Your Balance</div>
+            <div class="balance-amount" id="balanceAmount">$0.00</div>
+          </div>
+          <div class="wallet-actions">
+            <button class="btn" id="addFundsBtn">Add Funds</button>
+            <button class="ghost" id="withdrawBtn">Withdraw</button>
+          </div>
           <div>
-            <button id="openLoginBtn" class="btn-ghost btn-sm">Login</button>
+            <div style="font-weight: 600; margin-bottom: 12px;">Recent Transactions</div>
+            <div id="transactionsList">
+              <!-- Transactions will be populated here -->
+            </div>
           </div>
         </div>
-
-        <div id="messages" class="chat-messages">
-          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 40px; text-align: center;">
-            <div style="font-size: 64px; margin-bottom: 20px; opacity: 0.7;">💬</div>
-            <div style="font-size: 24px; font-weight: 700; margin-bottom: 12px; background: linear-gradient(90deg, var(--accent1), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Camsilo Private Chat</div>
-            <div style="font-size: 16px; color: var(--muted); max-width: 400px; line-height: 1.5;">Secure, private conversations between you and the model. All messages are encrypted and can't be downloaded or saved.</div>
-          </div>
-        </div>
-
-        <div class="chat-composer">
-          <input id="textInput" type="text" placeholder="Write a message..." autocomplete="off" disabled/>
-          <button id="sendBtn" class="chat-send-btn" disabled>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
+        <div class="swipe-indicator left" id="walletSwipeLeft">
+          ← Reels
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Login Modal -->
-<div id="loginModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);z-index:10000;backdrop-filter:blur(5px);opacity:0;transition:opacity 0.3s ease;">
-  <div class="card" style="background:linear-gradient(180deg,#071427,#061025);border-radius:var(--radius);padding:24px;width:90%;max-width:420px;border:1px solid rgba(255,255,255,0.05);box-shadow:var(--shadow-lg);transform:translateY(20px);transition:transform 0.3s ease;">
+<!-- Story Viewer -->
+<div id="storyViewer" class="story-viewer">
+  <div class="story-progress" id="storyProgress">
+    <!-- Progress bars will be populated here -->
+  </div>
+  <div class="story-content" id="storyContent">
+    <!-- Story media will be populated here -->
+  </div>
+  <div class="story-actions">
+    <button class="btn" id="viewModelBtn">View Model</button>
+    <button class="btn" id="sendTipBtn">Send Tip</button>
+  </div>
+  <div class="story-nav prev" id="storyPrev"></div>
+  <div class="story-nav next" id="storyNext"></div>
+</div>
+
+<!-- Admin Panel -->
+<div id="adminOverlay" class="admin-overlay"></div>
+<div id="adminPanel" class="admin-panel">
+  <div class="admin-header">
+    <div style="font-weight: 700; font-size: 18px;">Admin Panel</div>
+    <button id="closeAdminPanel" class="close-btn">✕</button>
+  </div>
+  <div class="admin-content">
+    <!-- Story Management -->
+    <div class="admin-section">
+      <div class="admin-section-title">Manage Stories</div>
+      <select class="model-select" id="storyModelSelect">
+        <option value="">Select Model</option>
+      </select>
+      <input type="text" class="input" id="storyMediaUrl" placeholder="Media URL (image/video)">
+      <div style="display: flex; gap: 8px; margin-top: 12px;">
+        <button class="btn" id="addStoryBtn" style="flex: 1;">Add Story</button>
+      </div>
+      <div class="story-list" id="adminStoriesList">
+        <!-- Stories list will be populated here -->
+      </div>
+    </div>
+
+    <!-- Wallet Links -->
+    <div class="admin-section">
+      <div class="admin-section-title">Wallet Funding Links</div>
+      <input type="text" class="input" id="walletLinkName" placeholder="Link Name">
+      <input type="text" class="input" id="walletLinkUrl" placeholder="Link URL">
+      <div style="display: flex; gap: 8px; margin-top: 12px;">
+        <button class="btn" id="addWalletLinkBtn" style="flex: 1;">Add Link</button>
+      </div>
+      <div id="walletLinksList">
+        <!-- Wallet links will be populated here -->
+      </div>
+    </div>
+
+    <!-- Model Management -->
+    <div class="admin-section">
+      <div class="admin-section-title">Model Management</div>
+      <select class="model-select" id="adminModelSelect">
+        <option value="">Select Model</option>
+      </select>
+      <input type="text" class="input" id="modelName" placeholder="Model Name">
+      <input type="text" class="input" id="modelBio" placeholder="Bio">
+      <input type="number" class="input" id="modelFollowers" placeholder="Followers Count">
+      <div style="display: flex; gap: 8px; margin-top: 12px;">
+        <button class="btn" id="updateModelBtn" style="flex: 1;">Update Model</button>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div>
+      <div style="font-weight: 600; margin-bottom: 12px;">Quick Actions</div>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button id="refreshUsers" class="btn">Refresh Users</button>
+        <button id="clearAllRead" class="ghost">Clear All Read</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- URL Input Modal -->
+<div id="urlModalOverlay" class="url-modal-overlay"></div>
+<div id="urlModal" class="url-modal">
+  <div class="url-modal-title">Insert Media URL</div>
+  
+  <div class="media-type-selector">
+    <div class="media-type-option active" data-type="image">Image</div>
+    <div class="media-type-option" data-type="video">Video</div>
+  </div>
+  
+  <div class="url-input-group">
+    <label for="urlInput">Media URL</label>
+    <input id="urlInput" class="input" placeholder="https://example.com/image.jpg" />
+  </div>
+  
+  <div class="checkbox">
+    <input id="expiringMedia" type="checkbox"/>
+    <label for="expiringMedia">View once (expires after viewing)</label>
+  </div>
+  
+  <div id="timerInputContainer" class="timer-input" style="display: none;">
+    <label for="expireSeconds">Expire after (seconds):</label>
+    <input id="expireSeconds" type="number" min="5" max="300" value="30" />
+  </div>
+  
+  <div style="display:flex;gap:8px;margin-top:20px">
+    <button id="confirmUrl" class="btn" style="flex:1">Insert Media</button>
+    <button id="cancelUrl" class="ghost">Cancel</button>
+  </div>
+</div>
+
+<!-- Login modal -->
+<div id="loginModal">
+  <div class="card">
     <div style="font-weight:800;font-size:20px">Sign in to Camsilo</div>
-    <div class="text-muted" style="margin-top:6px">Private conversations between you and model</div>
-    <input id="email" class="admin-input" placeholder="Email" type="email" />
-    <input id="password" class="admin-input" type="password" placeholder="Password" />
-    <label class="admin-checkbox"><input id="remember" type="checkbox"/> Remember me</label>
-    <div style="display:flex;gap:12px;margin-top:20px">
-      <button id="doLogin" class="btn" style="flex:1">Sign in</button>
-      <button id="closeLogin" class="btn-ghost">Close</button>
+    <div class="small" style="margin-top:6px">Private Platform</div>
+    <input id="email" class="input" placeholder="Email" type="email" />
+    <input id="password" class="input" type="password" placeholder="Password" />
+    <label class="checkbox"><input id="remember" type="checkbox"/> Remember me</label>
+    <div class="actions">
+      <button id="doLogin" class="btn">Sign in</button>
+      <button id="closeLogin" class="ghost">Close</button>
     </div>
   </div>
 </div>
@@ -1508,18 +1596,11 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
 
 <!-- external config -->
-<script src="config.js"></script>
+<script src="configuration.js"></script>
 
 <script>
 /*
-  Camsilo Platform - Complete Implementation
-  Features:
-  - Stories system (like Facebook/Instagram)
-  - Model profiles with posts
-  - Wallet system with credits
-  - Admin panel for content management
-  - Sidebar navigation
-  - Swipe between pages
+  Camsilo Platform - Extended with Stories, Wallet, Reels, and More
 */
 
 (async function () {
@@ -1548,83 +1629,6 @@
   }
 
   // DOM elements
-  const menuToggle = document.getElementById('menuToggle');
-  const sidebar = document.getElementById('sidebar');
-  const sidebarOverlay = document.getElementById('sidebarOverlay');
-  const sidebarClose = document.getElementById('sidebarClose');
-  const sidebarLogout = document.getElementById('sidebarLogout');
-  const sidebarUserAvatar = document.getElementById('sidebarUserAvatar');
-  const sidebarUserName = document.getElementById('sidebarUserName');
-  const sidebarUserEmail = document.getElementById('sidebarUserEmail');
-  const openChatFromSidebar = document.getElementById('openChatFromSidebar');
-  const openAdminFromSidebar = document.getElementById('openAdminFromSidebar');
-
-  const storiesContainer = document.getElementById('storiesContainer');
-  const storyViewer = document.getElementById('storyViewer');
-  const storyClose = document.getElementById('storyClose');
-  const storyContent = document.getElementById('storyContent');
-  const viewModelBtn = document.getElementById('viewModelBtn');
-  const sendTipBtn = document.getElementById('sendTipBtn');
-
-  const pagesContainer = document.getElementById('pagesContainer');
-  const swipeDots = document.querySelectorAll('.swipe-dot');
-  const menuItems = document.querySelectorAll('.menu-item');
-
-  const modelsGrid = document.getElementById('modelsGrid');
-  const profileAvatar = document.getElementById('profileAvatar');
-  const profileName = document.getElementById('profileName');
-  const profileBio = document.getElementById('profileBio');
-  const profilePosts = document.getElementById('profilePosts');
-  const profileFollowers = document.getElementById('profileFollowers');
-  const profileLikes = document.getElementById('profileLikes');
-  const profilePostsGrid = document.getElementById('profilePostsGrid');
-
-  const walletBalance = document.getElementById('walletBalance');
-  const walletBalanceAmount = document.getElementById('walletBalanceAmount');
-  const addFundsBtn = document.getElementById('addFundsBtn');
-  const withdrawBtn = document.getElementById('withdrawBtn');
-  const transactionsBtn = document.getElementById('transactionsBtn');
-  const giftBtn = document.getElementById('giftBtn');
-  const walletContent = document.getElementById('walletContent');
-  const transactionsList = document.getElementById('transactionsList');
-
-  const adminPanelBtn = document.getElementById('adminPanelBtn');
-  const logoutBtn = document.getElementById('logoutBtn');
-  const adminOverlay = document.getElementById('adminOverlay');
-  const adminPanel = document.getElementById('adminPanel');
-  const closeAdminPanel = document.getElementById('closeAdminPanel');
-  const adminTabs = document.querySelectorAll('.admin-tab');
-  const adminSections = document.querySelectorAll('.admin-section');
-
-  // Admin form elements
-  const storyModelSelect = document.getElementById('storyModelSelect');
-  const storyMediaUrl = document.getElementById('storyMediaUrl');
-  const storyActionUrl = document.getElementById('storyActionUrl');
-  const storyIsLive = document.getElementById('storyIsLive');
-  const addStoryBtn = document.getElementById('addStoryBtn');
-  const storiesList = document.getElementById('storiesList');
-
-  const modelName = document.getElementById('modelName');
-  const modelAvatar = document.getElementById('modelAvatar');
-  const modelBio = document.getElementById('modelBio');
-  const modelFollowers = document.getElementById('modelFollowers');
-  const modelVerified = document.getElementById('modelVerified');
-  const addModelBtn = document.getElementById('addModelBtn');
-  const modelsList = document.getElementById('modelsList');
-
-  const postModelSelect = document.getElementById('postModelSelect');
-  const postMediaUrl = document.getElementById('postMediaUrl');
-  const postCaption = document.getElementById('postCaption');
-  const postIsLocked = document.getElementById('postIsLocked');
-  const postUnlockPrice = document.getElementById('postUnlockPrice');
-  const addPostBtn = document.getElementById('addPostBtn');
-  const postsList = document.getElementById('postsList');
-
-  const walletFundingUrl = document.getElementById('walletFundingUrl');
-  const walletWithdrawalUrl = document.getElementById('walletWithdrawalUrl');
-  const saveWalletUrlsBtn = document.getElementById('saveWalletUrlsBtn');
-
-  // Chat elements (from original code)
   const chatIcon = document.getElementById('chatIcon');
   const chatBadge = document.getElementById('chatBadge');
   const popup = document.getElementById('popup');
@@ -1638,32 +1642,117 @@
   const rememberChk = document.getElementById('remember');
 
   const meLabel = document.getElementById('meLabel');
-  const chatAdminPanelBtn = document.getElementById('chatAdminPanelBtn');
-  const chatLogoutBtn = document.getElementById('chatLogoutBtn');
+  const adminPanelBtn = document.getElementById('adminPanelBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const mainTitle = document.getElementById('mainTitle');
 
-  const chatLeftCol = document.getElementById('chatLeftCol');
+  const leftCol = document.getElementById('leftCol');
   const conversationsEl = document.getElementById('conversations');
   const messagesEl = document.getElementById('messages');
   const threadTitle = document.getElementById('threadTitle');
   const threadSub = document.getElementById('threadSub');
-  const chatMainContent = document.getElementById('chatMainContent');
-  const chatBackBtn = document.getElementById('chatBackBtn');
+  const mainContent = document.getElementById('mainContent');
+  const backBtn = document.getElementById('backBtn');
 
+  const fileInput = document.getElementById('fileInput');
   const textInput = document.getElementById('textInput');
   const sendBtn = document.getElementById('sendBtn');
+  
+  // Attachment elements
+  const attachBtn = document.getElementById('attachBtn');
+  const attachmentOptions = document.getElementById('attachmentOptions');
+  const uploadFileOption = document.getElementById('uploadFileOption');
+  const insertUrlOption = document.getElementById('insertUrlOption');
+  const urlModal = document.getElementById('urlModal');
+  const urlModalOverlay = document.getElementById('urlModalOverlay');
+  const urlInput = document.getElementById('urlInput');
+  const expiringMedia = document.getElementById('expiringMedia');
+  const expireSecondsInput = document.getElementById('expireSeconds');
+  const timerInputContainer = document.getElementById('timerInputContainer');
+  const confirmUrl = document.getElementById('confirmUrl');
+  const cancelUrl = document.getElementById('cancelUrl');
+  const mediaTypeOptions = document.querySelectorAll('.media-type-option');
+
+  // Admin panel elements
+  const adminOverlay = document.getElementById('adminOverlay');
+  const adminPanel = document.getElementById('adminPanel');
+  const closeAdminPanel = document.getElementById('closeAdminPanel');
+  const pendingMessages = document.getElementById('pendingMessages');
+  const refreshUsers = document.getElementById('refreshUsers');
+  const clearAllRead = document.getElementById('clearAllRead');
+
+  // New feature elements
+  const menuBtn = document.getElementById('menuBtn');
+  const sidebar = document.getElementById('sidebar');
+  const sidebarOverlay = document.getElementById('sidebarOverlay');
+  const closeSidebar = document.getElementById('closeSidebar');
+  const storiesSection = document.getElementById('storiesSection');
+  const storyViewer = document.getElementById('storyViewer');
+  const storyProgress = document.getElementById('storyProgress');
+  const storyContent = document.getElementById('storyContent');
+  const viewModelBtn = document.getElementById('viewModelBtn');
+  const sendTipBtn = document.getElementById('sendTipBtn');
+  const storyPrev = document.getElementById('storyPrev');
+  const storyNext = document.getElementById('storyNext');
+  
+  // Page elements
+  const pageContainer = document.getElementById('pageContainer');
+  const pageModels = document.getElementById('pageModels');
+  const pageReels = document.getElementById('pageReels');
+  const pageWallet = document.getElementById('pageWallet');
+  const menuItems = document.querySelectorAll('.menu-item');
+  
+  // Reels elements
+  const reelsContainer = document.getElementById('reelsContainer');
+  const swipeLeft = document.getElementById('swipeLeft');
+  const swipeRight = document.getElementById('swipeRight');
+  const walletSwipeLeft = document.getElementById('walletSwipeLeft');
+  
+  // Wallet elements
+  const balanceAmount = document.getElementById('balanceAmount');
+  const addFundsBtn = document.getElementById('addFundsBtn');
+  const withdrawBtn = document.getElementById('withdrawBtn');
+  const transactionsList = document.getElementById('transactionsList');
+  
+  // Admin management elements
+  const storyModelSelect = document.getElementById('storyModelSelect');
+  const storyMediaUrl = document.getElementById('storyMediaUrl');
+  const addStoryBtn = document.getElementById('addStoryBtn');
+  const adminStoriesList = document.getElementById('adminStoriesList');
+  const walletLinkName = document.getElementById('walletLinkName');
+  const walletLinkUrl = document.getElementById('walletLinkUrl');
+  const addWalletLinkBtn = document.getElementById('addWalletLinkBtn');
+  const walletLinksList = document.getElementById('walletLinksList');
+  const adminModelSelect = document.getElementById('adminModelSelect');
+  const modelName = document.getElementById('modelName');
+  const modelBio = document.getElementById('modelBio');
+  const modelFollowers = document.getElementById('modelFollowers');
+  const updateModelBtn = document.getElementById('updateModelBtn');
 
   // State
   let me = null;
   let role = 'guest';
   let currentUid = null;
-  let currentPage = 0;
-  let currentModelId = null;
   let convsUnsub = null;
   let msgsUnsub = null;
   let isLoading = false;
-  let startX = 0;
-  let currentX = 0;
-  let isSwiping = false;
+  let pendingMedia = {
+    url: '',
+    isExpiring: false,
+    expireSeconds: 30,
+    mediaType: 'image'
+  };
+  
+  // New state variables
+  let currentPage = 'models';
+  let currentStories = [];
+  let currentStoryIndex = 0;
+  let currentModelStories = [];
+  let walletBalance = 0;
+  let transactions = [];
+  let models = [];
+  let reels = [];
+  let currentReelIndex = 0;
 
   // Helper functions
   const el = (tag, props = {}, ...kids) => {
@@ -1680,45 +1769,16 @@
     return e;
   };
 
-  function openSidebar() {
-    sidebar.classList.add('open');
-    sidebarOverlay.classList.add('open');
-  }
-
-  function closeSidebar() {
-    sidebar.classList.remove('open');
-    sidebarOverlay.classList.remove('open');
-  }
-
-  function openStoryViewer() {
-    storyViewer.classList.add('open');
-  }
-
-  function closeStoryViewer() {
-    storyViewer.classList.remove('open');
-  }
-
-  function openAdminPanel() {
-    adminPanel.classList.add('open');
-    adminOverlay.classList.add('open');
-    loadAdminData();
-  }
-
-  function closeAdminPanel() {
-    adminPanel.classList.remove('open');
-    adminOverlay.classList.remove('open');
-  }
-
   function openLoginModal() { 
     loginModal.style.display = 'flex'; 
     setTimeout(() => {
-      loginModal.style.opacity = '1';
+      loginModal.classList.add('open');
       emailInp.focus();
     }, 10);
   }
   
   function closeLoginModal() { 
-    loginModal.style.opacity = '0';
+    loginModal.classList.remove('open');
     setTimeout(() => {
       loginModal.style.display = 'none'; 
       emailInp.value = '';
@@ -1743,27 +1803,38 @@
     }, 300);
   }
 
-  function setPage(pageIndex) {
-    currentPage = pageIndex;
-    pagesContainer.style.transform = `translateX(-${pageIndex * 100}%)`;
-    
-    // Update swipe dots
-    swipeDots.forEach((dot, index) => {
-      if (index === pageIndex) {
-        dot.classList.add('active');
-      } else {
-        dot.classList.remove('active');
-      }
-    });
-    
-    // Update menu items
-    menuItems.forEach((item, index) => {
-      if (index === pageIndex) {
-        item.classList.add('active');
-      } else {
-        item.classList.remove('active');
-      }
-    });
+  function openAdminPanel() {
+    adminPanel.classList.add('open');
+    adminOverlay.classList.add('open');
+    loadPendingMessages();
+    loadAdminData();
+  }
+
+  function closeAdminPanel() {
+    adminPanel.classList.remove('open');
+    adminOverlay.classList.remove('open');
+  }
+
+  function openSidebar() {
+    sidebar.classList.add('open');
+    sidebarOverlay.classList.add('open');
+  }
+
+  function closeSidebarMenu() {
+    sidebar.classList.remove('open');
+    sidebarOverlay.classList.remove('open');
+  }
+
+  function showChatView() {
+    if (window.innerWidth <= 768) {
+      mainContent.classList.add('mobile-chat-active');
+    }
+  }
+
+  function showInboxView() {
+    if (window.innerWidth <= 768) {
+      mainContent.classList.remove('mobile-chat-active');
+    }
   }
 
   function formatTimestamp(ts) {
@@ -1807,150 +1878,632 @@
     }
   }
 
-  // Event listeners for new features
-  menuToggle.addEventListener('click', openSidebar);
-  sidebarClose.addEventListener('click', closeSidebar);
-  sidebarOverlay.addEventListener('click', closeSidebar);
+  // NEW FUNCTIONS FOR ADDED FEATURES
 
-  menuItems.forEach((item, index) => {
-    item.addEventListener('click', () => {
-      setPage(index);
-      closeSidebar();
-    });
-  });
-
-  swipeDots.forEach((dot, index) => {
-    dot.addEventListener('click', () => {
-      setPage(index);
-    });
-  });
-
-  openChatFromSidebar.addEventListener('click', () => {
-    if (me) {
-      openPopup();
-    } else {
-      openLoginModal();
-    }
-    closeSidebar();
-  });
-
-  openAdminFromSidebar.addEventListener('click', () => {
-    openAdminPanel();
-    closeSidebar();
-  });
-
-  sidebarLogout.addEventListener('click', logout);
-
-  // Story viewer events
-  storyClose.addEventListener('click', closeStoryViewer);
-  viewModelBtn.addEventListener('click', () => {
-    if (currentModelId) {
-      loadModelProfile(currentModelId);
-      setPage(1); // Profile page
-      closeStoryViewer();
-    }
-  });
-
-  sendTipBtn.addEventListener('click', () => {
-    setPage(2); // Wallet page
-    closeStoryViewer();
-  });
-
-  // Wallet events
-  addFundsBtn.addEventListener('click', () => {
-    if (role === 'admin') {
-      openAdminPanel();
-      // Switch to wallet tab
-      adminTabs.forEach(tab => tab.classList.remove('active'));
-      adminSections.forEach(section => section.classList.remove('active'));
-      document.querySelector('.admin-tab[data-tab="wallet"]').classList.add('active');
-      document.getElementById('adminWallet').classList.add('active');
-    } else {
-      // For regular users, redirect to funding URL
-      const fundingUrl = localStorage.getItem('walletFundingUrl') || '#';
-      if (fundingUrl !== '#') {
-        window.open(fundingUrl, '_blank');
+  // Navigation and Pages
+  function switchPage(page) {
+    // Update menu items
+    menuItems.forEach(item => {
+      if (item.dataset.page === page) {
+        item.classList.add('active');
       } else {
-        alert('Funding service not configured yet');
+        item.classList.remove('active');
+      }
+    });
+
+    // Hide all pages
+    document.querySelectorAll('.page').forEach(p => {
+      p.classList.remove('active', 'prev');
+    });
+
+    // Show selected page
+    const targetPage = document.getElementById(`page${page.charAt(0).toUpperCase() + page.slice(1)}`);
+    if (targetPage) {
+      targetPage.classList.add('active');
+      currentPage = page;
+      
+      // Load page-specific data
+      if (page === 'models') {
+        loadStories();
+      } else if (page === 'reels') {
+        loadReels();
+      } else if (page === 'wallet') {
+        loadWallet();
       }
     }
-  });
+  }
 
-  withdrawBtn.addEventListener('click', () => {
-    const withdrawalUrl = localStorage.getItem('walletWithdrawalUrl') || '#';
-    if (withdrawalUrl !== '#') {
-      window.open(withdrawalUrl, '_blank');
-    } else {
-      alert('Withdrawal service not configured yet');
+  // Stories functionality
+  async function loadStories() {
+    try {
+      const storiesSnapshot = await db.collection('stories').where('expiresAt', '>', new Date()).get();
+      currentStories = [];
+      
+      storiesSnapshot.forEach(doc => {
+        currentStories.push({ id: doc.id, ...doc.data() });
+      });
+      
+      renderStories();
+    } catch (error) {
+      console.error('Error loading stories:', error);
     }
-  });
+  }
 
-  transactionsBtn.addEventListener('click', () => {
-    loadTransactions();
-  });
-
-  giftBtn.addEventListener('click', () => {
-    alert('Gift feature coming soon!');
-  });
-
-  // Admin panel events
-  adminPanelBtn.addEventListener('click', openAdminPanel);
-  chatAdminPanelBtn.addEventListener('click', openAdminPanel);
-  closeAdminPanel.addEventListener('click', closeAdminPanel);
-  adminOverlay.addEventListener('click', closeAdminPanel);
-
-  adminTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      const tabName = tab.getAttribute('data-tab');
-      
-      adminTabs.forEach(t => t.classList.remove('active'));
-      adminSections.forEach(s => s.classList.remove('active'));
-      
-      tab.classList.add('active');
-      document.getElementById(`admin${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).classList.add('active');
+  function renderStories() {
+    storiesSection.innerHTML = '';
+    
+    // Group stories by model
+    const storiesByModel = {};
+    currentStories.forEach(story => {
+      if (!storiesByModel[story.modelId]) {
+        storiesByModel[story.modelId] = [];
+      }
+      storiesByModel[story.modelId].push(story);
     });
-  });
-
-  addStoryBtn.addEventListener('click', addStory);
-  addModelBtn.addEventListener('click', addModel);
-  addPostBtn.addEventListener('click', addPost);
-  saveWalletUrlsBtn.addEventListener('click', saveWalletUrls);
-
-  // Swipe functionality
-  pagesContainer.addEventListener('touchstart', (e) => {
-    startX = e.touches[0].clientX;
-    isSwiping = true;
-  });
-
-  pagesContainer.addEventListener('touchmove', (e) => {
-    if (!isSwiping) return;
-    currentX = e.touches[0].clientX;
-    const diff = startX - currentX;
     
-    // Only allow horizontal swipe
-    if (Math.abs(diff) > 10) {
-      e.preventDefault();
+    // Create story items
+    Object.keys(storiesByModel).forEach(modelId => {
+      const modelStories = storiesByModel[modelId];
+      const model = models.find(m => m.id === modelId) || { name: 'Model', avatar: 'M' };
+      
+      const storyItem = el('div', { className: 'story-item' },
+        el('div', { 
+          className: `story-avatar ${model.isLive ? 'live' : ''}`,
+          onclick: () => openStoryViewer(modelId)
+        }, model.avatar || model.name.charAt(0)),
+        el('div', { className: 'story-name' }, model.name)
+      );
+      
+      storiesSection.appendChild(storyItem);
+    });
+  }
+
+  function openStoryViewer(modelId) {
+    currentModelStories = currentStories.filter(story => story.modelId === modelId);
+    currentStoryIndex = 0;
+    
+    if (currentModelStories.length === 0) return;
+    
+    renderStoryViewer();
+    storyViewer.classList.add('open');
+    
+    // Start story progress
+    startStoryProgress();
+  }
+
+  function renderStoryViewer() {
+    storyProgress.innerHTML = '';
+    storyContent.innerHTML = '';
+    
+    // Create progress bars
+    currentModelStories.forEach((_, index) => {
+      const progressBar = el('div', { className: 'story-progress-bar' },
+        el('div', { 
+          className: 'story-progress-fill',
+          id: `progress-${index}`
+        })
+      );
+      storyProgress.appendChild(progressBar);
+    });
+    
+    // Show current story
+    showCurrentStory();
+  }
+
+  function showCurrentStory() {
+    if (currentStoryIndex >= currentModelStories.length) {
+      closeStoryViewer();
+      return;
     }
-  });
-
-  pagesContainer.addEventListener('touchend', (e) => {
-    if (!isSwiping) return;
     
-    const diff = startX - currentX;
-    const swipeThreshold = 50;
+    const story = currentModelStories[currentStoryIndex];
+    storyContent.innerHTML = '';
     
-    if (diff > swipeThreshold && currentPage < 2) {
-      // Swipe left - next page
-      setPage(currentPage + 1);
-    } else if (diff < -swipeThreshold && currentPage > 0) {
-      // Swipe right - previous page
-      setPage(currentPage - 1);
+    if (story.mediaType === 'video') {
+      const video = el('video', {
+        className: 'story-media',
+        src: story.mediaUrl,
+        autoplay: true,
+        controls: false
+      });
+      video.addEventListener('ended', nextStory);
+      storyContent.appendChild(video);
+    } else {
+      const img = el('img', {
+        className: 'story-media',
+        src: story.mediaUrl,
+        onload: () => startStoryProgress()
+      });
+      storyContent.appendChild(img);
     }
     
-    isSwiping = false;
-  });
+    // Update model buttons
+    viewModelBtn.onclick = () => {
+      // Navigate to model profile
+      closeStoryViewer();
+      // This would navigate to the model's profile page
+    };
+    
+    sendTipBtn.onclick = () => {
+      // Open tip modal
+      openTipModal(story.modelId);
+    };
+  }
 
-  // Chat events (from original code)
+  function startStoryProgress() {
+    // Reset all progress bars
+    document.querySelectorAll('.story-progress-fill').forEach((bar, index) => {
+      bar.style.width = index < currentStoryIndex ? '100%' : '0%';
+    });
+    
+    // Animate current progress bar
+    const currentProgress = document.getElementById(`progress-${currentStoryIndex}`);
+    if (currentProgress) {
+      currentProgress.style.transition = 'width 5s linear';
+      currentProgress.style.width = '100%';
+      
+      // Move to next story after 5 seconds
+      setTimeout(() => {
+        nextStory();
+      }, 5000);
+    }
+  }
+
+  function nextStory() {
+    currentStoryIndex++;
+    if (currentStoryIndex < currentModelStories.length) {
+      showCurrentStory();
+    } else {
+      closeStoryViewer();
+    }
+  }
+
+  function prevStory() {
+    if (currentStoryIndex > 0) {
+      currentStoryIndex--;
+      showCurrentStory();
+    }
+  }
+
+  function closeStoryViewer() {
+    storyViewer.classList.remove('open');
+    // Reset progress
+    document.querySelectorAll('.story-progress-fill').forEach(bar => {
+      bar.style.width = '0%';
+      bar.style.transition = 'none';
+    });
+  }
+
+  // Wallet functionality
+  async function loadWallet() {
+    if (!me) return;
+    
+    try {
+      const walletDoc = await db.collection('wallets').doc(me.uid).get();
+      if (walletDoc.exists) {
+        const walletData = walletDoc.data();
+        walletBalance = walletData.balance || 0;
+        transactions = walletData.transactions || [];
+      }
+      
+      renderWallet();
+    } catch (error) {
+      console.error('Error loading wallet:', error);
+    }
+  }
+
+  function renderWallet() {
+    balanceAmount.textContent = `$${walletBalance.toFixed(2)}`;
+    transactionsList.innerHTML = '';
+    
+    if (transactions.length === 0) {
+      transactionsList.innerHTML = '<div class="small">No transactions yet</div>';
+      return;
+    }
+    
+    transactions.slice(0, 10).forEach(transaction => {
+      const transactionItem = el('div', { className: 'transaction-item' },
+        el('div', {},
+          el('div', { style: 'font-weight: 600;' }, transaction.description),
+          el('div', { className: 'small' }, new Date(transaction.timestamp).toLocaleDateString())
+        ),
+        el('div', { 
+          className: `transaction-amount ${transaction.amount >= 0 ? 'positive' : 'negative'}`
+        }, `${transaction.amount >= 0 ? '+' : ''}$${Math.abs(transaction.amount).toFixed(2)}`)
+      );
+      
+      transactionsList.appendChild(transactionItem);
+    });
+  }
+
+  async function addFunds(amount) {
+    if (!me) return;
+    
+    try {
+      await db.collection('wallets').doc(me.uid).set({
+        balance: firebase.firestore.FieldValue.increment(amount),
+        transactions: firebase.firestore.FieldValue.arrayUnion({
+          amount: amount,
+          description: 'Added funds',
+          timestamp: new Date().toISOString()
+        })
+      }, { merge: true });
+      
+      walletBalance += amount;
+      renderWallet();
+    } catch (error) {
+      console.error('Error adding funds:', error);
+      alert('Error adding funds');
+    }
+  }
+
+  // Reels functionality
+  async function loadReels() {
+    try {
+      const reelsSnapshot = await db.collection('reels').orderBy('timestamp', 'desc').get();
+      reels = [];
+      
+      reelsSnapshot.forEach(doc => {
+        reels.push({ id: doc.id, ...doc.data() });
+      });
+      
+      renderReels();
+    } catch (error) {
+      console.error('Error loading reels:', error);
+    }
+  }
+
+  function renderReels() {
+    reelsContainer.innerHTML = '';
+    currentReelIndex = 0;
+    
+    if (reels.length === 0) {
+      reelsContainer.innerHTML = '<div class="empty-state"><div class="icon">🎥</div><div>No reels available</div></div>';
+      return;
+    }
+    
+    reels.forEach((reel, index) => {
+      const reelItem = el('div', {
+        className: `reel-item ${index === 0 ? 'active' : ''}`,
+        id: `reel-${index}`
+      },
+        el('video', {
+          className: 'reel-video',
+          src: reel.videoUrl,
+          loop: true,
+          muted: true
+        }),
+        el('div', { className: 'reel-overlay' },
+          el('div', { style: 'font-weight: 600; margin-bottom: 8px;' }, reel.modelName),
+          el('div', { className: 'small' }, reel.caption)
+        ),
+        el('div', { className: 'reel-actions' },
+          el('div', { className: 'reel-action', onclick: () => likeReel(reel.id) },
+            el('div', { className: 'reel-action-icon' }, '❤️'),
+            el('div', { className: 'small' }, reel.likes || 0)
+          ),
+          el('div', { className: 'reel-action', onclick: () => tipModel(reel.modelId) },
+            el('div', { className: 'reel-action-icon' }, '💰'),
+            el('div', { className: 'small' }, 'Tip')
+          )
+        )
+      );
+      
+      reelsContainer.appendChild(reelItem);
+    });
+    
+    // Setup swipe handlers
+    setupReelSwipe();
+  }
+
+  function setupReelSwipe() {
+    let startY = 0;
+    let isSwiping = false;
+    
+    reelsContainer.addEventListener('touchstart', (e) => {
+      startY = e.touches[0].clientY;
+      isSwiping = true;
+    });
+    
+    reelsContainer.addEventListener('touchmove', (e) => {
+      if (!isSwiping) return;
+      
+      const currentY = e.touches[0].clientY;
+      const diff = startY - currentY;
+      
+      // Show swipe indicators
+      if (diff > 50 && currentReelIndex < reels.length - 1) {
+        swipeRight.classList.add('show');
+      } else if (diff < -50 && currentReelIndex > 0) {
+        swipeLeft.classList.add('show');
+      } else {
+        swipeRight.classList.remove('show');
+        swipeLeft.classList.remove('show');
+      }
+    });
+    
+    reelsContainer.addEventListener('touchend', (e) => {
+      if (!isSwiping) return;
+      
+      const endY = e.changedTouches[0].clientY;
+      const diff = startY - endY;
+      
+      if (Math.abs(diff) > 100) {
+        if (diff > 0 && currentReelIndex < reels.length - 1) {
+          // Swipe down - next reel
+          nextReel();
+        } else if (diff < 0 && currentReelIndex > 0) {
+          // Swipe up - previous reel
+          prevReel();
+        }
+      }
+      
+      isSwiping = false;
+      swipeRight.classList.remove('show');
+      swipeLeft.classList.remove('show');
+    });
+  }
+
+  function nextReel() {
+    if (currentReelIndex < reels.length - 1) {
+      document.getElementById(`reel-${currentReelIndex}`).classList.remove('active');
+      currentReelIndex++;
+      document.getElementById(`reel-${currentReelIndex}`).classList.add('active');
+    }
+  }
+
+  function prevReel() {
+    if (currentReelIndex > 0) {
+      document.getElementById(`reel-${currentReelIndex}`).classList.remove('active');
+      currentReelIndex--;
+      document.getElementById(`reel-${currentReelIndex}`).classList.add('active');
+    }
+  }
+
+  async function likeReel(reelId) {
+    if (!me) {
+      alert('Please login to like reels');
+      return;
+    }
+    
+    try {
+      await db.collection('reels').doc(reelId).update({
+        likes: firebase.firestore.FieldValue.increment(1)
+      });
+      
+      // Update local state
+      const reel = reels.find(r => r.id === reelId);
+      if (reel) {
+        reel.likes = (reel.likes || 0) + 1;
+        renderReels();
+      }
+    } catch (error) {
+      console.error('Error liking reel:', error);
+    }
+  }
+
+  function tipModel(modelId) {
+    if (!me) {
+      alert('Please login to send tips');
+      return;
+    }
+    
+    if (walletBalance < 5) {
+      alert('Insufficient balance. Please add funds to your wallet.');
+      switchPage('wallet');
+      return;
+    }
+    
+    const amount = 5; // Default tip amount
+    if (walletBalance >= amount) {
+      // Process tip
+      addFunds(-amount);
+      // Here you would also send the tip to the model
+      alert(`Tip of $${amount} sent!`);
+    }
+  }
+
+  // Admin management functions
+  async function loadAdminData() {
+    if (role !== 'admin') return;
+    
+    try {
+      // Load models for dropdowns
+      const modelsSnapshot = await db.collection('models').get();
+      models = [];
+      modelsSnapshot.forEach(doc => {
+        models.push({ id: doc.id, ...doc.data() });
+      });
+      
+      renderModelDropdowns();
+      loadAdminStories();
+      loadWalletLinks();
+    } catch (error) {
+      console.error('Error loading admin data:', error);
+    }
+  }
+
+  function renderModelDropdowns() {
+    storyModelSelect.innerHTML = '<option value="">Select Model</option>';
+    adminModelSelect.innerHTML = '<option value="">Select Model</option>';
+    
+    models.forEach(model => {
+      const option = el('option', { value: model.id }, model.name);
+      storyModelSelect.appendChild(option.cloneNode(true));
+      adminModelSelect.appendChild(option);
+    });
+  }
+
+  async function loadAdminStories() {
+    try {
+      const storiesSnapshot = await db.collection('stories').get();
+      adminStoriesList.innerHTML = '';
+      
+      if (storiesSnapshot.empty) {
+        adminStoriesList.innerHTML = '<div class="small">No stories</div>';
+        return;
+      }
+      
+      storiesSnapshot.forEach(doc => {
+        const story = doc.data();
+        const model = models.find(m => m.id === story.modelId) || { name: 'Unknown' };
+        
+        const storyItem = el('div', { className: 'story-list-item' },
+          story.mediaType === 'video' ? 
+            el('video', { className: 'story-thumbnail', src: story.mediaUrl }) :
+            el('img', { className: 'story-thumbnail', src: story.mediaUrl }),
+          el('div', { style: 'flex: 1;' },
+            el('div', { style: 'font-weight: 600;' }, model.name),
+            el('div', { className: 'small' }, new Date(story.timestamp).toLocaleDateString())
+          ),
+          el('button', {
+            className: 'delete-btn',
+            onclick: () => deleteStory(doc.id)
+          }, 'Delete')
+        );
+        
+        adminStoriesList.appendChild(storyItem);
+      });
+    } catch (error) {
+      console.error('Error loading admin stories:', error);
+    }
+  }
+
+  async function addStory() {
+    const modelId = storyModelSelect.value;
+    const mediaUrl = storyMediaUrl.value.trim();
+    
+    if (!modelId || !mediaUrl) {
+      alert('Please select a model and enter a media URL');
+      return;
+    }
+    
+    try {
+      await db.collection('stories').add({
+        modelId: modelId,
+        mediaUrl: mediaUrl,
+        mediaType: mediaUrl.match(/\.(mp4|webm|mov)$/i) ? 'video' : 'image',
+        timestamp: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+      });
+      
+      storyMediaUrl.value = '';
+      loadAdminStories();
+      alert('Story added successfully');
+    } catch (error) {
+      console.error('Error adding story:', error);
+      alert('Error adding story');
+    }
+  }
+
+  async function deleteStory(storyId) {
+    if (confirm('Are you sure you want to delete this story?')) {
+      try {
+        await db.collection('stories').doc(storyId).delete();
+        loadAdminStories();
+      } catch (error) {
+        console.error('Error deleting story:', error);
+        alert('Error deleting story');
+      }
+    }
+  }
+
+  async function loadWalletLinks() {
+    try {
+      const linksSnapshot = await db.collection('walletLinks').get();
+      walletLinksList.innerHTML = '';
+      
+      if (linksSnapshot.empty) {
+        walletLinksList.innerHTML = '<div class="small">No wallet links</div>';
+        return;
+      }
+      
+      linksSnapshot.forEach(doc => {
+        const link = doc.data();
+        const linkItem = el('div', { className: 'story-list-item' },
+          el('div', { style: 'flex: 1;' },
+            el('div', { style: 'font-weight: 600;' }, link.name),
+            el('div', { className: 'small' }, link.url)
+          ),
+          el('button', {
+            className: 'delete-btn',
+            onclick: () => deleteWalletLink(doc.id)
+          }, 'Delete')
+        );
+        
+        walletLinksList.appendChild(linkItem);
+      });
+    } catch (error) {
+      console.error('Error loading wallet links:', error);
+    }
+  }
+
+  async function addWalletLink() {
+    const name = walletLinkName.value.trim();
+    const url = walletLinkUrl.value.trim();
+    
+    if (!name || !url) {
+      alert('Please enter both name and URL');
+      return;
+    }
+    
+    try {
+      await db.collection('walletLinks').add({
+        name: name,
+        url: url,
+        timestamp: new Date().toISOString()
+      });
+      
+      walletLinkName.value = '';
+      walletLinkUrl.value = '';
+      loadWalletLinks();
+      alert('Wallet link added successfully');
+    } catch (error) {
+      console.error('Error adding wallet link:', error);
+      alert('Error adding wallet link');
+    }
+  }
+
+  async function deleteWalletLink(linkId) {
+    if (confirm('Are you sure you want to delete this wallet link?')) {
+      try {
+        await db.collection('walletLinks').doc(linkId).delete();
+        loadWalletLinks();
+      } catch (error) {
+        console.error('Error deleting wallet link:', error);
+        alert('Error deleting wallet link');
+      }
+    }
+  }
+
+  async function updateModel() {
+    const modelId = adminModelSelect.value;
+    const name = modelName.value.trim();
+    const bio = modelBio.value.trim();
+    const followers = parseInt(modelFollowers.value) || 0;
+    
+    if (!modelId || !name) {
+      alert('Please select a model and enter a name');
+      return;
+    }
+    
+    try {
+      await db.collection('models').doc(modelId).set({
+        name: name,
+        bio: bio,
+        followers: followers,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      
+      alert('Model updated successfully');
+      loadAdminData();
+    } catch (error) {
+      console.error('Error updating model:', error);
+      alert('Error updating model');
+    }
+  }
+
+  // Event listeners
   chatIcon.addEventListener('click', async () => {
     const user = auth.currentUser;
     if (!user) {
@@ -1967,7 +2520,66 @@
   openLoginBtn.addEventListener('click', () => openLoginModal());
   closeLogin.addEventListener('click', closeLoginModal);
 
-  chatBackBtn.addEventListener('click', showInboxView);
+  backBtn.addEventListener('click', showInboxView);
+
+  // Menu and navigation
+  menuBtn.addEventListener('click', openSidebar);
+  closeSidebar.addEventListener('click', closeSidebarMenu);
+  sidebarOverlay.addEventListener('click', closeSidebarMenu);
+
+  menuItems.forEach(item => {
+    item.addEventListener('click', () => {
+      switchPage(item.dataset.page);
+      closeSidebarMenu();
+    });
+  });
+
+  // Story viewer navigation
+  storyPrev.addEventListener('click', prevStory);
+  storyNext.addEventListener('click', nextStory);
+
+  // Wallet actions
+  addFundsBtn.addEventListener('click', () => {
+    const amount = parseFloat(prompt('Enter amount to add:'));
+    if (amount && amount > 0) {
+      addFunds(amount);
+    }
+  });
+
+  // Admin actions
+  addStoryBtn.addEventListener('click', addStory);
+  addWalletLinkBtn.addEventListener('click', addWalletLink);
+  updateModelBtn.addEventListener('click', updateModel);
+
+  // Admin panel events
+  adminPanelBtn.addEventListener('click', openAdminPanel);
+  closeAdminPanel.addEventListener('click', closeAdminPanel);
+  adminOverlay.addEventListener('click', closeAdminPanel);
+  refreshUsers.addEventListener('click', () => {
+    if (role === 'admin') {
+      startAdminInbox();
+      loadPendingMessages();
+    }
+  });
+
+  clearAllRead.addEventListener('click', async () => {
+    if (role === 'admin' && confirm('Clear all read messages?')) {
+      try {
+        const convs = await db.collection('conversations').get();
+        const batch = db.batch();
+        convs.forEach(conv => {
+          if (conv.data().unreadFromUser === 0) {
+            batch.update(conv.ref, { unreadFromUser: 0 });
+          }
+        });
+        await batch.commit();
+        alert('All read messages cleared');
+      } catch (e) {
+        console.error('Error clearing read messages:', e);
+        alert('Error clearing read messages');
+      }
+    }
+  });
 
   doLogin.addEventListener('click', async () => {
     const email = emailInp.value.trim();
@@ -1987,6 +2599,7 @@
       me = cred.user;
       await setupAfterLogin();
       closeLoginModal();
+      openPopup();
     } catch (e) {
       alert('Login failed: ' + (e.message || 'Invalid credentials'));
       console.error('Login error:', e);
@@ -1995,181 +2608,7 @@
     }
   });
 
-  logoutBtn.addEventListener('click', logout);
-  chatLogoutBtn.addEventListener('click', logout);
-
-  // Send message handler
-  sendBtn.addEventListener('click', sendMessage);
-  textInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  });
-
-  async function sendMessage() {
-    const text = textInput.value.trim();
-    
-    if (!text) {
-      alert('Please enter a message');
-      return;
-    }
-    
-    if (!me) {
-      alert('Please sign in first');
-      return;
-    }
-
-    setLoading(true);
-    
-    try {
-      if (role === 'admin') {
-        if (!currentUid) {
-          alert('Please select a user conversation to reply');
-          return;
-        }
-        
-        await db.collection('messages').doc(currentUid).collection('items').add({
-          from: me.uid,
-          text: text,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        await db.collection('conversations').doc(currentUid).set({
-          lastMessage: text,
-          lastTimestamp: firebase.firestore.FieldValue.serverTimestamp(),
-          unreadFromAdmin: firebase.firestore.FieldValue.increment(1)
-        }, { merge: true });
-      } else {
-        const convUid = me.uid;
-        await db.collection('messages').doc(convUid).collection('items').add({
-          from: me.uid,
-          text: text,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        await db.collection('conversations').doc(convUid).set({
-          lastMessage: text,
-          lastTimestamp: firebase.firestore.FieldValue.serverTimestamp(),
-          unreadFromUser: firebase.firestore.FieldValue.increment(1)
-        }, { merge: true });
-      }
-
-      textInput.value = '';
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    } catch (e) {
-      console.error('Send failed', e);
-      alert('Failed to send message: ' + (e.message || 'Unknown error'));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Auth state change handler
-  auth.onAuthStateChanged(async (user) => {
-    if (!user) {
-      me = null;
-      chatBadge.style.display = 'none';
-      meLabel.textContent = 'Not signed in';
-      walletBalance.textContent = '0 credits';
-      adminPanelBtn.classList.add('hidden');
-      logoutBtn.classList.add('hidden');
-      openAdminFromSidebar.classList.add('hidden');
-      storiesContainer.classList.add('hidden');
-      return;
-    }
-    
-    me = user;
-    await setupAfterLogin();
-  });
-
-  // Main setup after successful login
-  async function setupAfterLogin() {
-    try {
-      const udoc = await db.collection('users').doc(me.uid).get();
-      role = (udoc.exists && udoc.data() && udoc.data().role === 'admin') ? 'admin' : 'user';
-      
-      if (!udoc.exists) {
-        await db.collection('users').doc(me.uid).set({ 
-          role: role, 
-          email: me.email || null,
-          walletBalance: 0
-        }, { merge: true });
-      } else if (me.email) {
-        await db.collection('users').doc(me.uid).set({ email: me.email }, { merge: true });
-      }
-
-      // Initialize wallet if doesn't exist
-      if (!udoc.exists || !udoc.data().walletBalance) {
-        await db.collection('users').doc(me.uid).set({ walletBalance: 0 }, { merge: true });
-      }
-    } catch (e) {
-      console.error('Role fetch failed', e);
-      role = 'user';
-    }
-
-    // Update UI based on role
-    meLabel.textContent = me.email || `User ${me.uid.slice(0, 6)}`;
-    sidebarUserName.textContent = me.email ? me.email.split('@')[0] : 'User';
-    sidebarUserEmail.textContent = me.email || 'user@example.com';
-    sidebarUserAvatar.textContent = me.email ? me.email.charAt(0).toUpperCase() : 'U';
-
-    if (role === 'admin') {
-      adminPanelBtn.classList.remove('hidden');
-      chatAdminPanelBtn.classList.remove('hidden');
-      openAdminFromSidebar.classList.remove('hidden');
-    } else {
-      adminPanelBtn.classList.add('hidden');
-      chatAdminPanelBtn.classList.add('hidden');
-      openAdminFromSidebar.classList.add('hidden');
-    }
-    
-    logoutBtn.classList.remove('hidden');
-    chatLogoutBtn.classList.remove('hidden');
-
-    textInput.disabled = false;
-    sendBtn.disabled = false;
-
-    // Load user data
-    await loadWalletBalance();
-    await loadStories();
-    await loadModels();
-    
-    if (role === 'admin') {
-      chatLeftCol.style.display = 'block';
-      await startAdminInbox();
-      threadTitle.textContent = 'Admin Inbox';
-      threadSub.textContent = 'Select a user to reply privately';
-    } else {
-      chatLeftCol.style.display = 'none';
-      currentUid = me.uid;
-      threadTitle.textContent = 'Your Camsilo Chat';
-      threadSub.textContent = 'Private conversations only you and model can see';
-      subscribeToThread(me.uid, true);
-      await db.collection('conversations').doc(me.uid).set({ unreadFromAdmin: 0 }, { merge: true });
-      showChatView();
-    }
-
-    // Show stories for regular users
-    if (role !== 'admin') {
-      storiesContainer.classList.remove('hidden');
-    }
-
-    // Subscribe to unread messages count
-    db.collection('conversations').doc(me.uid).onSnapshot(snap => {
-      const data = snap.exists ? snap.data() : {};
-      const unread = data.unreadFromAdmin || 0;
-      if (unread > 0) {
-        chatBadge.style.display = 'block';
-        chatBadge.textContent = unread;
-      } else {
-        chatBadge.style.display = 'none';
-      }
-    });
-  }
-
-  // Logout function
-  async function logout() {
+  logoutBtn.addEventListener('click', async () => {
     try {
       if (convsUnsub) convsUnsub();
       if (msgsUnsub) msgsUnsub();
@@ -2184,776 +2623,431 @@
       meLabel.textContent = 'Not signed in';
       adminPanelBtn.classList.add('hidden');
       logoutBtn.classList.add('hidden');
-      chatAdminPanelBtn.classList.add('hidden');
-      chatLogoutBtn.classList.add('hidden');
-      openAdminFromSidebar.classList.add('hidden');
       threadTitle.textContent = 'Welcome to Camsilo';
       threadSub.textContent = 'Login to start private conversations';
       textInput.disabled = true;
       sendBtn.disabled = true;
-      storiesContainer.classList.add('hidden');
       showInboxView();
-      
-      // Reset to home page
-      setPage(0);
       
       // Show welcome screen
       messagesEl.innerHTML = `
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 40px; text-align: center;">
-          <div style="font-size: 64px; margin-bottom: 20px; opacity: 0.7;">💬</div>
-          <div style="font-size: 24px; font-weight: 700; margin-bottom: 12px; background: linear-gradient(90deg, var(--accent1), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Camsilo Private Chat</div>
-          <div style="font-size: 16px; color: var(--muted); max-width: 400px; line-height: 1.5;">Secure, private conversations between you and the model. All messages are encrypted and can't be downloaded or saved.</div>
+        <div class="welcome-screen">
+          <div class="welcome-icon">💬</div>
+          <div class="welcome-title">Camsilo Private Chat</div>
+          <div class="welcome-subtitle">Secure, private conversations between you and the model. All messages are encrypted and can't be downloaded or saved.</div>
         </div>
       `;
     } catch (e) { 
       console.warn('Logout error', e); 
     }
+  });
+
+  // Attachment handling
+  attachBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    attachmentOptions.classList.toggle('open');
+  });
+
+  uploadFileOption.addEventListener('click', () => {
+    fileInput.click();
+    attachmentOptions.classList.remove('open');
+  });
+
+  insertUrlOption.addEventListener('click', () => {
+    openUrlModal();
+    attachmentOptions.classList.remove('open');
+  });
+
+  // URL modal handling
+  function openUrlModal() {
+    urlModal.style.display = 'block';
+    urlModalOverlay.style.display = 'block';
+    setTimeout(() => {
+      urlModal.classList.add('open');
+      urlModalOverlay.classList.add('open');
+      urlInput.focus();
+    }, 10);
   }
 
-  // Load wallet balance
-  async function loadWalletBalance() {
-    if (!me) return;
-    
-    try {
-      const userDoc = await db.collection('users').doc(me.uid).get();
-      if (userDoc.exists) {
-        const userData = userDoc.data();
-        const balance = userData.walletBalance || 0;
-        walletBalance.textContent = `${balance} credits`;
-        walletBalanceAmount.textContent = `${balance} credits`;
-      }
-    } catch (e) {
-      console.error('Error loading wallet balance:', e);
-    }
+  function closeUrlModal() {
+    urlModal.classList.remove('open');
+    urlModalOverlay.classList.remove('open');
+    setTimeout(() => {
+      urlModal.style.display = 'none';
+      urlModalOverlay.style.display = 'none';
+      urlInput.value = '';
+      expiringMedia.checked = false;
+      expireSecondsInput.value = '30';
+      timerInputContainer.style.display = 'none';
+    }, 300);
   }
 
-  // Load stories
-  async function loadStories() {
-    try {
-      const storiesSnapshot = await db.collection('stories')
-        .where('isActive', '==', true)
-        .orderBy('createdAt', 'desc')
-        .get();
+  // Media type selection
+  mediaTypeOptions.forEach(option => {
+    option.addEventListener('click', () => {
+      mediaTypeOptions.forEach(opt => opt.classList.remove('active'));
+      option.classList.add('active');
+      pendingMedia.mediaType = option.dataset.type;
       
-      storiesContainer.innerHTML = '';
-      
-      if (storiesSnapshot.empty) {
-        return;
-      }
-      
-      // Group stories by model
-      const storiesByModel = {};
-      storiesSnapshot.forEach(doc => {
-        const story = { id: doc.id, ...doc.data() };
-        if (!storiesByModel[story.modelId]) {
-          storiesByModel[story.modelId] = [];
-        }
-        storiesByModel[story.modelId].push(story);
-      });
-      
-      // Get model details
-      for (const modelId in storiesByModel) {
-        try {
-          const modelDoc = await db.collection('models').doc(modelId).get();
-          if (modelDoc.exists) {
-            const model = modelDoc.data();
-            const latestStory = storiesByModel[modelId][0]; // Get the latest story
-            
-            const storyCircle = el('div', { className: 'story-circle' },
-              el('div', { className: 'story-avatar' },
-                model.avatarUrl ? 
-                  el('img', { src: model.avatarUrl, alt: model.name, style: 'width:100%;height:100%;border-radius:50%;object-fit:cover;' }) :
-                  el('span', {}, model.name ? model.name.substring(0, 2).toUpperCase() : 'MD'),
-                latestStory.isLive ? el('div', { className: 'story-live' }, 'LIVE') : null
-              ),
-              el('div', { className: 'story-name' }, model.name || 'Model')
-            );
-            
-            storyCircle.addEventListener('click', () => {
-              currentModelId = modelId;
-              openStory(latestStory);
-            });
-            
-            storiesContainer.appendChild(storyCircle);
-          }
-        } catch (e) {
-          console.error('Error loading model for story:', e);
-        }
-      }
-    } catch (e) {
-      console.error('Error loading stories:', e);
-    }
-  }
-
-  // Open story in viewer
-  function openStory(story) {
-    storyContent.innerHTML = '';
-    
-    if (story.mediaUrl) {
-      if (story.mediaType === 'video' || story.mediaUrl.match(/\.(mp4|webm|ogg)$/i)) {
-        const video = el('video', { 
-          src: story.mediaUrl,
-          controls: true,
-          autoplay: true,
-          className: 'no-download',
-          style: 'max-width:100%;max-height:100%;'
-        });
-        video.controlsList = 'nodownload';
-        video.oncontextmenu = () => false;
-        storyContent.appendChild(video);
+      if (pendingMedia.mediaType === 'image') {
+        urlInput.placeholder = 'https://example.com/image.jpg';
       } else {
-        const img = el('img', { 
-          src: story.mediaUrl,
-          alt: 'Story',
-          className: 'no-download',
-          style: 'max-width:100%;max-height:100%;object-fit:contain;'
-        });
-        img.oncontextmenu = () => false;
-        storyContent.appendChild(img);
+        urlInput.placeholder = 'https://example.com/video.mp4';
       }
-    }
-    
-    // Set action URL if available
-    if (story.actionUrl) {
-      viewModelBtn.onclick = () => {
-        window.open(story.actionUrl, '_blank');
-      };
-    }
-    
-    openStoryViewer();
-  }
+    });
+  });
 
-  // Load models for home page
-  async function loadModels() {
-    try {
-      const modelsSnapshot = await db.collection('models')
-        .where('isActive', '==', true)
-        .get();
-      
-      modelsGrid.innerHTML = '';
-      
-      if (modelsSnapshot.empty) {
-        modelsGrid.innerHTML = '<div class="text-center text-muted" style="grid-column:1/-1;padding:40px;">No models available</div>';
-        return;
-      }
-      
-      modelsSnapshot.forEach(doc => {
-        const model = { id: doc.id, ...doc.data() };
-        const modelCard = el('div', { className: 'model-card' },
-          el('img', { 
-            src: model.avatarUrl || 'https://via.placeholder.com/150x180/071427/9aa2b2?text=Model',
-            alt: model.name,
-            className: 'model-image no-download'
-          }),
-          el('div', { className: 'model-info' },
-            el('div', { className: 'model-name' },
-              el('span', {}, model.name || 'Model'),
-              model.verified ? el('span', { className: 'verified-badge' }, '✓') : null
-            ),
-            el('div', { className: 'model-stats' },
-              el('span', {}, `${model.followers || 0} followers`),
-              el('span', {}, `${model.posts || 0} posts`)
-            )
-          )
-        );
-        
-        modelCard.addEventListener('click', () => {
-          loadModelProfile(model.id);
-          setPage(1); // Switch to profile page
-        });
-        
-        modelsGrid.appendChild(modelCard);
-      });
-    } catch (e) {
-      console.error('Error loading models:', e);
+  // Expiring media checkbox handler
+  expiringMedia.addEventListener('change', () => {
+    if (expiringMedia.checked) {
+      timerInputContainer.style.display = 'flex';
+    } else {
+      timerInputContainer.style.display = 'none';
     }
-  }
+  });
 
-  // Load model profile
-  async function loadModelProfile(modelId) {
-    try {
-      const modelDoc = await db.collection('models').doc(modelId).get();
-      if (!modelDoc.exists) {
-        alert('Model not found');
-        return;
-      }
-      
-      const model = modelDoc.data();
-      
-      // Update profile header
-      if (model.avatarUrl) {
-        profileAvatar.style.backgroundImage = `url(${model.avatarUrl})`;
-        profileAvatar.style.backgroundSize = 'cover';
-        profileAvatar.textContent = '';
-      } else {
-        profileAvatar.style.backgroundImage = '';
-        profileAvatar.textContent = model.name ? model.name.substring(0, 2).toUpperCase() : 'MD';
-      }
-      
-      profileName.textContent = model.name || 'Model';
-      profileBio.textContent = model.bio || 'No bio available';
-      profileFollowers.textContent = model.followers || 0;
-      profilePosts.textContent = model.posts || 0;
-      profileLikes.textContent = model.likes || 0;
-      
-      // Load model posts
-      await loadModelPosts(modelId);
-    } catch (e) {
-      console.error('Error loading model profile:', e);
-    }
-  }
-
-  // Load posts for a model
-  async function loadModelPosts(modelId) {
-    try {
-      const postsSnapshot = await db.collection('posts')
-        .where('modelId', '==', modelId)
-        .where('isActive', '==', true)
-        .orderBy('createdAt', 'desc')
-        .get();
-      
-      profilePostsGrid.innerHTML = '';
-      
-      if (postsSnapshot.empty) {
-        profilePostsGrid.innerHTML = '<div class="text-center text-muted" style="grid-column:1/-1;padding:40px;">No posts yet</div>';
-        return;
-      }
-      
-      postsSnapshot.forEach(doc => {
-        const post = { id: doc.id, ...doc.data() };
-        const postCard = createPostCard(post);
-        profilePostsGrid.appendChild(postCard);
-      });
-    } catch (e) {
-      console.error('Error loading model posts:', e);
-    }
-  }
-
-  // Create post card
-  function createPostCard(post) {
-    const isLocked = post.isLocked && (!me || (me && role !== 'admin'));
-    const canUnlock = me && post.isLocked && role !== 'admin';
-    
-    const postCard = el('div', { className: 'post-card' },
-      el('div', { className: 'post-media' },
-        post.mediaUrl ? 
-          (post.mediaType === 'video' || post.mediaUrl.match(/\.(mp4|webm|ogg)$/i) ?
-            el('video', { 
-              src: post.mediaUrl,
-              className: `no-download ${isLocked ? 'blurred' : ''}`,
-              style: 'width:100%;height:100%;object-fit:cover;' + (isLocked ? 'filter:blur(10px);' : ''),
-              controls: !isLocked
-            }) :
-            el('img', { 
-              src: post.mediaUrl,
-              alt: 'Post',
-              className: `no-download ${isLocked ? 'blurred' : ''}`,
-              style: 'width:100%;height:100%;object-fit:cover;' + (isLocked ? 'filter:blur(10px);' : '')
-            })) :
-          el('div', { style: 'width:100%;height:100%;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;' }, 'No media'),
-        
-        isLocked ? 
-          el('div', { className: 'locked-overlay' },
-            el('div', { className: 'lock-icon' }, '🔒'),
-            el('div', { style: 'font-weight:600;' }, 'Locked Content'),
-            el('div', { className: 'text-muted', style: 'font-size:12px;margin-top:4px;' }, `Unlock for ${post.unlockPrice || 10} credits`),
-            canUnlock ? 
-              el('button', { 
-                className: 'unlock-btn',
-                onclick: () => unlockPost(post)
-              }, 'Unlock') : null
-          ) : null
-      ),
-      el('div', { className: 'post-info' },
-        el('div', { className: 'post-caption' }, post.caption || ''),
-        el('div', { className: 'post-price' },
-          el('span', { className: 'text-muted' }, formatTimestamp(post.createdAt)),
-          post.isLocked ? el('span', { className: 'post-price-value' }, `${post.unlockPrice || 10} credits`) : null
-        )
-      )
-    );
-    
-    return postCard;
-  }
-
-  // Unlock post
-  async function unlockPost(post) {
-    if (!me) {
-      alert('Please login to unlock content');
+  confirmUrl.addEventListener('click', () => {
+    const url = urlInput.value.trim();
+    if (!url) {
+      alert('Please enter a valid URL');
       return;
     }
     
     try {
-      const userDoc = await db.collection('users').doc(me.uid).get();
-      if (!userDoc.exists) {
-        alert('User data not found');
-        return;
-      }
-      
-      const userData = userDoc.data();
-      const userBalance = userData.walletBalance || 0;
-      const unlockPrice = post.unlockPrice || 10;
-      
-      if (userBalance < unlockPrice) {
-        alert(`Insufficient balance. You need ${unlockPrice} credits but only have ${userBalance}. Please add funds.`);
-        setPage(2); // Switch to wallet page
-        return;
-      }
-      
-      // Deduct credits and unlock post
-      await db.collection('users').doc(me.uid).update({
-        walletBalance: firebase.firestore.FieldValue.increment(-unlockPrice)
-      });
-      
-      // Record transaction
-      await db.collection('transactions').add({
-        userId: me.uid,
-        type: 'unlock',
-        amount: -unlockPrice,
-        description: `Unlocked post by ${post.modelId}`,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      
-      // Reload wallet balance and posts
-      await loadWalletBalance();
-      await loadModelPosts(post.modelId);
-      
-      alert('Post unlocked successfully!');
+      new URL(url);
     } catch (e) {
-      console.error('Error unlocking post:', e);
-      alert('Failed to unlock post: ' + (e.message || 'Unknown error'));
+      alert('Please enter a valid URL');
+      return;
     }
-  }
+    
+    pendingMedia.url = url;
+    pendingMedia.isExpiring = expiringMedia.checked;
+    pendingMedia.expireSeconds = parseInt(expireSecondsInput.value) || 30;
+    
+    sendMessageWithMedia();
+    closeUrlModal();
+  });
 
-  // Load transactions
-  async function loadTransactions() {
-    if (!me) return;
+  cancelUrl.addEventListener('click', closeUrlModal);
+  urlModalOverlay.addEventListener('click', closeUrlModal);
+
+  // Send message handler
+  sendBtn.addEventListener('click', sendMessage);
+  textInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) {
+      sendMessage();
+    }
+  });
+
+  async function sendMessage() {
+    const text = textInput.value.trim();
+    const file = fileInput.files[0];
+    
+    if (!text && !file && !pendingMedia.url) {
+      alert('Please enter a message or attach a file');
+      return;
+    }
+    
+    if (!me) {
+      alert('Please sign in first');
+      return;
+    }
+
+    setLoading(true);
     
     try {
-      const transactionsSnapshot = await db.collection('transactions')
-        .where('userId', '==', me.uid)
-        .orderBy('timestamp', 'desc')
-        .limit(10)
-        .get();
+      let mediaUrl = '';
+      let mediaType = '';
+      let isExpiring = false;
+      let expireSeconds = 0;
       
-      transactionsList.innerHTML = '';
-      
-      if (transactionsSnapshot.empty) {
-        transactionsList.innerHTML = '<div class="text-center text-muted" style="padding:20px;">No transactions yet</div>';
-        return;
+      if (file) {
+        const path = `chat/${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+        const ref = storage.ref(path);
+        await ref.put(file);
+        mediaUrl = await ref.getDownloadURL();
+        mediaType = file.type.startsWith('video/') ? 'video' : 'image';
+      } else if (pendingMedia.url) {
+        mediaUrl = pendingMedia.url;
+        mediaType = pendingMedia.mediaType;
+        isExpiring = pendingMedia.isExpiring;
+        expireSeconds = pendingMedia.expireSeconds;
+        pendingMedia.url = '';
+        pendingMedia.isExpiring = false;
       }
-      
-      transactionsSnapshot.forEach(doc => {
-        const transaction = doc.data();
-        const transactionEl = el('div', { className: 'transaction' },
-          el('div', { className: 'transaction-info' },
-            el('div', { className: 'transaction-icon' },
-              transaction.type === 'deposit' ? '⬇️' : 
-              transaction.type === 'withdrawal' ? '⬆️' :
-              transaction.type === 'unlock' ? '🔓' : '💸'
-            ),
-            el('div', { className: 'transaction-details' },
-              el('div', { className: 'transaction-title' }, transaction.description || 'Transaction'),
-              el('div', { className: 'transaction-date' }, formatTimestamp(transaction.timestamp))
-            )
-          ),
-          el('div', { 
-            className: `transaction-amount ${transaction.amount > 0 ? 'positive' : 'negative'}` 
-          }, `${transaction.amount > 0 ? '+' : ''}${transaction.amount} credits`)
-        );
+
+      if (role === 'admin') {
+        if (!currentUid) {
+          alert('Please select a user conversation to reply');
+          return;
+        }
         
-        transactionsList.appendChild(transactionEl);
-      });
+        await db.collection('messages').doc(currentUid).collection('items').add({
+          from: me.uid,
+          text: text || '',
+          mediaUrl: mediaUrl || null,
+          mediaType: mediaType || null,
+          isExpiring: isExpiring,
+          expireSeconds: expireSeconds,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        await db.collection('conversations').doc(currentUid).set({
+          lastMessage: text || (mediaUrl ? 'Media' : ''),
+          lastTimestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          unreadFromAdmin: firebase.firestore.FieldValue.increment(1)
+        }, { merge: true });
+      } else {
+        const convUid = me.uid;
+        await db.collection('messages').doc(convUid).collection('items').add({
+          from: me.uid,
+          text: text || '',
+          mediaUrl: mediaUrl || null,
+          mediaType: mediaType || null,
+          isExpiring: isExpiring,
+          expireSeconds: expireSeconds,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        await db.collection('conversations').doc(convUid).set({
+          lastMessage: text || (mediaUrl ? 'Media' : ''),
+          lastTimestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          unreadFromUser: firebase.firestore.FieldValue.increment(1)
+        }, { merge: true });
+      }
+
+      textInput.value = '';
+      fileInput.value = '';
+      
+      messagesEl.scrollTop = messagesEl.scrollHeight;
     } catch (e) {
-      console.error('Error loading transactions:', e);
+      console.error('Send failed', e);
+      alert('Failed to send message: ' + (e.message || 'Unknown error'));
+    } finally {
+      setLoading(false);
     }
   }
 
-  // Admin functions
-  async function loadAdminData() {
+  async function sendMessageWithMedia() {
+    if (!me) {
+      alert('Please sign in first');
+      return;
+    }
+
+    setLoading(true);
+    
+    try {
+      const mediaUrl = pendingMedia.url;
+      const mediaType = pendingMedia.mediaType;
+      const isExpiring = pendingMedia.isExpiring;
+      const expireSeconds = pendingMedia.expireSeconds;
+      
+      if (role === 'admin') {
+        if (!currentUid) {
+          alert('Please select a user conversation to reply');
+          return;
+        }
+        
+        await db.collection('messages').doc(currentUid).collection('items').add({
+          from: me.uid,
+          text: '',
+          mediaUrl: mediaUrl,
+          mediaType: mediaType,
+          isExpiring: isExpiring,
+          expireSeconds: expireSeconds,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        await db.collection('conversations').doc(currentUid).set({
+          lastMessage: 'Media',
+          lastTimestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          unreadFromAdmin: firebase.firestore.FieldValue.increment(1)
+        }, { merge: true });
+      } else {
+        const convUid = me.uid;
+        await db.collection('messages').doc(convUid).collection('items').add({
+          from: me.uid,
+          text: '',
+          mediaUrl: mediaUrl,
+          mediaType: mediaType,
+          isExpiring: isExpiring,
+          expireSeconds: expireSeconds,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        await db.collection('conversations').doc(convUid).set({
+          lastMessage: 'Media',
+          lastTimestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          unreadFromUser: firebase.firestore.FieldValue.increment(1)
+        }, { merge: true });
+      }
+      
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    } catch (e) {
+      console.error('Send failed', e);
+      alert('Failed to send message: ' + (e.message || 'Unknown error'));
+    } finally {
+      setLoading(false);
+      pendingMedia.url = '';
+      pendingMedia.isExpiring = false;
+    }
+  }
+
+  // Auth state change handler
+  auth.onAuthStateChanged(async (user) => {
+    if (!user) {
+      me = null;
+      chatBadge.style.display = 'none';
+      meLabel.textContent = 'Not signed in';
+      return;
+    }
+    
+    me = user;
+    if (popup.style.display === 'block') {
+      try { 
+        await setupAfterLogin(); 
+      } catch (e) { 
+        console.error('Post-auth setup error', e); 
+      }
+    }
+  });
+
+  // Main setup after successful login
+  async function setupAfterLogin() {
+    try {
+      const udoc = await db.collection('users').doc(me.uid).get();
+      role = (udoc.exists && udoc.data() && udoc.data().role === 'admin') ? 'admin' : 'user';
+      
+      if (!udoc.exists) {
+        await db.collection('users').doc(me.uid).set({ 
+          role: role, 
+          email: me.email || null 
+        }, { merge: true });
+      } else if (me.email) {
+        await db.collection('users').doc(me.uid).set({ email: me.email }, { merge: true });
+      }
+    } catch (e) {
+      console.error('Role fetch failed', e);
+      role = 'user';
+    }
+
+    meLabel.textContent = me.email || `User ${me.uid.slice(0, 6)}`;
+    if (role === 'admin') {
+      adminPanelBtn.classList.remove('hidden');
+    } else {
+      adminPanelBtn.classList.add('hidden');
+    }
+    logoutBtn.classList.remove('hidden');
+
+    textInput.disabled = false;
+    sendBtn.disabled = false;
+
+    // Change title to Camsilo
+    mainTitle.textContent = 'Camsilo';
+
+    if (role === 'admin') {
+      leftCol.style.display = 'block';
+      await startAdminInbox();
+      threadTitle.textContent = 'Admin Inbox';
+      threadSub.textContent = 'Select a user to reply privately';
+    } else {
+      leftCol.style.display = 'none';
+      currentUid = me.uid;
+      threadTitle.textContent = 'Your Camsilo Chat';
+      threadSub.textContent = 'Private conversations only you and model can see';
+      subscribeToThread(me.uid, true);
+      await db.collection('conversations').doc(me.uid).set({ unreadFromAdmin: 0 }, { merge: true });
+      showChatView();
+    }
+
+    // Load additional data
+    await loadStories();
+    await loadWallet();
+    await loadReels();
+
+    db.collection('conversations').doc(me.uid).onSnapshot(snap => {
+      const data = snap.exists ? snap.data() : {};
+      const unread = data.unreadFromAdmin || 0;
+      if (unread > 0) {
+        chatBadge.style.display = 'block';
+        chatBadge.textContent = unread;
+      } else {
+        chatBadge.style.display = 'none';
+      }
+    });
+  }
+
+  // Load pending messages for admin panel
+  async function loadPendingMessages() {
     if (role !== 'admin') return;
     
     try {
-      // Load models for dropdowns
-      const modelsSnapshot = await db.collection('models').get();
-      storyModelSelect.innerHTML = '<option value="">Select Model</option>';
-      postModelSelect.innerHTML = '<option value="">Select Model</option>';
+      const convs = await db.collection('conversations').get();
+      pendingMessages.innerHTML = '';
       
-      modelsSnapshot.forEach(doc => {
-        const model = { id: doc.id, ...doc.data() };
-        const option = el('option', { value: model.id }, model.name || 'Model');
-        storyModelSelect.appendChild(option.cloneNode(true));
-        postModelSelect.appendChild(option);
-      });
-      
-      // Load stories list
-      await loadStoriesList();
-      
-      // Load models list
-      await loadModelsList();
-      
-      // Load posts list
-      await loadPostsList();
-      
-      // Load wallet URLs
-      const fundingUrl = localStorage.getItem('walletFundingUrl') || '';
-      const withdrawalUrl = localStorage.getItem('walletWithdrawalUrl') || '';
-      walletFundingUrl.value = fundingUrl;
-      walletWithdrawalUrl.value = withdrawalUrl;
-    } catch (e) {
-      console.error('Error loading admin data:', e);
-    }
-  }
-
-  async function loadStoriesList() {
-    try {
-      const storiesSnapshot = await db.collection('stories')
-        .orderBy('createdAt', 'desc')
-        .get();
-      
-      storiesList.innerHTML = '';
-      
-      if (storiesSnapshot.empty) {
-        storiesList.innerHTML = '<div class="text-center text-muted" style="padding:20px;">No stories</div>';
+      if (convs.empty) {
+        pendingMessages.innerHTML = '<div class="small">No pending messages</div>';
         return;
       }
       
-      for (const doc of storiesSnapshot.docs) {
-        const story = { id: doc.id, ...doc.data() };
-        let modelName = 'Unknown Model';
-        
-        try {
-          const modelDoc = await db.collection('models').doc(story.modelId).get();
-          if (modelDoc.exists) {
-            modelName = modelDoc.data().name || 'Unknown Model';
-          }
-        } catch (e) {
-          console.error('Error loading model for story:', e);
-        }
-        
-        const storyItem = el('div', { className: 'admin-list-item' },
-          el('div', { className: 'admin-list-info' },
-            el('div', { className: 'admin-list-avatar' }, modelName.substring(0, 2).toUpperCase()),
-            el('div', { className: 'admin-list-details' },
-              el('div', { className: 'admin-list-name' }, modelName),
-              el('div', { className: 'admin-list-stats' }, 
-                story.isLive ? 'Live • ' : '' + formatTimestamp(story.createdAt))
-            )
-          ),
-          el('div', { className: 'admin-list-actions' },
-            el('button', { 
-              className: 'btn btn-sm btn-ghost',
-              onclick: () => editStory(story)
-            }, 'Edit'),
-            el('button', { 
-              className: 'btn btn-sm btn-danger',
-              onclick: () => deleteStory(story.id)
-            }, 'Delete')
-          )
-        );
-        
-        storiesList.appendChild(storyItem);
-      }
-    } catch (e) {
-      console.error('Error loading stories list:', e);
-    }
-  }
-
-  async function loadModelsList() {
-    try {
-      const modelsSnapshot = await db.collection('models').get();
+      let hasPending = false;
       
-      modelsList.innerHTML = '';
-      
-      if (modelsSnapshot.empty) {
-        modelsList.innerHTML = '<div class="text-center text-muted" style="padding:20px;">No models</div>';
-        return;
-      }
-      
-      modelsSnapshot.forEach(doc => {
-        const model = { id: doc.id, ...doc.data() };
-        const modelItem = el('div', { className: 'admin-list-item' },
-          el('div', { className: 'admin-list-info' },
-            el('div', { className: 'admin-list-avatar' }, 
-              model.avatarUrl ? 
-                el('img', { src: model.avatarUrl, alt: model.name, style: 'width:100%;height:100%;border-radius:50%;object-fit:cover;' }) :
-                model.name ? model.name.substring(0, 2).toUpperCase() : 'MD'
+      for (const conv of convs.docs) {
+        const data = conv.data();
+        if (data.unreadFromUser > 0) {
+          hasPending = true;
+          let email = conv.id;
+          try {
+            const udoc = await db.collection('users').doc(conv.id).get();
+            if (udoc.exists && udoc.data().email) {
+              email = udoc.data().email;
+            }
+          } catch (e) { /* ignore */ }
+          
+          const messageItem = el('div', { 
+            className: 'userRow',
+            style: 'cursor: pointer; margin-bottom: 12px;'
+          },
+            el('div', { className: 'uMeta' },
+              el('div', { className: 'uAvatar' }, email.slice(0, 2).toUpperCase()),
+              el('div', { className: 'uInfo' },
+                el('div', { className: 'uEmail' }, email),
+                el('div', { className: 'uLast' }, data.lastMessage || 'No message')
+              )
             ),
-            el('div', { className: 'admin-list-details' },
-              el('div', { className: 'admin-list-name' }, 
-                model.name || 'Model',
-                model.verified ? el('span', { className: 'verified-badge' }, ' ✓') : null
-              ),
-              el('div', { className: 'admin-list-stats' }, 
-                `${model.followers || 0} followers • ${model.posts || 0} posts`)
-            )
-          ),
-          el('div', { className: 'admin-list-actions' },
-            el('button', { 
-              className: 'btn btn-sm btn-ghost',
-              onclick: () => editModel(model)
-            }, 'Edit'),
-            el('button', { 
-              className: 'btn btn-sm btn-danger',
-              onclick: () => deleteModel(model.id)
-            }, 'Delete')
-          )
-        );
-        
-        modelsList.appendChild(modelItem);
-      });
-    } catch (e) {
-      console.error('Error loading models list:', e);
-    }
-  }
-
-  async function loadPostsList() {
-    try {
-      const postsSnapshot = await db.collection('posts').get();
-      
-      postsList.innerHTML = '';
-      
-      if (postsSnapshot.empty) {
-        postsList.innerHTML = '<div class="text-center text-muted" style="padding:20px;">No posts</div>';
-        return;
-      }
-      
-      for (const doc of postsSnapshot.docs) {
-        const post = { id: doc.id, ...doc.data() };
-        let modelName = 'Unknown Model';
-        
-        try {
-          const modelDoc = await db.collection('models').doc(post.modelId).get();
-          if (modelDoc.exists) {
-            modelName = modelDoc.data().name || 'Unknown Model';
-          }
-        } catch (e) {
-          console.error('Error loading model for post:', e);
+            el('div', { className: 'uBadge' }, String(data.unreadFromUser))
+          );
+          
+          messageItem.addEventListener('click', () => {
+            closeAdminPanel();
+            const conversationRow = document.querySelector(`.userRow[data-uid="${conv.id}"]`);
+            if (conversationRow) {
+              conversationRow.click();
+            }
+          });
+          
+          messageItem.setAttribute('data-uid', conv.id);
+          pendingMessages.appendChild(messageItem);
         }
-        
-        const postItem = el('div', { className: 'admin-list-item' },
-          el('div', { className: 'admin-list-info' },
-            el('div', { className: 'admin-list-avatar' }, modelName.substring(0, 2).toUpperCase()),
-            el('div', { className: 'admin-list-details' },
-              el('div', { className: 'admin-list-name' }, modelName),
-              el('div', { className: 'admin-list-stats' }, 
-                (post.isLocked ? 'Locked • ' : '') + (post.caption ? post.caption.substring(0, 30) + '...' : 'No caption'))
-            )
-          ),
-          el('div', { className: 'admin-list-actions' },
-            el('button', { 
-              className: 'btn btn-sm btn-ghost',
-              onclick: () => editPost(post)
-            }, 'Edit'),
-            el('button', { 
-              className: 'btn btn-sm btn-danger',
-              onclick: () => deletePost(post.id)
-            }, 'Delete')
-          )
-        );
-        
-        postsList.appendChild(postItem);
+      }
+      
+      if (!hasPending) {
+        pendingMessages.innerHTML = '<div class="small">No pending messages</div>';
       }
     } catch (e) {
-      console.error('Error loading posts list:', e);
+      console.error('Error loading pending messages:', e);
+      pendingMessages.innerHTML = '<div class="small">Error loading messages</div>';
     }
   }
 
-  async function addStory() {
-    const modelId = storyModelSelect.value;
-    const mediaUrl = storyMediaUrl.value.trim();
-    const actionUrl = storyActionUrl.value.trim();
-    const isLive = storyIsLive.checked;
-    
-    if (!modelId || !mediaUrl) {
-      alert('Please select a model and provide a media URL');
-      return;
-    }
-    
-    try {
-      await db.collection('stories').add({
-        modelId: modelId,
-        mediaUrl: mediaUrl,
-        mediaType: mediaUrl.match(/\.(mp4|webm|ogg)$/i) ? 'video' : 'image',
-        actionUrl: actionUrl || null,
-        isLive: isLive,
-        isActive: true,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      
-      alert('Story added successfully!');
-      storyMediaUrl.value = '';
-      storyActionUrl.value = '';
-      storyIsLive.checked = false;
-      loadStoriesList();
-    } catch (e) {
-      console.error('Error adding story:', e);
-      alert('Failed to add story: ' + (e.message || 'Unknown error'));
-    }
-  }
-
-  async function addModel() {
-    const name = modelName.value.trim();
-    const avatar = modelAvatar.value.trim();
-    const bio = modelBio.value.trim();
-    const followers = parseInt(modelFollowers.value) || 0;
-    const verified = modelVerified.checked;
-    
-    if (!name) {
-      alert('Please enter a model name');
-      return;
-    }
-    
-    try {
-      await db.collection('models').add({
-        name: name,
-        avatarUrl: avatar || null,
-        bio: bio || '',
-        followers: followers,
-        posts: 0,
-        likes: 0,
-        verified: verified,
-        isActive: true,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      
-      alert('Model added successfully!');
-      modelName.value = '';
-      modelAvatar.value = '';
-      modelBio.value = '';
-      modelFollowers.value = '';
-      modelVerified.checked = false;
-      loadModelsList();
-      loadAdminData(); // Refresh dropdowns
-    } catch (e) {
-      console.error('Error adding model:', e);
-      alert('Failed to add model: ' + (e.message || 'Unknown error'));
-    }
-  }
-
-  async function addPost() {
-    const modelId = postModelSelect.value;
-    const mediaUrl = postMediaUrl.value.trim();
-    const caption = postCaption.value.trim();
-    const isLocked = postIsLocked.checked;
-    const unlockPrice = parseInt(postUnlockPrice.value) || 10;
-    
-    if (!modelId || !mediaUrl) {
-      alert('Please select a model and provide a media URL');
-      return;
-    }
-    
-    try {
-      await db.collection('posts').add({
-        modelId: modelId,
-        mediaUrl: mediaUrl,
-        mediaType: mediaUrl.match(/\.(mp4|webm|ogg)$/i) ? 'video' : 'image',
-        caption: caption || '',
-        isLocked: isLocked,
-        unlockPrice: unlockPrice,
-        isActive: true,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      
-      // Update model's post count
-      await db.collection('models').doc(modelId).update({
-        posts: firebase.firestore.FieldValue.increment(1)
-      });
-      
-      alert('Post added successfully!');
-      postMediaUrl.value = '';
-      postCaption.value = '';
-      postIsLocked.checked = false;
-      postUnlockPrice.value = '10';
-      loadPostsList();
-    } catch (e) {
-      console.error('Error adding post:', e);
-      alert('Failed to add post: ' + (e.message || 'Unknown error'));
-    }
-  }
-
-  function saveWalletUrls() {
-    const fundingUrl = walletFundingUrl.value.trim();
-    const withdrawalUrl = walletWithdrawalUrl.value.trim();
-    
-    localStorage.setItem('walletFundingUrl', fundingUrl);
-    localStorage.setItem('walletWithdrawalUrl', withdrawalUrl);
-    
-    alert('Wallet URLs saved successfully!');
-  }
-
-  function editStory(story) {
-    // Implementation for editing a story
-    alert('Edit story functionality would go here');
-  }
-
-  function deleteStory(storyId) {
-    if (confirm('Are you sure you want to delete this story?')) {
-      db.collection('stories').doc(storyId).delete()
-        .then(() => {
-          alert('Story deleted successfully!');
-          loadStoriesList();
-        })
-        .catch(e => {
-          console.error('Error deleting story:', e);
-          alert('Failed to delete story: ' + (e.message || 'Unknown error'));
-        });
-    }
-  }
-
-  function editModel(model) {
-    // Implementation for editing a model
-    alert('Edit model functionality would go here');
-  }
-
-  function deleteModel(modelId) {
-    if (confirm('Are you sure you want to delete this model?')) {
-      db.collection('models').doc(modelId).delete()
-        .then(() => {
-          alert('Model deleted successfully!');
-          loadModelsList();
-          loadAdminData(); // Refresh dropdowns
-        })
-        .catch(e => {
-          console.error('Error deleting model:', e);
-          alert('Failed to delete model: ' + (e.message || 'Unknown error'));
-        });
-    }
-  }
-
-  function editPost(post) {
-    // Implementation for editing a post
-    alert('Edit post functionality would go here');
-  }
-
-  function deletePost(postId) {
-    if (confirm('Are you sure you want to delete this post?')) {
-      db.collection('posts').doc(postId).delete()
-        .then(() => {
-          alert('Post deleted successfully!');
-          loadPostsList();
-        })
-        .catch(e => {
-          console.error('Error deleting post:', e);
-          alert('Failed to delete post: ' + (e.message || 'Unknown error'));
-        });
-    }
-  }
-
-  // Chat functions (from original code)
-  function showChatView() {
-    if (window.innerWidth <= 768) {
-      chatMainContent.classList.add('mobile-chat-active');
-    }
-  }
-
-  function showInboxView() {
-    if (window.innerWidth <= 768) {
-      chatMainContent.classList.remove('mobile-chat-active');
-    }
-  }
-
-  // ADMIN inbox (from original code)
+  // ADMIN inbox
   async function startAdminInbox() {
     if (convsUnsub) convsUnsub();
     
@@ -2988,10 +3082,10 @@
       
       if (convs.length === 0) {
         conversationsEl.innerHTML = `
-          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;color:var(--muted);text-align:center;">
-            <div style="font-size:48px;margin-bottom:16px;opacity:0.5;">👥</div>
+          <div class="empty-state" style="padding: 20px;">
+            <div class="icon">👥</div>
             <div style="font-weight:600;margin-bottom:8px">No conversations</div>
-            <div style="font-size:14px;">User conversations will appear here</div>
+            <div class="small">User conversations will appear here</div>
           </div>
         `;
         return;
@@ -3006,24 +3100,24 @@
           }
         } catch (e) { /* ignore */ }
         
-        const left = el('div', { className: 'chat-uMeta' },
-          el('div', { className: 'chat-uAvatar' }, (email || c.id).slice(0, 2).toUpperCase()),
-          el('div', { className: 'chat-uInfo' },
-            el('div', { className: 'chat-uEmail' }, email),
-            el('div', { className: 'chat-uLast' }, c.lastMessage || 'No messages yet')
+        const left = el('div', { className: 'uMeta' },
+          el('div', { className: 'uAvatar' }, (email || c.id).slice(0, 2).toUpperCase()),
+          el('div', { className: 'uInfo' },
+            el('div', { className: 'uEmail' }, email),
+            el('div', { className: 'uLast' }, c.lastMessage || 'No messages yet')
           )
         );
         
         const right = c.unreadFromUser ? 
-          el('div', { className: 'chat-uBadge' }, String(c.unreadFromUser)) : '';
+          el('div', { className: 'uBadge' }, String(c.unreadFromUser)) : '';
           
         const row = el('div', { 
-          className: `chat-userRow ${currentUid === c.id ? 'active' : ''}`,
+          className: `userRow ${currentUid === c.id ? 'active' : ''}`,
           'data-uid': c.id
         }, left, right);
         
         row.addEventListener('click', async () => {
-          document.querySelectorAll('.chat-userRow').forEach(r => r.classList.remove('active'));
+          document.querySelectorAll('.userRow').forEach(r => r.classList.remove('active'));
           row.classList.add('active');
           
           currentUid = c.id;
@@ -3046,7 +3140,7 @@
     });
   }
 
-  // Subscribe to messages (from original code)
+  // Subscribe to messages
   function subscribeToThread(uid, isUserView) {
     if (msgsUnsub) msgsUnsub();
     
@@ -3069,14 +3163,14 @@
     }
   }
 
-  // Render message thread (from original code)
+  // Render message thread
   function renderThread(items, myUid) {
     if (items.length === 0) {
       messagesEl.innerHTML = `
-        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:40px;text-align:center;color:var(--muted);">
-          <div style="font-size:48px;margin-bottom:16px;opacity:0.5;">💬</div>
+        <div class="empty-state">
+          <div class="icon">💬</div>
           <div style="font-weight:600;margin-bottom:8px">No messages yet</div>
-          <div style="font-size:14px;">Start a conversation by sending a message</div>
+          <div class="small">Start a conversation by sending a message</div>
         </div>
       `;
       return;
@@ -3086,23 +3180,67 @@
     
     items.forEach(m => {
       const isSelf = (m.from === me.uid);
-      const bubble = el('div', { className: 'chat-bubble ' + (isSelf ? 'self' : 'other') });
+      const bubble = el('div', { className: 'bubble ' + (isSelf ? 'self' : 'other') });
       
       if (m.text) {
         bubble.appendChild(document.createTextNode(m.text));
+      }
+      
+      if (m.mediaUrl) {
+        const mediaContainer = el('div', { className: 'media-container' });
+        
+        if (m.mediaType === 'video' || m.mediaType === 'video/url') {
+          const v = document.createElement('video'); 
+          v.controls = true; 
+          v.src = m.mediaUrl; 
+          v.style.maxWidth = '100%'; 
+          v.classList.add('media-preview');
+          v.oncontextmenu = () => false;
+          v.controlsList = 'nodownload';
+          mediaContainer.appendChild(v);
+        } else {
+          const img = document.createElement('img'); 
+          img.src = m.mediaUrl; 
+          img.alt = 'Attached media'; 
+          img.style.maxWidth = '100%'; 
+          img.classList.add('media-preview');
+          img.oncontextmenu = () => false;
+          img.setAttribute('draggable', 'false');
+          mediaContainer.appendChild(img);
+          
+          const overlay = el('div', {className: 'media-overlay'});
+          mediaContainer.appendChild(overlay);
+          
+          if (m.isExpiring) {
+            const expiringIndicator = el('div', {className: 'expiring-indicator'}, 
+              '⏰', `Expires in ${m.expireSeconds || 30}s`
+            );
+            bubble.appendChild(expiringIndicator);
+          }
+        }
+        
+        bubble.appendChild(mediaContainer);
       }
       
       bubble.appendChild(el('small', {}, formatTimestamp(m.timestamp)));
       
       if (role === 'admin' && m.id) {
         const del = el('button', { 
-          style: 'background:rgba(224,35,35,0.1);border:1px solid rgba(224,35,35,0.3);color:var(--danger);padding:4px 8px;border-radius:6px;font-size:11px;cursor:pointer;margin-top:8px;transition:var(--transition);'
+          className: 'delete-btn'
         }, 'Delete');
         
         del.addEventListener('click', async () => {
           if (confirm('Are you sure you want to delete this message?')) {
             try { 
               await db.collection('messages').doc(currentUid).collection('items').doc(m.id).delete(); 
+              if (m.mediaUrl && !m.mediaType.includes('url')) {
+                try {
+                  const mediaRef = storage.refFromURL(m.mediaUrl);
+                  await mediaRef.delete();
+                } catch (e) {
+                  console.warn('Could not delete media file', e);
+                }
+              }
             } catch (e) { 
               console.error('Delete failed', e); 
               alert('Delete failed'); 
@@ -3117,13 +3255,109 @@
     });
   }
 
-  // Prevent content download
+  // Close attachment options when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!attachBtn.contains(e.target) && !attachmentOptions.contains(e.target)) {
+      attachmentOptions.classList.remove('open');
+    }
+  });
+
+  // Prevent image download globally
   document.addEventListener('contextmenu', (e) => {
     if (e.target.tagName === 'IMG' || e.target.tagName === 'VIDEO') {
       e.preventDefault();
       return false;
     }
   });
+
+  // Handle clicks outside URL modal
+  document.addEventListener('click', (e) => {
+    if (urlModalOverlay.contains(e.target) && e.target !== urlModal && !urlModal.contains(e.target)) {
+      closeUrlModal();
+    }
+  });
+
+  // Handle clicks outside login modal
+  document.addEventListener('click', (e) => {
+    if (loginModal.contains(e.target) && e.target !== loginModal && !loginModal.querySelector('.card').contains(e.target)) {
+      closeLoginModal();
+    }
+  });
+
+  // Setup page swipe functionality
+  function setupPageSwipe() {
+    let startX = 0;
+    let isSwiping = false;
+    
+    pageContainer.addEventListener('touchstart', (e) => {
+      startX = e.touches[0].clientX;
+      isSwiping = true;
+    });
+    
+    pageContainer.addEventListener('touchmove', (e) => {
+      if (!isSwiping) return;
+      
+      const currentX = e.touches[0].clientX;
+      const diff = startX - currentX;
+      
+      // Show swipe indicators based on current page
+      if (diff > 50 && currentPage === 'models') {
+        swipeRight.classList.add('show');
+      } else if (diff < -50 && currentPage === 'reels') {
+        swipeLeft.classList.add('show');
+      } else if (diff < -50 && currentPage === 'wallet') {
+        walletSwipeLeft.classList.add('show');
+      } else {
+        swipeRight.classList.remove('show');
+        swipeLeft.classList.remove('show');
+        walletSwipeLeft.classList.remove('show');
+      }
+    });
+    
+    pageContainer.addEventListener('touchend', (e) => {
+      if (!isSwiping) return;
+      
+      const endX = e.changedTouches[0].clientX;
+      const diff = startX - endX;
+      
+      if (Math.abs(diff) > 100) {
+        if (diff > 0) {
+          // Swipe left - next page
+          if (currentPage === 'models') {
+            switchPage('reels');
+          } else if (currentPage === 'reels') {
+            switchPage('wallet');
+          }
+        } else {
+          // Swipe right - previous page
+          if (currentPage === 'reels') {
+            switchPage('models');
+          } else if (currentPage === 'wallet') {
+            switchPage('reels');
+          }
+        }
+      }
+      
+      isSwiping = false;
+      swipeRight.classList.remove('show');
+      swipeLeft.classList.remove('show');
+      walletSwipeLeft.classList.remove('show');
+    });
+  }
+
+  // Initialize page swipe
+  setupPageSwipe();
+
+  // Expose popup open for convenience
+  window.openChatPopup = async function () {
+    if (auth.currentUser) {
+      me = auth.currentUser;
+      await setupAfterLogin();
+      openPopup();
+    } else {
+      openLoginModal();
+    }
+  };
 
   // Initialize the app
   console.log('Camsilo Platform initialized successfully');
