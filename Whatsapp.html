@@ -2695,7 +2695,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.1.4/toastr.min.js"></script>
-    <script src="config.js"></script>
     <script>
     // Firebase Initialization
     const auth = firebase.auth();
@@ -2854,15 +2853,170 @@
     }
 
     // Initialize Website
-    document.addEventListener('DOMContentLoaded', function() {
-        initializeWebsite();
-        setupScrollEffects();
-        initializeHardcodedModels();
-        setupSwipeNavigation();
-        loadStories();
-        loadReels();
-        loadUserWallet();
-    });
+    async function initializeWebsite() {
+        await loadWebsiteSettings();
+        await loadModels();
+        checkAuthState();
+        setupEventListeners();
+        updateAuthButtons();
+        initializePageNavigation();
+    }
+
+    function setupEventListeners() {
+        // Form submissions
+        document.getElementById('modelForm').addEventListener('submit', handleModelSubmit);
+        document.getElementById('hardcodedModelForm').addEventListener('submit', handleHardcodedModelSubmit);
+        document.getElementById('userForm').addEventListener('submit', handleUserCreate);
+        document.getElementById('postForm').addEventListener('submit', handlePostSubmit);
+        document.getElementById('storyForm').addEventListener('submit', handleStorySubmit);
+        document.getElementById('reelForm').addEventListener('submit', handleReelSubmit);
+        
+        // Wallet forms
+        document.getElementById('addFundsModal').addEventListener('submit', function(e) {
+            e.preventDefault();
+            processPayment();
+        });
+    }
+
+    async function loadWebsiteSettings() {
+        try {
+            const settingsDoc = await settingsRef.get();
+            if (settingsDoc.exists) {
+                websiteSettings = settingsDoc.data();
+                applyWebsiteSettings();
+            } else {
+                // Initialize default settings
+                websiteSettings = {
+                    websiteTitle: 'Camsilo',
+                    welcomeMessage: 'Experience the ultimate in adult entertainment with our exclusive models. Premium content, private shows, and unforgettable experiences.',
+                    primaryColor: '#e91e63',
+                    secondaryColor: '#9c27b0',
+                    backgroundImage: 'https://images.unsplash.com/photo-1511285605577-4d62fb50d2f7?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80',
+                    subscriptionImage: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80',
+                    subscriptionLink: 'https://payment.example.com/subscribe',
+                    renewalImage: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80',
+                    renewalLink: 'https://payment.example.com/renew',
+                    addFundsLink: 'https://payment.example.com/add-funds',
+                    withdrawFundsLink: 'https://payment.example.com/withdraw',
+                    minWithdrawal: 10
+                };
+                await settingsRef.set(websiteSettings);
+            }
+        } catch (error) {
+            console.error('Error loading settings:', error);
+            toastr.error('Failed to load website settings');
+        }
+    }
+
+    function applyWebsiteSettings() {
+        if (websiteSettings.websiteTitle) {
+            document.title = websiteSettings.websiteTitle;
+            document.querySelector('.logo').textContent = websiteSettings.websiteTitle;
+        }
+        if (websiteSettings.welcomeMessage) {
+            const heroP = document.querySelector('.hero p');
+            if (heroP) heroP.textContent = websiteSettings.welcomeMessage;
+        }
+        if (websiteSettings.backgroundImage) {
+            document.querySelector('.hero').style.backgroundImage = `url(${websiteSettings.backgroundImage})`;
+        }
+        if (websiteSettings.primaryColor) {
+            document.documentElement.style.setProperty('--primary', websiteSettings.primaryColor);
+        }
+        if (websiteSettings.secondaryColor) {
+            document.documentElement.style.setProperty('--secondary', websiteSettings.secondaryColor);
+        }
+    }
+
+    // Load Models from Firebase
+    async function loadModels() {
+        try {
+            const snapshot = await modelsRef.orderBy('createdAt', 'desc').get();
+            allModels = [];
+            
+            snapshot.forEach(doc => {
+                const model = { id: doc.id, ...doc.data() };
+                allModels.push(model);
+            });
+
+            // Update admin models list
+            if (adminUser) {
+                updateAdminModelsList();
+            }
+
+        } catch (error) {
+            console.error('Error loading models:', error);
+            toastr.error('Failed to load models');
+        }
+    }
+
+    // Load all models for models page
+    async function loadAllModels() {
+        const allModelsGrid = document.getElementById('allModelsGrid');
+        allModelsGrid.innerHTML = '';
+
+        let cardIndex = 0;
+        allModels.forEach(model => {
+            const modelCard = createModelCard(model);
+            modelCard.style.setProperty('--card-index', cardIndex);
+            cardIndex++;
+            allModelsGrid.appendChild(modelCard);
+        });
+
+        if (allModels.length === 0) {
+            allModelsGrid.innerHTML = '<p style="text-align: center; padding: 2rem; grid-column: 1 / -1;">No models available yet.</p>';
+        }
+    }
+
+    // Enhanced Authentication State Listener
+    function checkAuthState() {
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                const userDoc = await usersRef.doc(user.uid).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    if (userData.role === 'admin') {
+                        adminUser = { uid: user.uid, ...userData };
+                        showAdminPanel();
+                        updateModelsDisplay();
+                        toastr.success('Welcome back, Admin!');
+                    } else {
+                        currentUser = { uid: user.uid, ...userData };
+                        showUserInterface();
+                        checkAccountExpiry();
+                        updateModelsDisplay();
+                        toastr.success('Welcome back!');
+                    }
+                } else {
+                    await auth.signOut();
+                }
+                updateAuthButtons();
+                await loadModels();
+            } else {
+                currentUser = null;
+                adminUser = null;
+                updateAuthButtons();
+                hideAdminPanel();
+                hideUserInterface();
+                updateModelsDisplay();
+                await loadModels();
+            }
+        });
+    }
+
+    function initializePageNavigation() {
+        // Set initial page
+        switchPage(0);
+        
+        // Add keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowLeft') {
+                previousPage();
+            } else if (e.key === 'ArrowRight') {
+                nextPage();
+            }
+        });
+    }
 
     // Enhanced scroll effects
     function setupScrollEffects() {
@@ -2993,405 +3147,6 @@
     function toggleSidebar() {
         const sidebar = document.getElementById('sidebar');
         sidebar.classList.toggle('active');
-    }
-
-    // Stories functions
-    async function loadStories() {
-        try {
-            const snapshot = await storiesRef.where('active', '==', true).get();
-            stories = [];
-            
-            snapshot.forEach(doc => {
-                const story = { id: doc.id, ...doc.data() };
-                stories.push(story);
-            });
-            
-            updateStoriesDisplay();
-        } catch (error) {
-            console.error('Error loading stories:', error);
-        }
-    }
-
-    function updateStoriesDisplay() {
-        const storiesScroll = document.getElementById('storiesScroll');
-        storiesScroll.innerHTML = '';
-        
-        if (stories.length > 0 && (currentUser || adminUser)) {
-            document.getElementById('storiesContainer').style.display = 'block';
-            
-            stories.forEach(story => {
-                const model = allModels.find(m => m.id === story.modelId) || 
-                             hardcodedFrontpageModels.find(m => m.id === story.modelId);
-                
-                if (model) {
-                    const storyItem = document.createElement('div');
-                    storyItem.className = 'story-item';
-                    storyItem.innerHTML = `
-                        <img src="${model.image}" alt="${model.name}" class="story-avatar">
-                        <div class="story-name">${model.name}</div>
-                    `;
-                    storyItem.onclick = () => openStory(story, model);
-                    storiesScroll.appendChild(storyItem);
-                }
-            });
-        } else {
-            document.getElementById('storiesContainer').style.display = 'none';
-        }
-    }
-
-    function openStory(story, model) {
-        document.getElementById('expandedStoryAvatar').src = model.image;
-        document.getElementById('expandedStoryName').textContent = model.name;
-        document.getElementById('expandedStoryMedia').src = story.mediaUrl;
-        
-        document.getElementById('storyExpanded').style.display = 'block';
-        currentModelId = model.id;
-    }
-
-    function closeStory() {
-        document.getElementById('storyExpanded').style.display = 'none';
-    }
-
-    function viewModelProfileFromStory() {
-        closeStory();
-        // Navigate to model profile - implementation depends on your profile page structure
-        toastr.info('Opening model profile...');
-    }
-
-    function sendTipToModel() {
-        closeStory();
-        openAddFundsModal();
-        toastr.info('Redirecting to tip payment...');
-    }
-
-    // Reels functions
-    async function loadReels() {
-        try {
-            const snapshot = await reelsRef.orderBy('createdAt', 'desc').get();
-            reels = [];
-            
-            snapshot.forEach(doc => {
-                const reel = { id: doc.id, ...doc.data() };
-                reels.push(reel);
-            });
-            
-            if (reels.length > 0) {
-                loadCurrentReel();
-            }
-        } catch (error) {
-            console.error('Error loading reels:', error);
-        }
-    }
-
-    function loadCurrentReel() {
-        if (reels.length === 0) return;
-        
-        const reel = reels[currentReelIndex];
-        const model = allModels.find(m => m.id === reel.modelId) || 
-                     hardcodedFrontpageModels.find(m => m.id === reel.modelId);
-        
-        if (model) {
-            const reelContainer = document.getElementById('reelContainer');
-            reelContainer.innerHTML = `
-                <video src="${reel.videoUrl}" class="reel-video" autoplay muted loop controlsList="nodownload" oncontextmenu="return false;"></video>
-            `;
-            
-            document.getElementById('reelModelAvatar').src = model.image;
-            document.getElementById('reelModelName').textContent = model.name;
-            document.getElementById('reelModelCaption').textContent = reel.caption;
-            document.getElementById('reelLikes').textContent = reel.likes || 0;
-            
-            // Prevent video download
-            const video = reelContainer.querySelector('video');
-            video.addEventListener('contextmenu', (e) => e.preventDefault());
-        }
-    }
-
-    function nextReel() {
-        if (reels.length > 0) {
-            currentReelIndex = (currentReelIndex + 1) % reels.length;
-            loadCurrentReel();
-        }
-    }
-
-    function previousReel() {
-        if (reels.length > 0) {
-            currentReelIndex = (currentReelIndex - 1 + reels.length) % reels.length;
-            loadCurrentReel();
-        }
-    }
-
-    function likeReel() {
-        if (!validateSubscription()) return;
-        
-        const reel = reels[currentReelIndex];
-        if (reel) {
-            // Update likes in Firebase
-            reelsRef.doc(reel.id).update({
-                likes: (reel.likes || 0) + 1
-            });
-            
-            // Update local state
-            reel.likes = (reel.likes || 0) + 1;
-            document.getElementById('reelLikes').textContent = reel.likes;
-            
-            toastr.success('Liked! ❤️');
-        }
-    }
-
-    function tipReelModel() {
-        if (!validateSubscription()) return;
-        openAddFundsModal();
-    }
-
-    function viewReelModelProfile() {
-        if (!validateSubscription()) return;
-        
-        const reel = reels[currentReelIndex];
-        if (reel) {
-            // Navigate to model profile
-            toastr.info(`Opening ${reel.modelName}'s profile...`);
-        }
-    }
-
-    // Wallet functions
-    async function loadUserWallet() {
-        if (!currentUser && !adminUser) return;
-        
-        try {
-            const walletDoc = await walletRef.doc(currentUser ? currentUser.uid : 'admin').get();
-            if (walletDoc.exists) {
-                userWallet = walletDoc.data();
-            } else {
-                // Initialize wallet
-                userWallet = {
-                    balance: 0,
-                    transactions: []
-                };
-                await walletRef.doc(currentUser ? currentUser.uid : 'admin').set(userWallet);
-            }
-            
-            // Load transaction history
-            const transactionsSnapshot = await transactionsRef
-                .where('userId', '==', currentUser ? currentUser.uid : 'admin')
-                .orderBy('createdAt', 'desc')
-                .limit(10)
-                .get();
-            
-            userWallet.transactions = [];
-            transactionsSnapshot.forEach(doc => {
-                userWallet.transactions.push({ id: doc.id, ...doc.data() });
-            });
-            
-            updateWalletDisplay();
-        } catch (error) {
-            console.error('Error loading wallet:', error);
-        }
-    }
-
-    function updateWalletDisplay() {
-        document.getElementById('walletBalance').textContent = `$${userWallet.balance.toFixed(2)}`;
-        
-        const transactionHistory = document.getElementById('transactionHistory');
-        transactionHistory.innerHTML = '';
-        
-        if (userWallet.transactions.length === 0) {
-            transactionHistory.innerHTML = '<p style="text-align: center; padding: 1rem;">No transactions yet.</p>';
-        } else {
-            userWallet.transactions.forEach(transaction => {
-                const transactionItem = document.createElement('div');
-                transactionItem.className = 'history-item';
-                
-                const amountClass = transaction.type === 'credit' ? 'success' : 'danger';
-                const amountSign = transaction.type === 'credit' ? '+' : '-';
-                
-                transactionItem.innerHTML = `
-                    <div>
-                        <div style="font-weight: bold;">${transaction.description}</div>
-                        <div style="font-size: 0.8rem; color: rgba(255,255,255,0.7);">
-                            ${new Date(transaction.createdAt?.toDate()).toLocaleDateString()}
-                        </div>
-                    </div>
-                    <div class="text-${amountClass}" style="font-weight: bold;">
-                        ${amountSign}$${Math.abs(transaction.amount).toFixed(2)}
-                    </div>
-                `;
-                transactionHistory.appendChild(transactionItem);
-            });
-        }
-    }
-
-    function openAddFundsModal() {
-        if (!validateSubscription()) return;
-        openModal('addFundsModal');
-    }
-
-    async function processPayment() {
-        const amount = parseFloat(document.getElementById('fundAmount').value);
-        const paymentMethod = document.getElementById('paymentMethod').value;
-        
-        if (!amount || amount <= 0 || !paymentMethod) {
-            toastr.error('Please enter a valid amount and select payment method');
-            return;
-        }
-
-        try {
-            // In a real app, you would process payment here
-            // For demo, we'll just add the funds
-            
-            // Update wallet balance
-            const newBalance = userWallet.balance + amount;
-            await walletRef.doc(currentUser ? currentUser.uid : 'admin').update({
-                balance: newBalance
-            });
-            
-            // Record transaction
-            await transactionsRef.add({
-                userId: currentUser ? currentUser.uid : 'admin',
-                type: 'credit',
-                amount: amount,
-                description: `Added funds via ${paymentMethod}`,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            
-            // Update local state
-            userWallet.balance = newBalance;
-            userWallet.transactions.unshift({
-                type: 'credit',
-                amount: amount,
-                description: `Added funds via ${paymentMethod}`,
-                createdAt: new Date()
-            });
-            
-            updateWalletDisplay();
-            closeModal('addFundsModal');
-            toastr.success(`Successfully added $${amount.toFixed(2)} to your wallet!`);
-            
-        } catch (error) {
-            console.error('Error processing payment:', error);
-            toastr.error('Failed to process payment');
-        }
-    }
-
-    // Profile functions
-    async function loadUserProfile() {
-        if (!currentUser && !adminUser) return;
-        
-        try {
-            // In a real app, you would load user profile from Firebase
-            // For demo, we'll use mock data
-            document.getElementById('userProfileName').textContent = currentUser?.email?.split('@')[0] || 'Admin User';
-            document.getElementById('userProfileBio').textContent = 'Welcome to my profile!';
-            document.getElementById('userProfileAvatar').src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80';
-            
-            // Load user posts
-            loadUserPosts();
-        } catch (error) {
-            console.error('Error loading user profile:', error);
-        }
-    }
-
-    function loadUserPosts() {
-        // In a real app, you would load user posts from Firebase
-        // For demo, we'll show empty state
-        document.getElementById('userPostsCount').textContent = '0';
-        document.getElementById('userFollowersCount').textContent = '0';
-        document.getElementById('userFollowingCount').textContent = '0';
-        
-        const userProfilePosts = document.getElementById('userProfilePosts');
-        userProfilePosts.innerHTML = '<p style="text-align: center; padding: 2rem; grid-column: 1 / -1;">No posts yet.</p>';
-    }
-
-    function editProfile() {
-        if (!validateSubscription()) return;
-        
-        document.getElementById('editDisplayName').value = document.getElementById('userProfileName').textContent;
-        document.getElementById('editBio').value = document.getElementById('userProfileBio').textContent;
-        document.getElementById('editProfilePic').value = document.getElementById('userProfileAvatar').src;
-        
-        openModal('editProfileModal');
-    }
-
-    function saveProfile() {
-        const displayName = document.getElementById('editDisplayName').value;
-        const bio = document.getElementById('editBio').value;
-        const profilePic = document.getElementById('editProfilePic').value;
-        
-        // Update UI
-        document.getElementById('userProfileName').textContent = displayName;
-        document.getElementById('userProfileBio').textContent = bio;
-        document.getElementById('userProfileAvatar').src = profilePic;
-        
-        // In a real app, you would save to Firebase here
-        
-        closeModal('editProfileModal');
-        toastr.success('Profile updated successfully!');
-    }
-
-    // Post unlocking functions
-    function unlockPost(postId, price) {
-        if (!validateSubscription()) return;
-        
-        currentUnlockPost = { id: postId, price: price };
-        
-        document.getElementById('unlockPrice').textContent = price;
-        document.getElementById('currentBalance').textContent = userWallet.balance;
-        
-        const insufficientFunds = document.getElementById('insufficientFunds');
-        const unlockButton = document.getElementById('unlockButton');
-        const addFundsButton = document.getElementById('addFundsButton');
-        
-        if (userWallet.balance >= price) {
-            insufficientFunds.style.display = 'none';
-            unlockButton.style.display = 'block';
-            addFundsButton.style.display = 'none';
-        } else {
-            insufficientFunds.style.display = 'block';
-            unlockButton.style.display = 'none';
-            addFundsButton.style.display = 'block';
-        }
-        
-        openModal('unlockPostModal');
-    }
-
-    async function processUnlock() {
-        if (!currentUnlockPost) return;
-        
-        try {
-            // Deduct from wallet
-            const newBalance = userWallet.balance - currentUnlockPost.price;
-            await walletRef.doc(currentUser ? currentUser.uid : 'admin').update({
-                balance: newBalance
-            });
-            
-            // Record transaction
-            await transactionsRef.add({
-                userId: currentUser ? currentUser.uid : 'admin',
-                type: 'debit',
-                amount: currentUnlockPost.price,
-                description: `Unlocked premium content`,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            
-            // Update local state
-            userWallet.balance = newBalance;
-            userWallet.transactions.unshift({
-                type: 'debit',
-                amount: currentUnlockPost.price,
-                description: `Unlocked premium content`,
-                createdAt: new Date()
-            });
-            
-            updateWalletDisplay();
-            closeModal('unlockPostModal');
-            toastr.success('Content unlocked successfully!');
-            
-            // In a real app, you would mark the post as unlocked for this user
-            
-        } catch (error) {
-            console.error('Error unlocking post:', error);
-            toastr.error('Failed to unlock content');
-        }
     }
 
     // Enhanced Model Card with new features
@@ -4800,6 +4555,9 @@
         // Show stories and enable page navigation
         loadStories();
         document.getElementById('swipeIndicator').style.display = 'flex';
+        
+        // Show sidebar menu button
+        updateAuthButtons();
     }
 
     function hideUserInterface() {
@@ -4811,6 +4569,9 @@
         // Hide stories and disable page navigation
         document.getElementById('storiesContainer').style.display = 'none';
         document.getElementById('swipeIndicator').style.display = 'none';
+        
+        // Update auth buttons
+        updateAuthButtons();
     }
 
     function updateUserInfo() {
@@ -5027,171 +4788,403 @@
     initializeUI();
 </script>
 <script>
-    // Missing integration functions
-
-    async function initializeWebsite() {
-        await loadWebsiteSettings();
-        await loadModels();
-        checkAuthState();
-        setupEventListeners();
-        updateAuthButtons();
-        initializePageNavigation();
-    }
-
-    function setupEventListeners() {
-        // Form submissions
-        document.getElementById('modelForm').addEventListener('submit', handleModelSubmit);
-        document.getElementById('hardcodedModelForm').addEventListener('submit', handleHardcodedModelSubmit);
-        document.getElementById('userForm').addEventListener('submit', handleUserCreate);
-        document.getElementById('postForm').addEventListener('submit', handlePostSubmit);
-        document.getElementById('storyForm').addEventListener('submit', handleStorySubmit);
-        document.getElementById('reelForm').addEventListener('submit', handleReelSubmit);
-        
-        // Wallet forms
-        document.getElementById('addFundsModal').addEventListener('submit', function(e) {
-            e.preventDefault();
-            processPayment();
-        });
-    }
-
-    async function loadWebsiteSettings() {
+    // Stories functions
+    async function loadStories() {
         try {
-            const settingsDoc = await settingsRef.get();
-            if (settingsDoc.exists) {
-                websiteSettings = settingsDoc.data();
-                applyWebsiteSettings();
-            } else {
-                // Initialize default settings
-                websiteSettings = {
-                    websiteTitle: 'Camsilo',
-                    welcomeMessage: 'Experience the ultimate in adult entertainment with our exclusive models. Premium content, private shows, and unforgettable experiences.',
-                    primaryColor: '#e91e63',
-                    secondaryColor: '#9c27b0',
-                    backgroundImage: 'https://images.unsplash.com/photo-1511285605577-4d62fb50d2f7?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80',
-                    subscriptionImage: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80',
-                    subscriptionLink: 'https://payment.example.com/subscribe',
-                    renewalImage: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80',
-                    renewalLink: 'https://payment.example.com/renew',
-                    addFundsLink: 'https://payment.example.com/add-funds',
-                    withdrawFundsLink: 'https://payment.example.com/withdraw',
-                    minWithdrawal: 10
-                };
-                await settingsRef.set(websiteSettings);
-            }
-        } catch (error) {
-            console.error('Error loading settings:', error);
-            toastr.error('Failed to load website settings');
-        }
-    }
-
-    function applyWebsiteSettings() {
-        if (websiteSettings.websiteTitle) {
-            document.title = websiteSettings.websiteTitle;
-            document.querySelector('.logo').textContent = websiteSettings.websiteTitle;
-        }
-        if (websiteSettings.welcomeMessage) {
-            const heroP = document.querySelector('.hero p');
-            if (heroP) heroP.textContent = websiteSettings.welcomeMessage;
-        }
-        if (websiteSettings.backgroundImage) {
-            document.querySelector('.hero').style.backgroundImage = `url(${websiteSettings.backgroundImage})`;
-        }
-        if (websiteSettings.primaryColor) {
-            document.documentElement.style.setProperty('--primary', websiteSettings.primaryColor);
-        }
-        if (websiteSettings.secondaryColor) {
-            document.documentElement.style.setProperty('--secondary', websiteSettings.secondaryColor);
-        }
-    }
-
-    // Load Models from Firebase
-    async function loadModels() {
-        try {
-            const snapshot = await modelsRef.orderBy('createdAt', 'desc').get();
-            allModels = [];
+            const snapshot = await storiesRef.where('active', '==', true).get();
+            stories = [];
             
             snapshot.forEach(doc => {
-                const model = { id: doc.id, ...doc.data() };
-                allModels.push(model);
+                const story = { id: doc.id, ...doc.data() };
+                stories.push(story);
             });
-
-            // Update admin models list
-            if (adminUser) {
-                updateAdminModelsList();
-            }
-
+            
+            updateStoriesDisplay();
         } catch (error) {
-            console.error('Error loading models:', error);
-            toastr.error('Failed to load models');
+            console.error('Error loading stories:', error);
         }
     }
 
-    // Load all models for models page
-    async function loadAllModels() {
-        const allModelsGrid = document.getElementById('allModelsGrid');
-        allModelsGrid.innerHTML = '';
-
-        let cardIndex = 0;
-        allModels.forEach(model => {
-            const modelCard = createModelCard(model);
-            modelCard.style.setProperty('--card-index', cardIndex);
-            cardIndex++;
-            allModelsGrid.appendChild(modelCard);
-        });
-
-        if (allModels.length === 0) {
-            allModelsGrid.innerHTML = '<p style="text-align: center; padding: 2rem; grid-column: 1 / -1;">No models available yet.</p>';
-        }
-    }
-
-    // Enhanced Authentication State Listener
-    function checkAuthState() {
-        auth.onAuthStateChanged(async (user) => {
-            if (user) {
-                const userDoc = await usersRef.doc(user.uid).get();
-                if (userDoc.exists) {
-                    const userData = userDoc.data();
-                    if (userData.role === 'admin') {
-                        adminUser = { uid: user.uid, ...userData };
-                        showAdminPanel();
-                        updateModelsDisplay();
-                        toastr.success('Welcome back, Admin!');
-                    } else {
-                        currentUser = { uid: user.uid, ...userData };
-                        showUserInterface();
-                        checkAccountExpiry();
-                        updateModelsDisplay();
-                        toastr.success('Welcome back!');
-                    }
-                } else {
-                    await auth.signOut();
-                }
-                updateAuthButtons();
-                await loadModels();
-            } else {
-                currentUser = null;
-                adminUser = null;
-                updateAuthButtons();
-                hideAdminPanel();
-                hideUserInterface();
-                updateModelsDisplay();
-                await loadModels();
-            }
-        });
-    }
-
-    function initializePageNavigation() {
-        // Set initial page
-        switchPage(0);
+    function updateStoriesDisplay() {
+        const storiesScroll = document.getElementById('storiesScroll');
+        storiesScroll.innerHTML = '';
         
-        // Add keyboard navigation
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'ArrowLeft') {
-                previousPage();
-            } else if (e.key === 'ArrowRight') {
-                nextPage();
+        if (stories.length > 0 && (currentUser || adminUser)) {
+            document.getElementById('storiesContainer').style.display = 'block';
+            
+            stories.forEach(story => {
+                const model = allModels.find(m => m.id === story.modelId) || 
+                             hardcodedFrontpageModels.find(m => m.id === story.modelId);
+                
+                if (model) {
+                    const storyItem = document.createElement('div');
+                    storyItem.className = 'story-item';
+                    storyItem.innerHTML = `
+                        <img src="${model.image}" alt="${model.name}" class="story-avatar">
+                        <div class="story-name">${model.name}</div>
+                    `;
+                    storyItem.onclick = () => openStory(story, model);
+                    storiesScroll.appendChild(storyItem);
+                }
+            });
+        } else {
+            document.getElementById('storiesContainer').style.display = 'none';
+        }
+    }
+
+    function openStory(story, model) {
+        document.getElementById('expandedStoryAvatar').src = model.image;
+        document.getElementById('expandedStoryName').textContent = model.name;
+        document.getElementById('expandedStoryMedia').src = story.mediaUrl;
+        
+        document.getElementById('storyExpanded').style.display = 'block';
+        currentModelId = model.id;
+    }
+
+    function closeStory() {
+        document.getElementById('storyExpanded').style.display = 'none';
+    }
+
+    function viewModelProfileFromStory() {
+        closeStory();
+        // Navigate to model profile - implementation depends on your profile page structure
+        toastr.info('Opening model profile...');
+    }
+
+    function sendTipToModel() {
+        closeStory();
+        openAddFundsModal();
+        toastr.info('Redirecting to tip payment...');
+    }
+
+    // Reels functions
+    async function loadReels() {
+        try {
+            const snapshot = await reelsRef.orderBy('createdAt', 'desc').get();
+            reels = [];
+            
+            snapshot.forEach(doc => {
+                const reel = { id: doc.id, ...doc.data() };
+                reels.push(reel);
+            });
+            
+            if (reels.length > 0) {
+                loadCurrentReel();
             }
-        });
+        } catch (error) {
+            console.error('Error loading reels:', error);
+        }
+    }
+
+    function loadCurrentReel() {
+        if (reels.length === 0) return;
+        
+        const reel = reels[currentReelIndex];
+        const model = allModels.find(m => m.id === reel.modelId) || 
+                     hardcodedFrontpageModels.find(m => m.id === reel.modelId);
+        
+        if (model) {
+            const reelContainer = document.getElementById('reelContainer');
+            reelContainer.innerHTML = `
+                <video src="${reel.videoUrl}" class="reel-video" autoplay muted loop controlsList="nodownload" oncontextmenu="return false;"></video>
+            `;
+            
+            document.getElementById('reelModelAvatar').src = model.image;
+            document.getElementById('reelModelName').textContent = model.name;
+            document.getElementById('reelModelCaption').textContent = reel.caption;
+            document.getElementById('reelLikes').textContent = reel.likes || 0;
+            
+            // Prevent video download
+            const video = reelContainer.querySelector('video');
+            video.addEventListener('contextmenu', (e) => e.preventDefault());
+        }
+    }
+
+    function nextReel() {
+        if (reels.length > 0) {
+            currentReelIndex = (currentReelIndex + 1) % reels.length;
+            loadCurrentReel();
+        }
+    }
+
+    function previousReel() {
+        if (reels.length > 0) {
+            currentReelIndex = (currentReelIndex - 1 + reels.length) % reels.length;
+            loadCurrentReel();
+        }
+    }
+
+    function likeReel() {
+        if (!validateSubscription()) return;
+        
+        const reel = reels[currentReelIndex];
+        if (reel) {
+            // Update likes in Firebase
+            reelsRef.doc(reel.id).update({
+                likes: (reel.likes || 0) + 1
+            });
+            
+            // Update local state
+            reel.likes = (reel.likes || 0) + 1;
+            document.getElementById('reelLikes').textContent = reel.likes;
+            
+            toastr.success('Liked! ❤️');
+        }
+    }
+
+    function tipReelModel() {
+        if (!validateSubscription()) return;
+        openAddFundsModal();
+    }
+
+    function viewReelModelProfile() {
+        if (!validateSubscription()) return;
+        
+        const reel = reels[currentReelIndex];
+        if (reel) {
+            // Navigate to model profile
+            toastr.info(`Opening ${reel.modelName}'s profile...`);
+        }
+    }
+
+    // Wallet functions
+    async function loadUserWallet() {
+        if (!currentUser && !adminUser) return;
+        
+        try {
+            const walletDoc = await walletRef.doc(currentUser ? currentUser.uid : 'admin').get();
+            if (walletDoc.exists) {
+                userWallet = walletDoc.data();
+            } else {
+                // Initialize wallet
+                userWallet = {
+                    balance: 0,
+                    transactions: []
+                };
+                await walletRef.doc(currentUser ? currentUser.uid : 'admin').set(userWallet);
+            }
+            
+            // Load transaction history
+            const transactionsSnapshot = await transactionsRef
+                .where('userId', '==', currentUser ? currentUser.uid : 'admin')
+                .orderBy('createdAt', 'desc')
+                .limit(10)
+                .get();
+            
+            userWallet.transactions = [];
+            transactionsSnapshot.forEach(doc => {
+                userWallet.transactions.push({ id: doc.id, ...doc.data() });
+            });
+            
+            updateWalletDisplay();
+        } catch (error) {
+            console.error('Error loading wallet:', error);
+        }
+    }
+
+    function updateWalletDisplay() {
+        document.getElementById('walletBalance').textContent = `$${userWallet.balance.toFixed(2)}`;
+        
+        const transactionHistory = document.getElementById('transactionHistory');
+        transactionHistory.innerHTML = '';
+        
+        if (userWallet.transactions.length === 0) {
+            transactionHistory.innerHTML = '<p style="text-align: center; padding: 1rem;">No transactions yet.</p>';
+        } else {
+            userWallet.transactions.forEach(transaction => {
+                const transactionItem = document.createElement('div');
+                transactionItem.className = 'history-item';
+                
+                const amountClass = transaction.type === 'credit' ? 'success' : 'danger';
+                const amountSign = transaction.type === 'credit' ? '+' : '-';
+                
+                transactionItem.innerHTML = `
+                    <div>
+                        <div style="font-weight: bold;">${transaction.description}</div>
+                        <div style="font-size: 0.8rem; color: rgba(255,255,255,0.7);">
+                            ${new Date(transaction.createdAt?.toDate()).toLocaleDateString()}
+                        </div>
+                    </div>
+                    <div class="text-${amountClass}" style="font-weight: bold;">
+                        ${amountSign}$${Math.abs(transaction.amount).toFixed(2)}
+                    </div>
+                `;
+                transactionHistory.appendChild(transactionItem);
+            });
+        }
+    }
+
+    function openAddFundsModal() {
+        if (!validateSubscription()) return;
+        openModal('addFundsModal');
+    }
+
+    async function processPayment() {
+        const amount = parseFloat(document.getElementById('fundAmount').value);
+        const paymentMethod = document.getElementById('paymentMethod').value;
+        
+        if (!amount || amount <= 0 || !paymentMethod) {
+            toastr.error('Please enter a valid amount and select payment method');
+            return;
+        }
+
+        try {
+            // In a real app, you would process payment here
+            // For demo, we'll just add the funds
+            
+            // Update wallet balance
+            const newBalance = userWallet.balance + amount;
+            await walletRef.doc(currentUser ? currentUser.uid : 'admin').update({
+                balance: newBalance
+            });
+            
+            // Record transaction
+            await transactionsRef.add({
+                userId: currentUser ? currentUser.uid : 'admin',
+                type: 'credit',
+                amount: amount,
+                description: `Added funds via ${paymentMethod}`,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            // Update local state
+            userWallet.balance = newBalance;
+            userWallet.transactions.unshift({
+                type: 'credit',
+                amount: amount,
+                description: `Added funds via ${paymentMethod}`,
+                createdAt: new Date()
+            });
+            
+            updateWalletDisplay();
+            closeModal('addFundsModal');
+            toastr.success(`Successfully added $${amount.toFixed(2)} to your wallet!`);
+            
+        } catch (error) {
+            console.error('Error processing payment:', error);
+            toastr.error('Failed to process payment');
+        }
+    }
+
+    // Profile functions
+    async function loadUserProfile() {
+        if (!currentUser && !adminUser) return;
+        
+        try {
+            // In a real app, you would load user profile from Firebase
+            // For demo, we'll use mock data
+            document.getElementById('userProfileName').textContent = currentUser?.email?.split('@')[0] || 'Admin User';
+            document.getElementById('userProfileBio').textContent = 'Welcome to my profile!';
+            document.getElementById('userProfileAvatar').src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80';
+            
+            // Load user posts
+            loadUserPosts();
+        } catch (error) {
+            console.error('Error loading user profile:', error);
+        }
+    }
+
+    function loadUserPosts() {
+        // In a real app, you would load user posts from Firebase
+        // For demo, we'll show empty state
+        document.getElementById('userPostsCount').textContent = '0';
+        document.getElementById('userFollowersCount').textContent = '0';
+        document.getElementById('userFollowingCount').textContent = '0';
+        
+        const userProfilePosts = document.getElementById('userProfilePosts');
+        userProfilePosts.innerHTML = '<p style="text-align: center; padding: 2rem; grid-column: 1 / -1;">No posts yet.</p>';
+    }
+
+    function editProfile() {
+        if (!validateSubscription()) return;
+        
+        document.getElementById('editDisplayName').value = document.getElementById('userProfileName').textContent;
+        document.getElementById('editBio').value = document.getElementById('userProfileBio').textContent;
+        document.getElementById('editProfilePic').value = document.getElementById('userProfileAvatar').src;
+        
+        openModal('editProfileModal');
+    }
+
+    function saveProfile() {
+        const displayName = document.getElementById('editDisplayName').value;
+        const bio = document.getElementById('editBio').value;
+        const profilePic = document.getElementById('editProfilePic').value;
+        
+        // Update UI
+        document.getElementById('userProfileName').textContent = displayName;
+        document.getElementById('userProfileBio').textContent = bio;
+        document.getElementById('userProfileAvatar').src = profilePic;
+        
+        // In a real app, you would save to Firebase here
+        
+        closeModal('editProfileModal');
+        toastr.success('Profile updated successfully!');
+    }
+
+    // Post unlocking functions
+    function unlockPost(postId, price) {
+        if (!validateSubscription()) return;
+        
+        currentUnlockPost = { id: postId, price: price };
+        
+        document.getElementById('unlockPrice').textContent = price;
+        document.getElementById('currentBalance').textContent = userWallet.balance;
+        
+        const insufficientFunds = document.getElementById('insufficientFunds');
+        const unlockButton = document.getElementById('unlockButton');
+        const addFundsButton = document.getElementById('addFundsButton');
+        
+        if (userWallet.balance >= price) {
+            insufficientFunds.style.display = 'none';
+            unlockButton.style.display = 'block';
+            addFundsButton.style.display = 'none';
+        } else {
+            insufficientFunds.style.display = 'block';
+            unlockButton.style.display = 'none';
+            addFundsButton.style.display = 'block';
+        }
+        
+        openModal('unlockPostModal');
+    }
+
+    async function processUnlock() {
+        if (!currentUnlockPost) return;
+        
+        try {
+            // Deduct from wallet
+            const newBalance = userWallet.balance - currentUnlockPost.price;
+            await walletRef.doc(currentUser ? currentUser.uid : 'admin').update({
+                balance: newBalance
+            });
+            
+            // Record transaction
+            await transactionsRef.add({
+                userId: currentUser ? currentUser.uid : 'admin',
+                type: 'debit',
+                amount: currentUnlockPost.price,
+                description: `Unlocked premium content`,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            // Update local state
+            userWallet.balance = newBalance;
+            userWallet.transactions.unshift({
+                type: 'debit',
+                amount: currentUnlockPost.price,
+                description: `Unlocked premium content`,
+                createdAt: new Date()
+            });
+            
+            updateWalletDisplay();
+            closeModal('unlockPostModal');
+            toastr.success('Content unlocked successfully!');
+            
+            // In a real app, you would mark the post as unlocked for this user
+            
+        } catch (error) {
+            console.error('Error unlocking post:', error);
+            toastr.error('Failed to unlock content');
+        }
     }
 
     // Open admin panel from sidebar
@@ -5388,6 +5381,7 @@
 
     // Final initialization
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize the application
         initializeWebsite();
         setupScrollEffects();
         initializeHardcodedModels();
@@ -5400,6 +5394,7 @@
         document.addEventListener('contextmenu', function(e) {
             if (e.target.tagName === 'IMG' || e.target.tagName === 'VIDEO') {
                 e.preventDefault();
+                toastr.info('Content downloading is disabled');
                 return false;
             }
         });
@@ -5411,6 +5406,9 @@
                 return false;
             }
         });
+
+        // Initialize UI with enhanced effects
+        console.log('Camsilo website initialized successfully with dynamic models display');
     });
 
     // Export functions to global scope for HTML onclick handlers
@@ -5473,5 +5471,9 @@
     window.processUnlock = processUnlock;
     window.openAdminPanel = openAdminPanel;
 </script>
+
+<!-- External config.js will be loaded here -->
+<script src="config.js"></script>
+
 </body>
 </html>
