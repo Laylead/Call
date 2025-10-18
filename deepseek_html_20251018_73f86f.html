@@ -1,0 +1,2052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stop the Timer Game</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --success: #4cc9f0;
+            --danger: #f72585;
+            --warning: #f8961e;
+            --info: #4895ef;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --sidebar-width: 250px;
+            --header-height: 70px;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: var(--light);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar Styles */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            padding: 20px 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+        
+        .logo {
+            text-align: center;
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .logo h1 {
+            font-size: 24px;
+            color: var(--success);
+        }
+        
+        .logo span {
+            color: var(--warning);
+        }
+        
+        .sidebar-menu {
+            list-style: none;
+        }
+        
+        .sidebar-menu li {
+            margin-bottom: 5px;
+        }
+        
+        .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: var(--light);
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar-menu a:hover, .sidebar-menu a.active {
+            background: rgba(255, 255, 255, 0.1);
+            border-left: 4px solid var(--success);
+        }
+        
+        .sidebar-menu i {
+            margin-right: 10px;
+            font-size: 18px;
+        }
+        
+        /* Main Content Styles */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            transition: all 0.3s ease;
+            padding: 20px;
+        }
+        
+        .main-content.expanded {
+            margin-left: 0;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 30px;
+        }
+        
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        
+        .auth-section {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--secondary);
+        }
+        
+        .btn-success {
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background-color: #3a9fc9;
+        }
+        
+        .btn-danger {
+            background-color: var(--danger);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #d11a6f;
+        }
+        
+        .btn-warning {
+            background-color: var(--warning);
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background-color: #e08515;
+        }
+        
+        .btn-info {
+            background-color: var(--info);
+            color: white;
+        }
+        
+        .btn-info:hover {
+            background-color: #3a7bc8;
+        }
+        
+        .content-section {
+            display: none;
+        }
+        
+        .content-section.active {
+            display: block;
+        }
+        
+        .game-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .section-title {
+            font-size: 22px;
+            margin-bottom: 20px;
+            color: var(--success);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+        }
+        
+        .timer-display {
+            font-size: 120px;
+            text-align: center;
+            margin: 30px 0;
+            color: var(--warning);
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(248, 150, 30, 0.5);
+        }
+        
+        .game-controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .game-btn {
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 10px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--success);
+            margin-top: 5px;
+        }
+        
+        .dashboard-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .dashboard-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .dashboard-card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .balance {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--success);
+            margin: 10px 0;
+        }
+        
+        .transaction-history {
+            margin-top: 30px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        th {
+            color: var(--info);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: #1a1a2e;
+            border-radius: 15px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-title {
+            font-size: 22px;
+            color: var(--success);
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--info);
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        
+        .admin-section {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .admin-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .chat-messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .message.user {
+            background: rgba(67, 97, 238, 0.2);
+        }
+        
+        .message.admin {
+            background: rgba(76, 201, 240, 0.2);
+        }
+        
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: var(--info);
+        }
+        
+        .winner-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .winner-details .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .giveaway-ended {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .giveaway-ended h2 {
+            color: var(--warning);
+            margin-bottom: 20px;
+        }
+        
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .social-links a {
+            color: var(--info);
+            font-size: 24px;
+            transition: all 0.3s ease;
+        }
+        
+        .social-links a:hover {
+            color: var(--success);
+        }
+        
+        .difficulty-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .difficulty-easy {
+            background: var(--success);
+        }
+        
+        .difficulty-medium {
+            background: var(--warning);
+        }
+        
+        .difficulty-hard {
+            background: var(--danger);
+        }
+        
+        /* Mobile Responsiveness */
+        @media (max-width: 900px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .menu-toggle {
+                display: block;
+            }
+            
+            .dashboard-actions {
+                grid-template-columns: 1fr;
+            }
+            
+            .timer-display {
+                font-size: 80px;
+            }
+            
+            .game-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .game-btn {
+                width: 100%;
+                max-width: 300px;
+            }
+            
+            .winner-details {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="logo">
+                <h1>Stop<span>Timer</span></h1>
+            </div>
+            <ul class="sidebar-menu" id="sidebarMenu">
+                <!-- Menu items will be populated by JavaScript -->
+            </ul>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content" id="mainContent">
+            <header>
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="auth-section" id="authSection">
+                    <button id="loginBtn" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </button>
+                    <button id="registerBtn" class="btn btn-success">
+                        <i class="fas fa-user-plus"></i> Register
+                    </button>
+                    <button id="logoutBtn" class="btn btn-danger" style="display: none;">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+            </header>
+            
+            <!-- Game Section -->
+            <div class="content-section active" id="gameSection">
+                <div class="game-section">
+                    <h2 class="section-title">Stop The Timer Game</h2>
+                    <div class="timer-display" id="timerDisplay">00.00</div>
+                    <div class="game-controls">
+                        <button id="startBtn" class="btn btn-success game-btn">
+                            <i class="fas fa-play"></i> Start Game
+                        </button>
+                        <button id="stopBtn" class="btn btn-danger game-btn" disabled>
+                            <i class="fas fa-stop"></i> Stop Timer
+                        </button>
+                    </div>
+                    <div class="stats">
+                        <div class="stat-card">
+                            <div>Games Played</div>
+                            <div class="stat-value" id="gamesPlayed">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div>Best Time</div>
+                            <div class="stat-value" id="bestTime">00.00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Dashboard Section -->
+            <div class="content-section" id="dashboardSection">
+                <div class="dashboard-section">
+                    <h2 class="section-title">Dashboard</h2>
+                    <div class="dashboard-actions">
+                        <div class="dashboard-card">
+                            <h3>Wallet Balance</h3>
+                            <div class="balance" id="walletBalance">$0.00</div>
+                            <button id="fundWalletBtn" class="btn btn-primary">
+                                <i class="fas fa-wallet"></i> Fund Wallet
+                            </button>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>Gift Cards</h3>
+                            <div class="balance" id="giftCardBalance">0</div>
+                            <button id="generateGiftCardBtn" class="btn btn-warning">
+                                <i class="fas fa-gift"></i> Generate Gift Cards
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <button id="customerCareBtn" class="btn btn-info" style="width: 100%; margin-bottom: 20px;">
+                        <i class="fas fa-headset"></i> Contact Customer Care
+                    </button>
+                    
+                    <div class="transaction-history">
+                        <h3 class="section-title">Transaction History</h3>
+                        <div class="form-group">
+                            <select id="transactionFilter">
+                                <option value="all">All Transactions</option>
+                                <option value="giftcards">Gift Card Transactions</option>
+                                <option value="used">Used Gift Cards</option>
+                                <option value="winners">Winners</option>
+                                <option value="losers">Losers</option>
+                            </select>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionTable">
+                                <tr>
+                                    <td colspan="4" style="text-align: center;">No transactions yet</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Admin Section (only visible to admins) -->
+                    <div id="adminSection" class="admin-section" style="display: none;">
+                        <h3 class="section-title">Admin Panel</h3>
+                        <div class="admin-controls">
+                            <button id="manageUsersBtn" class="btn btn-primary">
+                                <i class="fas fa-users"></i> Manage Users
+                            </button>
+                            <button id="viewMessagesBtn" class="btn btn-info">
+                                <i class="fas fa-envelope"></i> View Messages
+                            </button>
+                            <button id="generateVendorCardBtn" class="btn btn-warning">
+                                <i class="fas fa-gift"></i> Generate Vendor Card
+                            </button>
+                            <button id="assignCardBtn" class="btn btn-success">
+                                <i class="fas fa-tag"></i> Assign Gift Card
+                            </button>
+                            <button id="gameSettingsBtn" class="btn btn-info">
+                                <i class="fas fa-cog"></i> Game Settings
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Giveaway Section -->
+            <div class="content-section" id="giveawaySection">
+                <div class="dashboard-section">
+                    <h2 class="section-title">Create Giveaway</h2>
+                    <form id="giveawayForm">
+                        <div class="form-group">
+                            <label for="giveawayTitle">Giveaway Title</label>
+                            <input type="text" id="giveawayTitle" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="giveawayDifficulty">Difficulty Level</label>
+                            <select id="giveawayDifficulty" required>
+                                <option value="easy">Easy</option>
+                                <option value="medium">Medium</option>
+                                <option value="hard">Hard</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="participantLimit">Number of Participants</label>
+                            <input type="number" id="participantLimit" min="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="giveawayStart">Start Time</label>
+                            <input type="datetime-local" id="giveawayStart" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="winningTime">Winning Time (seconds)</label>
+                            <input type="number" id="winningTime" step="0.01" min="0.1" required>
+                        </div>
+                        <button type="submit" class="btn btn-warning" style="width: 100%;">
+                            <i class="fas fa-shopping-cart"></i> Buy & Generate Giveaway
+                        </button>
+                    </form>
+                    
+                    <div class="transaction-history" style="margin-top: 40px;">
+                        <h3 class="section-title">My Giveaways</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Difficulty</th>
+                                    <th>Participants</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="giveawayTable">
+                                <tr>
+                                    <td colspan="5" style="text-align: center;">No giveaways yet</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Giveaway Ended Section -->
+            <div class="content-section" id="giveawayEndedSection">
+                <div class="giveaway-ended">
+                    <h2>Giveaway Ended</h2>
+                    <p>We're sorry, this giveaway has ended. All available spots have been filled.</p>
+                    <p>Follow us on social media to get notified when your favorite creators or vendors start a new giveaway!</p>
+                    <div class="social-links">
+                        <a href="#" id="ceoInstagram"><i class="fab fa-instagram"></i></a>
+                        <a href="#" id="ceoFacebook"><i class="fab fa-facebook"></i></a>
+                        <a href="#" id="ceoTwitter"><i class="fab fa-twitter"></i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Login</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginEmail">Email</label>
+                    <input type="email" id="loginEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Register Modal -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Register</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="registerName">Full Name</label>
+                    <input type="text" id="registerName" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerEmail">Email</label>
+                    <input type="email" id="registerEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">Password</label>
+                    <input type="password" id="registerPassword" required>
+                </div>
+                <button type="submit" class="btn btn-success" style="width: 100%;">Register</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Fund Wallet Modal -->
+    <div id="fundWalletModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Fund Wallet</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="fundWalletForm">
+                <div class="form-group">
+                    <label for="fundAmount">Amount</label>
+                    <input type="number" id="fundAmount" min="1" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Add Funds</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Customer Care Modal -->
+    <div id="customerCareModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Customer Care</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="message admin">
+                    <div class="message-header">
+                        <span>Admin</span>
+                        <span>Just now</span>
+                    </div>
+                    <div>Hello! How can we help you today?</div>
+                </div>
+            </div>
+            <form id="customerCareForm">
+                <div class="form-group">
+                    <textarea id="customerMessage" placeholder="Type your message here..." rows="3" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Send Message</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Generate Gift Card Modal -->
+    <div id="generateGiftCardModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Generate Gift Cards</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <p style="margin-bottom: 20px;">Click the button below to purchase gift cards</p>
+            <button id="purchaseGiftCardBtn" class="btn btn-warning" style="width: 100%;">Purchase Gift Cards</button>
+        </div>
+    </div>
+    
+    <!-- Winner Details Modal -->
+    <div id="winnerDetailsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Winner Details</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="winnerForm">
+                <div class="winner-details">
+                    <div class="form-group">
+                        <label for="winnerName">Full Name</label>
+                        <input type="text" id="winnerName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="winnerPhone">Phone Number</label>
+                        <input type="text" id="winnerPhone" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="winnerSocial">Social Media Handle</label>
+                        <input type="text" id="winnerSocial" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="winnerBank">Bank Name</label>
+                        <input type="text" id="winnerBank">
+                    </div>
+                    <div class="form-group">
+                        <label for="winnerAccount">Account Number</label>
+                        <input type="text" id="winnerAccount">
+                    </div>
+                    <div class="form-group">
+                        <label for="paymentMethod">Payment Method</label>
+                        <select id="paymentMethod" required>
+                            <option value="bank">Bank Transfer</option>
+                            <option value="crypto">Cryptocurrency</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="cryptoDetails" style="display: none;">
+                        <label for="cryptoWallet">Crypto Wallet Address</label>
+                        <input type="text" id="cryptoWallet">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 20px;">Submit Details</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Generate Vendor Card Modal -->
+    <div id="generateVendorCardModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Generate Vendor Gift Card</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="vendorCardForm">
+                <div class="form-group">
+                    <label for="vendorName">Vendor Name</label>
+                    <input type="text" id="vendorName" required>
+                </div>
+                <div class="form-group">
+                    <label for="vendorCardValue">Card Value</label>
+                    <input type="number" id="vendorCardValue" min="1" required>
+                </div>
+                <button type="submit" class="btn btn-warning" style="width: 100%;">Generate Card</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Assign Gift Card Modal -->
+    <div id="assignCardModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Assign Gift Card</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="assignCardForm">
+                <div class="form-group">
+                    <label for="searchUser">Search User</label>
+                    <input type="text" id="searchUser" placeholder="Enter user email" required>
+                </div>
+                <div class="form-group">
+                    <label for="cardValue">Card Value</label>
+                    <input type="number" id="cardValue" min="1" required>
+                </div>
+                <button type="submit" class="btn btn-success" style="width: 100%;">Assign Card</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Game Settings Modal -->
+    <div id="gameSettingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Game Settings</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="gameSettingsForm">
+                <div class="form-group">
+                    <label for="dailyWinners">Daily Winners Limit</label>
+                    <input type="number" id="dailyWinners" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="winningTimeAdmin">Winning Time (seconds)</label>
+                    <input type="number" id="winningTimeAdmin" step="0.01" min="0.1" required>
+                </div>
+                <div class="form-group">
+                    <label for="difficultyLevel">Default Difficulty</label>
+                    <select id="difficultyLevel" required>
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Save Settings</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- View Messages Modal -->
+    <div id="viewMessagesModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Customer Messages</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="chat-messages" id="adminChatMessages">
+                <div class="message user">
+                    <div class="message-header">
+                        <span>user@example.com</span>
+                        <span>10:30 AM</span>
+                    </div>
+                    <div>Hello, I have a question about my account.</div>
+                </div>
+                <div class="message admin">
+                    <div class="message-header">
+                        <span>Admin</span>
+                        <span>10:35 AM</span>
+                    </div>
+                    <div>How can I help you today?</div>
+                </div>
+            </div>
+            <form id="adminReplyForm">
+                <div class="form-group">
+                    <label for="replyTo">Reply To</label>
+                    <select id="replyTo">
+                        <option value="user@example.com">user@example.com</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <textarea id="adminReplyMessage" placeholder="Type your reply here..." rows="3" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Send Reply</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Manage Users Modal -->
+    <div id="manageUsersModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Manage Users</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Balance</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTable">
+                    <tr>
+                        <td>John Doe</td>
+                        <td>john@example.com</td>
+                        <td>$50.00</td>
+                        <td>Active</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm">Edit</button>
+                            <button class="btn btn-danger btn-sm">Block</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- External Configuration -->
+    <script src="configuration.js"></script>
+    
+    <!-- Main Application Script -->
+    <script>
+        // Game variables
+        let timerInterval;
+        let startTime;
+        let currentTime = 0;
+        let isRunning = false;
+        let gamesPlayed = 0;
+        let bestTime = 0;
+        let walletBalance = 0;
+        let giftCardBalance = 0;
+        let user = null;
+        let isAdmin = false;
+        let currentGiveaway = null;
+        let gameSettings = {
+            dailyWinners: 10,
+            winningTime: 5.00,
+            difficulty: 'medium'
+        };
+
+        // DOM elements
+        const timerDisplay = document.getElementById('timerDisplay');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const gamesPlayedEl = document.getElementById('gamesPlayed');
+        const bestTimeEl = document.getElementById('bestTime');
+        const walletBalanceEl = document.getElementById('walletBalance');
+        const giftCardBalanceEl = document.getElementById('giftCardBalance');
+        const transactionTable = document.getElementById('transactionTable');
+        const transactionFilter = document.getElementById('transactionFilter');
+        const loginBtn = document.getElementById('loginBtn');
+        const registerBtn = document.getElementById('registerBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const fundWalletBtn = document.getElementById('fundWalletBtn');
+        const generateGiftCardBtn = document.getElementById('generateGiftCardBtn');
+        const customerCareBtn = document.getElementById('customerCareBtn');
+        const adminSection = document.getElementById('adminSection');
+        const manageUsersBtn = document.getElementById('manageUsersBtn');
+        const viewMessagesBtn = document.getElementById('viewMessagesBtn');
+        const generateVendorCardBtn = document.getElementById('generateVendorCardBtn');
+        const assignCardBtn = document.getElementById('assignCardBtn');
+        const gameSettingsBtn = document.getElementById('gameSettingsBtn');
+        const purchaseGiftCardBtn = document.getElementById('purchaseGiftCardBtn');
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+        const sidebarMenu = document.getElementById('sidebarMenu');
+        const contentSections = document.querySelectorAll('.content-section');
+        const paymentMethod = document.getElementById('paymentMethod');
+        const cryptoDetails = document.getElementById('cryptoDetails');
+
+        // Modals
+        const loginModal = document.getElementById('loginModal');
+        const registerModal = document.getElementById('registerModal');
+        const fundWalletModal = document.getElementById('fundWalletModal');
+        const customerCareModal = document.getElementById('customerCareModal');
+        const generateGiftCardModal = document.getElementById('generateGiftCardModal');
+        const winnerDetailsModal = document.getElementById('winnerDetailsModal');
+        const generateVendorCardModal = document.getElementById('generateVendorCardModal');
+        const assignCardModal = document.getElementById('assignCardModal');
+        const gameSettingsModal = document.getElementById('gameSettingsModal');
+        const viewMessagesModal = document.getElementById('viewMessagesModal');
+        const manageUsersModal = document.getElementById('manageUsersModal');
+
+        // Forms
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const fundWalletForm = document.getElementById('fundWalletForm');
+        const customerCareForm = document.getElementById('customerCareForm');
+        const vendorCardForm = document.getElementById('vendorCardForm');
+        const assignCardForm = document.getElementById('assignCardForm');
+        const gameSettingsForm = document.getElementById('gameSettingsForm');
+        const adminReplyForm = document.getElementById('adminReplyForm');
+        const winnerForm = document.getElementById('winnerForm');
+        const giveawayForm = document.getElementById('giveawayForm');
+
+        // Close buttons
+        const closeButtons = document.querySelectorAll('.close-btn');
+
+        // Event listeners
+        startBtn.addEventListener('click', startGame);
+        stopBtn.addEventListener('click', stopGame);
+        loginBtn.addEventListener('click', () => openModal(loginModal));
+        registerBtn.addEventListener('click', () => openModal(registerModal));
+        logoutBtn.addEventListener('click', logout);
+        fundWalletBtn.addEventListener('click', () => openModal(fundWalletModal));
+        generateGiftCardBtn.addEventListener('click', () => openModal(generateGiftCardModal));
+        customerCareBtn.addEventListener('click', () => openModal(customerCareModal));
+        manageUsersBtn.addEventListener('click', () => openModal(manageUsersModal));
+        viewMessagesBtn.addEventListener('click', () => openModal(viewMessagesModal));
+        generateVendorCardBtn.addEventListener('click', () => openModal(generateVendorCardModal));
+        assignCardBtn.addEventListener('click', () => openModal(assignCardModal));
+        gameSettingsBtn.addEventListener('click', () => openModal(gameSettingsModal));
+        purchaseGiftCardBtn.addEventListener('click', purchaseGiftCards);
+        menuToggle.addEventListener('click', toggleSidebar);
+        paymentMethod.addEventListener('change', togglePaymentDetails);
+
+        // Form submissions
+        loginForm.addEventListener('submit', login);
+        registerForm.addEventListener('submit', register);
+        fundWalletForm.addEventListener('submit', fundWallet);
+        customerCareForm.addEventListener('submit', sendCustomerMessage);
+        vendorCardForm.addEventListener('submit', generateVendorCard);
+        assignCardForm.addEventListener('submit', assignGiftCard);
+        gameSettingsForm.addEventListener('submit', saveGameSettings);
+        adminReplyForm.addEventListener('submit', sendAdminReply);
+        winnerForm.addEventListener('submit', submitWinnerDetails);
+        giveawayForm.addEventListener('submit', createGiveaway);
+
+        // Close modal when clicking close button
+        closeButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const modal = button.closest('.modal');
+                closeModal(modal);
+            });
+        });
+
+        // Close modal when clicking outside
+        window.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                closeModal(e.target);
+            }
+        });
+
+        // Firebase initialization
+        let db, auth;
+        
+        function initializeFirebase() {
+            try {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore();
+                auth = firebase.auth();
+                
+                // Set up auth state listener
+                auth.onAuthStateChanged(handleAuthStateChanged);
+                
+                console.log("Firebase initialized successfully");
+            } catch (error) {
+                console.error("Error initializing Firebase:", error);
+            }
+        }
+
+        // Auth state change handler
+        function handleAuthStateChanged(firebaseUser) {
+            if (firebaseUser) {
+                // User is signed in
+                user = firebaseUser;
+                checkAdminStatus();
+                loadUserData();
+                updateUIForLoggedInUser();
+            } else {
+                // User is signed out
+                user = null;
+                isAdmin = false;
+                updateUIForLoggedOutUser();
+            }
+        }
+
+        // Check if user is admin
+        async function checkAdminStatus() {
+            if (!user) return;
+            
+            try {
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    isAdmin = userData.role === 'admin';
+                    
+                    if (isAdmin) {
+                        adminSection.style.display = 'block';
+                        loadAdminData();
+                    } else {
+                        adminSection.style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                console.error("Error checking admin status:", error);
+            }
+        }
+
+        // Update UI for logged in user
+        function updateUIForLoggedInUser() {
+            loginBtn.style.display = 'none';
+            registerBtn.style.display = 'none';
+            logoutBtn.style.display = 'block';
+            
+            // Update sidebar menu
+            updateSidebarMenu();
+            
+            // Show dashboard by default
+            showSection('dashboardSection');
+        }
+
+        // Update UI for logged out user
+        function updateUIForLoggedOutUser() {
+            loginBtn.style.display = 'block';
+            registerBtn.style.display = 'block';
+            logoutBtn.style.display = 'none';
+            adminSection.style.display = 'none';
+            
+            // Reset game stats
+            gamesPlayed = 0;
+            bestTime = 0;
+            walletBalance = 0;
+            giftCardBalance = 0;
+            
+            updateStats();
+            updateWalletBalance();
+            updateGiftCardBalance();
+            
+            // Clear transaction table
+            transactionTable.innerHTML = '<tr><td colspan="4" style="text-align: center;">No transactions yet</td></tr>';
+            
+            // Update sidebar menu
+            updateSidebarMenu();
+            
+            // Show game section by default
+            showSection('gameSection');
+        }
+
+        // Update sidebar menu based on user status
+        function updateSidebarMenu() {
+            sidebarMenu.innerHTML = '';
+            
+            const menuItems = [
+                { id: 'gameSection', icon: 'fa-gamepad', text: 'Play Game', show: true },
+                { id: 'dashboardSection', icon: 'fa-tachometer-alt', text: 'Dashboard', show: !!user },
+                { id: 'giveawaySection', icon: 'fa-gift', text: 'Create Giveaway', show: !!user },
+            ];
+            
+            menuItems.forEach(item => {
+                if (item.show) {
+                    const li = document.createElement('li');
+                    const a = document.createElement('a');
+                    a.href = '#';
+                    a.innerHTML = `<i class="fas ${item.icon}"></i> ${item.text}`;
+                    a.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        showSection(item.id);
+                        if (window.innerWidth <= 900) {
+                            sidebar.classList.remove('active');
+                        }
+                    });
+                    li.appendChild(a);
+                    sidebarMenu.appendChild(li);
+                }
+            });
+        }
+
+        // Show specific content section
+        function showSection(sectionId) {
+            contentSections.forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(sectionId).classList.add('active');
+        }
+
+        // Toggle sidebar on mobile
+        function toggleSidebar() {
+            sidebar.classList.toggle('active');
+        }
+
+        // Game functions
+        function startGame() {
+            if (!isRunning) {
+                isRunning = true;
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                startTime = Date.now();
+                
+                timerInterval = setInterval(() => {
+                    currentTime = Date.now() - startTime;
+                    updateTimerDisplay(currentTime);
+                }, 10);
+            }
+        }
+
+        function stopGame() {
+            if (isRunning) {
+                isRunning = false;
+                clearInterval(timerInterval);
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                
+                gamesPlayed++;
+                const finalTime = currentTime / 1000; // Convert to seconds
+                
+                if (bestTime === 0 || finalTime < bestTime) {
+                    bestTime = finalTime;
+                }
+                
+                updateStats();
+                
+                // Check if user won
+                const timeDiff = Math.abs(finalTime - gameSettings.winningTime);
+                const isWinner = timeDiff <= 0.1; // 100ms tolerance
+                
+                if (isWinner) {
+                    // Show winner form
+                    openModal(winnerDetailsModal);
+                    
+                    // Record win
+                    recordGameResult(true, finalTime);
+                } else {
+                    alert(`You stopped the timer at ${formatTime(currentTime)}. Better luck next time!`);
+                    recordGameResult(false, finalTime);
+                }
+                
+                // Reset timer
+                currentTime = 0;
+                updateTimerDisplay(currentTime);
+            }
+        }
+
+        function updateTimerDisplay(time) {
+            timerDisplay.textContent = formatTime(time);
+        }
+
+        function formatTime(time) {
+            const seconds = Math.floor(time / 1000);
+            const milliseconds = Math.floor((time % 1000) / 10);
+            return `${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
+        }
+
+        function updateStats() {
+            gamesPlayedEl.textContent = gamesPlayed;
+            bestTimeEl.textContent = formatTime(bestTime * 1000);
+        }
+
+        function updateWalletBalance() {
+            walletBalanceEl.textContent = `$${walletBalance.toFixed(2)}`;
+        }
+
+        function updateGiftCardBalance() {
+            giftCardBalanceEl.textContent = giftCardBalance;
+        }
+
+        // Record game result to Firebase
+        async function recordGameResult(isWinner, time) {
+            if (!user) return;
+            
+            try {
+                const gameResult = {
+                    userId: user.uid,
+                    userName: user.displayName || user.email,
+                    isWinner: isWinner,
+                    time: time,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    giveawayId: currentGiveaway ? currentGiveaway.id : null
+                };
+                
+                await db.collection('gameResults').add(gameResult);
+                
+                // Update user stats
+                await db.collection('users').doc(user.uid).update({
+                    gamesPlayed: firebase.firestore.FieldValue.increment(1),
+                    lastPlayed: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                if (isWinner) {
+                    // Update winner count
+                    await db.collection('stats').doc('daily').update({
+                        winners: firebase.firestore.FieldValue.increment(1)
+                    });
+                }
+                
+                console.log("Game result recorded successfully");
+            } catch (error) {
+                console.error("Error recording game result:", error);
+            }
+        }
+
+        // Authentication functions
+        async function login(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            try {
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                console.log("User logged in:", userCredential.user);
+                closeModal(loginModal);
+            } catch (error) {
+                console.error("Error signing in:", error);
+                alert(`Login failed: ${error.message}`);
+            }
+        }
+
+        async function register(e) {
+            e.preventDefault();
+            const name = document.getElementById('registerName').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            
+            try {
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                
+                // Update user profile
+                await userCredential.user.updateProfile({
+                    displayName: name
+                });
+                
+                // Create user document in Firestore
+                await db.collection('users').doc(userCredential.user.uid).set({
+                    name: name,
+                    email: email,
+                    walletBalance: 0,
+                    giftCardBalance: 0,
+                    role: 'user',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                console.log("User registered successfully");
+                closeModal(registerModal);
+            } catch (error) {
+                console.error("Error registering user:", error);
+                alert(`Registration failed: ${error.message}`);
+            }
+        }
+
+        async function logout() {
+            try {
+                await auth.signOut();
+                console.log("User signed out");
+            } catch (error) {
+                console.error("Error signing out:", error);
+            }
+        }
+
+        // Load user data from Firebase
+        async function loadUserData() {
+            if (!user) return;
+            
+            try {
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    walletBalance = userData.walletBalance || 0;
+                    giftCardBalance = userData.giftCardBalance || 0;
+                    
+                    updateWalletBalance();
+                    updateGiftCardBalance();
+                    
+                    // Load game stats
+                    const gameResults = await db.collection('gameResults')
+                        .where('userId', '==', user.uid)
+                        .orderBy('timestamp', 'desc')
+                        .limit(10)
+                        .get();
+                    
+                    gamesPlayed = gameResults.size;
+                    
+                    let userBestTime = 0;
+                    gameResults.forEach(doc => {
+                        const data = doc.data();
+                        if (data.isWinner && (userBestTime === 0 || data.time < userBestTime)) {
+                            userBestTime = data.time;
+                        }
+                    });
+                    
+                    bestTime = userBestTime;
+                    updateStats();
+                    
+                    // Load transactions
+                    loadTransactions();
+                }
+            } catch (error) {
+                console.error("Error loading user data:", error);
+            }
+        }
+
+        // Load admin data
+        async function loadAdminData() {
+            if (!isAdmin) return;
+            
+            try {
+                // Load game settings
+                const settingsDoc = await db.collection('settings').doc('game').get();
+                if (settingsDoc.exists) {
+                    gameSettings = settingsDoc.data();
+                    
+                    // Update form values if modal is open
+                    if (document.getElementById('dailyWinners')) {
+                        document.getElementById('dailyWinners').value = gameSettings.dailyWinners;
+                        document.getElementById('winningTimeAdmin').value = gameSettings.winningTime;
+                        document.getElementById('difficultyLevel').value = gameSettings.difficulty;
+                    }
+                }
+                
+                // Load users for management
+                loadUsersForManagement();
+            } catch (error) {
+                console.error("Error loading admin data:", error);
+            }
+        }
+
+        // Load transactions
+        async function loadTransactions() {
+            if (!user) return;
+            
+            try {
+                const transactions = await db.collection('transactions')
+                    .where('userId', '==', user.uid)
+                    .orderBy('timestamp', 'desc')
+                    .limit(20)
+                    .get();
+                
+                transactionTable.innerHTML = '';
+                
+                if (transactions.empty) {
+                    transactionTable.innerHTML = '<tr><td colspan="4" style="text-align: center;">No transactions yet</td></tr>';
+                    return;
+                }
+                
+                transactions.forEach(doc => {
+                    const data = doc.data();
+                    const row = document.createElement('tr');
+                    const date = data.timestamp ? data.timestamp.toDate() : new Date();
+                    const dateStr = `${date.getMonth()+1}/${date.getDate()}/${date.getFullYear()}`;
+                    
+                    row.innerHTML = `
+                        <td>${dateStr}</td>
+                        <td>${data.type}</td>
+                        <td>${data.amount >= 0 ? '+' : ''}$${Math.abs(data.amount).toFixed(2)}</td>
+                        <td>${data.status}</td>
+                    `;
+                    
+                    transactionTable.appendChild(row);
+                });
+            } catch (error) {
+                console.error("Error loading transactions:", error);
+            }
+        }
+
+        // Load users for admin management
+        async function loadUsersForManagement() {
+            if (!isAdmin) return;
+            
+            try {
+                const users = await db.collection('users').limit(50).get();
+                const usersTable = document.getElementById('usersTable');
+                usersTable.innerHTML = '';
+                
+                users.forEach(doc => {
+                    const userData = doc.data();
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>${userData.name}</td>
+                        <td>${userData.email}</td>
+                        <td>$${userData.walletBalance || 0}</td>
+                        <td>${userData.status || 'Active'}</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm">Edit</button>
+                            <button class="btn btn-danger btn-sm">Block</button>
+                        </td>
+                    `;
+                    
+                    usersTable.appendChild(row);
+                });
+            } catch (error) {
+                console.error("Error loading users:", error);
+            }
+        }
+
+        // Wallet functions
+        async function fundWallet(e) {
+            e.preventDefault();
+            const amount = parseFloat(document.getElementById('fundAmount').value);
+            
+            if (amount > 0) {
+                try {
+                    // Update user wallet balance
+                    await db.collection('users').doc(user.uid).update({
+                        walletBalance: firebase.firestore.FieldValue.increment(amount)
+                    });
+                    
+                    // Record transaction
+                    await db.collection('transactions').add({
+                        userId: user.uid,
+                        type: 'Wallet Funding',
+                        amount: amount,
+                        status: 'Completed',
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    walletBalance += amount;
+                    updateWalletBalance();
+                    
+                    closeModal(fundWalletModal);
+                    alert(`Successfully added $${amount.toFixed(2)} to your wallet!`);
+                } catch (error) {
+                    console.error("Error funding wallet:", error);
+                    alert(`Error: ${error.message}`);
+                }
+            } else {
+                alert('Please enter a valid amount');
+            }
+        }
+
+        // Customer care functions
+        async function sendCustomerMessage(e) {
+            e.preventDefault();
+            const message = document.getElementById('customerMessage').value;
+            
+            if (message) {
+                try {
+                    // Save message to Firebase
+                    await db.collection('messages').add({
+                        userId: user.uid,
+                        userName: user.displayName || user.email,
+                        message: message,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        status: 'unread'
+                    });
+                    
+                    const chatMessages = document.getElementById('chatMessages');
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'message user';
+                    
+                    const now = new Date();
+                    const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+                    
+                    messageDiv.innerHTML = `
+                        <div class="message-header">
+                            <span>You</span>
+                            <span>${timeStr}</span>
+                        </div>
+                        <div>${message}</div>
+                    `;
+                    
+                    chatMessages.appendChild(messageDiv);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                    
+                    document.getElementById('customerMessage').value = '';
+                    
+                    alert('Message sent successfully! We will respond soon.');
+                } catch (error) {
+                    console.error("Error sending message:", error);
+                    alert(`Error: ${error.message}`);
+                }
+            }
+        }
+
+        // Gift card functions
+        function purchaseGiftCards() {
+            // Redirect to gift card purchase page
+            window.open('https://www.getgftcard.com/728288', '_blank');
+            closeModal(generateGiftCardModal);
+        }
+
+        async function generateVendorCard(e) {
+            e.preventDefault();
+            const vendorName = document.getElementById('vendorName').value;
+            const cardValue = parseFloat(document.getElementById('vendorCardValue').value);
+            
+            if (vendorName && cardValue > 0) {
+                try {
+                    // Generate unique gift card code
+                    const cardCode = generateGiftCardCode();
+                    
+                    // Save vendor gift card to Firebase
+                    await db.collection('giftCards').add({
+                        vendorName: vendorName,
+                        value: cardValue,
+                        code: cardCode,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        createdBy: user.uid,
+                        type: 'vendor'
+                    });
+                    
+                    alert(`Gift card for ${vendorName} with value $${cardValue} generated successfully! Code: ${cardCode}`);
+                    closeModal(generateVendorCardModal);
+                } catch (error) {
+                    console.error("Error generating vendor card:", error);
+                    alert(`Error: ${error.message}`);
+                }
+            } else {
+                alert('Please fill all fields correctly');
+            }
+        }
+
+        async function assignGiftCard(e) {
+            e.preventDefault();
+            const userEmail = document.getElementById('searchUser').value;
+            const cardValue = parseFloat(document.getElementById('cardValue').value);
+            
+            if (userEmail && cardValue > 0) {
+                try {
+                    // Find user by email
+                    const users = await db.collection('users').where('email', '==', userEmail).get();
+                    
+                    if (users.empty) {
+                        alert('User not found');
+                        return;
+                    }
+                    
+                    const userDoc = users.docs[0];
+                    const userId = userDoc.id;
+                    
+                    // Generate unique gift card code
+                    const cardCode = generateGiftCardCode();
+                    
+                    // Save assigned gift card to Firebase
+                    await db.collection('giftCards').add({
+                        userId: userId,
+                        value: cardValue,
+                        code: cardCode,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        createdBy: user.uid,
+                        type: 'assigned'
+                    });
+                    
+                    // Update user's gift card balance
+                    await db.collection('users').doc(userId).update({
+                        giftCardBalance: firebase.firestore.FieldValue.increment(1)
+                    });
+                    
+                    alert(`Gift card with value $${cardValue} assigned to ${userEmail} successfully! Code: ${cardCode}`);
+                    closeModal(assignCardModal);
+                } catch (error) {
+                    console.error("Error assigning gift card:", error);
+                    alert(`Error: ${error.message}`);
+                }
+            } else {
+                alert('Please fill all fields correctly');
+            }
+        }
+
+        // Generate unique gift card code
+        function generateGiftCardCode() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < 12; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+                if ((i + 1) % 4 === 0 && i < 11) {
+                    result += '-';
+                }
+            }
+            return result;
+        }
+
+        // Game settings functions
+        async function saveGameSettings(e) {
+            e.preventDefault();
+            const dailyWinners = parseInt(document.getElementById('dailyWinners').value);
+            const winningTime = parseFloat(document.getElementById('winningTimeAdmin').value);
+            const difficulty = document.getElementById('difficultyLevel').value;
+            
+            try {
+                await db.collection('settings').doc('game').set({
+                    dailyWinners: dailyWinners,
+                    winningTime: winningTime,
+                    difficulty: difficulty,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedBy: user.uid
+                });
+                
+                gameSettings.dailyWinners = dailyWinners;
+                gameSettings.winningTime = winningTime;
+                gameSettings.difficulty = difficulty;
+                
+                alert('Game settings saved successfully!');
+                closeModal(gameSettingsModal);
+            } catch (error) {
+                console.error("Error saving game settings:", error);
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // Giveaway functions
+        async function createGiveaway(e) {
+            e.preventDefault();
+            const title = document.getElementById('giveawayTitle').value;
+            const difficulty = document.getElementById('giveawayDifficulty').value;
+            const participantLimit = parseInt(document.getElementById('participantLimit').value);
+            const startTime = document.getElementById('giveawayStart').value;
+            const winningTime = parseFloat(document.getElementById('winningTime').value);
+            
+            if (!user) {
+                alert('Please log in to create a giveaway');
+                return;
+            }
+            
+            try {
+                // Create giveaway in Firebase
+                const giveawayRef = await db.collection('giveaways').add({
+                    title: title,
+                    difficulty: difficulty,
+                    participantLimit: participantLimit,
+                    startTime: new Date(startTime),
+                    winningTime: winningTime,
+                    createdBy: user.uid,
+                    creatorName: user.displayName || user.email,
+                    status: 'pending',
+                    participants: 0,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // Generate unique giveaway link
+                const giveawayLink = `${window.location.origin}?giveaway=${giveawayRef.id}`;
+                
+                alert(`Giveaway created successfully! Your unique link: ${giveawayLink}`);
+                
+                // Reset form
+                document.getElementById('giveawayForm').reset();
+                
+                // Load user's giveaways
+                loadUserGiveaways();
+            } catch (error) {
+                console.error("Error creating giveaway:", error);
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // Load user's giveaways
+        async function loadUserGiveaways() {
+            if (!user) return;
+            
+            try {
+                const giveaways = await db.collection('giveaways')
+                    .where('createdBy', '==', user.uid)
+                    .orderBy('createdAt', 'desc')
+                    .get();
+                
+                const giveawayTable = document.getElementById('giveawayTable');
+                giveawayTable.innerHTML = '';
+                
+                if (giveaways.empty) {
+                    giveawayTable.innerHTML = '<tr><td colspan="5" style="text-align: center;">No giveaways yet</td></tr>';
+                    return;
+                }
+                
+                giveaways.forEach(doc => {
+                    const data = doc.data();
+                    const row = document.createElement('tr');
+                    const startTime = data.startTime ? data.startTime.toDate() : new Date();
+                    const startStr = `${startTime.toLocaleDateString()} ${startTime.toLocaleTimeString()}`;
+                    
+                    let statusBadge = '';
+                    if (data.status === 'pending') {
+                        statusBadge = '<span class="difficulty-badge difficulty-medium">Pending</span>';
+                    } else if (data.status === 'active') {
+                        statusBadge = '<span class="difficulty-badge difficulty-easy">Active</span>';
+                    } else if (data.status === 'ended') {
+                        statusBadge = '<span class="difficulty-badge difficulty-hard">Ended</span>';
+                    }
+                    
+                    let difficultyBadge = '';
+                    if (data.difficulty === 'easy') {
+                        difficultyBadge = '<span class="difficulty-badge difficulty-easy">Easy</span>';
+                    } else if (data.difficulty === 'medium') {
+                        difficultyBadge = '<span class="difficulty-badge difficulty-medium">Medium</span>';
+                    } else if (data.difficulty === 'hard') {
+                        difficultyBadge = '<span class="difficulty-badge difficulty-hard">Hard</span>';
+                    }
+                    
+                    row.innerHTML = `
+                        <td>${data.title}</td>
+                        <td>${difficultyBadge}</td>
+                        <td>${data.participants || 0}/${data.participantLimit}</td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm">View</button>
+                        </td>
+                    `;
+                    
+                    giveawayTable.appendChild(row);
+                });
+            } catch (error) {
+                console.error("Error loading giveaways:", error);
+            }
+        }
+
+        // Winner form functions
+        function togglePaymentDetails() {
+            if (paymentMethod.value === 'crypto') {
+                cryptoDetails.style.display = 'block';
+            } else {
+                cryptoDetails.style.display = 'none';
+            }
+        }
+
+        async function submitWinnerDetails(e) {
+            e.preventDefault();
+            const name = document.getElementById('winnerName').value;
+            const phone = document.getElementById('winnerPhone').value;
+            const social = document.getElementById('winnerSocial').value;
+            const bank = document.getElementById('winnerBank').value;
+            const account = document.getElementById('winnerAccount').value;
+            const paymentMethod = document.getElementById('paymentMethod').value;
+            const cryptoWallet = document.getElementById('cryptoWallet').value;
+            
+            try {
+                // Save winner details to Firebase
+                await db.collection('winners').add({
+                    userId: user.uid,
+                    userName: user.displayName || user.email,
+                    name: name,
+                    phone: phone,
+                    social: social,
+                    bank: bank,
+                    account: account,
+                    paymentMethod: paymentMethod,
+                    cryptoWallet: cryptoWallet,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    status: 'pending'
+                });
+                
+                alert('Winner details submitted successfully! You will receive your payment soon.');
+                closeModal(winnerDetailsModal);
+            } catch (error) {
+                console.error("Error submitting winner details:", error);
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // Admin reply functions
+        async function sendAdminReply(e) {
+            e.preventDefault();
+            const userEmail = document.getElementById('replyTo').value;
+            const message = document.getElementById('adminReplyMessage').value;
+            
+            if (message) {
+                try {
+                    // Save admin reply to Firebase
+                    await db.collection('messages').add({
+                        userId: 'admin',
+                        userName: 'Admin',
+                        message: message,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        status: 'sent',
+                        recipient: userEmail
+                    });
+                    
+                    const adminChatMessages = document.getElementById('adminChatMessages');
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'message admin';
+                    
+                    const now = new Date();
+                    const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+                    
+                    messageDiv.innerHTML = `
+                        <div class="message-header">
+                            <span>Admin</span>
+                            <span>${timeStr}</span>
+                        </div>
+                        <div>${message}</div>
+                    `;
+                    
+                    adminChatMessages.appendChild(messageDiv);
+                    adminChatMessages.scrollTop = adminChatMessages.scrollHeight;
+                    
+                    document.getElementById('adminReplyMessage').value = '';
+                } catch (error) {
+                    console.error("Error sending admin reply:", error);
+                    alert(`Error: ${error.message}`);
+                }
+            }
+        }
+
+        // Modal functions
+        function openModal(modal) {
+            modal.style.display = 'flex';
+        }
+
+        function closeModal(modal) {
+            modal.style.display = 'none';
+        }
+
+        // Initialize the app
+        function init() {
+            initializeFirebase();
+            updateTimerDisplay(currentTime);
+            updateStats();
+            updateWalletBalance();
+            updateGiftCardBalance();
+            
+            // Check if we're viewing a giveaway
+            const urlParams = new URLSearchParams(window.location.search);
+            const giveawayId = urlParams.get('giveaway');
+            if (giveawayId) {
+                // Load giveaway data
+                loadGiveaway(giveawayId);
+            }
+        }
+
+        // Load giveaway data
+        async function loadGiveaway(giveawayId) {
+            try {
+                const giveawayDoc = await db.collection('giveaways').doc(giveawayId).get();
+                if (giveawayDoc.exists) {
+                    const giveawayData = giveawayDoc.data();
+                    currentGiveaway = {
+                        id: giveawayId,
+                        ...giveawayData
+                    };
+                    
+                    // Check if giveaway is active
+                    const now = new Date();
+                    const startTime = giveawayData.startTime.toDate();
+                    
+                    if (now < startTime) {
+                        // Show countdown to giveaway start
+                        showGiveawayCountdown(startTime);
+                    } else if (giveawayData.participants >= giveawayData.participantLimit) {
+                        // Show giveaway ended
+                        showSection('giveawayEndedSection');
+                    } else {
+                        // Show game with giveaway settings
+                        gameSettings.winningTime = giveawayData.winningTime;
+                        showSection('gameSection');
+                    }
+                }
+            } catch (error) {
+                console.error("Error loading giveaway:", error);
+            }
+        }
+
+        // Show countdown to giveaway start
+        function showGiveawayCountdown(startTime) {
+            // This would implement a countdown timer
+            // For simplicity, we'll just show a message
+            alert(`This giveaway will start at ${startTime.toLocaleString()}`);
+            showSection('gameSection');
+        }
+
+        // Start the app
+        init();
+    </script>
+</body>
+</html>
