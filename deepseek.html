@@ -479,6 +479,31 @@
             background: var(--danger);
         }
         
+        .giftcard-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .giftcard-input input {
+            flex: 1;
+        }
+        
+        .result-popup {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .result-popup h3 {
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+        
+        .result-popup p {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        
         /* Mobile Responsiveness */
         @media (max-width: 900px) {
             .sidebar {
@@ -518,6 +543,10 @@
             .winner-details {
                 grid-template-columns: 1fr;
             }
+            
+            .giftcard-input {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
@@ -556,9 +585,13 @@
             <div class="content-section active" id="gameSection">
                 <div class="game-section">
                     <h2 class="section-title">Stop The Timer Game</h2>
+                    <div class="giftcard-input">
+                        <input type="text" id="giftcardCode" placeholder="Enter Gift Card Code">
+                        <button id="validateGiftcardBtn" class="btn btn-primary">Validate</button>
+                    </div>
                     <div class="timer-display" id="timerDisplay">00.00</div>
                     <div class="game-controls">
-                        <button id="startBtn" class="btn btn-success game-btn">
+                        <button id="startBtn" class="btn btn-success game-btn" disabled>
                             <i class="fas fa-play"></i> Start Game
                         </button>
                         <button id="stopBtn" class="btn btn-danger game-btn" disabled>
@@ -822,8 +855,39 @@
                 <h3 class="modal-title">Generate Gift Cards</h3>
                 <button class="close-btn">&times;</button>
             </div>
-            <p style="margin-bottom: 20px;">Click the button below to purchase gift cards</p>
-            <button id="purchaseGiftCardBtn" class="btn btn-warning" style="width: 100%;">Purchase Gift Cards</button>
+            <form id="giftCardForm">
+                <div class="form-group">
+                    <label for="giftCardAmount">Number of Gift Cards</label>
+                    <input type="number" id="giftCardAmount" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="giftCardValue">Value per Card ($)</label>
+                    <input type="number" id="giftCardValue" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="giftCardUses">Uses per Card</label>
+                    <select id="giftCardUses" required>
+                        <option value="1">Single Use</option>
+                        <option value="5">5 Uses</option>
+                        <option value="10">10 Uses</option>
+                        <option value="unlimited">Unlimited</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-warning" style="width: 100%;">Generate Gift Cards</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Result Modal -->
+    <div id="resultModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Game Result</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="result-popup" id="resultContent">
+                <!-- Result content will be populated by JavaScript -->
+            </div>
         </div>
     </div>
     
@@ -889,6 +953,15 @@
                     <label for="vendorCardValue">Card Value</label>
                     <input type="number" id="vendorCardValue" min="1" required>
                 </div>
+                <div class="form-group">
+                    <label for="vendorCardUses">Uses per Card</label>
+                    <select id="vendorCardUses" required>
+                        <option value="1">Single Use</option>
+                        <option value="5">5 Uses</option>
+                        <option value="10">10 Uses</option>
+                        <option value="unlimited">Unlimited</option>
+                    </select>
+                </div>
                 <button type="submit" class="btn btn-warning" style="width: 100%;">Generate Card</button>
             </form>
         </div>
@@ -909,6 +982,15 @@
                 <div class="form-group">
                     <label for="cardValue">Card Value</label>
                     <input type="number" id="cardValue" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="cardUses">Uses per Card</label>
+                    <select id="cardUses" required>
+                        <option value="1">Single Use</option>
+                        <option value="5">5 Uses</option>
+                        <option value="10">10 Uses</option>
+                        <option value="unlimited">Unlimited</option>
+                    </select>
                 </div>
                 <button type="submit" class="btn btn-success" style="width: 100%;">Assign Card</button>
             </form>
@@ -1016,7 +1098,7 @@
     </div>
 
     <!-- External Configuration -->
-    <script src="config.js"></script>
+    <script src="configuration.js"></script>
     
     <!-- Main Application Script -->
     <script>
@@ -1032,6 +1114,7 @@
         let user = null;
         let isAdmin = false;
         let currentGiveaway = null;
+        let activeGiftCard = null;
         let gameSettings = {
             dailyWinners: 10,
             winningTime: 5.00,
@@ -1060,7 +1143,8 @@
         const generateVendorCardBtn = document.getElementById('generateVendorCardBtn');
         const assignCardBtn = document.getElementById('assignCardBtn');
         const gameSettingsBtn = document.getElementById('gameSettingsBtn');
-        const purchaseGiftCardBtn = document.getElementById('purchaseGiftCardBtn');
+        const validateGiftcardBtn = document.getElementById('validateGiftcardBtn');
+        const giftcardCodeInput = document.getElementById('giftcardCode');
         const menuToggle = document.getElementById('menuToggle');
         const sidebar = document.getElementById('sidebar');
         const mainContent = document.getElementById('mainContent');
@@ -1075,6 +1159,7 @@
         const fundWalletModal = document.getElementById('fundWalletModal');
         const customerCareModal = document.getElementById('customerCareModal');
         const generateGiftCardModal = document.getElementById('generateGiftCardModal');
+        const resultModal = document.getElementById('resultModal');
         const winnerDetailsModal = document.getElementById('winnerDetailsModal');
         const generateVendorCardModal = document.getElementById('generateVendorCardModal');
         const assignCardModal = document.getElementById('assignCardModal');
@@ -1087,6 +1172,7 @@
         const registerForm = document.getElementById('registerForm');
         const fundWalletForm = document.getElementById('fundWalletForm');
         const customerCareForm = document.getElementById('customerCareForm');
+        const giftCardForm = document.getElementById('giftCardForm');
         const vendorCardForm = document.getElementById('vendorCardForm');
         const assignCardForm = document.getElementById('assignCardForm');
         const gameSettingsForm = document.getElementById('gameSettingsForm');
@@ -1111,7 +1197,7 @@
         generateVendorCardBtn.addEventListener('click', () => openModal(generateVendorCardModal));
         assignCardBtn.addEventListener('click', () => openModal(assignCardModal));
         gameSettingsBtn.addEventListener('click', () => openModal(gameSettingsModal));
-        purchaseGiftCardBtn.addEventListener('click', purchaseGiftCards);
+        validateGiftcardBtn.addEventListener('click', validateGiftcard);
         menuToggle.addEventListener('click', toggleSidebar);
         paymentMethod.addEventListener('change', togglePaymentDetails);
 
@@ -1120,6 +1206,7 @@
         registerForm.addEventListener('submit', register);
         fundWalletForm.addEventListener('submit', fundWallet);
         customerCareForm.addEventListener('submit', sendCustomerMessage);
+        giftCardForm.addEventListener('submit', generateGiftCards);
         vendorCardForm.addEventListener('submit', generateVendorCard);
         assignCardForm.addEventListener('submit', assignGiftCard);
         gameSettingsForm.addEventListener('submit', saveGameSettings);
@@ -1139,6 +1226,16 @@
         window.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal')) {
                 closeModal(e.target);
+            }
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 900 && 
+                !sidebar.contains(e.target) && 
+                !menuToggle.contains(e.target) && 
+                sidebar.classList.contains('active')) {
+                sidebar.classList.remove('active');
             }
         });
 
@@ -1223,6 +1320,7 @@
             bestTime = 0;
             walletBalance = 0;
             giftCardBalance = 0;
+            activeGiftCard = null;
             
             updateStats();
             updateWalletBalance();
@@ -1236,6 +1334,10 @@
             
             // Show game section by default
             showSection('gameSection');
+            
+            // Disable game buttons
+            startBtn.disabled = true;
+            stopBtn.disabled = true;
         }
 
         // Update sidebar menu based on user status
@@ -1280,9 +1382,65 @@
             sidebar.classList.toggle('active');
         }
 
+        // Validate gift card
+        async function validateGiftcard() {
+            const code = giftcardCodeInput.value.trim();
+            
+            if (!code) {
+                alert('Please enter a gift card code');
+                return;
+            }
+            
+            if (!user) {
+                alert('Please log in to use a gift card');
+                return;
+            }
+            
+            try {
+                const giftcardQuery = await db.collection('giftCards')
+                    .where('code', '==', code.toUpperCase())
+                    .where('status', '==', 'active')
+                    .get();
+                
+                if (giftcardQuery.empty) {
+                    alert('Invalid or expired gift card code');
+                    return;
+                }
+                
+                const giftcardDoc = giftcardQuery.docs[0];
+                const giftcardData = giftcardDoc.data();
+                
+                // Check if gift card has uses left
+                if (giftcardData.uses !== 'unlimited' && giftcardData.used >= giftcardData.uses) {
+                    alert('This gift card has no uses left');
+                    return;
+                }
+                
+                // Check if gift card is expired
+                if (giftcardData.expiresAt && giftcardData.expiresAt.toDate() < new Date()) {
+                    alert('This gift card has expired');
+                    return;
+                }
+                
+                // Set active gift card
+                activeGiftCard = {
+                    id: giftcardDoc.id,
+                    ...giftcardData
+                };
+                
+                // Enable game buttons
+                startBtn.disabled = false;
+                
+                alert('Gift card validated successfully! You can now play the game.');
+            } catch (error) {
+                console.error("Error validating gift card:", error);
+                alert('Error validating gift card. Please try again.');
+            }
+        }
+
         // Game functions
         function startGame() {
-            if (!isRunning) {
+            if (!isRunning && activeGiftCard) {
                 isRunning = true;
                 startBtn.disabled = true;
                 stopBtn.disabled = false;
@@ -1295,36 +1453,24 @@
             }
         }
 
-        function stopGame() {
+        async function stopGame() {
             if (isRunning) {
                 isRunning = false;
                 clearInterval(timerInterval);
                 startBtn.disabled = false;
                 stopBtn.disabled = true;
                 
-                gamesPlayed++;
                 const finalTime = currentTime / 1000; // Convert to seconds
                 
-                if (bestTime === 0 || finalTime < bestTime) {
-                    bestTime = finalTime;
-                }
-                
-                updateStats();
+                // Record game play
+                await recordGamePlay(finalTime);
                 
                 // Check if user won
                 const timeDiff = Math.abs(finalTime - gameSettings.winningTime);
                 const isWinner = timeDiff <= 0.1; // 100ms tolerance
                 
-                if (isWinner) {
-                    // Show winner form
-                    openModal(winnerDetailsModal);
-                    
-                    // Record win
-                    recordGameResult(true, finalTime);
-                } else {
-                    alert(`You stopped the timer at ${formatTime(currentTime)}. Better luck next time!`);
-                    recordGameResult(false, finalTime);
-                }
+                // Show result
+                showGameResult(isWinner, finalTime);
                 
                 // Reset timer
                 currentTime = 0;
@@ -1355,15 +1501,32 @@
             giftCardBalanceEl.textContent = giftCardBalance;
         }
 
-        // Record game result to Firebase
-        async function recordGameResult(isWinner, time) {
-            if (!user) return;
+        // Record game play to Firebase
+        async function recordGamePlay(time) {
+            if (!user || !activeGiftCard) return;
             
             try {
+                // Update gift card usage
+                if (activeGiftCard.uses !== 'unlimited') {
+                    await db.collection('giftCards').doc(activeGiftCard.id).update({
+                        used: firebase.firestore.FieldValue.increment(1),
+                        lastUsed: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    // Check if gift card is now fully used
+                    if (activeGiftCard.used + 1 >= activeGiftCard.uses) {
+                        await db.collection('giftCards').doc(activeGiftCard.id).update({
+                            status: 'used'
+                        });
+                    }
+                }
+                
+                // Record game result
                 const gameResult = {
                     userId: user.uid,
                     userName: user.displayName || user.email,
-                    isWinner: isWinner,
+                    giftCardId: activeGiftCard.id,
+                    giftCardCode: activeGiftCard.code,
                     time: time,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                     giveawayId: currentGiveaway ? currentGiveaway.id : null
@@ -1377,17 +1540,90 @@
                     lastPlayed: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
-                if (isWinner) {
-                    // Update winner count
-                    await db.collection('stats').doc('daily').update({
-                        winners: firebase.firestore.FieldValue.increment(1)
+                gamesPlayed++;
+                updateStats();
+                
+                console.log("Game play recorded successfully");
+            } catch (error) {
+                console.error("Error recording game play:", error);
+            }
+        }
+
+        // Show game result
+        async function showGameResult(isWinner, time) {
+            const resultContent = document.getElementById('resultContent');
+            
+            if (isWinner) {
+                // Check daily winners limit
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                const winnersToday = await db.collection('gameResults')
+                    .where('isWinner', '==', true)
+                    .where('timestamp', '>=', today)
+                    .get();
+                
+                if (winnersToday.size >= gameSettings.dailyWinners) {
+                    resultContent.innerHTML = `
+                        <h3>Congratulations!</h3>
+                        <p>You stopped the timer at ${time.toFixed(2)} seconds!</p>
+                        <p>Unfortunately, the daily winner limit has been reached.</p>
+                        <p>Please try again tomorrow!</p>
+                        <button class="btn btn-primary" onclick="closeModal(resultModal)">Try Again</button>
+                    `;
+                } else {
+                    // Mark as winner
+                    await db.collection('gameResults')
+                        .where('userId', '==', user.uid)
+                        .orderBy('timestamp', 'desc')
+                        .limit(1)
+                        .get()
+                        .then(querySnapshot => {
+                            if (!querySnapshot.empty) {
+                                const doc = querySnapshot.docs[0];
+                                db.collection('gameResults').doc(doc.id).update({
+                                    isWinner: true
+                                });
+                            }
+                        });
+                    
+                    resultContent.innerHTML = `
+                        <h3>Congratulations! You Won!</h3>
+                        <p>You stopped the timer at ${time.toFixed(2)} seconds!</p>
+                        <p>You've won $${activeGiftCard.value || 10}!</p>
+                        <p>Please submit your details to claim your prize.</p>
+                        <button class="btn btn-success" onclick="closeModal(resultModal); openModal(winnerDetailsModal)">Claim Prize</button>
+                    `;
+                    
+                    // Update wallet balance
+                    const winnings = activeGiftCard.value || 10;
+                    walletBalance += winnings;
+                    updateWalletBalance();
+                    
+                    await db.collection('users').doc(user.uid).update({
+                        walletBalance: firebase.firestore.FieldValue.increment(winnings)
+                    });
+                    
+                    // Record transaction
+                    await db.collection('transactions').add({
+                        userId: user.uid,
+                        type: 'Game Win',
+                        amount: winnings,
+                        status: 'Completed',
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     });
                 }
-                
-                console.log("Game result recorded successfully");
-            } catch (error) {
-                console.error("Error recording game result:", error);
+            } else {
+                resultContent.innerHTML = `
+                    <h3>Better Luck Next Time!</h3>
+                    <p>You stopped the timer at ${time.toFixed(2)} seconds.</p>
+                    <p>The winning time was ${gameSettings.winningTime} seconds.</p>
+                    <p>Try again to win!</p>
+                    <button class="btn btn-primary" onclick="closeModal(resultModal)">Try Again</button>
+                `;
             }
+            
+            openModal(resultModal);
         }
 
         // Authentication functions
@@ -1483,6 +1719,9 @@
                     
                     // Load transactions
                     loadTransactions();
+                    
+                    // Load user's giveaways
+                    loadUserGiveaways();
                 }
             } catch (error) {
                 console.error("Error loading user data:", error);
@@ -1663,16 +1902,72 @@
         }
 
         // Gift card functions
-        function purchaseGiftCards() {
-            // Redirect to gift card purchase page
-            window.open('https://www.getgftcard.com/728288', '_blank');
-            closeModal(generateGiftCardModal);
+        async function generateGiftCards(e) {
+            e.preventDefault();
+            const amount = parseInt(document.getElementById('giftCardAmount').value);
+            const value = parseFloat(document.getElementById('giftCardValue').value);
+            const uses = document.getElementById('giftCardUses').value;
+            
+            if (!user) {
+                alert('Please log in to generate gift cards');
+                return;
+            }
+            
+            // Calculate total cost
+            const totalCost = amount * value;
+            
+            if (walletBalance < totalCost) {
+                alert(`Insufficient funds. You need $${totalCost.toFixed(2)} but only have $${walletBalance.toFixed(2)}`);
+                return;
+            }
+            
+            try {
+                // Generate gift cards
+                for (let i = 0; i < amount; i++) {
+                    const code = generateGiftCardCode();
+                    
+                    await db.collection('giftCards').add({
+                        code: code,
+                        value: value,
+                        uses: uses,
+                        used: 0,
+                        status: 'active',
+                        createdBy: user.uid,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+                    });
+                }
+                
+                // Deduct from wallet
+                await db.collection('users').doc(user.uid).update({
+                    walletBalance: firebase.firestore.FieldValue.increment(-totalCost)
+                });
+                
+                // Record transaction
+                await db.collection('transactions').add({
+                    userId: user.uid,
+                    type: 'Gift Card Purchase',
+                    amount: -totalCost,
+                    status: 'Completed',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                walletBalance -= totalCost;
+                updateWalletBalance();
+                
+                alert(`Successfully generated ${amount} gift cards with value $${value} each!`);
+                closeModal(generateGiftCardModal);
+            } catch (error) {
+                console.error("Error generating gift cards:", error);
+                alert(`Error: ${error.message}`);
+            }
         }
 
         async function generateVendorCard(e) {
             e.preventDefault();
             const vendorName = document.getElementById('vendorName').value;
             const cardValue = parseFloat(document.getElementById('vendorCardValue').value);
+            const uses = document.getElementById('vendorCardUses').value;
             
             if (vendorName && cardValue > 0) {
                 try {
@@ -1684,9 +1979,13 @@
                         vendorName: vendorName,
                         value: cardValue,
                         code: cardCode,
+                        uses: uses,
+                        used: 0,
+                        status: 'active',
                         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                         createdBy: user.uid,
-                        type: 'vendor'
+                        type: 'vendor',
+                        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
                     });
                     
                     alert(`Gift card for ${vendorName} with value $${cardValue} generated successfully! Code: ${cardCode}`);
@@ -1704,6 +2003,7 @@
             e.preventDefault();
             const userEmail = document.getElementById('searchUser').value;
             const cardValue = parseFloat(document.getElementById('cardValue').value);
+            const uses = document.getElementById('cardUses').value;
             
             if (userEmail && cardValue > 0) {
                 try {
@@ -1726,9 +2026,13 @@
                         userId: userId,
                         value: cardValue,
                         code: cardCode,
+                        uses: uses,
+                        used: 0,
+                        status: 'active',
                         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                         createdBy: user.uid,
-                        type: 'assigned'
+                        type: 'assigned',
+                        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
                     });
                     
                     // Update user's gift card balance
@@ -1802,6 +2106,14 @@
                 return;
             }
             
+            // Calculate cost
+            const cost = participantLimit * 5; // $5 per participant
+            
+            if (walletBalance < cost) {
+                alert(`Insufficient funds. You need $${cost.toFixed(2)} but only have $${walletBalance.toFixed(2)}`);
+                return;
+            }
+            
             try {
                 // Create giveaway in Firebase
                 const giveawayRef = await db.collection('giveaways').add({
@@ -1814,8 +2126,27 @@
                     creatorName: user.displayName || user.email,
                     status: 'pending',
                     participants: 0,
+                    cost: cost,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
+                
+                // Deduct from wallet
+                await db.collection('users').doc(user.uid).update({
+                    walletBalance: firebase.firestore.FieldValue.increment(-cost)
+                });
+                
+                // Record transaction
+                await db.collection('transactions').add({
+                    userId: user.uid,
+                    type: 'Giveaway Creation',
+                    amount: -cost,
+                    status: 'Pending',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    giveawayId: giveawayRef.id
+                });
+                
+                walletBalance -= cost;
+                updateWalletBalance();
                 
                 // Generate unique giveaway link
                 const giveawayLink = `${window.location.origin}?giveaway=${giveawayRef.id}`;
@@ -1924,7 +2255,8 @@
                     paymentMethod: paymentMethod,
                     cryptoWallet: cryptoWallet,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    status: 'pending'
+                    status: 'pending',
+                    amount: activeGiftCard ? activeGiftCard.value : 10
                 });
                 
                 alert('Winner details submitted successfully! You will receive your payment soon.');
