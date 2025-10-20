@@ -612,6 +612,27 @@
             color: var(--info);
         }
         
+        /* Gift Card Info */
+        .giftcard-info {
+            background: rgba(76, 201, 240, 0.1);
+            border: 1px solid var(--success);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        
+        .giftcard-info h4 {
+            color: var(--success);
+            margin-bottom: 10px;
+        }
+        
+        .plays-remaining {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--warning);
+        }
+        
         /* Mobile Responsiveness */
         @media (max-width: 900px) {
             .sidebar {
@@ -693,6 +714,14 @@
             <div class="content-section active" id="gameSection">
                 <div class="game-section">
                     <h2 class="section-title">Stop The Timer Game</h2>
+                    
+                    <!-- Gift Card Info Display -->
+                    <div class="giftcard-info" id="giftcardInfo" style="display: none;">
+                        <h4>Active Gift Card</h4>
+                        <p>Card: <span id="activeCardCode"></span></p>
+                        <p class="plays-remaining">Plays Remaining: <span id="playsRemaining">0</span></p>
+                    </div>
+                    
                     <div class="target-time" id="targetTimeDisplay" style="display: none;">
                         Target Time: <span id="targetTimeValue">00.00</span> seconds
                     </div>
@@ -736,7 +765,7 @@
                     <div class="dashboard-actions">
                         <div class="dashboard-card">
                             <h3>Wallet Balance</h3>
-                            <div class="balance" id="walletBalance">$0.00</div>
+                            <div class="balance" id="walletBalance">₦0.00</div>
                             <button id="fundWalletBtn" class="btn btn-primary">
                                 <i class="fas fa-wallet"></i> Fund Wallet
                             </button>
@@ -990,7 +1019,7 @@
             </div>
             <form id="fundWalletForm">
                 <div class="form-group">
-                    <label for="fundAmount">Amount</label>
+                    <label for="fundAmount">Amount (₦)</label>
                     <input type="number" id="fundAmount" min="1" required>
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Add Funds</button>
@@ -1044,8 +1073,8 @@
                     <input type="number" id="giftCardAmount" min="1" required>
                 </div>
                 <div class="form-group">
-                    <label for="giftCardValue">Value per Card ($)</label>
-                    <input type="number" id="giftCardValue" min="1" required>
+                    <label for="giftCardValue">Value per Card (₦)</label>
+                    <input type="number" id="giftCardValue" min="100" required>
                 </div>
                 <div class="form-group">
                     <label for="giftCardUses">Uses per Card</label>
@@ -1156,8 +1185,8 @@
                     <input type="text" id="vendorName" required>
                 </div>
                 <div class="form-group">
-                    <label for="vendorCardValue">Card Value</label>
-                    <input type="number" id="vendorCardValue" min="1" required>
+                    <label for="vendorCardValue">Card Value (₦)</label>
+                    <input type="number" id="vendorCardValue" min="100" required>
                 </div>
                 <div class="form-group">
                     <label for="vendorCardUses">Uses per Card</label>
@@ -1186,8 +1215,8 @@
                     <input type="text" id="searchUser" placeholder="Enter user email" required>
                 </div>
                 <div class="form-group">
-                    <label for="cardValue">Card Value</label>
-                    <input type="number" id="cardValue" min="1" required>
+                    <label for="cardValue">Card Value (₦)</label>
+                    <input type="number" id="cardValue" min="100" required>
                 </div>
                 <div class="form-group">
                     <label for="cardUses">Uses per Card</label>
@@ -1211,6 +1240,10 @@
                 <button class="close-btn">&times;</button>
             </div>
             <form id="gameSettingsForm">
+                <div class="form-group">
+                    <label for="gamePrice">Game Price (₦)</label>
+                    <input type="number" id="gamePrice" min="1" required>
+                </div>
                 <div class="form-group">
                     <label for="dailyWinners">Daily Winners Limit</label>
                     <input type="number" id="dailyWinners" min="1" required>
@@ -1323,6 +1356,9 @@
         </div>
     </div>
 
+    <!-- External Configuration -->
+    <script src="config.js"></script>
+    
     <!-- Main Application Script -->
     <script>
         // Game variables
@@ -1339,19 +1375,14 @@
         let currentGiveaway = null;
         let activeGiftCard = null;
         let gameSettings = {
-            dailyWinners: 10,
-            winningTime: 5.00,
-            difficulty: 'medium',
-            giftCardPaymentUrl: 'https://example.com/payment'
+            gamePrice: gameDefaults.gamePrice,
+            dailyWinners: gameDefaults.dailyWinners,
+            winningTime: gameDefaults.defaultWinningTime,
+            difficulty: gameDefaults.defaultDifficulty,
+            giftCardPaymentUrl: paymentConfig.giftCardPaymentUrl
         };
 
-        let socialSettings = {
-            instagram: 'https://instagram.com/example',
-            facebook: 'https://facebook.com/example',
-            twitter: 'https://twitter.com/example',
-            tiktok: 'https://tiktok.com/@example',
-            youtube: 'https://youtube.com/example'
-        };
+        let socialSettings = { ...socialConfig };
 
         // DOM elements
         const timerDisplay = document.getElementById('timerDisplay');
@@ -1394,6 +1425,9 @@
         const targetTimeDisplay = document.getElementById('targetTimeDisplay');
         const targetTimeValue = document.getElementById('targetTimeValue');
         const successAnimation = document.getElementById('successAnimation');
+        const giftcardInfo = document.getElementById('giftcardInfo');
+        const activeCardCode = document.getElementById('activeCardCode');
+        const playsRemaining = document.getElementById('playsRemaining');
 
         // Modals
         const loginModal = document.getElementById('loginModal');
@@ -1434,16 +1468,6 @@
         // Initialize Firebase
         function initializeFirebase() {
             try {
-                // Firebase configuration - replace with your actual config
-                const firebaseConfig = {
-                    apiKey: "your-api-key",
-                    authDomain: "your-project.firebaseapp.com",
-                    projectId: "your-project-id",
-                    storageBucket: "your-project.appspot.com",
-                    messagingSenderId: "123456789",
-                    appId: "your-app-id"
-                };
-                
                 // Initialize Firebase
                 firebase.initializeApp(firebaseConfig);
                 
@@ -1636,6 +1660,10 @@
             startBtn.disabled = true;
             stopBtn.disabled = true;
             payGameBtn.disabled = false;
+            
+            // Hide gift card info
+            giftcardInfo.style.display = 'none';
+            targetTimeDisplay.style.display = 'none';
         }
 
         // Update sidebar menu based on user status
@@ -1715,9 +1743,9 @@
             });
         }
 
-        // Validate gift card
+        // Validate gift card with Firebase
         async function validateGiftcard() {
-            const code = giftcardCodeInput.value.trim();
+            const code = giftcardCodeInput.value.trim().toUpperCase();
             
             if (!code) {
                 alert('Please enter a gift card code');
@@ -1725,43 +1753,79 @@
             }
             
             try {
-                // Simulate gift card validation - in a real app, this would check against a database
-                // For demo purposes, we'll use a mock validation
-                const isValid = code.length >= 8;
+                // Check if gift card exists in Firebase
+                const giftcardQuery = await db.collection('giftCards')
+                    .where('code', '==', code)
+                    .get();
                 
-                if (isValid) {
-                    // Show success animation
-                    successAnimation.style.display = 'flex';
-                    
-                    // Play success sound
-                    playSuccessSound();
-                    
-                    // Get the target time from the gift card (in a real app, this would come from the database)
-                    // For demo, we'll use a random time between 3 and 7 seconds
-                    const targetTime = (Math.random() * 4 + 3).toFixed(2);
-                    
-                    // Update the target time display
-                    targetTimeValue.textContent = targetTime;
-                    targetTimeDisplay.style.display = 'block';
-                    
-                    // Set the game settings winning time
-                    gameSettings.winningTime = parseFloat(targetTime);
-                    
-                    // Enable game buttons after a delay
-                    setTimeout(() => {
-                        validateGiftcardBtn.disabled = true;
-                        giftcardCodeInput.disabled = true;
-                        
-                        // Close modal after success
-                        setTimeout(() => {
-                            closeModal(giftCardValidationModal);
-                            startBtn.disabled = false;
-                            payGameBtn.style.display = 'none';
-                        }, 1500);
-                    }, 2000);
-                } else {
-                    alert('Invalid gift card code. Please try again.');
+                if (giftcardQuery.empty) {
+                    alert('Invalid gift card code. Please check and try again.');
+                    return;
                 }
+                
+                const giftcardDoc = giftcardQuery.docs[0];
+                const giftcardData = giftcardDoc.data();
+                
+                // Check if gift card is active
+                if (giftcardData.status !== 'active') {
+                    alert('This gift card is no longer active.');
+                    return;
+                }
+                
+                // Check if gift card has expired
+                if (giftcardData.expiresAt && giftcardData.expiresAt.toDate() < new Date()) {
+                    alert('This gift card has expired.');
+                    return;
+                }
+                
+                // Calculate plays remaining
+                const gamePrice = gameSettings.gamePrice;
+                const cardValue = giftcardData.value;
+                const totalPlays = Math.floor(cardValue / gamePrice);
+                const usedPlays = giftcardData.used || 0;
+                const remainingPlays = totalPlays - usedPlays;
+                
+                if (remainingPlays <= 0) {
+                    alert('This gift card has been fully used. No plays remaining.');
+                    return;
+                }
+                
+                // Set active gift card
+                activeGiftCard = {
+                    id: giftcardDoc.id,
+                    ...giftcardData,
+                    remainingPlays: remainingPlays,
+                    totalPlays: totalPlays
+                };
+                
+                // Show success animation
+                successAnimation.style.display = 'flex';
+                
+                // Play success sound
+                playSuccessSound();
+                
+                // Update the target time display
+                targetTimeValue.textContent = gameSettings.winningTime.toFixed(2);
+                targetTimeDisplay.style.display = 'block';
+                
+                // Update gift card info display
+                activeCardCode.textContent = code;
+                playsRemaining.textContent = `${remainingPlays} / ${totalPlays}`;
+                giftcardInfo.style.display = 'block';
+                
+                // Enable game buttons after a delay
+                setTimeout(() => {
+                    validateGiftcardBtn.disabled = true;
+                    giftcardCodeInput.disabled = true;
+                    
+                    // Close modal after success
+                    setTimeout(() => {
+                        closeModal(giftCardValidationModal);
+                        startBtn.disabled = false;
+                        payGameBtn.style.display = 'none';
+                    }, 1500);
+                }, 2000);
+                
             } catch (error) {
                 console.error("Error validating gift card:", error);
                 alert('Error validating gift card. Please try again.');
@@ -1811,17 +1875,6 @@
                     currentTime = Date.now() - startTime;
                     updateTimerDisplay(currentTime);
                 }, 10);
-            } else if (!isRunning) {
-                // For demo purposes, we'll allow the game to start without a gift card
-                isRunning = true;
-                startBtn.disabled = true;
-                stopBtn.disabled = false;
-                startTime = Date.now();
-                
-                timerInterval = setInterval(() => {
-                    currentTime = Date.now() - startTime;
-                    updateTimerDisplay(currentTime);
-                }, 10);
             }
         }
 
@@ -1834,7 +1887,7 @@
                 
                 const finalTime = currentTime / 1000; // Convert to seconds
                 
-                // Record game play
+                // Record game play and update gift card usage
                 await recordGamePlay(finalTime);
                 
                 // Check if user won
@@ -1847,6 +1900,19 @@
                 // Reset timer
                 currentTime = 0;
                 updateTimerDisplay(currentTime);
+                
+                // Update plays remaining display
+                if (activeGiftCard) {
+                    activeGiftCard.remainingPlays--;
+                    playsRemaining.textContent = `${activeGiftCard.remainingPlays} / ${activeGiftCard.totalPlays}`;
+                    
+                    if (activeGiftCard.remainingPlays <= 0) {
+                        startBtn.disabled = true;
+                        payGameBtn.style.display = 'block';
+                        giftcardInfo.style.display = 'none';
+                        alert('Your gift card has been fully used. Please purchase a new one to continue playing.');
+                    }
+                }
             }
         }
 
@@ -1862,7 +1928,7 @@
         }
 
         function updateWalletBalance() {
-            walletBalanceEl.textContent = `$${walletBalance.toFixed(2)}`;
+            walletBalanceEl.textContent = `₦${walletBalance.toFixed(2)}`;
         }
 
         function updateGiftCardBalance() {
@@ -1875,15 +1941,33 @@
             return `${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
         }
 
-        // Record game play to Firebase
+        // Record game play to Firebase and update gift card usage
         async function recordGamePlay(time) {
-            if (!user) return;
+            if (!user || !activeGiftCard) return;
             
             try {
+                // Update gift card usage
+                await db.collection('giftCards').doc(activeGiftCard.id).update({
+                    used: firebase.firestore.FieldValue.increment(1),
+                    lastUsed: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // Check if gift card is now fully used
+                const newUsedCount = (activeGiftCard.used || 0) + 1;
+                const totalPlays = Math.floor(activeGiftCard.value / gameSettings.gamePrice);
+                
+                if (newUsedCount >= totalPlays) {
+                    await db.collection('giftCards').doc(activeGiftCard.id).update({
+                        status: 'used'
+                    });
+                }
+                
                 // Record game result
                 const gameResult = {
                     userId: user.uid,
                     userName: user.displayName || user.email,
+                    giftCardId: activeGiftCard.id,
+                    giftCardCode: activeGiftCard.code,
                     time: time,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                     giveawayId: currentGiveaway ? currentGiveaway.id : null
@@ -1947,17 +2031,19 @@
                         }
                     });
                 
+                // Calculate winnings based on gift card value
+                const winnings = activeGiftCard ? Math.floor(activeGiftCard.value * 0.1) : 100; // 10% of card value
+                
                 resultContent.innerHTML = `
                     <h3>Congratulations! You Won!</h3>
                     <p>You stopped the timer at ${time.toFixed(2)} seconds!</p>
                     <p>The target time was ${gameSettings.winningTime} seconds.</p>
-                    <p>You've won $${activeGiftCard ? activeGiftCard.value : 10}!</p>
+                    <p>You've won ₦${winnings}!</p>
                     <p>Please submit your details to claim your prize.</p>
                     <button class="btn btn-success" onclick="closeModal(resultModal); openModal(winnerDetailsModal)">Claim Prize</button>
                 `;
                 
                 // Update wallet balance
-                const winnings = activeGiftCard ? activeGiftCard.value : 10;
                 walletBalance += winnings;
                 updateWalletBalance();
                 
@@ -2099,7 +2185,8 @@
                     gameSettings = { ...gameSettings, ...settingsDoc.data() };
                     
                     // Update form values if modal is open
-                    if (document.getElementById('dailyWinners')) {
+                    if (document.getElementById('gamePrice')) {
+                        document.getElementById('gamePrice').value = gameSettings.gamePrice;
                         document.getElementById('dailyWinners').value = gameSettings.dailyWinners;
                         document.getElementById('winningTimeAdmin').value = gameSettings.winningTime;
                         document.getElementById('difficultyLevel').value = gameSettings.difficulty;
@@ -2171,7 +2258,7 @@
                     row.innerHTML = `
                         <td>${dateStr}</td>
                         <td>${data.type}</td>
-                        <td>${data.amount >= 0 ? '+' : ''}$${Math.abs(data.amount).toFixed(2)}</td>
+                        <td>${data.amount >= 0 ? '+' : ''}₦${Math.abs(data.amount).toFixed(2)}</td>
                         <td>${data.status}</td>
                     `;
                     
@@ -2198,7 +2285,7 @@
                     row.innerHTML = `
                         <td>${userData.name}</td>
                         <td>${userData.email}</td>
-                        <td>$${userData.walletBalance || 0}</td>
+                        <td>₦${userData.walletBalance || 0}</td>
                         <td>${userData.status || 'Active'}</td>
                         <td>
                             <button class="btn btn-primary btn-sm" onclick="editUser('${doc.id}')">Edit</button>
@@ -2257,7 +2344,7 @@
                     updateWalletBalance();
                     
                     closeModal(fundWalletModal);
-                    alert(`Successfully added $${amount.toFixed(2)} to your wallet!`);
+                    alert(`Successfully added ₦${amount.toFixed(2)} to your wallet!`);
                 } catch (error) {
                     console.error("Error funding wallet:", error);
                     alert(`Error: ${error.message}`);
@@ -2327,7 +2414,7 @@
             const totalCost = amount * value;
             
             if (walletBalance < totalCost) {
-                alert(`Insufficient funds. You need $${totalCost.toFixed(2)} but only have $${walletBalance.toFixed(2)}`);
+                alert(`Insufficient funds. You need ₦${totalCost.toFixed(2)} but only have ₦${walletBalance.toFixed(2)}`);
                 return;
             }
             
@@ -2365,7 +2452,7 @@
                 walletBalance -= totalCost;
                 updateWalletBalance();
                 
-                alert(`Successfully generated ${amount} gift cards with value $${value} each!`);
+                alert(`Successfully generated ${amount} gift cards with value ₦${value} each!`);
                 closeModal(generateGiftCardModal);
             } catch (error) {
                 console.error("Error generating gift cards:", error);
@@ -2398,7 +2485,7 @@
                         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
                     });
                     
-                    alert(`Gift card for ${vendorName} with value $${cardValue} generated successfully! Code: ${cardCode}`);
+                    alert(`Gift card for ${vendorName} with value ₦${cardValue} generated successfully! Code: ${cardCode}`);
                     closeModal(generateVendorCardModal);
                 } catch (error) {
                     console.error("Error generating vendor card:", error);
@@ -2452,7 +2539,7 @@
                         giftCardBalance: firebase.firestore.FieldValue.increment(1)
                     });
                     
-                    alert(`Gift card with value $${cardValue} assigned to ${userEmail} successfully! Code: ${cardCode}`);
+                    alert(`Gift card with value ₦${cardValue} assigned to ${userEmail} successfully! Code: ${cardCode}`);
                     closeModal(assignCardModal);
                 } catch (error) {
                     console.error("Error assigning gift card:", error);
@@ -2479,6 +2566,7 @@
         // Game settings functions
         async function saveGameSettings(e) {
             e.preventDefault();
+            const gamePrice = parseInt(document.getElementById('gamePrice').value);
             const dailyWinners = parseInt(document.getElementById('dailyWinners').value);
             const winningTime = parseFloat(document.getElementById('winningTimeAdmin').value);
             const difficulty = document.getElementById('difficultyLevel').value;
@@ -2486,6 +2574,7 @@
             
             try {
                 await db.collection('settings').doc('game').set({
+                    gamePrice: gamePrice,
                     dailyWinners: dailyWinners,
                     winningTime: winningTime,
                     difficulty: difficulty,
@@ -2494,6 +2583,7 @@
                     updatedBy: user.uid
                 });
                 
+                gameSettings.gamePrice = gamePrice;
                 gameSettings.dailyWinners = dailyWinners;
                 gameSettings.winningTime = winningTime;
                 gameSettings.difficulty = difficulty;
@@ -2562,10 +2652,10 @@
             }
             
             // Calculate cost
-            const cost = participantLimit * 5; // $5 per participant
+            const cost = participantLimit * gameSettings.gamePrice;
             
             if (walletBalance < cost) {
-                alert(`Insufficient funds. You need $${cost.toFixed(2)} but only have $${walletBalance.toFixed(2)}`);
+                alert(`Insufficient funds. You need ₦${cost.toFixed(2)} but only have ₦${walletBalance.toFixed(2)}`);
                 return;
             }
             
@@ -2711,7 +2801,7 @@
                     cryptoWallet: cryptoWallet,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                     status: 'pending',
-                    amount: activeGiftCard ? activeGiftCard.value : 10
+                    amount: activeGiftCard ? Math.floor(activeGiftCard.value * 0.1) : 100
                 });
                 
                 alert('Winner details submitted successfully! You will receive your payment soon.');
