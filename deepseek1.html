@@ -331,6 +331,10 @@
             align-items: center;
         }
         
+        .modal.active {
+            display: flex;
+        }
+        
         .modal-content {
             background: #1a1a2e;
             border-radius: 15px;
@@ -544,6 +548,70 @@
             font-size: 14px;
         }
         
+        /* Success Animation */
+        .success-animation {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        
+        .checkmark {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: block;
+            stroke-width: 2;
+            stroke: #4cc9f0;
+            stroke-miterlimit: 10;
+            box-shadow: inset 0px 0px 0px #4cc9f0;
+            animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
+        }
+        
+        .checkmark__circle {
+            stroke-dasharray: 166;
+            stroke-dashoffset: 166;
+            stroke-width: 2;
+            stroke-miterlimit: 10;
+            stroke: #4cc9f0;
+            fill: none;
+            animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+        }
+        
+        .checkmark__check {
+            transform-origin: 50% 50%;
+            stroke-dasharray: 48;
+            stroke-dashoffset: 48;
+            animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+        }
+        
+        @keyframes stroke {
+            100% {
+                stroke-dashoffset: 0;
+            }
+        }
+        
+        @keyframes scale {
+            0%, 100% {
+                transform: none;
+            }
+            50% {
+                transform: scale3d(1.1, 1.1, 1);
+            }
+        }
+        
+        @keyframes fill {
+            100% {
+                box-shadow: inset 0px 0px 0px 30px #4cc9f0;
+            }
+        }
+        
+        /* Target Time Display */
+        .target-time {
+            font-size: 24px;
+            margin: 15px 0;
+            color: var(--info);
+        }
+        
         /* Mobile Responsiveness */
         @media (max-width: 900px) {
             .sidebar {
@@ -625,12 +693,14 @@
             <div class="content-section active" id="gameSection">
                 <div class="game-section">
                     <h2 class="section-title">Stop The Timer Game</h2>
-                    <div class="giftcard-input">
-                        <input type="text" id="giftcardCode" placeholder="Enter Gift Card Code">
-                        <button id="validateGiftcardBtn" class="btn btn-primary">Validate</button>
+                    <div class="target-time" id="targetTimeDisplay" style="display: none;">
+                        Target Time: <span id="targetTimeValue">00.00</span> seconds
                     </div>
                     <div class="timer-display" id="timerDisplay">00.00</div>
                     <div class="game-controls">
+                        <button id="payGameBtn" class="btn btn-warning game-btn">
+                            <i class="fas fa-credit-card"></i> Pay to Play
+                        </button>
                         <button id="startBtn" class="btn btn-success game-btn" disabled>
                             <i class="fas fa-play"></i> Start Game
                         </button>
@@ -991,6 +1061,29 @@
         </div>
     </div>
     
+    <!-- Gift Card Validation Modal -->
+    <div id="giftCardValidationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Enter Gift Card Code</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="form-group">
+                <label for="giftcardCode">Gift Card Code</label>
+                <input type="text" id="giftcardCode" placeholder="Enter your gift card code">
+            </div>
+            <div class="success-animation" id="successAnimation" style="display: none;">
+                <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                    <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+                    <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                </svg>
+            </div>
+            <div class="form-group">
+                <button id="validateGiftcardBtn" class="btn btn-primary" style="width: 100%;">Validate Gift Card</button>
+            </div>
+        </div>
+    </div>
+    
     <!-- Result Modal -->
     <div id="resultModal" class="modal">
         <div class="modal-content">
@@ -1230,9 +1323,6 @@
         </div>
     </div>
 
-    <!-- External Configuration -->
-    <script src="config.js"></script>
-    
     <!-- Main Application Script -->
     <script>
         // Game variables
@@ -1252,15 +1342,22 @@
             dailyWinners: 10,
             winningTime: 5.00,
             difficulty: 'medium',
-            giftCardPaymentUrl: paymentConfig.giftCardPaymentUrl
+            giftCardPaymentUrl: 'https://example.com/payment'
         };
 
-        let socialSettings = { ...socialConfig };
+        let socialSettings = {
+            instagram: 'https://instagram.com/example',
+            facebook: 'https://facebook.com/example',
+            twitter: 'https://twitter.com/example',
+            tiktok: 'https://tiktok.com/@example',
+            youtube: 'https://youtube.com/example'
+        };
 
         // DOM elements
         const timerDisplay = document.getElementById('timerDisplay');
         const startBtn = document.getElementById('startBtn');
         const stopBtn = document.getElementById('stopBtn');
+        const payGameBtn = document.getElementById('payGameBtn');
         const gamesPlayedEl = document.getElementById('gamesPlayed');
         const bestTimeEl = document.getElementById('bestTime');
         const walletBalanceEl = document.getElementById('walletBalance');
@@ -1294,6 +1391,9 @@
         const shopGiftCardBtn = document.getElementById('shopGiftCardBtn');
         const premiumBtn = document.getElementById('premiumBtn');
         const merchandiseBtn = document.getElementById('merchandiseBtn');
+        const targetTimeDisplay = document.getElementById('targetTimeDisplay');
+        const targetTimeValue = document.getElementById('targetTimeValue');
+        const successAnimation = document.getElementById('successAnimation');
 
         // Modals
         const loginModal = document.getElementById('loginModal');
@@ -1301,6 +1401,7 @@
         const fundWalletModal = document.getElementById('fundWalletModal');
         const customerCareModal = document.getElementById('customerCareModal');
         const generateGiftCardModal = document.getElementById('generateGiftCardModal');
+        const giftCardValidationModal = document.getElementById('giftCardValidationModal');
         const resultModal = document.getElementById('resultModal');
         const winnerDetailsModal = document.getElementById('winnerDetailsModal');
         const generateVendorCardModal = document.getElementById('generateVendorCardModal');
@@ -1333,6 +1434,16 @@
         // Initialize Firebase
         function initializeFirebase() {
             try {
+                // Firebase configuration - replace with your actual config
+                const firebaseConfig = {
+                    apiKey: "your-api-key",
+                    authDomain: "your-project.firebaseapp.com",
+                    projectId: "your-project-id",
+                    storageBucket: "your-project.appspot.com",
+                    messagingSenderId: "123456789",
+                    appId: "your-app-id"
+                };
+                
                 // Initialize Firebase
                 firebase.initializeApp(firebaseConfig);
                 
@@ -1364,6 +1475,7 @@
             // Game controls
             startBtn.addEventListener('click', startGame);
             stopBtn.addEventListener('click', stopGame);
+            payGameBtn.addEventListener('click', () => openModal(giftCardValidationModal));
             
             // Auth controls
             loginBtn.addEventListener('click', () => openModal(loginModal));
@@ -1523,6 +1635,7 @@
             // Disable game buttons
             startBtn.disabled = true;
             stopBtn.disabled = true;
+            payGameBtn.disabled = false;
         }
 
         // Update sidebar menu based on user status
@@ -1611,56 +1724,95 @@
                 return;
             }
             
-            if (!user) {
-                alert('Please log in to use a gift card');
-                return;
-            }
-            
             try {
-                const giftcardQuery = await db.collection('giftCards')
-                    .where('code', '==', code.toUpperCase())
-                    .where('status', '==', 'active')
-                    .get();
+                // Simulate gift card validation - in a real app, this would check against a database
+                // For demo purposes, we'll use a mock validation
+                const isValid = code.length >= 8;
                 
-                if (giftcardQuery.empty) {
-                    alert('Invalid or expired gift card code');
-                    return;
+                if (isValid) {
+                    // Show success animation
+                    successAnimation.style.display = 'flex';
+                    
+                    // Play success sound
+                    playSuccessSound();
+                    
+                    // Get the target time from the gift card (in a real app, this would come from the database)
+                    // For demo, we'll use a random time between 3 and 7 seconds
+                    const targetTime = (Math.random() * 4 + 3).toFixed(2);
+                    
+                    // Update the target time display
+                    targetTimeValue.textContent = targetTime;
+                    targetTimeDisplay.style.display = 'block';
+                    
+                    // Set the game settings winning time
+                    gameSettings.winningTime = parseFloat(targetTime);
+                    
+                    // Enable game buttons after a delay
+                    setTimeout(() => {
+                        validateGiftcardBtn.disabled = true;
+                        giftcardCodeInput.disabled = true;
+                        
+                        // Close modal after success
+                        setTimeout(() => {
+                            closeModal(giftCardValidationModal);
+                            startBtn.disabled = false;
+                            payGameBtn.style.display = 'none';
+                        }, 1500);
+                    }, 2000);
+                } else {
+                    alert('Invalid gift card code. Please try again.');
                 }
-                
-                const giftcardDoc = giftcardQuery.docs[0];
-                const giftcardData = giftcardDoc.data();
-                
-                // Check if gift card has uses left
-                if (giftcardData.uses !== 'unlimited' && giftcardData.used >= giftcardData.uses) {
-                    alert('This gift card has no uses left');
-                    return;
-                }
-                
-                // Check if gift card is expired
-                if (giftcardData.expiresAt && giftcardData.expiresAt.toDate() < new Date()) {
-                    alert('This gift card has expired');
-                    return;
-                }
-                
-                // Set active gift card
-                activeGiftCard = {
-                    id: giftcardDoc.id,
-                    ...giftcardData
-                };
-                
-                // Enable game buttons
-                startBtn.disabled = false;
-                
-                alert('Gift card validated successfully! You can now play the game.');
             } catch (error) {
                 console.error("Error validating gift card:", error);
                 alert('Error validating gift card. Please try again.');
             }
         }
 
+        // Play success sound
+        function playSuccessSound() {
+            // Create audio context
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Create oscillator for the success sound
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // Set up the sound
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            
+            // Play the sound
+            oscillator.start();
+            
+            // Change frequency for a pleasant sound
+            oscillator.frequency.exponentialRampToValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
+            oscillator.frequency.exponentialRampToValueAtTime(783.99, audioContext.currentTime + 0.2); // G5
+            
+            // Fade out
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            // Stop after fade out
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+
         // Game functions
         function startGame() {
             if (!isRunning && activeGiftCard) {
+                isRunning = true;
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                startTime = Date.now();
+                
+                timerInterval = setInterval(() => {
+                    currentTime = Date.now() - startTime;
+                    updateTimerDisplay(currentTime);
+                }, 10);
+            } else if (!isRunning) {
+                // For demo purposes, we'll allow the game to start without a gift card
                 isRunning = true;
                 startBtn.disabled = true;
                 stopBtn.disabled = false;
@@ -1725,30 +1877,13 @@
 
         // Record game play to Firebase
         async function recordGamePlay(time) {
-            if (!user || !activeGiftCard) return;
+            if (!user) return;
             
             try {
-                // Update gift card usage
-                if (activeGiftCard.uses !== 'unlimited') {
-                    await db.collection('giftCards').doc(activeGiftCard.id).update({
-                        used: firebase.firestore.FieldValue.increment(1),
-                        lastUsed: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    
-                    // Check if gift card is now fully used
-                    if (activeGiftCard.used + 1 >= activeGiftCard.uses) {
-                        await db.collection('giftCards').doc(activeGiftCard.id).update({
-                            status: 'used'
-                        });
-                    }
-                }
-                
                 // Record game result
                 const gameResult = {
                     userId: user.uid,
                     userName: user.displayName || user.email,
-                    giftCardId: activeGiftCard.id,
-                    giftCardCode: activeGiftCard.code,
                     time: time,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                     giveawayId: currentGiveaway ? currentGiveaway.id : null
@@ -1815,13 +1950,14 @@
                 resultContent.innerHTML = `
                     <h3>Congratulations! You Won!</h3>
                     <p>You stopped the timer at ${time.toFixed(2)} seconds!</p>
-                    <p>You've won $${activeGiftCard.value || 10}!</p>
+                    <p>The target time was ${gameSettings.winningTime} seconds.</p>
+                    <p>You've won $${activeGiftCard ? activeGiftCard.value : 10}!</p>
                     <p>Please submit your details to claim your prize.</p>
                     <button class="btn btn-success" onclick="closeModal(resultModal); openModal(winnerDetailsModal)">Claim Prize</button>
                 `;
                 
                 // Update wallet balance
-                const winnings = activeGiftCard.value || 10;
+                const winnings = activeGiftCard ? activeGiftCard.value : 10;
                 walletBalance += winnings;
                 updateWalletBalance();
                 
@@ -1841,7 +1977,7 @@
                 resultContent.innerHTML = `
                     <h3>Better Luck Next Time!</h3>
                     <p>You stopped the timer at ${time.toFixed(2)} seconds.</p>
-                    <p>The winning time was ${gameSettings.winningTime} seconds.</p>
+                    <p>The target time was ${gameSettings.winningTime} seconds.</p>
                     <p>Try again to win!</p>
                     <button class="btn btn-primary" onclick="closeModal(resultModal)">Try Again</button>
                 `;
@@ -2711,11 +2847,11 @@
 
         // Modal functions
         function openModal(modal) {
-            modal.style.display = 'flex';
+            modal.classList.add('active');
         }
 
         function closeModal(modal) {
-            modal.style.display = 'none';
+            modal.classList.remove('active');
         }
 
         // Initialize the app
