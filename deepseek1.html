@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Stop the Timer Game</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
@@ -35,6 +35,8 @@
             color: var(--light);
             min-height: 100vh;
             overflow-x: hidden;
+            font-size: 16px;
+            line-height: 1.5;
         }
         
         .container {
@@ -387,6 +389,12 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
             background: rgba(255, 255, 255, 0.1);
             color: white;
+            font-size: 16px; /* Prevent zoom on iOS */
+        }
+        
+        textarea {
+            min-height: 100px;
+            resize: vertical;
         }
         
         .admin-section {
@@ -832,6 +840,28 @@
             gap: 10px;
         }
         
+        /* Transaction Dropdown */
+        .transaction-dropdown {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+        }
+        
+        .transaction-dropdown.active {
+            display: block;
+        }
+        
+        .transaction-toggle {
+            background: none;
+            border: none;
+            color: var(--info);
+            cursor: pointer;
+            text-decoration: underline;
+            margin-top: 10px;
+        }
+        
         /* Mobile Responsiveness */
         @media (max-width: 900px) {
             .sidebar {
@@ -948,6 +978,15 @@
                 width: 100%;
                 justify-content: space-between;
             }
+            
+            /* Transaction table mobile */
+            .transaction-table-container {
+                overflow-x: auto;
+            }
+            
+            table {
+                min-width: 600px;
+            }
         }
         
         @media (max-width: 480px) {
@@ -1018,6 +1057,27 @@
         
         .giveaway-type-btn:hover {
             background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Chat Reply Form */
+        .chat-reply-form {
+            margin-top: 15px;
+        }
+        
+        /* Gift Card Generation */
+        .giftcard-result {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .giftcard-code {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--success);
+            margin: 10px 0;
         }
     </style>
 </head>
@@ -1145,21 +1205,27 @@
                                 <option value="withdrawals">Withdrawals</option>
                             </select>
                         </div>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Type</th>
-                                    <th>Amount</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="transactionTable">
-                                <tr>
-                                    <td colspan="4" style="text-align: center;">No transactions yet</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div class="transaction-table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Type</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="transactionTable">
+                                    <tr>
+                                        <td colspan="4" style="text-align: center;">No transactions yet</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <button class="transaction-toggle" id="transactionToggle">View All Transactions</button>
+                        <div class="transaction-dropdown" id="transactionDropdown">
+                            <!-- Additional transactions will be loaded here -->
+                        </div>
                     </div>
                     
                     <!-- Admin Section (only visible to admins) -->
@@ -1274,22 +1340,24 @@
                     
                     <div class="transaction-history" style="margin-top: 40px;">
                         <h3 class="section-title">My Giveaways</h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Title</th>
-                                    <th>Type</th>
-                                    <th>Participants</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="giveawayTable">
-                                <tr>
-                                    <td colspan="5" style="text-align: center;">No giveaways yet</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div class="transaction-table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Type</th>
+                                        <th>Participants</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="giveawayTable">
+                                    <tr>
+                                        <td colspan="5" style="text-align: center;">No giveaways yet</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
                 
@@ -1332,21 +1400,23 @@
                     
                     <div class="transaction-history" style="margin-bottom: 30px;">
                         <h3 class="section-title">Affiliate Transactions</h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Giveaway</th>
-                                    <th>Commission</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="affiliateTransactionTable">
-                                <tr>
-                                    <td colspan="4" style="text-align: center;">No affiliate transactions yet</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div class="transaction-table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Giveaway</th>
+                                        <th>Commission</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="affiliateTransactionTable">
+                                    <tr>
+                                        <td colspan="4" style="text-align: center;">No affiliate transactions yet</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                     
                     <h3 class="section-title">Available Giveaways</h3>
@@ -1507,7 +1577,7 @@
                     </div>
                     <div class="form-group">
                         <label for="fundAmount">Amount (₦)</label>
-                        <input type="number" id="fundAmount" min="1" required>
+                        <input type="number" id="fundAmount" min="100" step="100" required>
                     </div>
                     <button type="submit" class="btn btn-success" style="width: 100%;">Submit Funding Details</button>
                 </form>
@@ -1522,13 +1592,7 @@
                 <button class="close-btn">&times;</button>
             </div>
             <div class="chat-messages" id="chatMessages">
-                <div class="message admin">
-                    <div class="message-header">
-                        <span>Admin</span>
-                        <span>Just now</span>
-                    </div>
-                    <div>Hello! How can we help you today?</div>
-                </div>
+                <!-- Messages will be populated by JavaScript -->
             </div>
             <form id="customerCareForm">
                 <div class="form-group">
@@ -1545,34 +1609,21 @@
                 <h3 class="modal-title">Generate Gift Cards</h3>
                 <button class="close-btn">&times;</button>
             </div>
-            <div class="form-group">
-                <p style="text-align: center; margin-bottom: 20px;">
-                    Click the button below to pay for gift cards:
-                </p>
-                <a href="#" id="paymentLink" class="payment-link" style="width: 100%; text-align: center; display: block;">
-                    <i class="fas fa-credit-card"></i> Pay for Gift Cards
-                </a>
-            </div>
             <form id="giftCardForm">
                 <div class="form-group">
-                    <label for="giftCardAmount">Number of Gift Cards</label>
-                    <input type="number" id="giftCardAmount" min="1" required>
+                    <label for="giftCardAmount">Amount to Spend (₦)</label>
+                    <input type="number" id="giftCardAmount" min="100" step="100" required>
                 </div>
                 <div class="form-group">
-                    <label for="giftCardValue">Value per Card (₦)</label>
-                    <input type="number" id="giftCardValue" min="100" required>
-                </div>
-                <div class="form-group">
-                    <label for="giftCardUses">Uses per Card</label>
-                    <select id="giftCardUses" required>
-                        <option value="1">Single Use</option>
-                        <option value="5">5 Uses</option>
-                        <option value="10">10 Uses</option>
-                        <option value="unlimited">Unlimited</option>
-                    </select>
+                    <p>Each gift card costs ₦100. You will get <span id="giftCardCount">0</span> gift cards.</p>
                 </div>
                 <button type="submit" class="btn btn-warning" style="width: 100%;">Generate Gift Cards</button>
             </form>
+            <div class="giftcard-result" id="giftcardResult" style="display: none;">
+                <h4>Gift Cards Generated Successfully!</h4>
+                <p>Your gift card codes:</p>
+                <div id="giftcardCodesList"></div>
+            </div>
         </div>
     </div>
     
@@ -1710,10 +1761,69 @@
             <div class="chat-messages" id="adminChatMessages">
                 <!-- Messages will be populated by JavaScript -->
             </div>
+            <div class="chat-reply-form">
+                <form id="adminReplyForm">
+                    <div class="form-group">
+                        <textarea id="adminReplyMessage" placeholder="Type your reply..." rows="3" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Send Reply</button>
+                </form>
+            </div>
             <div class="user-actions" style="margin-top: 15px;">
                 <button id="debitUserBtn" class="btn btn-warning btn-sm">Debit User</button>
                 <button id="banUserBtn" class="btn btn-danger btn-sm">Ban User</button>
             </div>
+        </div>
+    </div>
+    
+    <div id="generateVendorCardModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Generate Vendor Cards</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="vendorCardForm">
+                <div class="form-group">
+                    <label for="vendorCardCount">Number of Vendor Cards</label>
+                    <input type="number" id="vendorCardCount" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="vendorCardValue">Value per Card (₦)</label>
+                    <input type="number" id="vendorCardValue" min="100" required>
+                </div>
+                <button type="submit" class="btn btn-warning" style="width: 100%;">Generate Vendor Cards</button>
+            </form>
+            <div class="giftcard-result" id="vendorCardResult" style="display: none;">
+                <h4>Vendor Cards Generated Successfully!</h4>
+                <p>Your vendor card codes:</p>
+                <div id="vendorCardCodesList"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="assignCardModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Assign Gift Card</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="assignCardForm">
+                <div class="form-group">
+                    <label for="assignUser">Select User</label>
+                    <select id="assignUser" required>
+                        <!-- Users will be populated by JavaScript -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="assignCardCount">Number of Gift Cards</label>
+                    <input type="number" id="assignCardCount" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="assignCardValue">Value per Card (₦)</label>
+                    <input type="number" id="assignCardValue" min="100" required>
+                </div>
+                <button type="submit" class="btn btn-success" style="width: 100%;">Assign Gift Cards</button>
+            </form>
         </div>
     </div>
     
@@ -1835,6 +1945,7 @@
         let affiliateBalance = 0;
         let referredUsers = 0;
         let activeLinks = 0;
+        let selectedUserId = null;
         
         // Initialize with default config first
         let gameSettings = {
@@ -1864,6 +1975,8 @@
         const giveawayCashbackBalanceEl = document.getElementById('giveawayCashbackBalance');
         const transactionTable = document.getElementById('transactionTable');
         const transactionFilter = document.getElementById('transactionFilter');
+        const transactionToggle = document.getElementById('transactionToggle');
+        const transactionDropdown = document.getElementById('transactionDropdown');
         const loginBtn = document.getElementById('loginBtn');
         const registerBtn = document.getElementById('registerBtn');
         const logoutBtn = document.getElementById('logoutBtn');
@@ -1921,8 +2034,22 @@
         const paymentSuccessAnimation = document.getElementById('paymentSuccessAnimation');
         const userMessagesFilter = document.getElementById('userMessagesFilter');
         const adminChatMessages = document.getElementById('adminChatMessages');
+        const adminReplyForm = document.getElementById('adminReplyForm');
+        const adminReplyMessage = document.getElementById('adminReplyMessage');
         const debitUserBtn = document.getElementById('debitUserBtn');
         const banUserBtn = document.getElementById('banUserBtn');
+        const giftCardAmount = document.getElementById('giftCardAmount');
+        const giftCardCount = document.getElementById('giftCardCount');
+        const giftcardResult = document.getElementById('giftcardResult');
+        const giftcardCodesList = document.getElementById('giftcardCodesList');
+        const vendorCardForm = document.getElementById('vendorCardForm');
+        const vendorCardResult = document.getElementById('vendorCardResult');
+        const vendorCardCodesList = document.getElementById('vendorCardCodesList');
+        const assignCardForm = document.getElementById('assignCardForm');
+        const assignUser = document.getElementById('assignUser');
+        const chatMessages = document.getElementById('chatMessages');
+        const customerCareForm = document.getElementById('customerCareForm');
+        const customerMessage = document.getElementById('customerMessage');
 
         // Get all modals
         const modals = document.querySelectorAll('.modal');
@@ -2041,8 +2168,95 @@
                 // Load user transactions
                 await loadUserTransactions(userId);
                 
+                // Load customer care messages
+                await loadCustomerCareMessages(userId);
+                
             } catch (error) {
                 console.error("Error loading user data:", error);
+            }
+        }
+
+        // Load customer care messages
+        async function loadCustomerCareMessages(userId) {
+            try {
+                const messagesSnapshot = await db.collection('messages')
+                    .where('userId', '==', userId)
+                    .orderBy('createdAt', 'asc')
+                    .get();
+                
+                updateCustomerCareMessages(messagesSnapshot);
+                
+            } catch (error) {
+                console.error("Error loading customer care messages:", error);
+            }
+        }
+
+        // Update customer care messages
+        function updateCustomerCareMessages(messagesSnapshot) {
+            chatMessages.innerHTML = '';
+            
+            if (messagesSnapshot.empty) {
+                chatMessages.innerHTML = `
+                    <div class="message admin">
+                        <div class="message-header">
+                            <span>Admin</span>
+                            <span>Just now</span>
+                        </div>
+                        <div>Hello! How can we help you today?</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            messagesSnapshot.forEach(doc => {
+                const message = doc.data();
+                const time = message.createdAt ? message.createdAt.toDate().toLocaleTimeString() : 'Just now';
+                
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${message.sender === 'admin' ? 'admin' : 'user'}`;
+                messageDiv.innerHTML = `
+                    <div class="message-header">
+                        <span>${message.sender === 'admin' ? 'Admin' : 'You'}</span>
+                        <span>${time}</span>
+                    </div>
+                    <div>${message.text}</div>
+                `;
+                
+                chatMessages.appendChild(messageDiv);
+            });
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Handle customer care message submission
+        async function handleCustomerCareMessage(e) {
+            e.preventDefault();
+            const messageText = customerMessage.value.trim();
+            
+            if (!messageText) {
+                alert('Please enter a message');
+                return;
+            }
+            
+            try {
+                // Save user message
+                await db.collection('messages').add({
+                    userId: user.uid,
+                    sender: 'user',
+                    text: messageText,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // Clear input
+                customerMessage.value = '';
+                
+                // Reload messages
+                await loadCustomerCareMessages(user.uid);
+                
+            } catch (error) {
+                console.error("Error sending message:", error);
+                alert('Error sending message: ' + error.message);
             }
         }
 
@@ -2054,6 +2268,9 @@
                 
                 // Load messages for admin panel
                 await loadAllMessages();
+                
+                // Load users for assign card
+                await loadUsersForAssignCard();
                 
             } catch (error) {
                 console.error("Error loading admin data:", error);
@@ -2082,6 +2299,17 @@
                 
             } catch (error) {
                 console.error("Error loading messages:", error);
+            }
+        }
+
+        // Load users for assign card
+        async function loadUsersForAssignCard() {
+            try {
+                const usersSnapshot = await db.collection('users').get();
+                updateAssignUserSelect(usersSnapshot);
+                
+            } catch (error) {
+                console.error("Error loading users for assign card:", error);
             }
         }
 
@@ -2121,11 +2349,11 @@
             const userMessagesFilter = document.getElementById('userMessagesFilter');
             
             // Get unique users from messages
-            const users = new Set();
+            const users = new Map();
             messagesSnapshot.forEach(doc => {
                 const message = doc.data();
-                if (message.userId) {
-                    users.add(message.userId);
+                if (message.userId && !users.has(message.userId)) {
+                    users.set(message.userId, message.userId);
                 }
             });
             
@@ -2141,6 +2369,131 @@
                 option.textContent = `User: ${userId.substring(0, 8)}...`;
                 userMessagesFilter.appendChild(option);
             });
+        }
+
+        // Update assign user select
+        function updateAssignUserSelect(usersSnapshot) {
+            assignUser.innerHTML = '';
+            
+            if (usersSnapshot.empty) {
+                assignUser.innerHTML = '<option value="">No users found</option>';
+                return;
+            }
+            
+            usersSnapshot.forEach(doc => {
+                const userData = doc.data();
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.textContent = `${userData.name || 'No Name'} (${userData.email})`;
+                assignUser.appendChild(option);
+            });
+        }
+
+        // Handle user messages filter change
+        async function handleUserMessagesFilterChange() {
+            const userId = userMessagesFilter.value;
+            
+            if (userId === 'all') {
+                await loadAllAdminMessages();
+            } else {
+                await loadUserAdminMessages(userId);
+            }
+        }
+
+        // Load all messages for admin
+        async function loadAllAdminMessages() {
+            try {
+                const messagesSnapshot = await db.collection('messages')
+                    .orderBy('createdAt', 'asc')
+                    .get();
+                
+                updateAdminChatMessages(messagesSnapshot);
+                
+            } catch (error) {
+                console.error("Error loading all messages:", error);
+            }
+        }
+
+        // Load user messages for admin
+        async function loadUserAdminMessages(userId) {
+            try {
+                const messagesSnapshot = await db.collection('messages')
+                    .where('userId', '==', userId)
+                    .orderBy('createdAt', 'asc')
+                    .get();
+                
+                updateAdminChatMessages(messagesSnapshot);
+                selectedUserId = userId;
+                
+            } catch (error) {
+                console.error("Error loading user messages:", error);
+            }
+        }
+
+        // Update admin chat messages
+        function updateAdminChatMessages(messagesSnapshot) {
+            adminChatMessages.innerHTML = '';
+            
+            if (messagesSnapshot.empty) {
+                adminChatMessages.innerHTML = '<p style="text-align: center;">No messages found</p>';
+                return;
+            }
+            
+            messagesSnapshot.forEach(doc => {
+                const message = doc.data();
+                const time = message.createdAt ? message.createdAt.toDate().toLocaleTimeString() : 'Just now';
+                
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${message.sender === 'admin' ? 'admin' : 'user'}`;
+                messageDiv.innerHTML = `
+                    <div class="message-header">
+                        <span>${message.sender === 'admin' ? 'Admin' : 'User'}</span>
+                        <span>${time}</span>
+                    </div>
+                    <div>${message.text}</div>
+                `;
+                
+                adminChatMessages.appendChild(messageDiv);
+            });
+            
+            // Scroll to bottom
+            adminChatMessages.scrollTop = adminChatMessages.scrollHeight;
+        }
+
+        // Handle admin reply
+        async function handleAdminReply(e) {
+            e.preventDefault();
+            const replyText = adminReplyMessage.value.trim();
+            
+            if (!replyText) {
+                alert('Please enter a reply');
+                return;
+            }
+            
+            if (!selectedUserId) {
+                alert('Please select a user to reply to');
+                return;
+            }
+            
+            try {
+                // Save admin reply
+                await db.collection('messages').add({
+                    userId: selectedUserId,
+                    sender: 'admin',
+                    text: replyText,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // Clear input
+                adminReplyMessage.value = '';
+                
+                // Reload messages
+                await loadUserAdminMessages(selectedUserId);
+                
+            } catch (error) {
+                console.error("Error sending reply:", error);
+                alert('Error sending reply: ' + error.message);
+            }
         }
 
         // Debit user (admin function)
@@ -2278,15 +2631,19 @@
         function updateTransactionTable(transactionsSnapshot) {
             if (transactionsSnapshot.empty) {
                 transactionTable.innerHTML = '<tr><td colspan="4" style="text-align: center;">No transactions yet</td></tr>';
+                transactionDropdown.innerHTML = '';
                 return;
             }
             
             let tableHTML = '';
+            let dropdownHTML = '';
+            let count = 0;
+            
             transactionsSnapshot.forEach(doc => {
                 const transaction = doc.data();
                 const date = transaction.createdAt ? transaction.createdAt.toDate().toLocaleDateString() : 'N/A';
                 
-                tableHTML += `
+                const rowHTML = `
                     <tr>
                         <td>${date}</td>
                         <td>${transaction.type}</td>
@@ -2294,9 +2651,24 @@
                         <td>${transaction.status || 'Completed'}</td>
                     </tr>
                 `;
+                
+                if (count < 5) {
+                    tableHTML += rowHTML;
+                } else {
+                    dropdownHTML += rowHTML;
+                }
+                count++;
             });
             
             transactionTable.innerHTML = tableHTML;
+            
+            if (dropdownHTML) {
+                transactionDropdown.innerHTML = `<table>${dropdownHTML}</table>`;
+                transactionToggle.style.display = 'block';
+            } else {
+                transactionDropdown.innerHTML = '';
+                transactionToggle.style.display = 'none';
+            }
         }
 
         // Update affiliate transaction table
@@ -2636,31 +3008,214 @@
             const amount = parseFloat(document.getElementById('fundAmount').value);
             
             try {
-                // Update user wallet
+                // Create pending transaction record
+                await db.collection('transactions').add({
+                    userId: user.uid,
+                    type: 'Wallet Funding',
+                    amount: amount,
+                    status: 'Pending',
+                    name: name,
+                    email: email,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                alert(`Funding request submitted for ₦${amount}. Please wait for admin approval.`);
+                closeModal(fundWalletModal);
+                
+            } catch (error) {
+                console.error("Error submitting funding request:", error);
+                alert('Error submitting funding request: ' + error.message);
+            }
+        }
+
+        // Generate gift cards
+        async function handleGiftCardGeneration(e) {
+            e.preventDefault();
+            
+            if (!user) {
+                alert('Please log in to generate gift cards');
+                return;
+            }
+            
+            const amount = parseFloat(giftCardAmount.value);
+            
+            // Validate amount is divisible by 100
+            if (amount % 100 !== 0) {
+                alert('Amount must be in multiples of ₦100');
+                return;
+            }
+            
+            // Calculate number of gift cards
+            const cardCount = amount / 100;
+            
+            // Check if user has enough balance
+            if (walletBalance < amount) {
+                alert(`Insufficient balance. You need ₦${amount} to generate ${cardCount} gift cards.`);
+                return;
+            }
+            
+            try {
+                // Generate gift cards
+                const giftCardCodes = [];
+                for (let i = 0; i < cardCount; i++) {
+                    const code = await generateUniqueGiftCardCode();
+                    giftCardCodes.push(code);
+                    
+                    // Create gift card in Firestore
+                    await db.collection('giftCards').add({
+                        code: code,
+                        value: 100,
+                        totalUses: 1,
+                        remainingUses: 1,
+                        userId: user.uid,
+                        isActive: true,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+                
+                // Deduct amount from wallet
                 await db.collection('users').doc(user.uid).update({
-                    walletBalance: firebase.firestore.FieldValue.increment(amount)
+                    walletBalance: firebase.firestore.FieldValue.increment(-amount)
                 });
                 
                 // Create transaction record
                 await db.collection('transactions').add({
                     userId: user.uid,
-                    type: 'Wallet Funding',
-                    amount: amount,
+                    type: 'Gift Card Purchase',
+                    amount: -amount,
                     status: 'Completed',
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
                 // Update UI
-                walletBalance += amount;
+                walletBalance -= amount;
+                giftCardBalance += cardCount;
                 updateWalletBalance();
                 
-                alert(`Wallet funded with ₦${amount}`);
-                closeModal(fundWalletModal);
+                // Show gift card codes
+                giftcardCodesList.innerHTML = '';
+                giftCardCodes.forEach(code => {
+                    const codeDiv = document.createElement('div');
+                    codeDiv.className = 'giftcard-code';
+                    codeDiv.textContent = code;
+                    giftcardCodesList.appendChild(codeDiv);
+                });
+                
+                giftcardResult.style.display = 'block';
+                
+                alert(`Successfully generated ${cardCount} gift cards!`);
                 
             } catch (error) {
-                console.error("Error funding wallet:", error);
-                alert('Error funding wallet: ' + error.message);
+                console.error("Error generating gift cards:", error);
+                alert('Error generating gift cards: ' + error.message);
             }
+        }
+
+        // Generate vendor cards (admin function)
+        async function handleVendorCardGeneration(e) {
+            e.preventDefault();
+            
+            const cardCount = parseInt(document.getElementById('vendorCardCount').value);
+            const cardValue = parseInt(document.getElementById('vendorCardValue').value);
+            
+            try {
+                // Generate vendor cards
+                const vendorCardCodes = [];
+                for (let i = 0; i < cardCount; i++) {
+                    const code = await generateUniqueGiftCardCode();
+                    vendorCardCodes.push(code);
+                    
+                    // Create vendor card in Firestore
+                    await db.collection('giftCards').add({
+                        code: code,
+                        value: cardValue,
+                        totalUses: 1,
+                        remainingUses: 1,
+                        isVendorCard: true,
+                        isActive: true,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+                
+                // Show vendor card codes
+                vendorCardCodesList.innerHTML = '';
+                vendorCardCodes.forEach(code => {
+                    const codeDiv = document.createElement('div');
+                    codeDiv.className = 'giftcard-code';
+                    codeDiv.textContent = code;
+                    vendorCardCodesList.appendChild(codeDiv);
+                });
+                
+                vendorCardResult.style.display = 'block';
+                
+                alert(`Successfully generated ${cardCount} vendor cards!`);
+                
+            } catch (error) {
+                console.error("Error generating vendor cards:", error);
+                alert('Error generating vendor cards: ' + error.message);
+            }
+        }
+
+        // Assign gift cards (admin function)
+        async function handleAssignCard(e) {
+            e.preventDefault();
+            
+            const userId = assignUser.value;
+            const cardCount = parseInt(document.getElementById('assignCardCount').value);
+            const cardValue = parseInt(document.getElementById('assignCardValue').value);
+            
+            try {
+                // Generate and assign gift cards
+                for (let i = 0; i < cardCount; i++) {
+                    const code = await generateUniqueGiftCardCode();
+                    
+                    // Create gift card in Firestore
+                    await db.collection('giftCards').add({
+                        code: code,
+                        value: cardValue,
+                        totalUses: 1,
+                        remainingUses: 1,
+                        userId: userId,
+                        isActive: true,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+                
+                // Update user's gift card balance
+                await db.collection('users').doc(userId).update({
+                    giftCardBalance: firebase.firestore.FieldValue.increment(cardCount)
+                });
+                
+                alert(`Successfully assigned ${cardCount} gift cards to user!`);
+                closeModal(document.getElementById('assignCardModal'));
+                
+            } catch (error) {
+                console.error("Error assigning gift cards:", error);
+                alert('Error assigning gift cards: ' + error.message);
+            }
+        }
+
+        // Generate unique gift card code
+        async function generateUniqueGiftCardCode() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let code;
+            let isUnique = false;
+            
+            while (!isUnique) {
+                code = '';
+                for (let i = 0; i < 8; i++) {
+                    code += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                
+                // Check if code already exists
+                const existingCode = await db.collection('giftCards')
+                    .where('code', '==', code)
+                    .get();
+                
+                isUnique = existingCode.empty;
+            }
+            
+            return code;
         }
 
         // Giveaway creation
@@ -2806,29 +3361,6 @@
                 console.error("Error assigning gift cards:", error);
                 throw error;
             }
-        }
-
-        // Generate unique gift card code
-        async function generateUniqueGiftCardCode() {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            let code;
-            let isUnique = false;
-            
-            while (!isUnique) {
-                code = '';
-                for (let i = 0; i < 8; i++) {
-                    code += chars.charAt(Math.floor(Math.random() * chars.length));
-                }
-                
-                // Check if code already exists
-                const existingCode = await db.collection('giftCards')
-                    .where('code', '==', code)
-                    .get();
-                
-                isUnique = existingCode.empty;
-            }
-            
-            return code;
         }
 
         // Load user giveaways
@@ -3303,6 +3835,13 @@
             // Gift card validation
             validateGiftcardBtn.addEventListener('click', validateGiftcard);
             
+            // Gift card amount calculation
+            giftCardAmount.addEventListener('input', function() {
+                const amount = parseInt(this.value) || 0;
+                const cardCount = Math.floor(amount / 100);
+                giftCardCount.textContent = cardCount;
+            });
+            
             // Giveaway type selection
             giveawayTypeBtns.forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -3321,9 +3860,33 @@
             // Giveaway form submission
             document.getElementById('giveawayForm').addEventListener('submit', handleGiveawayCreation);
             
+            // Gift card form submission
+            document.getElementById('giftCardForm').addEventListener('submit', handleGiftCardGeneration);
+            
+            // Vendor card form submission
+            vendorCardForm.addEventListener('submit', handleVendorCardGeneration);
+            
+            // Assign card form submission
+            assignCardForm.addEventListener('submit', handleAssignCard);
+            
+            // Customer care form submission
+            customerCareForm.addEventListener('submit', handleCustomerCareMessage);
+            
+            // Admin reply form submission
+            adminReplyForm.addEventListener('submit', handleAdminReply);
+            
+            // User messages filter change
+            userMessagesFilter.addEventListener('change', handleUserMessagesFilterChange);
+            
             // Fund wallet dropdown
             iHaveFundedBtn.addEventListener('click', function() {
                 fundWalletDropdown.classList.toggle('active');
+            });
+            
+            // Transaction dropdown toggle
+            transactionToggle.addEventListener('click', function() {
+                transactionDropdown.classList.toggle('active');
+                this.textContent = transactionDropdown.classList.contains('active') ? 'Hide Transactions' : 'View All Transactions';
             });
             
             // Menu toggle
@@ -3344,11 +3907,6 @@
             document.getElementById('loginForm').addEventListener('submit', handleLogin);
             document.getElementById('registerForm').addEventListener('submit', handleRegister);
             document.getElementById('fundWalletForm').addEventListener('submit', handleFundWallet);
-            document.getElementById('customerCareForm').addEventListener('submit', (e) => {
-                e.preventDefault();
-                alert('Message sent to customer care!');
-                closeModal(customerCareModal);
-            });
             
             // Close buttons
             document.querySelectorAll('.close-btn').forEach(button => {
