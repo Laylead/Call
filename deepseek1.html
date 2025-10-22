@@ -905,7 +905,6 @@
             margin: 10px 0;
         }
 
-        /* New Styles for Additional Features */
         .country-selector {
             display: flex;
             gap: 10px;
@@ -1018,6 +1017,26 @@
         .transaction-actions button {
             padding: 5px 10px;
             font-size: 12px;
+        }
+        
+        .giftcard-options {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .giftcard-option {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .giftcard-option.active {
+            background: var(--primary);
         }
         
         @media (max-width: 900px) {
@@ -1148,6 +1167,10 @@
             }
             
             .admin-country-tabs {
+                flex-direction: column;
+            }
+            
+            .giftcard-options {
                 flex-direction: column;
             }
         }
@@ -1337,10 +1360,6 @@
                                 </tbody>
                             </table>
                         </div>
-                        <button class="transaction-toggle" id="transactionToggle">View All Transactions</button>
-                        <div class="transaction-dropdown" id="transactionDropdown">
-                            <!-- Additional transactions will be loaded here -->
-                        </div>
                     </div>
                     
                     <!-- Admin Section (only visible to admins) -->
@@ -1453,8 +1472,8 @@
                         
                         <div id="giftcardGiveawayFields" style="display: none;">
                             <div class="form-group">
-                                <label for="giftcardCount">Number of Gift Cards to Assign</label>
-                                <input type="number" id="giftcardCount" min="1" value="1">
+                                <label for="giftcardCount">Number of Gift Cards to Generate</label>
+                                <input type="number" id="giftcardCount" min="1" value="1" readonly>
                             </div>
                         </div>
                         
@@ -1462,6 +1481,18 @@
                             <i class="fas fa-shopping-cart"></i> Buy & Generate Giveaway
                         </button>
                     </form>
+                    
+                    <!-- Giveaway Link Display (hidden by default) -->
+                    <div id="giveawayLinkContainer" style="display: none; margin-top: 20px;">
+                        <div class="giftcard-info">
+                            <h4>Giveaway Created Successfully!</h4>
+                            <p>Share this link with participants:</p>
+                            <div class="giftcard-code" id="giveawayLinkDisplay"></div>
+                            <button class="btn btn-primary" onclick="copyGiveawayLink()" style="margin-top: 10px;">
+                                <i class="fas fa-copy"></i> Copy Link
+                            </button>
+                        </div>
+                    </div>
                     
                     <div class="transaction-history" style="margin-top: 40px;">
                         <h3 class="section-title">My Giveaways</h3>
@@ -1606,18 +1637,6 @@
                     </div>
                 </div>
             </div>
-            
-            <!-- Giveaway Ended Section -->
-            <div class="content-section" id="giveawayEndedSection">
-                <div class="giveaway-ended">
-                    <h2>Giveaway Ended</h2>
-                    <p>We're sorry, this giveaway has ended. All available spots have been filled.</p>
-                    <p>Follow us on social media to get notified when your favorite creators or vendors start a new giveaway!</p>
-                    <div class="social-links" id="giveawayEndedSocialLinks">
-                        <!-- Social links will be populated by JavaScript -->
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
     
@@ -1751,19 +1770,44 @@
                 <h3 class="modal-title">Generate Gift Cards</h3>
                 <button class="close-btn">&times;</button>
             </div>
+            <div class="giftcard-options">
+                <div class="giftcard-option active" data-type="single">
+                    <h4>Single Gift Card</h4>
+                    <p>One card with custom balance</p>
+                </div>
+                <div class="giftcard-option" data-type="bulk">
+                    <h4>Bulk Gift Cards</h4>
+                    <p>Multiple ₦100 cards</p>
+                </div>
+            </div>
+            <input type="hidden" id="giftcardOptionType" value="single">
+            
             <form id="giftCardForm">
-                <div class="form-group">
-                    <label for="giftCardAmount">Amount to Spend (<span id="giftCardCurrencySymbol">₦</span>)</label>
-                    <input type="number" id="giftCardAmount" min="100" step="100" required>
+                <div id="singleGiftCardFields">
+                    <div class="form-group">
+                        <label for="giftCardAmount">Amount to Spend (<span id="giftCardCurrencySymbol">₦</span>)</label>
+                        <input type="number" id="giftCardAmount" min="100" step="100" required>
+                    </div>
+                    <div class="form-group">
+                        <p>You will get 1 gift card with <span id="giftCardValue">0</span> balance.</p>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <p>You will get 1 gift card with <span id="giftCardValue">0</span> balance.</p>
+                
+                <div id="bulkGiftCardFields" style="display: none;">
+                    <div class="form-group">
+                        <label for="bulkGiftCardAmount">Total Amount to Spend (<span id="bulkCurrencySymbol">₦</span>)</label>
+                        <input type="number" id="bulkGiftCardAmount" min="100" step="100" required>
+                    </div>
+                    <div class="form-group">
+                        <p>You will get <span id="giftCardCount">0</span> gift cards of ₦100 each.</p>
+                    </div>
                 </div>
-                <button type="submit" class="btn btn-warning" style="width: 100%;">Generate Gift Card</button>
+                
+                <button type="submit" class="btn btn-warning" style="width: 100%;">Generate Gift Card(s)</button>
             </form>
             <div class="giftcard-result" id="giftcardResult" style="display: none;">
-                <h4>Gift Card Generated Successfully!</h4>
-                <p>Your gift card code:</p>
+                <h4>Gift Card(s) Generated Successfully!</h4>
+                <p>Your gift card code(s):</p>
                 <div id="giftcardCodesList"></div>
             </div>
         </div>
@@ -2100,10 +2144,10 @@
         let referredUsers = 0;
         let activeLinks = 0;
         let selectedUserId = null;
-        let userCountry = 'nigeria'; // Default country
-        let adminCurrentCountry = 'nigeria'; // Admin view country
+        let userCountry = 'nigeria';
+        let adminCurrentCountry = 'nigeria';
         
-        // Initialize with default config first
+        // Initialize with default config
         let gameSettings = {
             nigeria: {
                 gamePrice: 100,
@@ -2119,12 +2163,12 @@
                 currency: '₦'
             },
             other: {
-                gamePrice: 0.5, // USDT
+                gamePrice: 0.5,
                 dailyWinners: 10,
                 winningTime: 5.00,
                 difficulty: 'medium',
                 giftCardPaymentUrl: '',
-                openGiveawayPrice: 3, // USDT
+                openGiveawayPrice: 3,
                 openGiveawayPaymentUrl: '',
                 fundWalletUrl: '',
                 affiliateCommission: 10,
@@ -2147,8 +2191,6 @@
         const giveawayCashbackBalanceEl = document.getElementById('giveawayCashbackBalance');
         const transactionTable = document.getElementById('transactionTable');
         const transactionFilter = document.getElementById('transactionFilter');
-        const transactionToggle = document.getElementById('transactionToggle');
-        const transactionDropdown = document.getElementById('transactionDropdown');
         const loginBtn = document.getElementById('loginBtn');
         const registerBtn = document.getElementById('registerBtn');
         const logoutBtn = document.getElementById('logoutBtn');
@@ -2164,105 +2206,59 @@
         const socialSettingsBtn = document.getElementById('socialSettingsBtn');
         const withdrawalRequestsBtn = document.getElementById('withdrawalRequestsBtn');
         const pendingTransactionsBtn = document.getElementById('pendingTransactionsBtn');
-        const validateGiftcardBtn = document.getElementById('validateGiftcardBtn');
-        const giftcardCodeInput = document.getElementById('giftcardCode');
         const menuToggle = document.getElementById('menuToggle');
         const sidebar = document.getElementById('sidebar');
         const mainContent = document.getElementById('mainContent');
         const sidebarMenu = document.getElementById('sidebarMenu');
         const contentSections = document.querySelectorAll('.content-section');
-        const paymentMethod = document.getElementById('paymentMethod');
-        const cryptoDetails = document.getElementById('cryptoDetails');
-        const paymentLink = document.getElementById('paymentLink');
-        const fundWalletLink = document.getElementById('fundWalletLink');
-        const iHaveFundedBtn = document.getElementById('iHaveFundedBtn');
-        const fundWalletDropdown = document.getElementById('fundWalletDropdown');
-        const searchUsers = document.getElementById('searchUsers');
-        const shopGiftCardBtn = document.getElementById('shopGiftCardBtn');
-        const premiumBtn = document.getElementById('premiumBtn');
-        const merchandiseBtn = document.getElementById('merchandiseBtn');
-        const targetTimeDisplay = document.getElementById('targetTimeDisplay');
-        const targetTimeValue = document.getElementById('targetTimeValue');
-        const successAnimation = document.getElementById('successAnimation');
         const giftcardInfo = document.getElementById('giftcardInfo');
         const activeCardCode = document.getElementById('activeCardCode');
         const giftcardBalance = document.getElementById('giftcardBalance');
         const giveawayTypeBtns = document.querySelectorAll('.giveaway-type-btn');
         const giveawayTypeInput = document.getElementById('giveawayType');
         const giftcardGiveawayFields = document.getElementById('giftcardGiveawayFields');
+        const giftcardCountInput = document.getElementById('giftcardCount');
+        const participantLimitInput = document.getElementById('participantLimit');
+        const giveawayForm = document.getElementById('giveawayForm');
+        const giveawayLinkContainer = document.getElementById('giveawayLinkContainer');
+        const giveawayLinkDisplay = document.getElementById('giveawayLinkDisplay');
+        const availableGiftCardsList = document.getElementById('availableGiftCardsList');
+        const chatMessages = document.getElementById('chatMessages');
+        const customerCareForm = document.getElementById('customerCareForm');
+        const customerMessage = document.getElementById('customerMessage');
+        const giftcardOptions = document.querySelectorAll('.giftcard-option');
+        const giftcardOptionType = document.getElementById('giftcardOptionType');
+        const singleGiftCardFields = document.getElementById('singleGiftCardFields');
+        const bulkGiftCardFields = document.getElementById('bulkGiftCardFields');
+        const giftCardAmount = document.getElementById('giftCardAmount');
+        const giftCardValue = document.getElementById('giftCardValue');
+        const bulkGiftCardAmount = document.getElementById('bulkGiftCardAmount');
+        const giftCardCount = document.getElementById('giftCardCount');
         const requestWithdrawalBtn = document.getElementById('requestWithdrawalBtn');
         const requestAffiliateWithdrawalBtn = document.getElementById('requestAffiliateWithdrawalBtn');
         const affiliateEarningsEl = document.getElementById('affiliateEarnings');
         const affiliateBalanceEl = document.getElementById('affiliateBalance');
         const referredUsersEl = document.getElementById('referredUsers');
         const activeLinksEl = document.getElementById('activeLinks');
-        const affiliateTransactionTable = document.getElementById('affiliateTransactionTable');
-        const giveawayFilter = document.getElementById('giveawayFilter');
-        const affiliateGiveawayList = document.getElementById('affiliateGiveawayList');
-        const taskList = document.getElementById('taskList');
-        const completeTasksBtn = document.getElementById('completeTasksBtn');
-        const paymentSlider = document.getElementById('paymentSlider');
-        const paymentAmount = document.getElementById('paymentAmount');
-        const paymentStatus = document.getElementById('paymentStatus');
-        const paymentSuccessAnimation = document.getElementById('paymentSuccessAnimation');
-        const userMessagesFilter = document.getElementById('userMessagesFilter');
-        const adminChatMessages = document.getElementById('adminChatMessages');
-        const adminReplyForm = document.getElementById('adminReplyForm');
-        const adminReplyMessage = document.getElementById('adminReplyMessage');
-        const debitUserBtn = document.getElementById('debitUserBtn');
-        const banUserBtn = document.getElementById('banUserBtn');
-        const giftCardAmount = document.getElementById('giftCardAmount');
-        const giftCardValue = document.getElementById('giftCardValue');
-        const giftcardResult = document.getElementById('giftcardResult');
-        const giftcardCodesList = document.getElementById('giftcardCodesList');
-        const vendorCardForm = document.getElementById('vendorCardForm');
-        const vendorCardResult = document.getElementById('vendorCardResult');
-        const vendorCardCodesList = document.getElementById('vendorCardCodesList');
-        const assignCardForm = document.getElementById('assignCardForm');
-        const assignUser = document.getElementById('assignUser');
-        const chatMessages = document.getElementById('chatMessages');
-        const customerCareForm = document.getElementById('customerCareForm');
-        const customerMessage = document.getElementById('customerMessage');
-        const availableGiftCardsList = document.getElementById('availableGiftCardsList');
-        const countryBtns = document.querySelectorAll('.country-btn');
-        const userCountryInput = document.getElementById('userCountry');
-        const adminCountryTabs = document.querySelectorAll('.admin-country-tab');
-        const pendingTransactionsList = document.getElementById('pendingTransactionsList');
-        const currencySymbol = document.getElementById('currencySymbol');
-        const giftCardCurrencySymbol = document.getElementById('giftCardCurrencySymbol');
-        const vendorCurrencySymbol = document.getElementById('vendorCurrencySymbol');
-        const assignCurrencySymbol = document.getElementById('assignCurrencySymbol');
-        const gamePriceCurrency = document.getElementById('gamePriceCurrency');
-        const openGiveawayCurrency = document.getElementById('openGiveawayCurrency');
-        const openGiveawayPriceDisplay = document.getElementById('openGiveawayPriceDisplay');
-        const giftcardGiveawayPriceDisplay = document.getElementById('giftcardGiveawayPriceDisplay');
 
-        // Get all modals
-        const modals = document.querySelectorAll('.modal');
-        
         // Firebase services
         let db, auth;
 
         // Initialize Firebase
         function initializeFirebase() {
             try {
-                // Use config from external file
                 if (!window.firebaseConfig) {
                     throw new Error("Firebase configuration not found. Please check your config.js file.");
                 }
                 
                 const config = window.firebaseConfig;
-                
-                // Initialize Firebase
                 firebase.initializeApp(config);
                 
-                // Initialize services
                 db = firebase.firestore();
                 auth = firebase.auth();
                 
                 console.log("Firebase initialized successfully");
                 
-                // Set up auth state listener
                 auth.onAuthStateChanged(handleAuthStateChanged);
                 
             } catch (error) {
@@ -2278,25 +2274,21 @@
                 const gameSettingsNigeriaDoc = await db.collection('config').doc('gameSettings_nigeria').get();
                 if (gameSettingsNigeriaDoc.exists) {
                     gameSettings.nigeria = { ...gameSettings.nigeria, ...gameSettingsNigeriaDoc.data() };
-                    console.log("Nigeria game settings loaded:", gameSettings.nigeria);
                 }
                 
                 // Load game settings for other countries
                 const gameSettingsOtherDoc = await db.collection('config').doc('gameSettings_other').get();
                 if (gameSettingsOtherDoc.exists) {
                     gameSettings.other = { ...gameSettings.other, ...gameSettingsOtherDoc.data() };
-                    console.log("Other countries game settings loaded:", gameSettings.other);
                 }
                 
                 // Load social settings
                 const socialSettingsDoc = await db.collection('config').doc('socialSettings').get();
                 if (socialSettingsDoc.exists) {
                     socialSettings = socialSettingsDoc.data();
-                    console.log("Social settings loaded:", socialSettings);
                     updateSocialLinks();
                 }
                 
-                // Update UI with loaded settings
                 updateCurrencyDisplays();
                 
             } catch (error) {
@@ -2309,19 +2301,12 @@
             const settings = getGameSettings();
             const currency = settings.currency;
             
-            // Update all currency displays
-            currencySymbol.textContent = currency;
-            giftCardCurrencySymbol.textContent = currency;
-            vendorCurrencySymbol.textContent = currency;
-            assignCurrencySymbol.textContent = currency;
-            gamePriceCurrency.textContent = currency;
-            openGiveawayCurrency.textContent = currency;
+            document.querySelectorAll('.currency-display').forEach(el => {
+                if (el.id.includes('CurrencySymbol')) {
+                    el.textContent = currency;
+                }
+            });
             
-            // Update giveaway price displays
-            openGiveawayPriceDisplay.textContent = `${currency}${settings.openGiveawayPrice}`;
-            giftcardGiveawayPriceDisplay.textContent = `Custom Price`;
-            
-            // Update wallet balance display
             updateWalletBalance();
         }
 
@@ -2332,7 +2317,6 @@
                 if (userDoc.exists) {
                     const userData = userDoc.data();
                     
-                    // Update UI with user data
                     gamesPlayed = userData.gamesPlayed || 0;
                     bestTime = userData.bestTime || 0;
                     walletBalance = userData.walletBalance || 0;
@@ -2346,24 +2330,18 @@
                     updateWalletBalance();
                     updateCurrencyDisplays();
                     
-                    // Show admin section if user is admin
                     if (isAdmin) {
                         adminSection.style.display = 'block';
-                        // Load admin data
-                        await loadAdminData();
+                        setupAdminListeners();
                     }
                     
-                    // Load affiliate data if user is affiliate
                     if (isAffiliate) {
                         await loadAffiliateData(userId);
                     }
                     
-                    // Load user gift cards
                     await loadUserGiftCards(userId);
                     
-                    console.log("User data loaded:", userData);
                 } else {
-                    // Create user document if it doesn't exist
                     await db.collection('users').doc(userId).set({
                         email: user.email,
                         name: user.displayName || 'User',
@@ -2382,10 +2360,7 @@
                     });
                 }
                 
-                // Load user transactions
                 await loadUserTransactions(userId);
-                
-                // Load customer care messages
                 await loadCustomerCareMessages(userId);
                 
             } catch (error) {
@@ -2393,19 +2368,43 @@
             }
         }
 
-        // Load user gift cards
+        // Set up real-time listeners for admin
+        function setupAdminListeners() {
+            // Listen for users
+            db.collection('users').onSnapshot((snapshot) => {
+                updateUsersList(snapshot);
+            });
+            
+            // Listen for messages
+            db.collection('messages').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
+                updateUserMessagesFilter(snapshot);
+            });
+            
+            // Listen for pending transactions
+            db.collection('transactions')
+                .where('status', '==', 'Pending')
+                .orderBy('createdAt', 'desc')
+                .onSnapshot((snapshot) => {
+                    updatePendingTransactionsList(snapshot);
+                });
+            
+            // Listen for withdrawal requests
+            db.collection('withdrawalRequests')
+                .where('status', '==', 'pending')
+                .orderBy('createdAt', 'desc')
+                .onSnapshot((snapshot) => {
+                    updateWithdrawalRequestsList(snapshot);
+                });
+        }
+
+        // Load user gift cards with real-time listener
         async function loadUserGiftCards(userId) {
-            try {
-                const giftCardsSnapshot = await db.collection('giftCards')
-                    .where('userId', '==', userId)
-                    .where('isActive', '==', true)
-                    .get();
-                
-                updateAvailableGiftCards(giftCardsSnapshot);
-                
-            } catch (error) {
-                console.error("Error loading user gift cards:", error);
-            }
+            db.collection('giftCards')
+                .where('userId', '==', userId)
+                .where('isActive', '==', true)
+                .onSnapshot((snapshot) => {
+                    updateAvailableGiftCards(snapshot);
+                });
         }
 
         // Update available gift cards
@@ -2433,6 +2432,11 @@
                                 <button class="copy-btn" onclick="copyGiftCardCode('${giftCard.code}')">
                                     <i class="fas fa-copy"></i> Copy
                                 </button>
+                                ${giftCard.remainingBalance > 0 ? `
+                                    <button class="btn btn-sm btn-primary" onclick="activateGiftCard('${doc.id}', '${giftCard.code}', ${giftCard.remainingBalance})">
+                                        Use
+                                    </button>
+                                ` : ''}
                             </div>
                         </div>
                     </div>
@@ -2442,36 +2446,39 @@
             availableGiftCardsList.innerHTML = giftCardsHTML;
         }
 
-        // Copy gift card code
-        function copyGiftCardCode(code) {
-            navigator.clipboard.writeText(code).then(() => {
-                alert('Gift card code copied to clipboard!');
-            });
-        }
-
-        // Get currency symbol based on user country
-        function getCurrencySymbol() {
-            return getGameSettings().currency;
-        }
-
-        // Get game settings based on country
-        function getGameSettings() {
-            return gameSettings[userCountry];
-        }
-
-        // Load customer care messages
-        async function loadCustomerCareMessages(userId) {
+        // Activate gift card for game
+        async function activateGiftCard(cardId, code, balance) {
             try {
-                const messagesSnapshot = await db.collection('messages')
-                    .where('userId', '==', userId)
-                    .orderBy('createdAt', 'asc')
-                    .get();
+                activeGiftCard = {
+                    id: cardId,
+                    code: code,
+                    remainingBalance: balance
+                };
                 
-                updateCustomerCareMessages(messagesSnapshot);
+                targetTimeValue.textContent = getGameSettings().winningTime.toFixed(2);
+                targetTimeDisplay.style.display = 'block';
+                activeCardCode.textContent = code;
+                giftcardBalance.textContent = `${getCurrencySymbol()}${balance}`;
+                giftcardInfo.style.display = 'block';
                 
+                startBtn.disabled = false;
+                payGameBtn.style.display = 'none';
+                
+                alert('Gift card activated successfully!');
             } catch (error) {
-                console.error("Error loading customer care messages:", error);
+                console.error("Error activating gift card:", error);
+                alert('Error activating gift card: ' + error.message);
             }
+        }
+
+        // Load customer care messages with real-time listener
+        async function loadCustomerCareMessages(userId) {
+            db.collection('messages')
+                .where('userId', '==', userId)
+                .orderBy('createdAt', 'asc')
+                .onSnapshot((snapshot) => {
+                    updateCustomerCareMessages(snapshot);
+                });
         }
 
         // Update customer care messages
@@ -2508,7 +2515,6 @@
                 chatMessages.appendChild(messageDiv);
             });
             
-            // Scroll to bottom
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
@@ -2523,7 +2529,6 @@
             }
             
             try {
-                // Save user message
                 await db.collection('messages').add({
                     userId: user.uid,
                     sender: 'user',
@@ -2531,13 +2536,7 @@
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
-                // Clear input
                 customerMessage.value = '';
-                
-                // Reload messages
-                await loadCustomerCareMessages(user.uid);
-                
-                alert('Message sent successfully!');
                 
             } catch (error) {
                 console.error("Error sending message:", error);
@@ -2545,617 +2544,8 @@
             }
         }
 
-        // Load admin data
-        async function loadAdminData() {
-            try {
-                // Load users for admin panel
-                await loadAllUsers();
-                
-                // Load messages for admin panel
-                await loadAllMessages();
-                
-                // Load users for assign card
-                await loadUsersForAssignCard();
-                
-                // Load pending transactions
-                await loadPendingTransactions();
-                
-            } catch (error) {
-                console.error("Error loading admin data:", error);
-            }
-        }
-
-        // Load all users for admin panel
-        async function loadAllUsers() {
-            try {
-                const usersSnapshot = await db.collection('users').get();
-                updateUsersList(usersSnapshot);
-                
-            } catch (error) {
-                console.error("Error loading users:", error);
-            }
-        }
-
-        // Load all messages for admin panel
-        async function loadAllMessages() {
-            try {
-                const messagesSnapshot = await db.collection('messages')
-                    .orderBy('createdAt', 'desc')
-                    .get();
-                
-                updateUserMessagesFilter(messagesSnapshot);
-                
-            } catch (error) {
-                console.error("Error loading messages:", error);
-            }
-        }
-
-        // Load users for assign card
-        async function loadUsersForAssignCard() {
-            try {
-                const usersSnapshot = await db.collection('users').get();
-                updateAssignUserSelect(usersSnapshot);
-                
-            } catch (error) {
-                console.error("Error loading users for assign card:", error);
-            }
-        }
-
-        // Load pending transactions
-        async function loadPendingTransactions() {
-            try {
-                const transactionsSnapshot = await db.collection('transactions')
-                    .where('status', '==', 'Pending')
-                    .orderBy('createdAt', 'desc')
-                    .get();
-                
-                updatePendingTransactionsList(transactionsSnapshot);
-                
-            } catch (error) {
-                console.error("Error loading pending transactions:", error);
-            }
-        }
-
-        // Update pending transactions list
-        function updatePendingTransactionsList(transactionsSnapshot) {
-            if (transactionsSnapshot.empty) {
-                pendingTransactionsList.innerHTML = '<p style="text-align: center;">No pending transactions</p>';
-                return;
-            }
-            
-            let transactionsHTML = '';
-            transactionsSnapshot.forEach(doc => {
-                const transaction = doc.data();
-                const date = transaction.createdAt ? transaction.createdAt.toDate().toLocaleDateString() : 'N/A';
-                const currencySymbol = transaction.country === 'nigeria' ? '₦' : 'USDT ';
-                
-                transactionsHTML += `
-                    <div class="withdrawal-request">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <strong>${transaction.type}</strong>
-                                <p>User: ${transaction.name || 'N/A'} (${transaction.email || 'N/A'})</p>
-                                <p>Amount: ${currencySymbol}${transaction.amount}</p>
-                                <p>Date: ${date}</p>
-                            </div>
-                            <div class="transaction-actions">
-                                <button class="btn btn-success btn-sm" onclick="approveTransaction('${doc.id}')">Approve</button>
-                                <button class="btn btn-danger btn-sm" onclick="declineTransaction('${doc.id}')">Decline</button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            pendingTransactionsList.innerHTML = transactionsHTML;
-        }
-
-        // Get currency symbol for admin based on current country view
-        function getCurrencySymbolForAdmin() {
-            return adminCurrentCountry === 'nigeria' ? '₦' : 'USDT ';
-        }
-
-        // Approve transaction
-        async function approveTransaction(transactionId) {
-            try {
-                // Get transaction
-                const transactionDoc = await db.collection('transactions').doc(transactionId).get();
-                const transaction = transactionDoc.data();
-                
-                // Update transaction status
-                await db.collection('transactions').doc(transactionId).update({
-                    status: 'Completed'
-                });
-                
-                // Update user wallet balance
-                await db.collection('users').doc(transaction.userId).update({
-                    walletBalance: firebase.firestore.FieldValue.increment(transaction.amount)
-                });
-                
-                alert('Transaction approved successfully!');
-                
-                // Reload pending transactions
-                await loadPendingTransactions();
-                
-            } catch (error) {
-                console.error("Error approving transaction:", error);
-                alert('Error approving transaction: ' + error.message);
-            }
-        }
-
-        // Decline transaction
-        async function declineTransaction(transactionId) {
-            try {
-                // Update transaction status
-                await db.collection('transactions').doc(transactionId).update({
-                    status: 'Declined'
-                });
-                
-                alert('Transaction declined!');
-                
-                // Reload pending transactions
-                await loadPendingTransactions();
-                
-            } catch (error) {
-                console.error("Error declining transaction:", error);
-                alert('Error declining transaction: ' + error.message);
-            }
-        }
-
-        // Update users list in admin panel
-        function updateUsersList(usersSnapshot) {
-            const usersList = document.getElementById('usersList');
-            
-            if (usersSnapshot.empty) {
-                usersList.innerHTML = '<p style="text-align: center;">No users found</p>';
-                return;
-            }
-            
-            let usersHTML = '';
-            usersSnapshot.forEach(doc => {
-                const userData = doc.data();
-                const verificationBadge = userData.isVerified ? 
-                    `<i class="fas ${userData.verificationType === 'gold' ? 'fa-certificate gold-badge' : 'fa-check-circle verified-badge'}"></i>` : '';
-                const userCurrency = userData.country === 'nigeria' ? '₦' : 'USDT ';
-                
-                usersHTML += `
-                    <div class="user-item">
-                        <div>
-                            <strong>${userData.name || 'No Name'} ${verificationBadge}</strong>
-                            <p>${userData.email}</p>
-                            <p>Country: ${userData.country || 'nigeria'}</p>
-                            <p>Balance: ${userCurrency}${userData.walletBalance || 0}</p>
-                            <p>Status: ${userData.isBlocked ? 'Blocked' : 'Active'}</p>
-                        </div>
-                        <div class="user-actions">
-                            <button class="btn btn-sm btn-info" onclick="toggleVerification('${doc.id}', ${userData.isVerified}, '${userData.verificationType || 'none'}')">
-                                ${userData.isVerified ? 'Remove Verify' : 'Verify'}
-                            </button>
-                            <button class="btn btn-sm btn-warning" onclick="debitUser('${doc.id}')">Debit</button>
-                            <button class="btn btn-sm btn-danger" onclick="banUser('${doc.id}')">${userData.isBlocked ? 'Unban' : 'Ban'}</button>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            usersList.innerHTML = usersHTML;
-        }
-
-        // Toggle user verification
-        async function toggleVerification(userId, isCurrentlyVerified, currentType) {
-            try {
-                let newVerificationType = 'blue';
-                
-                if (isCurrentlyVerified) {
-                    if (currentType === 'blue') {
-                        newVerificationType = 'gold';
-                    } else {
-                        // Remove verification
-                        await db.collection('users').doc(userId).update({
-                            isVerified: false,
-                            verificationType: 'none'
-                        });
-                        
-                        alert('Verification removed!');
-                        await loadAllUsers();
-                        return;
-                    }
-                }
-                
-                // Set verification
-                await db.collection('users').doc(userId).update({
-                    isVerified: true,
-                    verificationType: newVerificationType
-                });
-                
-                alert(`User ${isCurrentlyVerified ? 'upgraded to gold verification' : 'verified with blue badge'}!`);
-                await loadAllUsers();
-                
-            } catch (error) {
-                console.error("Error toggling verification:", error);
-                alert('Error toggling verification: ' + error.message);
-            }
-        }
-
-        // Update user messages filter in admin panel
-        function updateUserMessagesFilter(messagesSnapshot) {
-            const userMessagesFilter = document.getElementById('userMessagesFilter');
-            
-            // Get unique users from messages
-            const users = new Map();
-            messagesSnapshot.forEach(doc => {
-                const message = doc.data();
-                if (message.userId && !users.has(message.userId)) {
-                    users.set(message.userId, message.userId);
-                }
-            });
-            
-            // Clear existing options except the first one
-            while (userMessagesFilter.children.length > 1) {
-                userMessagesFilter.removeChild(userMessagesFilter.lastChild);
-            }
-            
-            // Add user options
-            users.forEach(userId => {
-                const option = document.createElement('option');
-                option.value = userId;
-                option.textContent = `User: ${userId.substring(0, 8)}...`;
-                userMessagesFilter.appendChild(option);
-            });
-        }
-
-        // Update assign user select
-        function updateAssignUserSelect(usersSnapshot) {
-            assignUser.innerHTML = '';
-            
-            if (usersSnapshot.empty) {
-                assignUser.innerHTML = '<option value="">No users found</option>';
-                return;
-            }
-            
-            usersSnapshot.forEach(doc => {
-                const userData = doc.data();
-                const option = document.createElement('option');
-                option.value = doc.id;
-                option.textContent = `${userData.name || 'No Name'} (${userData.email})`;
-                assignUser.appendChild(option);
-            });
-        }
-
-        // Handle user messages filter change
-        async function handleUserMessagesFilterChange() {
-            const userId = userMessagesFilter.value;
-            
-            if (userId === 'all') {
-                await loadAllAdminMessages();
-            } else {
-                await loadUserAdminMessages(userId);
-            }
-        }
-
-        // Load all messages for admin
-        async function loadAllAdminMessages() {
-            try {
-                const messagesSnapshot = await db.collection('messages')
-                    .orderBy('createdAt', 'asc')
-                    .get();
-                
-                updateAdminChatMessages(messagesSnapshot);
-                
-            } catch (error) {
-                console.error("Error loading all messages:", error);
-            }
-        }
-
-        // Load user messages for admin
-        async function loadUserAdminMessages(userId) {
-            try {
-                const messagesSnapshot = await db.collection('messages')
-                    .where('userId', '==', userId)
-                    .orderBy('createdAt', 'asc')
-                    .get();
-                
-                updateAdminChatMessages(messagesSnapshot);
-                selectedUserId = userId;
-                
-            } catch (error) {
-                console.error("Error loading user messages:", error);
-            }
-        }
-
-        // Update admin chat messages
-        function updateAdminChatMessages(messagesSnapshot) {
-            adminChatMessages.innerHTML = '';
-            
-            if (messagesSnapshot.empty) {
-                adminChatMessages.innerHTML = '<p style="text-align: center;">No messages found</p>';
-                return;
-            }
-            
-            messagesSnapshot.forEach(doc => {
-                const message = doc.data();
-                const time = message.createdAt ? message.createdAt.toDate().toLocaleTimeString() : 'Just now';
-                
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message ${message.sender === 'admin' ? 'admin' : 'user'}`;
-                messageDiv.innerHTML = `
-                    <div class="message-header">
-                        <span>${message.sender === 'admin' ? 'Admin' : 'User'}</span>
-                        <span>${time}</span>
-                    </div>
-                    <div>${message.text}</div>
-                `;
-                
-                adminChatMessages.appendChild(messageDiv);
-            });
-            
-            // Scroll to bottom
-            adminChatMessages.scrollTop = adminChatMessages.scrollHeight;
-        }
-
-        // Handle admin reply
-        async function handleAdminReply(e) {
-            e.preventDefault();
-            const replyText = adminReplyMessage.value.trim();
-            
-            if (!replyText) {
-                alert('Please enter a reply');
-                return;
-            }
-            
-            if (!selectedUserId) {
-                alert('Please select a user to reply to');
-                return;
-            }
-            
-            try {
-                // Save admin reply
-                await db.collection('messages').add({
-                    userId: selectedUserId,
-                    sender: 'admin',
-                    text: replyText,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                
-                // Clear input
-                adminReplyMessage.value = '';
-                
-                // Reload messages
-                await loadUserAdminMessages(selectedUserId);
-                
-                alert('Reply sent successfully!');
-                
-            } catch (error) {
-                console.error("Error sending reply:", error);
-                alert('Error sending reply: ' + error.message);
-            }
-        }
-
-        // Debit user (admin function)
-        async function debitUser(userId) {
-            const amount = prompt("Enter amount to debit:");
-            if (!amount || isNaN(amount) || amount <= 0) {
-                alert("Please enter a valid amount");
-                return;
-            }
-            
-            try {
-                // Get user current balance
-                const userDoc = await db.collection('users').doc(userId).get();
-                const userData = userDoc.data();
-                const currentBalance = userData.walletBalance || 0;
-                const userCurrency = userData.country === 'nigeria' ? '₦' : 'USDT ';
-                
-                if (currentBalance < amount) {
-                    alert("User doesn't have enough balance");
-                    return;
-                }
-                
-                // Update user balance
-                await db.collection('users').doc(userId).update({
-                    walletBalance: firebase.firestore.FieldValue.increment(-parseFloat(amount))
-                });
-                
-                // Create transaction record
-                await db.collection('transactions').add({
-                    userId: userId,
-                    type: 'Admin Debit',
-                    amount: -parseFloat(amount),
-                    status: 'Completed',
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                
-                alert(`Successfully debited ${userCurrency}${amount} from user`);
-                
-                // Reload users list
-                await loadAllUsers();
-                
-            } catch (error) {
-                console.error("Error debiting user:", error);
-                alert('Error debiting user: ' + error.message);
-            }
-        }
-
-        // Ban user (admin function)
-        async function banUser(userId) {
-            try {
-                // Get user current status
-                const userDoc = await db.collection('users').doc(userId).get();
-                const userData = userDoc.data();
-                const isCurrentlyBlocked = userData.isBlocked || false;
-                
-                // Update user status
-                await db.collection('users').doc(userId).update({
-                    isBlocked: !isCurrentlyBlocked
-                });
-                
-                alert(`User ${isCurrentlyBlocked ? 'unbanned' : 'banned'} successfully`);
-                
-                // Reload users list
-                await loadAllUsers();
-                
-            } catch (error) {
-                console.error("Error banning user:", error);
-                alert('Error banning user: ' + error.message);
-            }
-        }
-
-        // Load affiliate data
-        async function loadAffiliateData(userId) {
-            try {
-                const affiliateDoc = await db.collection('affiliates').doc(userId).get();
-                if (affiliateDoc.exists) {
-                    const affiliateData = affiliateDoc.data();
-                    
-                    affiliateEarnings = affiliateData.totalEarnings || 0;
-                    affiliateBalance = affiliateData.availableBalance || 0;
-                    referredUsers = affiliateData.referredUsers || 0;
-                    activeLinks = affiliateData.activeLinks || 0;
-                    
-                    updateAffiliateStats();
-                } else {
-                    // Create affiliate document if it doesn't exist
-                    await db.collection('affiliates').doc(userId).set({
-                        userId: userId,
-                        totalEarnings: 0,
-                        availableBalance: 0,
-                        referredUsers: 0,
-                        activeLinks: 0,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                }
-                
-                // Load affiliate transactions
-                await loadAffiliateTransactions(userId);
-                
-            } catch (error) {
-                console.error("Error loading affiliate data:", error);
-            }
-        }
-
-        // Load user transactions
-        async function loadUserTransactions(userId) {
-            try {
-                const transactionsSnapshot = await db.collection('transactions')
-                    .where('userId', '==', userId)
-                    .orderBy('createdAt', 'desc')
-                    .get();
-                
-                updateTransactionTable(transactionsSnapshot);
-                
-            } catch (error) {
-                console.error("Error loading transactions:", error);
-            }
-        }
-
-        // Load affiliate transactions
-        async function loadAffiliateTransactions(userId) {
-            try {
-                const transactionsSnapshot = await db.collection('affiliateTransactions')
-                    .where('affiliateId', '==', userId)
-                    .orderBy('createdAt', 'desc')
-                    .get();
-                
-                updateAffiliateTransactionTable(transactionsSnapshot);
-                
-            } catch (error) {
-                console.error("Error loading affiliate transactions:", error);
-            }
-        }
-
-        // Update transaction table
-        function updateTransactionTable(transactionsSnapshot) {
-            if (transactionsSnapshot.empty) {
-                transactionTable.innerHTML = '<tr><td colspan="4" style="text-align: center;">No transactions yet</td></tr>';
-                transactionDropdown.innerHTML = '';
-                return;
-            }
-            
-            let tableHTML = '';
-            let dropdownHTML = '';
-            let count = 0;
-            
-            transactionsSnapshot.forEach(doc => {
-                const transaction = doc.data();
-                const date = transaction.createdAt ? transaction.createdAt.toDate().toLocaleDateString() : 'N/A';
-                const currencySymbol = userCountry === 'nigeria' ? '₦' : 'USDT ';
-                
-                const rowHTML = `
-                    <tr>
-                        <td>${date}</td>
-                        <td>${transaction.type}</td>
-                        <td>${currencySymbol}${transaction.amount || 0}</td>
-                        <td>${transaction.status || 'Completed'}</td>
-                    </tr>
-                `;
-                
-                if (count < 5) {
-                    tableHTML += rowHTML;
-                } else {
-                    dropdownHTML += rowHTML;
-                }
-                count++;
-            });
-            
-            transactionTable.innerHTML = tableHTML;
-            
-            if (dropdownHTML) {
-                transactionDropdown.innerHTML = `<table>${dropdownHTML}</table>`;
-                transactionToggle.style.display = 'block';
-            } else {
-                transactionDropdown.innerHTML = '';
-                transactionToggle.style.display = 'none';
-            }
-        }
-
-        // Update affiliate transaction table
-        function updateAffiliateTransactionTable(transactionsSnapshot) {
-            if (transactionsSnapshot.empty) {
-                affiliateTransactionTable.innerHTML = '<tr><td colspan="4" style="text-align: center;">No affiliate transactions yet</td></tr>';
-                return;
-            }
-            
-            let tableHTML = '';
-            transactionsSnapshot.forEach(doc => {
-                const transaction = doc.data();
-                const date = transaction.createdAt ? transaction.createdAt.toDate().toLocaleDateString() : 'N/A';
-                const currencySymbol = userCountry === 'nigeria' ? '₦' : 'USDT ';
-                
-                tableHTML += `
-                    <tr>
-                        <td>${date}</td>
-                        <td>${transaction.giveawayTitle || 'N/A'}</td>
-                        <td>${currencySymbol}${transaction.commission || 0}</td>
-                        <td>${transaction.status || 'Completed'}</td>
-                    </tr>
-                `;
-            });
-            
-            affiliateTransactionTable.innerHTML = tableHTML;
-        }
-
-        // Modal functions
-        function openModal(modal) {
-            console.log("Opening modal:", modal.id);
-            modal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeModal(modal) {
-            console.log("Closing modal:", modal.id);
-            modal.classList.remove('active');
-            document.body.style.overflow = 'auto';
-        }
-
-        function closeAllModals() {
-            modals.forEach(modal => {
-                closeModal(modal);
-            });
-        }
-
         // Game functions
         function startGame() {
-            console.log("Start game clicked");
             if (!isRunning) {
                 isRunning = true;
                 startBtn.disabled = true;
@@ -3170,7 +2560,6 @@
         }
 
         function stopGame() {
-            console.log("Stop game clicked");
             if (isRunning) {
                 isRunning = false;
                 clearInterval(timerInterval);
@@ -3180,7 +2569,6 @@
                 const finalTime = currentTime / 1000;
                 processGameResult(finalTime);
                 
-                // Reset timer
                 currentTime = 0;
                 updateTimerDisplay(currentTime);
             }
@@ -3189,26 +2577,22 @@
         // Process game result and save to Firestore
         async function processGameResult(finalTime) {
             try {
-                // Update user stats
                 gamesPlayed++;
                 if (bestTime === 0 || finalTime < bestTime) {
                     bestTime = finalTime;
                 }
                 
-                // Update UI
                 updateStats();
                 
-                // Save to Firestore
                 if (user) {
                     await db.collection('users').doc(user.uid).update({
                         gamesPlayed: firebase.firestore.FieldValue.increment(1),
                         bestTime: bestTime
                     });
                     
-                    // Create transaction record
                     const timeDiff = Math.abs(finalTime - getGameSettings().winningTime);
                     const isWinner = timeDiff <= 0.1;
-                    const winAmount = userCountry === 'nigeria' ? 100 : 0.5; // Different win amounts based on country
+                    const winAmount = userCountry === 'nigeria' ? 100 : 0.5;
                     
                     await db.collection('transactions').add({
                         userId: user.uid,
@@ -3220,7 +2604,6 @@
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     
-                    // Update wallet if winner
                     if (isWinner) {
                         walletBalance += winAmount;
                         updateWalletBalance();
@@ -3229,13 +2612,11 @@
                         });
                     }
                     
-                    // Update gift card usage if active
                     if (activeGiftCard) {
                         const gameCost = getGameSettings().gamePrice;
                         activeGiftCard.remainingBalance -= gameCost;
                         
                         if (activeGiftCard.remainingBalance <= 0) {
-                            // Gift card is exhausted
                             activeGiftCard.remainingBalance = 0;
                             await db.collection('giftCards').doc(activeGiftCard.id).update({
                                 remainingBalance: 0,
@@ -3247,15 +2628,11 @@
                             payGameBtn.style.display = 'block';
                             startBtn.disabled = true;
                         } else {
-                            // Update gift card balance
                             giftcardBalance.textContent = `${getCurrencySymbol()}${activeGiftCard.remainingBalance}`;
                             await db.collection('giftCards').doc(activeGiftCard.id).update({
                                 remainingBalance: activeGiftCard.remainingBalance
                             });
                         }
-                        
-                        // Reload user gift cards
-                        await loadUserGiftCards(user.uid);
                     }
                     
                     showGameResult(finalTime, isWinner);
@@ -3273,6 +2650,7 @@
         }
 
         function showGameResult(time, isWinner) {
+            const resultModal = document.getElementById('resultModal');
             const resultContent = document.getElementById('resultContent');
             const winAmount = userCountry === 'nigeria' ? 100 : 0.5;
             
@@ -3298,7 +2676,7 @@
 
         // Gift card validation
         async function validateGiftcard() {
-            const code = giftcardCodeInput.value.trim().toUpperCase();
+            const code = document.getElementById('giftcardCode').value.trim().toUpperCase();
             
             if (!code) {
                 alert('Please enter a gift card code');
@@ -3326,7 +2704,7 @@
                 }
                 
                 // Show success animation
-                successAnimation.style.display = 'flex';
+                document.getElementById('successAnimation').style.display = 'flex';
                 playSuccessSound();
                 
                 // Set active gift card
@@ -3346,11 +2724,11 @@
                 
                 // Enable game after delay
                 setTimeout(() => {
-                    validateGiftcardBtn.disabled = true;
-                    giftcardCodeInput.disabled = true;
+                    document.getElementById('validateGiftcardBtn').disabled = true;
+                    document.getElementById('giftcardCode').disabled = true;
                     
                     setTimeout(() => {
-                        closeModal(giftCardValidationModal);
+                        closeModal(document.getElementById('giftCardValidationModal'));
                         startBtn.disabled = false;
                         payGameBtn.style.display = 'none';
                     }, 1000);
@@ -3387,284 +2765,6 @@
             }
         }
 
-        function playFailureSound() {
-            // Simple failure sound using Web Audio API
-            try {
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-                
-                oscillator.type = 'sawtooth';
-                oscillator.frequency.setValueAtTime(220, audioContext.currentTime);
-                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-                
-                oscillator.start();
-                oscillator.frequency.exponentialRampToValueAtTime(110, audioContext.currentTime + 0.3);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-                
-                oscillator.stop(audioContext.currentTime + 0.5);
-            } catch (error) {
-                console.log("Audio not supported");
-            }
-        }
-
-        // Form handlers
-        async function handleLogin(e) {
-            e.preventDefault();
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-            
-            try {
-                await auth.signInWithEmailAndPassword(email, password);
-                closeModal(loginModal);
-            } catch (error) {
-                console.error("Login error:", error);
-                alert('Login failed: ' + error.message);
-            }
-        }
-
-        async function handleRegister(e) {
-            e.preventDefault();
-            const name = document.getElementById('registerName').value;
-            const email = document.getElementById('registerEmail').value;
-            const password = document.getElementById('registerPassword').value;
-            const isAffiliate = document.getElementById('registerAffiliate').checked;
-            const country = userCountryInput.value;
-            
-            try {
-                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-                await userCredential.user.updateProfile({
-                    displayName: name
-                });
-                
-                // Update user document with affiliate status and country
-                await db.collection('users').doc(userCredential.user.uid).update({
-                    isAffiliate: isAffiliate,
-                    country: country
-                });
-                
-                closeModal(registerModal);
-            } catch (error) {
-                console.error("Registration error:", error);
-                alert('Registration failed: ' + error.message);
-            }
-        }
-
-        async function handleFundWallet(e) {
-            e.preventDefault();
-            const name = document.getElementById('fundName').value;
-            const email = document.getElementById('fundEmail').value;
-            const amount = parseFloat(document.getElementById('fundAmount').value);
-            
-            try {
-                // Create pending transaction record
-                await db.collection('transactions').add({
-                    userId: user.uid,
-                    type: 'Wallet Funding',
-                    amount: amount,
-                    status: 'Pending',
-                    name: name,
-                    email: email,
-                    country: userCountry,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                
-                alert(`Funding request submitted for ${getCurrencySymbol()}${amount}. Please wait for admin approval.`);
-                closeModal(fundWalletModal);
-                
-            } catch (error) {
-                console.error("Error submitting funding request:", error);
-                alert('Error submitting funding request: ' + error.message);
-            }
-        }
-
-        // Generate gift cards
-        async function handleGiftCardGeneration(e) {
-            e.preventDefault();
-            
-            if (!user) {
-                alert('Please log in to generate gift cards');
-                return;
-            }
-            
-            const amount = parseFloat(giftCardAmount.value);
-            const settings = getGameSettings();
-            
-            // Validate amount
-            if (amount <= 0) {
-                alert('Please enter a valid amount');
-                return;
-            }
-            
-            // Check if user has enough balance
-            if (walletBalance < amount) {
-                alert(`Insufficient balance. You need ${getCurrencySymbol()}${amount} to generate gift cards.`);
-                return;
-            }
-            
-            try {
-                // Generate gift card with the full amount as balance
-                const code = await generateUniqueGiftCardCode();
-                
-                // Create gift card in Firestore
-                await db.collection('giftCards').add({
-                    code: code,
-                    value: amount,
-                    remainingBalance: amount,
-                    userId: user.uid,
-                    isActive: true,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                
-                // Deduct amount from wallet
-                await db.collection('users').doc(user.uid).update({
-                    walletBalance: firebase.firestore.FieldValue.increment(-amount)
-                });
-                
-                // Create transaction record
-                await db.collection('transactions').add({
-                    userId: user.uid,
-                    type: 'Gift Card Purchase',
-                    amount: -amount,
-                    status: 'Completed',
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                
-                // Update UI
-                walletBalance -= amount;
-                giftCardBalance += 1; // One gift card
-                updateWalletBalance();
-                
-                // Show gift card code
-                giftcardCodesList.innerHTML = `
-                    <div class="giftcard-code">${code}</div>
-                    <p>Balance: ${getCurrencySymbol()}${amount}</p>
-                    <button class="copy-btn" onclick="copyGiftCardCode('${code}')" style="margin-top: 10px;">
-                        <i class="fas fa-copy"></i> Copy Code
-                    </button>
-                `;
-                
-                giftcardResult.style.display = 'block';
-                
-                alert(`Successfully generated gift card with ${getCurrencySymbol()}${amount} balance!`);
-                
-                // Reload user gift cards
-                await loadUserGiftCards(user.uid);
-                
-            } catch (error) {
-                console.error("Error generating gift cards:", error);
-                alert('Error generating gift cards: ' + error.message);
-            }
-        }
-
-        // Generate vendor cards (admin function)
-        async function handleVendorCardGeneration(e) {
-            e.preventDefault();
-            
-            const cardCount = parseInt(document.getElementById('vendorCardCount').value);
-            const cardValue = parseInt(document.getElementById('vendorCardValue').value);
-            
-            try {
-                // Generate vendor cards
-                const vendorCardCodes = [];
-                for (let i = 0; i < cardCount; i++) {
-                    const code = await generateUniqueGiftCardCode();
-                    vendorCardCodes.push(code);
-                    
-                    // Create vendor card in Firestore
-                    await db.collection('giftCards').add({
-                        code: code,
-                        value: cardValue,
-                        remainingBalance: cardValue,
-                        isVendorCard: true,
-                        isActive: true,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                }
-                
-                // Show vendor card codes
-                vendorCardCodesList.innerHTML = '';
-                vendorCardCodes.forEach(code => {
-                    const codeDiv = document.createElement('div');
-                    codeDiv.className = 'giftcard-code';
-                    codeDiv.textContent = code;
-                    vendorCardCodesList.appendChild(codeDiv);
-                });
-                
-                vendorCardResult.style.display = 'block';
-                
-                alert(`Successfully generated ${cardCount} vendor cards!`);
-                
-            } catch (error) {
-                console.error("Error generating vendor cards:", error);
-                alert('Error generating vendor cards: ' + error.message);
-            }
-        }
-
-        // Assign gift cards (admin function)
-        async function handleAssignCard(e) {
-            e.preventDefault();
-            
-            const userId = assignUser.value;
-            const cardCount = parseInt(document.getElementById('assignCardCount').value);
-            const cardValue = parseInt(document.getElementById('assignCardValue').value);
-            
-            try {
-                // Generate and assign gift cards
-                for (let i = 0; i < cardCount; i++) {
-                    const code = await generateUniqueGiftCardCode();
-                    
-                    // Create gift card in Firestore
-                    await db.collection('giftCards').add({
-                        code: code,
-                        value: cardValue,
-                        remainingBalance: cardValue,
-                        userId: userId,
-                        isActive: true,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                }
-                
-                // Update user's gift card balance
-                await db.collection('users').doc(userId).update({
-                    giftCardBalance: firebase.firestore.FieldValue.increment(cardCount)
-                });
-                
-                alert(`Successfully assigned ${cardCount} gift cards to user!`);
-                closeModal(document.getElementById('assignCardModal'));
-                
-            } catch (error) {
-                console.error("Error assigning gift cards:", error);
-                alert('Error assigning gift cards: ' + error.message);
-            }
-        }
-
-        // Generate unique gift card code
-        async function generateUniqueGiftCardCode() {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            let code;
-            let isUnique = false;
-            
-            while (!isUnique) {
-                code = '';
-                for (let i = 0; i < 8; i++) {
-                    code += chars.charAt(Math.floor(Math.random() * chars.length));
-                }
-                
-                // Check if code already exists
-                const existingCode = await db.collection('giftCards')
-                    .where('code', '==', code)
-                    .get();
-                
-                isUnique = existingCode.empty;
-            }
-            
-            return code;
-        }
-
         // Giveaway creation
         async function handleGiveawayCreation(e) {
             e.preventDefault();
@@ -3685,106 +2785,84 @@
             const socialLink = document.getElementById('socialLink').value;
             
             try {
-                // Calculate total cost
                 let totalCost = 0;
+                let giftcardCount = 0;
+                
                 if (giveawayType === 'open') {
                     totalCost = getGameSettings().openGiveawayPrice;
                 } else {
-                    const giftcardCount = parseInt(document.getElementById('giftcardCount').value);
+                    giftcardCount = participantLimit;
                     totalCost = giftcardCount * getGameSettings().gamePrice;
                 }
                 
-                // Check if user has enough balance
                 if (walletBalance < totalCost) {
                     alert(`Insufficient balance. You need ${getCurrencySymbol()}${totalCost} to create this giveaway.`);
                     return;
                 }
                 
-                // Show payment modal
-                paymentAmount.textContent = `${getCurrencySymbol()}${totalCost}`;
-                paymentSlider.value = 0;
-                paymentStatus.innerHTML = '';
-                paymentSuccessAnimation.style.display = 'none';
-                openModal(paymentModal);
+                // Generate unique giveaway ID
+                const giveawayId = db.collection('giveaways').doc().id;
                 
-                // Set up payment slider
-                paymentSlider.oninput = async function() {
-                    if (this.value == 100) {
-                        // Payment confirmed
-                        paymentStatus.innerHTML = '<p class="payment-success">Payment confirmed! Creating giveaway...</p>';
-                        paymentSuccessAnimation.style.display = 'flex';
-                        playSuccessSound();
-                        
-                        // Wait for animation to complete
-                        setTimeout(async () => {
-                            // Generate unique giveaway ID
-                            const giveawayId = db.collection('giveaways').doc().id;
-                            
-                            // Get user verification status
-                            const userDoc = await db.collection('users').doc(user.uid).get();
-                            const userData = userDoc.data();
-                            
-                            // Create giveaway document
-                            const giveawayData = {
-                                id: giveawayId,
-                                creatorId: user.uid,
-                                creatorName: user.displayName,
-                                creatorCountry: userCountry,
-                                creatorVerified: userData.isVerified || false,
-                                creatorVerificationType: userData.verificationType || 'none',
-                                title: title,
-                                type: giveawayType,
-                                difficulty: difficulty,
-                                participantLimit: participantLimit,
-                                winnersLimit: winnersLimit,
-                                currentParticipants: 0,
-                                startTime: new Date(startTime),
-                                winningTime: winningTime,
-                                socialTask: socialTask,
-                                socialLink: socialLink,
-                                isActive: true,
-                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                            };
-                            
-                            // For gift card giveaways, assign gift cards
-                            if (giveawayType === 'giftcard') {
-                                const giftcardCount = parseInt(document.getElementById('giftcardCount').value);
-                                await assignGiftCardsForGiveaway(giveawayId, giftcardCount);
-                            }
-                            
-                            // Deduct the cost from wallet
-                            await db.collection('users').doc(user.uid).update({
-                                walletBalance: firebase.firestore.FieldValue.increment(-totalCost)
-                            });
-                            
-                            // Create transaction record
-                            await db.collection('transactions').add({
-                                userId: user.uid,
-                                type: 'Giveaway Creation',
-                                amount: -totalCost,
-                                status: 'Completed',
-                                giveawayId: giveawayId,
-                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                            });
-                            
-                            walletBalance -= totalCost;
-                            updateWalletBalance();
-                            
-                            // Save giveaway
-                            await db.collection('giveaways').doc(giveawayId).set(giveawayData);
-                            
-                            closeModal(paymentModal);
-                            alert('Giveaway created successfully!');
-                            
-                            // Reload user giveaways
-                            await loadUserGiveaways();
-                            
-                        }, 2000);
-                    } else {
-                        paymentStatus.innerHTML = '';
-                        paymentSuccessAnimation.style.display = 'none';
-                    }
+                // Get user verification status
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                const userData = userDoc.data();
+                
+                // Create giveaway document
+                const giveawayData = {
+                    id: giveawayId,
+                    creatorId: user.uid,
+                    creatorName: user.displayName,
+                    creatorCountry: userCountry,
+                    creatorVerified: userData.isVerified || false,
+                    creatorVerificationType: userData.verificationType || 'none',
+                    title: title,
+                    type: giveawayType,
+                    difficulty: difficulty,
+                    participantLimit: participantLimit,
+                    winnersLimit: winnersLimit,
+                    currentParticipants: 0,
+                    startTime: new Date(startTime),
+                    winningTime: winningTime,
+                    socialTask: socialTask,
+                    socialLink: socialLink,
+                    isActive: true,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 };
+                
+                // For gift card giveaways, generate gift cards
+                if (giveawayType === 'giftcard') {
+                    await generateGiftCardsForGiveaway(giveawayId, giftcardCount);
+                }
+                
+                // Deduct the cost from wallet
+                await db.collection('users').doc(user.uid).update({
+                    walletBalance: firebase.firestore.FieldValue.increment(-totalCost)
+                });
+                
+                // Create transaction record
+                await db.collection('transactions').add({
+                    userId: user.uid,
+                    type: 'Giveaway Creation',
+                    amount: -totalCost,
+                    status: 'Completed',
+                    giveawayId: giveawayId,
+                    giftcardCount: giftcardCount,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                walletBalance -= totalCost;
+                updateWalletBalance();
+                
+                // Save giveaway
+                await db.collection('giveaways').doc(giveawayId).set(giveawayData);
+                
+                // Generate and display giveaway link
+                const giveawayLink = `${window.location.origin}?giveaway=${giveawayId}`;
+                giveawayLinkDisplay.textContent = giveawayLink;
+                giveawayLinkContainer.style.display = 'block';
+                giveawayForm.style.display = 'none';
+                
+                alert('Giveaway created successfully!');
                 
             } catch (error) {
                 console.error("Error creating giveaway:", error);
@@ -3792,14 +2870,12 @@
             }
         }
 
-        // Assign gift cards for giveaway
-        async function assignGiftCardsForGiveaway(giveawayId, count) {
+        // Generate gift cards for giveaway
+        async function generateGiftCardsForGiveaway(giveawayId, count) {
             try {
                 for (let i = 0; i < count; i++) {
-                    // Generate unique gift card code
                     const code = await generateUniqueGiftCardCode();
                     
-                    // Create gift card
                     await db.collection('giftCards').add({
                         code: code,
                         value: getGameSettings().gamePrice,
@@ -3807,34 +2883,42 @@
                         giveawayId: giveawayId,
                         creatorId: user.uid,
                         isActive: true,
+                        isGiveawayCard: true,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                 }
             } catch (error) {
-                console.error("Error assigning gift cards:", error);
+                console.error("Error generating gift cards:", error);
                 throw error;
             }
         }
 
-        // Load user giveaways
+        // Copy giveaway link
+        function copyGiveawayLink() {
+            const link = giveawayLinkDisplay.textContent;
+            navigator.clipboard.writeText(link).then(() => {
+                alert('Giveaway link copied to clipboard!');
+            });
+        }
+
+        // Load user giveaways with real-time listener
         async function loadUserGiveaways() {
-            try {
-                const giveawaysSnapshot = await db.collection('giveaways')
-                    .where('creatorId', '==', user.uid)
-                    .orderBy('createdAt', 'desc')
-                    .get();
-                
-                updateGiveawayTable(giveawaysSnapshot);
-                
-            } catch (error) {
-                console.error("Error loading giveaways:", error);
-            }
+            if (!user) return;
+            
+            db.collection('giveaways')
+                .where('creatorId', '==', user.uid)
+                .orderBy('createdAt', 'desc')
+                .onSnapshot((snapshot) => {
+                    updateGiveawayTable(snapshot);
+                });
         }
 
         // Update giveaway table
         function updateGiveawayTable(giveawaysSnapshot) {
+            const giveawayTable = document.getElementById('giveawayTable');
+            
             if (giveawaysSnapshot.empty) {
-                document.getElementById('giveawayTable').innerHTML = '<tr><td colspan="5" style="text-align: center;">No giveaways yet</td></tr>';
+                giveawayTable.innerHTML = '<tr><td colspan="5" style="text-align: center;">No giveaways yet</td></tr>';
                 return;
             }
             
@@ -3852,194 +2936,190 @@
                         <td>${status}</td>
                         <td>
                             <button class="btn btn-sm btn-info" onclick="viewGiveaway('${giveaway.id}')">View</button>
-                            <button class="btn btn-sm btn-warning" onclick="copyGiveawayLink('${giveaway.id}')">Copy Link</button>
+                            <button class="btn btn-sm btn-warning" onclick="copyGiveawayLinkById('${giveaway.id}')">Copy Link</button>
                         </td>
                     </tr>
                 `;
             });
             
-            document.getElementById('giveawayTable').innerHTML = tableHTML;
+            giveawayTable.innerHTML = tableHTML;
         }
 
-        // Copy giveaway link
-        function copyGiveawayLink(giveawayId) {
+        function copyGiveawayLinkById(giveawayId) {
             const link = `${window.location.origin}?giveaway=${giveawayId}`;
             navigator.clipboard.writeText(link).then(() => {
                 alert('Giveaway link copied to clipboard!');
             });
         }
 
-        // View giveaway
-        function viewGiveaway(giveawayId) {
-            // Redirect to giveaway page or open in modal
-            window.open(`?giveaway=${giveawayId}`, '_blank');
-        }
-
-        // Load affiliate giveaways
-        async function loadAffiliateGiveaways() {
-            try {
-                const giveawaysSnapshot = await db.collection('giveaways')
-                    .where('isActive', '==', true)
-                    .orderBy('createdAt', 'desc')
+        // Generate unique gift card code
+        async function generateUniqueGiftCardCode() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let code;
+            let isUnique = false;
+            
+            while (!isUnique) {
+                code = '';
+                for (let i = 0; i < 8; i++) {
+                    code += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                
+                const existingCode = await db.collection('giftCards')
+                    .where('code', '==', code)
                     .get();
                 
-                updateAffiliateGiveawayList(giveawaysSnapshot);
-                
-            } catch (error) {
-                console.error("Error loading affiliate giveaways:", error);
-            }
-        }
-
-        // Update affiliate giveaway list
-        function updateAffiliateGiveawayList(giveawaysSnapshot) {
-            if (giveawaysSnapshot.empty) {
-                affiliateGiveawayList.innerHTML = '<p style="text-align: center;">No active giveaways available</p>';
-                return;
+                isUnique = existingCode.empty;
             }
             
-            let giveawayHTML = '';
-            giveawaysSnapshot.forEach(doc => {
-                const giveaway = doc.data();
-                const verificationBadge = giveaway.creatorVerified ? 
-                    `<i class="fas ${giveaway.creatorVerificationType === 'gold' ? 'fa-certificate gold-badge' : 'fa-check-circle verified-badge'}"></i>` : '';
-                
-                giveawayHTML += `
-                    <div class="giveaway-card">
-                        <h3>${giveaway.title} ${verificationBadge}</h3>
-                        <p>Creator: ${giveaway.creatorName}</p>
-                        <p>Type: ${giveaway.type}</p>
-                        <p>Difficulty: ${giveaway.difficulty}</p>
-                        <div class="giveaway-meta">
-                            <span>Participants: ${giveaway.currentParticipants}/${giveaway.participantLimit}</span>
-                            <span>Commission: ${getGameSettings().affiliateCommission}%</span>
-                        </div>
-                        <div class="giveaway-actions">
-                            <button class="btn btn-primary btn-sm" onclick="generateAffiliateLink('${giveaway.id}')">Generate Link</button>
-                            <button class="btn btn-info btn-sm" onclick="viewGiveaway('${giveaway.id}')">View</button>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            affiliateGiveawayList.innerHTML = giveawayHTML;
-        }
-
-        // Generate affiliate link
-        async function generateAffiliateLink(giveawayId) {
-            try {
-                // Generate unique affiliate code
-                const affiliateCode = generateAffiliateCode();
-                
-                // Save affiliate link
-                await db.collection('affiliateLinks').add({
-                    affiliateId: user.uid,
-                    giveawayId: giveawayId,
-                    code: affiliateCode,
-                    clicks: 0,
-                    conversions: 0,
-                    isActive: true,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                
-                // Update active links count
-                activeLinks++;
-                await db.collection('affiliates').doc(user.uid).update({
-                    activeLinks: firebase.firestore.FieldValue.increment(1)
-                });
-                
-                updateAffiliateStats();
-                
-                const affiliateLink = `${window.location.origin}?giveaway=${giveawayId}&affiliate=${affiliateCode}`;
-                navigator.clipboard.writeText(affiliateLink).then(() => {
-                    alert('Affiliate link copied to clipboard!');
-                });
-                
-            } catch (error) {
-                console.error("Error generating affiliate link:", error);
-                alert('Error generating affiliate link: ' + error.message);
-            }
-        }
-
-        // Generate unique affiliate code
-        function generateAffiliateCode() {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            let code = '';
-            for (let i = 0; i < 6; i++) {
-                code += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
             return code;
         }
 
-        // Request withdrawal
-        async function requestWithdrawal() {
+        // Generate gift cards
+        async function handleGiftCardGeneration(e) {
+            e.preventDefault();
+            
+            if (!user) {
+                alert('Please log in to generate gift cards');
+                return;
+            }
+            
+            const optionType = giftcardOptionType.value;
+            let amount, cardCount, totalCost;
+            
+            if (optionType === 'single') {
+                amount = parseFloat(giftCardAmount.value);
+                cardCount = 1;
+                totalCost = amount;
+            } else {
+                amount = parseFloat(bulkGiftCardAmount.value);
+                cardCount = Math.floor(amount / 100);
+                totalCost = amount;
+            }
+            
+            // Validate amount
+            if (amount <= 0) {
+                alert('Please enter a valid amount');
+                return;
+            }
+            
+            if (optionType === 'bulk' && amount < 100) {
+                alert('Minimum amount for bulk gift cards is ₦100');
+                return;
+            }
+            
+            // Check if user has enough balance
+            if (walletBalance < totalCost) {
+                alert(`Insufficient balance. You need ${getCurrencySymbol()}${totalCost} to generate gift cards.`);
+                return;
+            }
+            
             try {
-                if (giveawayCashbackBalance <= 0) {
-                    alert('No available balance for withdrawal');
-                    return;
+                const giftCardCodes = [];
+                
+                for (let i = 0; i < cardCount; i++) {
+                    const code = await generateUniqueGiftCardCode();
+                    const cardValue = optionType === 'single' ? amount : 100;
+                    
+                    // Create gift card in Firestore
+                    await db.collection('giftCards').add({
+                        code: code,
+                        value: cardValue,
+                        remainingBalance: cardValue,
+                        userId: user.uid,
+                        isActive: true,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    giftCardCodes.push({ code, value: cardValue });
                 }
                 
-                const amount = giveawayCashbackBalance;
+                // Deduct amount from wallet
+                await db.collection('users').doc(user.uid).update({
+                    walletBalance: firebase.firestore.FieldValue.increment(-totalCost)
+                });
                 
-                // Create withdrawal request
-                await db.collection('withdrawalRequests').add({
+                // Create transaction record
+                await db.collection('transactions').add({
                     userId: user.uid,
-                    type: 'giveaway_cashback',
-                    amount: amount,
-                    status: 'pending',
-                    country: userCountry,
+                    type: 'Gift Card Purchase',
+                    amount: -totalCost,
+                    status: 'Completed',
+                    giftcardCount: cardCount,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
-                // Reset cashback balance
-                giveawayCashbackBalance = 0;
-                await db.collection('users').doc(user.uid).update({
-                    giveawayCashbackBalance: 0
-                });
-                
+                // Update UI
+                walletBalance -= totalCost;
+                giftCardBalance += cardCount;
                 updateWalletBalance();
                 
-                alert('Withdrawal request submitted successfully!');
+                // Show gift card codes
+                let codesHTML = '';
+                giftCardCodes.forEach((card, index) => {
+                    codesHTML += `
+                        <div style="margin-bottom: 10px;">
+                            <div class="giftcard-code">${card.code}</div>
+                            <p>Balance: ${getCurrencySymbol()}${card.value}</p>
+                            <button class="copy-btn" onclick="copyGiftCardCode('${card.code}')" style="margin-top: 5px;">
+                                <i class="fas fa-copy"></i> Copy Code
+                            </button>
+                            ${index < giftCardCodes.length - 1 ? '<hr style="margin: 10px 0; border-color: rgba(255,255,255,0.1);">' : ''}
+                        </div>
+                    `;
+                });
+                
+                document.getElementById('giftcardCodesList').innerHTML = codesHTML;
+                document.getElementById('giftcardResult').style.display = 'block';
+                
+                alert(`Successfully generated ${cardCount} gift card(s)!`);
                 
             } catch (error) {
-                console.error("Error requesting withdrawal:", error);
-                alert('Error requesting withdrawal: ' + error.message);
+                console.error("Error generating gift cards:", error);
+                alert('Error generating gift cards: ' + error.message);
             }
         }
 
-        // Request affiliate withdrawal
-        async function requestAffiliateWithdrawal() {
-            try {
-                if (affiliateBalance <= 0) {
-                    alert('No available balance for withdrawal');
-                    return;
-                }
-                
-                const amount = affiliateBalance;
-                
-                // Create withdrawal request
-                await db.collection('withdrawalRequests').add({
-                    userId: user.uid,
-                    type: 'affiliate',
-                    amount: amount,
-                    status: 'pending',
-                    country: userCountry,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        // Copy gift card code
+        function copyGiftCardCode(code) {
+            navigator.clipboard.writeText(code).then(() => {
+                alert('Gift card code copied to clipboard!');
+            });
+        }
+
+        // Load user transactions with real-time listener
+        async function loadUserTransactions(userId) {
+            db.collection('transactions')
+                .where('userId', '==', userId)
+                .orderBy('createdAt', 'desc')
+                .onSnapshot((snapshot) => {
+                    updateTransactionTable(snapshot);
                 });
-                
-                // Reset affiliate balance
-                affiliateBalance = 0;
-                await db.collection('affiliates').doc(user.uid).update({
-                    availableBalance: 0
-                });
-                
-                updateAffiliateStats();
-                
-                alert('Withdrawal request submitted successfully!');
-                
-            } catch (error) {
-                console.error("Error requesting affiliate withdrawal:", error);
-                alert('Error requesting affiliate withdrawal: ' + error.message);
+        }
+
+        // Update transaction table
+        function updateTransactionTable(transactionsSnapshot) {
+            if (transactionsSnapshot.empty) {
+                transactionTable.innerHTML = '<tr><td colspan="4" style="text-align: center;">No transactions yet</td></tr>';
+                return;
             }
+            
+            let tableHTML = '';
+            transactionsSnapshot.forEach(doc => {
+                const transaction = doc.data();
+                const date = transaction.createdAt ? transaction.createdAt.toDate().toLocaleDateString() : 'N/A';
+                const currencySymbol = userCountry === 'nigeria' ? '₦' : 'USDT ';
+                
+                tableHTML += `
+                    <tr>
+                        <td>${date}</td>
+                        <td>${transaction.type}</td>
+                        <td>${currencySymbol}${transaction.amount || 0}</td>
+                        <td>${transaction.status || 'Completed'}</td>
+                    </tr>
+                `;
+            });
+            
+            transactionTable.innerHTML = tableHTML;
         }
 
         // Update UI functions
@@ -4065,6 +3145,14 @@
             const seconds = Math.floor(time / 1000);
             const milliseconds = Math.floor((time % 1000) / 10);
             return `${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
+        }
+
+        function getCurrencySymbol() {
+            return getGameSettings().currency;
+        }
+
+        function getGameSettings() {
+            return gameSettings[userCountry];
         }
 
         function updateSidebarMenu() {
@@ -4098,12 +3186,10 @@
         }
 
         function showSection(sectionId) {
-            console.log("Showing section:", sectionId);
             contentSections.forEach(section => {
                 section.classList.remove('active');
             });
             
-            // Check if user is logged in for protected sections
             if ((sectionId === 'dashboardSection' || sectionId === 'giveawaySection' || sectionId === 'affiliateSection') && !user) {
                 const section = document.getElementById(sectionId);
                 const originalContent = section.innerHTML;
@@ -4112,24 +3198,20 @@
                     <div class="login-required">
                         <h2>Login Required</h2>
                         <p>Please log in to access the ${sectionId === 'dashboardSection' ? 'Dashboard' : sectionId === 'giveawaySection' ? 'Giveaway' : 'Affiliate'} section.</p>
-                        <button class="btn btn-primary" onclick="openModal(loginModal)">
+                        <button class="btn btn-primary" onclick="openModal(document.getElementById('loginModal'))">
                             <i class="fas fa-sign-in-alt"></i> Login
                         </button>
                     </div>
                 `;
                 section.classList.add('active');
                 
-                // Restore original content when user logs in
                 setTimeout(() => {
                     section.innerHTML = originalContent;
                 }, 0);
             } else {
                 document.getElementById(sectionId).classList.add('active');
                 
-                // Load section-specific data
-                if (sectionId === 'affiliateSection' && user && isAffiliate) {
-                    loadAffiliateGiveaways();
-                } else if (sectionId === 'giveawaySection' && user) {
+                if (sectionId === 'giveawaySection' && user) {
                     loadUserGiveaways();
                 }
             }
@@ -4145,7 +3227,6 @@
                 'dashboardSocialLinks', 
                 'giveawaySocialLinks',
                 'shopSocialLinks',
-                'giveawayEndedSocialLinks',
                 'affiliateSocialLinks'
             ];
             
@@ -4178,18 +3259,15 @@
                 console.log("User signed in:", user.email);
                 updateUIForLoggedInUser();
                 
-                // Load user data and configuration
                 await loadConfiguration();
                 await loadUserData(user.uid);
                 
-                // Update sidebar to show protected sections
                 updateSidebarMenu();
             } else {
                 user = null;
                 console.log("User signed out");
                 updateUIForLoggedOutUser();
                 
-                // Reset user data
                 gamesPlayed = 0;
                 bestTime = 0;
                 walletBalance = 0;
@@ -4203,10 +3281,8 @@
                 updateWalletBalance();
                 updateAffiliateStats();
                 
-                // Update sidebar to hide protected sections
                 updateSidebarMenu();
                 
-                // If user is on a protected section, redirect to game section
                 const activeSection = document.querySelector('.content-section.active');
                 if (activeSection && (activeSection.id === 'dashboardSection' || activeSection.id === 'giveawaySection' || activeSection.id === 'affiliateSection')) {
                     showSection('gameSection');
@@ -4235,17 +3311,30 @@
             updateUIForLoggedOutUser();
         }
 
+        // Modal functions
+        function openModal(modal) {
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(modal) {
+            modal.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        function closeAllModals() {
+            document.querySelectorAll('.modal').forEach(modal => {
+                closeModal(modal);
+            });
+        }
+
         // Initialize everything
         function init() {
             console.log("Initializing application...");
             
-            // Initialize Firebase
             initializeFirebase();
-            
-            // Set up event listeners
             setupEventListeners();
             
-            // Initialize UI
             updateTimerDisplay(currentTime);
             updateStats();
             updateWalletBalance();
@@ -4261,45 +3350,24 @@
             // Game controls
             startBtn.addEventListener('click', startGame);
             stopBtn.addEventListener('click', stopGame);
-            payGameBtn.addEventListener('click', () => openModal(giftCardValidationModal));
+            payGameBtn.addEventListener('click', () => openModal(document.getElementById('giftCardValidationModal')));
             
             // Auth controls
-            loginBtn.addEventListener('click', () => openModal(loginModal));
-            registerBtn.addEventListener('click', () => openModal(registerModal));
+            loginBtn.addEventListener('click', () => openModal(document.getElementById('loginModal')));
+            registerBtn.addEventListener('click', () => openModal(document.getElementById('registerModal')));
             logoutBtn.addEventListener('click', logout);
             
             // Dashboard controls
-            fundWalletBtn.addEventListener('click', () => openModal(fundWalletModal));
-            generateGiftCardBtn.addEventListener('click', () => openModal(generateGiftCardModal));
-            customerCareBtn.addEventListener('click', () => openModal(customerCareModal));
+            fundWalletBtn.addEventListener('click', () => openModal(document.getElementById('fundWalletModal')));
+            generateGiftCardBtn.addEventListener('click', () => openModal(document.getElementById('generateGiftCardModal')));
+            customerCareBtn.addEventListener('click', () => openModal(document.getElementById('customerCareModal')));
             requestWithdrawalBtn.addEventListener('click', requestWithdrawal);
             requestAffiliateWithdrawalBtn.addEventListener('click', requestAffiliateWithdrawal);
             
-            // Admin controls
-            if (manageUsersBtn) manageUsersBtn.addEventListener('click', () => openModal(document.getElementById('manageUsersModal')));
-            if (viewMessagesBtn) viewMessagesBtn.addEventListener('click', () => openModal(document.getElementById('viewMessagesModal')));
-            if (generateVendorCardBtn) generateVendorCardBtn.addEventListener('click', () => openModal(document.getElementById('generateVendorCardModal')));
-            if (assignCardBtn) assignCardBtn.addEventListener('click', () => openModal(document.getElementById('assignCardModal')));
-            if (gameSettingsBtn) gameSettingsBtn.addEventListener('click', () => openModal(document.getElementById('gameSettingsModal')));
-            if (socialSettingsBtn) socialSettingsBtn.addEventListener('click', () => openModal(document.getElementById('socialSettingsModal')));
-            if (withdrawalRequestsBtn) withdrawalRequestsBtn.addEventListener('click', () => openModal(document.getElementById('withdrawalRequestsModal')));
-            if (pendingTransactionsBtn) pendingTransactionsBtn.addEventListener('click', () => openModal(document.getElementById('pendingTransactionsModal')));
+            // Giveaway form
+            giveawayForm.addEventListener('submit', handleGiveawayCreation);
             
-            // Shop controls
-            shopGiftCardBtn.addEventListener('click', () => openModal(generateGiftCardModal));
-            premiumBtn.addEventListener('click', () => alert('Premium features coming soon!'));
-            merchandiseBtn.addEventListener('click', () => alert('Merchandise shop coming soon!'));
-            
-            // Gift card validation
-            validateGiftcardBtn.addEventListener('click', validateGiftcard);
-            
-            // Gift card amount calculation
-            giftCardAmount.addEventListener('input', function() {
-                const amount = parseInt(this.value) || 0;
-                giftCardValue.textContent = amount;
-            });
-            
-            // Giveaway type selection
+            // Gift card type selection
             giveawayTypeBtns.forEach(btn => {
                 btn.addEventListener('click', function() {
                     giveawayTypeBtns.forEach(b => b.classList.remove('active'));
@@ -4308,89 +3376,58 @@
                     
                     if (this.dataset.type === 'giftcard') {
                         giftcardGiveawayFields.style.display = 'block';
+                        // Sync participant limit with gift card count
+                        giftcardCountInput.value = participantLimitInput.value;
                     } else {
                         giftcardGiveawayFields.style.display = 'none';
                     }
                 });
             });
             
-            // Country selection in registration
-            countryBtns.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    countryBtns.forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    userCountryInput.value = this.dataset.country;
-                    userCountry = this.dataset.country;
-                    
-                    // Update currency displays
-                    updateCurrencyDisplays();
-                });
+            // Sync participant limit with gift card count
+            participantLimitInput.addEventListener('input', function() {
+                if (giveawayTypeInput.value === 'giftcard') {
+                    giftcardCountInput.value = this.value;
+                }
             });
             
-            // Admin country tabs
-            adminCountryTabs.forEach(tab => {
-                tab.addEventListener('click', function() {
-                    adminCountryTabs.forEach(t => t.classList.remove('active'));
+            // Gift card option selection
+            giftcardOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    giftcardOptions.forEach(o => o.classList.remove('active'));
                     this.classList.add('active');
-                    adminCurrentCountry = this.dataset.country;
+                    giftcardOptionType.value = this.dataset.type;
                     
-                    // Reload admin data for the selected country
-                    if (isAdmin) {
-                        loadAdminData();
+                    if (this.dataset.type === 'single') {
+                        singleGiftCardFields.style.display = 'block';
+                        bulkGiftCardFields.style.display = 'none';
+                    } else {
+                        singleGiftCardFields.style.display = 'none';
+                        bulkGiftCardFields.style.display = 'block';
                     }
                 });
             });
             
-            // Giveaway form submission
-            document.getElementById('giveawayForm').addEventListener('submit', handleGiveawayCreation);
+            // Gift card amount calculation
+            giftCardAmount.addEventListener('input', function() {
+                const amount = parseInt(this.value) || 0;
+                giftCardValue.textContent = amount;
+            });
             
-            // Gift card form submission
+            bulkGiftCardAmount.addEventListener('input', function() {
+                const amount = parseInt(this.value) || 0;
+                const count = Math.floor(amount / 100);
+                giftCardCount.textContent = count;
+            });
+            
+            // Gift card form
             document.getElementById('giftCardForm').addEventListener('submit', handleGiftCardGeneration);
             
-            // Vendor card form submission
-            vendorCardForm.addEventListener('submit', handleVendorCardGeneration);
+            // Gift card validation
+            document.getElementById('validateGiftcardBtn').addEventListener('click', validateGiftcard);
             
-            // Assign card form submission
-            assignCardForm.addEventListener('submit', handleAssignCard);
-            
-            // Customer care form submission
+            // Customer care form
             customerCareForm.addEventListener('submit', handleCustomerCareMessage);
-            
-            // Admin reply form submission
-            adminReplyForm.addEventListener('submit', handleAdminReply);
-            
-            // User messages filter change
-            userMessagesFilter.addEventListener('change', handleUserMessagesFilterChange);
-            
-            // Fund wallet dropdown
-            iHaveFundedBtn.addEventListener('click', function() {
-                fundWalletDropdown.classList.toggle('active');
-            });
-            
-            // Transaction dropdown toggle
-            transactionToggle.addEventListener('click', function() {
-                transactionDropdown.classList.toggle('active');
-                this.textContent = transactionDropdown.classList.contains('active') ? 'Hide Transactions' : 'View All Transactions';
-            });
-            
-            // Menu toggle
-            menuToggle.addEventListener('click', toggleSidebar);
-            
-            // Payment method toggle
-            if (paymentMethod) {
-                paymentMethod.addEventListener('change', function() {
-                    if (this.value === 'crypto') {
-                        cryptoDetails.style.display = 'block';
-                    } else {
-                        cryptoDetails.style.display = 'none';
-                    }
-                });
-            }
-            
-            // Form submissions
-            document.getElementById('loginForm').addEventListener('submit', handleLogin);
-            document.getElementById('registerForm').addEventListener('submit', handleRegister);
-            document.getElementById('fundWalletForm').addEventListener('submit', handleFundWallet);
             
             // Close buttons
             document.querySelectorAll('.close-btn').forEach(button => {
@@ -4401,7 +3438,7 @@
             });
             
             // Close modal when clicking outside
-            modals.forEach(modal => {
+            document.querySelectorAll('.modal').forEach(modal => {
                 modal.addEventListener('click', function(e) {
                     if (e.target === this) {
                         closeModal(this);
@@ -4418,6 +3455,9 @@
                     sidebar.classList.remove('active');
                 }
             });
+            
+            // Menu toggle
+            menuToggle.addEventListener('click', toggleSidebar);
             
             console.log("Event listeners setup complete");
         }
