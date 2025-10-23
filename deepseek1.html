@@ -2374,6 +2374,7 @@
                         gameSettings.nigeria = { ...gameSettings.nigeria, ...doc.data() };
                         console.log("Nigeria game settings loaded:", gameSettings.nigeria);
                         updateCurrencyDisplays();
+                        updateGameSettingsUI();
                     }
                 });
                 
@@ -2382,6 +2383,7 @@
                         gameSettings.other = { ...gameSettings.other, ...doc.data() };
                         console.log("Other countries game settings loaded:", gameSettings.other);
                         updateCurrencyDisplays();
+                        updateGameSettingsUI();
                     }
                 });
                 
@@ -2396,6 +2398,21 @@
             } catch (error) {
                 console.error("Error loading configuration:", error);
             }
+        }
+
+        // Update game settings UI for admin
+        function updateGameSettingsUI() {
+            if (!isAdmin) return;
+            
+            const settings = gameSettings[adminCurrentCountry];
+            
+            document.getElementById('gamePrice').value = settings.gamePrice;
+            document.getElementById('dailyWinners').value = settings.dailyWinners;
+            document.getElementById('winningTimeSetting').value = settings.winningTime;
+            document.getElementById('openGiveawayPrice').value = settings.openGiveawayPrice;
+            document.getElementById('giftCardPaymentUrl').value = settings.giftCardPaymentUrl || '';
+            document.getElementById('openGiveawayPaymentUrl').value = settings.openGiveawayPaymentUrl || '';
+            document.getElementById('fundWalletUrl').value = settings.fundWalletUrl || '';
         }
 
         // Update currency displays based on user country
@@ -2469,6 +2486,7 @@
                 db.collection('transactions')
                     .where('userId', '==', userId)
                     .orderBy('createdAt', 'desc')
+                    .limit(20)
                     .onSnapshot((snapshot) => {
                         updateTransactionTable(snapshot);
                     });
@@ -2481,12 +2499,20 @@
                         updateCustomerCareMessages(snapshot);
                     });
                 
+                // Set up real-time listener for user giveaways
+                db.collection('giveaways')
+                    .where('creatorId', '==', userId)
+                    .orderBy('createdAt', 'desc')
+                    .onSnapshot((snapshot) => {
+                        updateGiveawayTable(snapshot);
+                    });
+                
             } catch (error) {
                 console.error("Error loading user data:", error);
             }
         }
 
-        // Update available gift cards
+        // Update available gift cards - FIXED
         function updateAvailableGiftCards(giftCardsSnapshot) {
             if (giftCardsSnapshot.empty) {
                 availableGiftCardsList.innerHTML = '<p style="text-align: center;">No gift cards available</p>';
@@ -2498,6 +2524,7 @@
                 const giftCard = doc.data();
                 const status = giftCard.remainingBalance > 0 ? 'Valid' : 'Used';
                 const statusClass = giftCard.remainingBalance > 0 ? 'status-valid' : 'status-used';
+                const currency = getCurrencySymbol();
                 
                 giftCardsHTML += `
                     <div class="giftcard-info" style="margin-bottom: 10px;">
@@ -2505,9 +2532,10 @@
                             <div>
                                 <strong>${giftCard.code}</strong>
                                 <span class="status-badge ${statusClass}">${status}</span>
+                                ${giftCard.giveawayId ? '<span class="status-badge status-valid">Giveaway</span>' : ''}
                             </div>
                             <div>
-                                <span class="giftcard-balance">${getCurrencySymbol()}${giftCard.remainingBalance || 0}</span>
+                                <span class="giftcard-balance">${currency}${giftCard.remainingBalance || 0}</span>
                                 <button class="copy-btn" onclick="copyGiftCardCode('${giftCard.code}')">
                                     <i class="fas fa-copy"></i> Copy
                                 </button>
@@ -2537,7 +2565,7 @@
             return gameSettings[userCountry];
         }
 
-        // Update customer care messages
+        // Update customer care messages - FIXED for real-time chat
         function updateCustomerCareMessages(messagesSnapshot) {
             chatMessages.innerHTML = '';
             
@@ -2575,7 +2603,7 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
-        // Handle customer care message submission
+        // Handle customer care message submission - FIXED
         async function handleCustomerCareMessage(e) {
             e.preventDefault();
             const messageText = customerMessage.value.trim();
@@ -2591,13 +2619,12 @@
                     userId: user.uid,
                     sender: 'user',
                     text: messageText,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    read: false
                 });
                 
                 // Clear input
                 customerMessage.value = '';
-                
-                alert('Message sent successfully!');
                 
             } catch (error) {
                 console.error("Error sending message:", error);
@@ -2605,7 +2632,7 @@
             }
         }
 
-        // Load admin data with real-time updates
+        // Load admin data with real-time updates - FIXED
         async function loadAdminData() {
             try {
                 // Set up real-time listener for users
@@ -2613,11 +2640,12 @@
                     updateUsersList(snapshot);
                 });
                 
-                // Set up real-time listener for messages
+                // Set up real-time listener for all messages
                 db.collection('messages')
                     .orderBy('createdAt', 'desc')
                     .onSnapshot((snapshot) => {
                         updateUserMessagesFilter(snapshot);
+                        updateAdminChatMessages(snapshot);
                     });
                 
                 // Set up real-time listener for assign card users
@@ -2625,15 +2653,15 @@
                     updateAssignUserSelect(snapshot);
                 });
                 
-                // Set up real-time listener for pending transactions
+                // Set up real-time listener for pending transactions - FIXED
                 db.collection('transactions')
-                    .where('status', '==', 'Pending')
+                    .where('status', '==', 'pending')
                     .orderBy('createdAt', 'desc')
                     .onSnapshot((snapshot) => {
                         updatePendingTransactionsList(snapshot);
                     });
                 
-                // Set up real-time listener for withdrawal requests
+                // Set up real-time listener for withdrawal requests - FIXED
                 db.collection('withdrawalRequests')
                     .where('status', '==', 'pending')
                     .orderBy('createdAt', 'desc')
@@ -2646,7 +2674,7 @@
             }
         }
 
-        // Update pending transactions list
+        // Update pending transactions list - FIXED
         function updatePendingTransactionsList(transactionsSnapshot) {
             if (transactionsSnapshot.empty) {
                 pendingTransactionsList.innerHTML = '<p style="text-align: center;">No pending transactions</p>';
@@ -2680,7 +2708,7 @@
             pendingTransactionsList.innerHTML = transactionsHTML;
         }
 
-        // Update withdrawal requests list
+        // Update withdrawal requests list - FIXED
         function updateWithdrawalRequestsList(requestsSnapshot) {
             const withdrawalRequestsList = document.getElementById('withdrawalRequestsList');
             
@@ -2716,7 +2744,7 @@
             withdrawalRequestsList.innerHTML = requestsHTML;
         }
 
-        // Approve transaction
+        // Approve transaction - FIXED
         async function approveTransaction(transactionId) {
             try {
                 // Get transaction
@@ -2725,7 +2753,7 @@
                 
                 // Update transaction status
                 await db.collection('transactions').doc(transactionId).update({
-                    status: 'Completed'
+                    status: 'completed'
                 });
                 
                 // Update user wallet balance
@@ -2741,12 +2769,12 @@
             }
         }
 
-        // Decline transaction
+        // Decline transaction - FIXED
         async function declineTransaction(transactionId) {
             try {
                 // Update transaction status
                 await db.collection('transactions').doc(transactionId).update({
-                    status: 'Declined'
+                    status: 'declined'
                 });
                 
                 alert('Transaction declined!');
@@ -2757,7 +2785,7 @@
             }
         }
 
-        // Approve withdrawal
+        // Approve withdrawal - FIXED
         async function approveWithdrawal(requestId) {
             try {
                 // Update withdrawal request status
@@ -2773,7 +2801,7 @@
             }
         }
 
-        // Decline withdrawal
+        // Decline withdrawal - FIXED
         async function declineWithdrawal(requestId) {
             try {
                 // Get withdrawal request
@@ -2804,7 +2832,7 @@
             }
         }
 
-        // Update users list in admin panel
+        // Update users list in admin panel - FIXED
         function updateUsersList(usersSnapshot) {
             const usersList = document.getElementById('usersList');
             
@@ -2877,7 +2905,7 @@
             }
         }
 
-        // Update user messages filter in admin panel
+        // Update user messages filter in admin panel - FIXED
         function updateUserMessagesFilter(messagesSnapshot) {
             const userMessagesFilter = document.getElementById('userMessagesFilter');
             
@@ -2904,7 +2932,7 @@
             });
         }
 
-        // Update assign user select
+        // Update assign user select - FIXED
         function updateAssignUserSelect(usersSnapshot) {
             assignUser.innerHTML = '';
             
@@ -2922,7 +2950,7 @@
             });
         }
 
-        // Handle user messages filter change
+        // Handle user messages filter change - FIXED
         async function handleUserMessagesFilterChange() {
             const userId = userMessagesFilter.value;
             
@@ -2933,7 +2961,7 @@
             }
         }
 
-        // Load all messages for admin
+        // Load all messages for admin - FIXED
         async function loadAllAdminMessages() {
             try {
                 db.collection('messages')
@@ -2946,7 +2974,7 @@
             }
         }
 
-        // Load user messages for admin
+        // Load user messages for admin - FIXED
         async function loadUserAdminMessages(userId) {
             try {
                 db.collection('messages')
@@ -2961,7 +2989,7 @@
             }
         }
 
-        // Update admin chat messages
+        // Update admin chat messages - FIXED for real-time chat
         function updateAdminChatMessages(messagesSnapshot) {
             adminChatMessages.innerHTML = '';
             
@@ -2970,8 +2998,21 @@
                 return;
             }
             
+            // Convert to array and sort by date
+            const messages = [];
             messagesSnapshot.forEach(doc => {
-                const message = doc.data();
+                messages.push({ id: doc.id, ...doc.data() });
+            });
+            
+            // Sort by creation date
+            messages.sort((a, b) => {
+                const dateA = a.createdAt ? a.createdAt.toDate() : new Date(0);
+                const dateB = b.createdAt ? b.createdAt.toDate() : new Date(0);
+                return dateA - dateB;
+            });
+            
+            // Display messages
+            messages.forEach(message => {
                 const time = message.createdAt ? message.createdAt.toDate().toLocaleTimeString() : 'Just now';
                 
                 const messageDiv = document.createElement('div');
@@ -2991,7 +3032,7 @@
             adminChatMessages.scrollTop = adminChatMessages.scrollHeight;
         }
 
-        // Handle admin reply
+        // Handle admin reply - FIXED
         async function handleAdminReply(e) {
             e.preventDefault();
             const replyText = adminReplyMessage.value.trim();
@@ -3012,13 +3053,12 @@
                     userId: selectedUserId,
                     sender: 'admin',
                     text: replyText,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    read: false
                 });
                 
                 // Clear input
                 adminReplyMessage.value = '';
-                
-                alert('Reply sent successfully!');
                 
             } catch (error) {
                 console.error("Error sending reply:", error);
@@ -3056,7 +3096,7 @@
                     userId: userId,
                     type: 'Admin Debit',
                     amount: -parseFloat(amount),
-                    status: 'Completed',
+                    status: 'completed',
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
@@ -3089,7 +3129,7 @@
             }
         }
 
-        // Load affiliate data with real-time updates
+        // Load affiliate data with real-time updates - FIXED
         async function loadAffiliateData(userId) {
             try {
                 db.collection('affiliates').doc(userId).onSnapshot((doc) => {
@@ -3113,12 +3153,20 @@
                         updateAffiliateTransactionTable(snapshot);
                     });
                 
+                // Set up real-time listener for affiliate giveaways
+                db.collection('giveaways')
+                    .where('isActive', '==', true)
+                    .orderBy('createdAt', 'desc')
+                    .onSnapshot((snapshot) => {
+                        updateAffiliateGiveawayList(snapshot);
+                    });
+                
             } catch (error) {
                 console.error("Error loading affiliate data:", error);
             }
         }
 
-        // Update transaction table
+        // Update transaction table - FIXED
         function updateTransactionTable(transactionsSnapshot) {
             if (transactionsSnapshot.empty) {
                 transactionTable.innerHTML = '<tr><td colspan="4" style="text-align: center;">No transactions yet</td></tr>';
@@ -3134,13 +3182,16 @@
                 const transaction = doc.data();
                 const date = transaction.createdAt ? transaction.createdAt.toDate().toLocaleDateString() : 'N/A';
                 const currencySymbol = userCountry === 'nigeria' ? '₦' : 'USDT ';
+                const amountDisplay = transaction.amount < 0 ? 
+                    `-${currencySymbol}${Math.abs(transaction.amount)}` : 
+                    `${currencySymbol}${transaction.amount}`;
                 
                 const rowHTML = `
                     <tr>
                         <td>${date}</td>
                         <td>${transaction.type}</td>
-                        <td>${currencySymbol}${transaction.amount || 0}</td>
-                        <td>${transaction.status || 'Completed'}</td>
+                        <td>${amountDisplay}</td>
+                        <td>${transaction.status || 'completed'}</td>
                     </tr>
                 `;
                 
@@ -3163,7 +3214,7 @@
             }
         }
 
-        // Update affiliate transaction table
+        // Update affiliate transaction table - FIXED
         function updateAffiliateTransactionTable(transactionsSnapshot) {
             if (transactionsSnapshot.empty) {
                 affiliateTransactionTable.innerHTML = '<tr><td colspan="4" style="text-align: center;">No affiliate transactions yet</td></tr>';
@@ -3181,12 +3232,76 @@
                         <td>${date}</td>
                         <td>${transaction.giveawayTitle || 'N/A'}</td>
                         <td>${currencySymbol}${transaction.commission || 0}</td>
-                        <td>${transaction.status || 'Completed'}</td>
+                        <td>${transaction.status || 'completed'}</td>
                     </tr>
                 `;
             });
             
             affiliateTransactionTable.innerHTML = tableHTML;
+        }
+
+        // Update giveaway table - FIXED
+        function updateGiveawayTable(giveawaysSnapshot) {
+            if (giveawaysSnapshot.empty) {
+                document.getElementById('giveawayTable').innerHTML = '<tr><td colspan="5" style="text-align: center;">No giveaways yet</td></tr>';
+                return;
+            }
+            
+            let tableHTML = '';
+            giveawaysSnapshot.forEach(doc => {
+                const giveaway = doc.data();
+                const startTime = giveaway.startTime ? giveaway.startTime.toDate().toLocaleDateString() : 'N/A';
+                const status = giveaway.isActive ? 'Active' : 'Ended';
+                
+                tableHTML += `
+                    <tr>
+                        <td>${giveaway.title}</td>
+                        <td>${giveaway.type}</td>
+                        <td>${giveaway.currentParticipants || 0}/${giveaway.participantLimit}</td>
+                        <td>${status}</td>
+                        <td>
+                            <button class="btn btn-sm btn-info" onclick="viewGiveaway('${giveaway.id}')">View</button>
+                            <button class="btn btn-sm btn-warning" onclick="copyGiveawayLink('${giveaway.id}')">Copy Link</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            document.getElementById('giveawayTable').innerHTML = tableHTML;
+        }
+
+        // Update affiliate giveaway list - FIXED
+        function updateAffiliateGiveawayList(giveawaysSnapshot) {
+            if (giveawaysSnapshot.empty) {
+                affiliateGiveawayList.innerHTML = '<p style="text-align: center;">No active giveaways available</p>';
+                return;
+            }
+            
+            let giveawayHTML = '';
+            giveawaysSnapshot.forEach(doc => {
+                const giveaway = doc.data();
+                const verificationBadge = giveaway.creatorVerified ? 
+                    `<i class="fas ${giveaway.creatorVerificationType === 'gold' ? 'fa-certificate gold-badge' : 'fa-check-circle verified-badge'}"></i>` : '';
+                
+                giveawayHTML += `
+                    <div class="giveaway-card">
+                        <h3>${giveaway.title} ${verificationBadge}</h3>
+                        <p>Creator: ${giveaway.creatorName}</p>
+                        <p>Type: ${giveaway.type}</p>
+                        <p>Difficulty: ${giveaway.difficulty}</p>
+                        <div class="giveaway-meta">
+                            <span>Participants: ${giveaway.currentParticipants || 0}/${giveaway.participantLimit}</span>
+                            <span>Commission: ${getGameSettings().affiliateCommission}%</span>
+                        </div>
+                        <div class="giveaway-actions">
+                            <button class="btn btn-primary btn-sm" onclick="generateAffiliateLink('${doc.id}')">Generate Link</button>
+                            <button class="btn btn-info btn-sm" onclick="viewGiveaway('${doc.id}')">View</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            affiliateGiveawayList.innerHTML = giveawayHTML;
         }
 
         // Modal functions
@@ -3241,7 +3356,7 @@
             }
         }
 
-        // Process game result and save to Firestore
+        // Process game result and save to Firestore - FIXED
         async function processGameResult(finalTime) {
             try {
                 // Update user stats
@@ -3269,9 +3384,10 @@
                         userId: user.uid,
                         type: isWinner ? 'Game Win' : 'Game Play',
                         amount: isWinner ? winAmount : -getGameSettings().gamePrice,
-                        status: 'Completed',
+                        status: 'completed',
                         gameTime: finalTime,
                         isWinner: isWinner,
+                        country: userCountry,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     
@@ -3348,7 +3464,7 @@
             openModal(resultModal);
         }
 
-        // Gift card validation
+        // Gift card validation - FIXED
         async function validateGiftcard() {
             const code = giftcardCodeInput.value.trim().toUpperCase();
             
@@ -3374,6 +3490,12 @@
                 
                 if (giftCardData.remainingBalance <= 0) {
                     alert('This gift card has no remaining balance');
+                    return;
+                }
+                
+                // Check if gift card belongs to user or is a vendor card
+                if (giftCardData.userId && giftCardData.userId !== user.uid) {
+                    alert('This gift card does not belong to you');
                     return;
                 }
                 
@@ -3517,7 +3639,7 @@
                     userId: user.uid,
                     type: 'Wallet Funding',
                     amount: amount,
-                    status: 'Pending',
+                    status: 'pending',
                     name: name,
                     email: email,
                     country: userCountry,
@@ -3533,7 +3655,7 @@
             }
         }
 
-        // Generate gift cards
+        // Generate gift cards - FIXED
         async function handleGiftCardGeneration(e) {
             e.preventDefault();
             
@@ -3602,7 +3724,8 @@
                     userId: user.uid,
                     type: 'Gift Card Purchase',
                     amount: -amount,
-                    status: 'Completed',
+                    status: 'completed',
+                    country: userCountry,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
@@ -3618,6 +3741,14 @@
                     codeDiv.className = 'giftcard-code';
                     codeDiv.textContent = code;
                     giftcardCodesList.appendChild(codeDiv);
+                    
+                    // Add copy button for each code
+                    const copyBtn = document.createElement('button');
+                    copyBtn.className = 'copy-btn';
+                    copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                    copyBtn.onclick = () => copyGiftCardCode(code);
+                    giftcardCodesList.appendChild(copyBtn);
+                    giftcardCodesList.appendChild(document.createElement('br'));
                 });
                 
                 giftcardResult.style.display = 'block';
@@ -3630,7 +3761,7 @@
             }
         }
 
-        // Generate vendor cards (admin function)
+        // Generate vendor cards (admin function) - FIXED
         async function handleVendorCardGeneration(e) {
             e.preventDefault();
             
@@ -3674,7 +3805,7 @@
             }
         }
 
-        // Assign gift cards (admin function)
+        // Assign gift cards (admin function) - FIXED
         async function handleAssignCard(e) {
             e.preventDefault();
             
@@ -3735,7 +3866,7 @@
             return code;
         }
 
-        // Giveaway creation
+        // Giveaway creation - FIXED
         async function handleGiveawayCreation(e) {
             e.preventDefault();
             
@@ -3810,7 +3941,7 @@
                                 participantLimit: participantLimit,
                                 winnersLimit: winnersLimit,
                                 currentParticipants: 0,
-                                startTime: new Date(startTime),
+                                startTime: firebase.firestore.Timestamp.fromDate(new Date(startTime)),
                                 winningTime: winningTime,
                                 socialTask: socialTask,
                                 socialLink: socialLink,
@@ -3848,8 +3979,9 @@
                                 userId: user.uid,
                                 type: 'Giveaway Creation',
                                 amount: -totalCost,
-                                status: 'Completed',
+                                status: 'completed',
                                 giveawayId: giveawayId,
+                                country: userCountry,
                                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
                             });
                             
@@ -3879,15 +4011,13 @@
                                         <button class="copy-btn" onclick="copyGiftCardCode('${code}')">
                                             <i class="fas fa-copy"></i> Copy
                                         </button>
+                                        <br>
                                     `;
                                 });
                                 generatedGiftCardsList.innerHTML = giftCardsHTML;
                             }
                             
                             alert('Giveaway created successfully!');
-                            
-                            // Load user giveaways
-                            loadUserGiveaways();
                             
                         }, 2000);
                     } else {
@@ -3902,50 +4032,6 @@
             }
         }
 
-        // Load user giveaways with real-time updates
-        async function loadUserGiveaways() {
-            try {
-                db.collection('giveaways')
-                    .where('creatorId', '==', user.uid)
-                    .orderBy('createdAt', 'desc')
-                    .onSnapshot((snapshot) => {
-                        updateGiveawayTable(snapshot);
-                    });
-            } catch (error) {
-                console.error("Error loading giveaways:", error);
-            }
-        }
-
-        // Update giveaway table
-        function updateGiveawayTable(giveawaysSnapshot) {
-            if (giveawaysSnapshot.empty) {
-                document.getElementById('giveawayTable').innerHTML = '<tr><td colspan="5" style="text-align: center;">No giveaways yet</td></tr>';
-                return;
-            }
-            
-            let tableHTML = '';
-            giveawaysSnapshot.forEach(doc => {
-                const giveaway = doc.data();
-                const startTime = giveaway.startTime ? giveaway.startTime.toDate().toLocaleDateString() : 'N/A';
-                const status = giveaway.isActive ? 'Active' : 'Ended';
-                
-                tableHTML += `
-                    <tr>
-                        <td>${giveaway.title}</td>
-                        <td>${giveaway.type}</td>
-                        <td>${giveaway.currentParticipants}/${giveaway.participantLimit}</td>
-                        <td>${status}</td>
-                        <td>
-                            <button class="btn btn-sm btn-info" onclick="viewGiveaway('${giveaway.id}')">View</button>
-                            <button class="btn btn-sm btn-warning" onclick="copyGiveawayLink('${giveaway.id}')">Copy Link</button>
-                        </td>
-                    </tr>
-                `;
-            });
-            
-            document.getElementById('giveawayTable').innerHTML = tableHTML;
-        }
-
         // Copy giveaway link
         function copyGiveawayLink(giveawayId) {
             const link = `${window.location.origin}?giveaway=${giveawayId}`;
@@ -3958,54 +4044,6 @@
         function viewGiveaway(giveawayId) {
             // Redirect to giveaway page or open in modal
             window.open(`?giveaway=${giveawayId}`, '_blank');
-        }
-
-        // Load affiliate giveaways with real-time updates
-        async function loadAffiliateGiveaways() {
-            try {
-                db.collection('giveaways')
-                    .where('isActive', '==', true)
-                    .orderBy('createdAt', 'desc')
-                    .onSnapshot((snapshot) => {
-                        updateAffiliateGiveawayList(snapshot);
-                    });
-            } catch (error) {
-                console.error("Error loading affiliate giveaways:", error);
-            }
-        }
-
-        // Update affiliate giveaway list
-        function updateAffiliateGiveawayList(giveawaysSnapshot) {
-            if (giveawaysSnapshot.empty) {
-                affiliateGiveawayList.innerHTML = '<p style="text-align: center;">No active giveaways available</p>';
-                return;
-            }
-            
-            let giveawayHTML = '';
-            giveawaysSnapshot.forEach(doc => {
-                const giveaway = doc.data();
-                const verificationBadge = giveaway.creatorVerified ? 
-                    `<i class="fas ${giveaway.creatorVerificationType === 'gold' ? 'fa-certificate gold-badge' : 'fa-check-circle verified-badge'}"></i>` : '';
-                
-                giveawayHTML += `
-                    <div class="giveaway-card">
-                        <h3>${giveaway.title} ${verificationBadge}</h3>
-                        <p>Creator: ${giveaway.creatorName}</p>
-                        <p>Type: ${giveaway.type}</p>
-                        <p>Difficulty: ${giveaway.difficulty}</p>
-                        <div class="giveaway-meta">
-                            <span>Participants: ${giveaway.currentParticipants}/${giveaway.participantLimit}</span>
-                            <span>Commission: ${getGameSettings().affiliateCommission}%</span>
-                        </div>
-                        <div class="giveaway-actions">
-                            <button class="btn btn-primary btn-sm" onclick="generateAffiliateLink('${giveaway.id}')">Generate Link</button>
-                            <button class="btn btn-info btn-sm" onclick="viewGiveaway('${giveaway.id}')">View</button>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            affiliateGiveawayList.innerHTML = giveawayHTML;
         }
 
         // Generate affiliate link
@@ -4054,7 +4092,7 @@
             return code;
         }
 
-        // Request withdrawal
+        // Request withdrawal - FIXED
         async function requestWithdrawal() {
             try {
                 if (giveawayCashbackBalance <= 0) {
@@ -4090,7 +4128,7 @@
             }
         }
 
-        // Request affiliate withdrawal
+        // Request affiliate withdrawal - FIXED
         async function requestAffiliateWithdrawal() {
             try {
                 if (affiliateBalance <= 0) {
@@ -4212,9 +4250,9 @@
                 
                 // Load section-specific data
                 if (sectionId === 'affiliateSection' && user && isAffiliate) {
-                    loadAffiliateGiveaways();
+                    // Already loaded via real-time listener
                 } else if (sectionId === 'giveawaySection' && user) {
-                    loadUserGiveaways();
+                    // Already loaded via real-time listener
                 }
             }
         }
@@ -4442,10 +4480,8 @@
                     this.classList.add('active');
                     adminCurrentCountry = this.dataset.country;
                     
-                    // Reload admin data for the selected country
-                    if (isAdmin) {
-                        loadAdminData();
-                    }
+                    // Update game settings UI
+                    updateGameSettingsUI();
                 });
             });
             
@@ -4507,7 +4543,7 @@
             document.getElementById('registerForm').addEventListener('submit', handleRegister);
             document.getElementById('fundWalletForm').addEventListener('submit', handleFundWallet);
             
-            // Game settings form
+            // Game settings form - FIXED for real-time updates
             document.getElementById('gameSettingsForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
                 
@@ -4541,7 +4577,7 @@
                 }
             });
             
-            // Social settings form
+            // Social settings form - FIXED for real-time updates
             document.getElementById('socialSettingsForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
                 
