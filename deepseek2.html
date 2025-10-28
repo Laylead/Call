@@ -1136,6 +1136,24 @@
             background: rgba(255, 255, 255, 0.02);
         }
         
+        /* Conversation status badges */
+        .conversation-status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+        
+        .status-open {
+            background: var(--success);
+        }
+        
+        .status-settled {
+            background: var(--info);
+        }
+        
         @media (max-width: 900px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -1693,6 +1711,11 @@
                         </div>
                     </div>
                     
+                    <h3 class="section-title">Active Affiliate Links</h3>
+                    <div id="affiliateLinksList">
+                        <!-- Affiliate links will be populated by JavaScript -->
+                    </div>
+                    
                     <h3 class="section-title">Available Giveaways</h3>
                     <div class="form-group">
                         <select id="giveawayFilter">
@@ -2097,6 +2120,7 @@
             <div class="user-actions" style="margin-top: 15px;">
                 <button id="debitUserBtn" class="btn btn-warning btn-sm">Debit User</button>
                 <button id="banUserBtn" class="btn btn-danger btn-sm">Ban User</button>
+                <button id="settleConversationBtn" class="btn btn-success btn-sm">Settle Conversation</button>
             </div>
         </div>
     </div>
@@ -2508,6 +2532,8 @@
     const searchGiftCards = document.getElementById('searchGiftCards');
     const giftCardsTable = document.getElementById('giftCardsTable');
     const refreshGiftCardsBtn = document.getElementById('refreshGiftCardsBtn');
+    const settleConversationBtn = document.getElementById('settleConversationBtn');
+    const affiliateLinksList = document.getElementById('affiliateLinksList');
 
     // Get all modals
     const modals = document.querySelectorAll('.modal');
@@ -2789,9 +2815,37 @@
         }
         
         try {
-            // Save user message
+            // Check for existing open conversation
+            const existingConversation = await db.collection('conversations')
+                .where('userId', '==', user.uid)
+                .where('status', '==', 'open')
+                .get();
+                
+            let conversationId;
+            
+            if (existingConversation.empty) {
+                // Create new conversation
+                const conversationRef = await db.collection('conversations').add({
+                    userId: user.uid,
+                    userName: user.displayName || 'User',
+                    userEmail: user.email,
+                    status: 'open',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                conversationId = conversationRef.id;
+            } else {
+                conversationId = existingConversation.docs[0].id;
+                // Update conversation timestamp
+                await db.collection('conversations').doc(conversationId).update({
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+            
+            // Save user message with conversation ID
             await db.collection('messages').add({
                 userId: user.uid,
+                conversationId: conversationId,
                 sender: 'user',
                 text: messageText,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -2831,11 +2885,12 @@
                 updateUsersList(snapshot);
             });
             
-            // Set up real-time listener for messages
-            db.collection('messages')
-                .orderBy('createdAt', 'desc')
+            // Set up real-time listener for conversations
+            db.collection('conversations')
+                .where('status', '==', 'open')
+                .orderBy('updatedAt', 'desc')
                 .onSnapshot((snapshot) => {
-                    updateUserMessagesFilter(snapshot);
+                    updateAdminConversationsList(snapshot);
                 });
             
             // Set up real-time listener for assign card users
@@ -2848,7 +2903,7 @@
                 .where('status', '==', 'pending')
                 .orderBy('createdAt', 'desc')
                 .onSnapshot((snapshot) => {
-                    updatePendingTransactionsList(snapshot);
+                    updatePaymentRequestsTable(snapshot);
                 });
             
             // Set up real-time listener for withdrawal requests
@@ -2856,7 +2911,7 @@
                 .where('status', '==', 'pending')
                 .orderBy('createdAt', 'desc')
                 .onSnapshot((snapshot) => {
-                    updateWithdrawalRequestsList(snapshot);
+                    updateWithdrawalRequestsTable(snapshot);
                 });
             
             // Set up real-time listener for gift cards
@@ -2871,8 +2926,8 @@
         }
     }
 
-    // Update pending transactions list with better formatting
-    function updatePendingTransactionsList(transactionsSnapshot) {
+    // Update payment requests table with gift card modal style
+    function updatePaymentRequestsTable(transactionsSnapshot) {
         const pendingTransactionsList = document.getElementById('pendingTransactionsList');
         
         if (!pendingTransactionsList) {
@@ -2885,39 +2940,51 @@
             return;
         }
         
-        let transactionsHTML = '';
+        let tableHTML = `
+            <table class="gift-cards-table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>Date</th>
+                        <th>Payment Description</th>
+                        <th>Account Details</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
         transactionsSnapshot.forEach(doc => {
             const transaction = doc.data();
             const date = transaction.createdAt ? transaction.createdAt.toDate().toLocaleDateString() : 'N/A';
-            const time = transaction.createdAt ? transaction.createdAt.toDate().toLocaleTimeString() : 'N/A';
             const currencySymbol = transaction.country === 'nigeria' ? '₦' : 'USDT ';
             
-            transactionsHTML += `
-                <div class="withdrawal-request" style="margin-bottom: 15px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div style="flex: 1;">
-                            <strong>${transaction.type || 'Wallet Funding'}</strong>
-                            <p><strong>User:</strong> ${transaction.name || 'N/A'} (${transaction.email || 'N/A'})</p>
-                            <p><strong>Amount:</strong> ${currencySymbol}${transaction.amount}</p>
-                            <p><strong>Date:</strong> ${date} ${time}</p>
-                            <p><strong>Payment Description:</strong> ${transaction.paymentDescription || 'Not provided'}</p>
-                            <p><strong>Account Details:</strong> ${transaction.accountDetails || 'Not provided'}</p>
-                            <p><strong>User ID:</strong> ${transaction.userId}</p>
-                        </div>
-                        <div class="transaction-actions" style="display: flex; flex-direction: column; gap: 5px;">
+            tableHTML += `
+                <tr>
+                    <td>${transaction.name || 'N/A'} (${transaction.email || 'N/A'})</td>
+                    <td>${transaction.type || 'Wallet Funding'}</td>
+                    <td>${currencySymbol}${transaction.amount}</td>
+                    <td>${date}</td>
+                    <td>${transaction.paymentDescription || 'Not provided'}</td>
+                    <td>${transaction.accountDetails || 'Not provided'}</td>
+                    <td>
+                        <div class="transaction-actions">
                             <button class="btn btn-success btn-sm" onclick="approveTransaction('${doc.id}')">Approve</button>
                             <button class="btn btn-danger btn-sm" onclick="declineTransaction('${doc.id}')">Decline</button>
                         </div>
-                    </div>
-                </div>
+                    </td>
+                </tr>
             `;
         });
         
-        pendingTransactionsList.innerHTML = transactionsHTML;
+        tableHTML += '</tbody></table>';
+        pendingTransactionsList.innerHTML = tableHTML;
     }
 
-    // Update withdrawal requests list with better formatting
-    function updateWithdrawalRequestsList(requestsSnapshot) {
+    // Update withdrawal requests table with gift card modal style
+    function updateWithdrawalRequestsTable(requestsSnapshot) {
         const withdrawalRequestsList = document.getElementById('withdrawalRequestsList');
         
         if (!withdrawalRequestsList) {
@@ -2930,34 +2997,47 @@
             return;
         }
         
-        let requestsHTML = '';
+        let tableHTML = `
+            <table class="gift-cards-table">
+                <thead>
+                    <tr>
+                        <th>User ID</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>Date</th>
+                        <th>Payment Method</th>
+                        <th>Account Details</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
         requestsSnapshot.forEach(doc => {
             const request = doc.data();
             const date = request.createdAt ? request.createdAt.toDate().toLocaleDateString() : 'N/A';
-            const time = request.createdAt ? request.createdAt.toDate().toLocaleTimeString() : 'N/A';
             const currencySymbol = request.country === 'nigeria' ? '₦' : 'USDT ';
             
-            requestsHTML += `
-                <div class="withdrawal-request" style="margin-bottom: 15px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div style="flex: 1;">
-                            <strong>${request.type === 'giveaway_cashback' ? 'Giveaway Cashback' : 'Affiliate'} Withdrawal</strong>
-                            <p><strong>User ID:</strong> ${request.userId}</p>
-                            <p><strong>Amount:</strong> ${currencySymbol}${request.amount}</p>
-                            <p><strong>Date:</strong> ${date} ${time}</p>
-                            ${request.paymentMethod ? `<p><strong>Payment Method:</strong> ${request.paymentMethod}</p>` : ''}
-                            ${request.accountDetails ? `<p><strong>Account Details:</strong> ${request.accountDetails}</p>` : ''}
-                        </div>
-                        <div class="transaction-actions" style="display: flex; flex-direction: column; gap: 5px;">
+            tableHTML += `
+                <tr>
+                    <td>${request.userId}</td>
+                    <td>${request.type === 'giveaway_cashback' ? 'Giveaway Cashback' : 'Affiliate'} Withdrawal</td>
+                    <td>${currencySymbol}${request.amount}</td>
+                    <td>${date}</td>
+                    <td>${request.paymentMethod || 'N/A'}</td>
+                    <td>${request.accountDetails || 'N/A'}</td>
+                    <td>
+                        <div class="transaction-actions">
                             <button class="btn btn-success btn-sm" onclick="approveWithdrawal('${doc.id}')">Approve</button>
                             <button class="btn btn-danger btn-sm" onclick="declineWithdrawal('${doc.id}')">Decline</button>
                         </div>
-                    </div>
-                </div>
+                    </td>
+                </tr>
             `;
         });
         
-        withdrawalRequestsList.innerHTML = requestsHTML;
+        tableHTML += '</tbody></table>';
+        withdrawalRequestsList.innerHTML = tableHTML;
     }
 
     // Approve transaction
@@ -3121,29 +3201,25 @@
         }
     }
 
-    // Update user messages filter in admin panel
-    function updateUserMessagesFilter(messagesSnapshot) {
+    // Update admin conversations list
+    function updateAdminConversationsList(conversationsSnapshot) {
         const userMessagesFilter = document.getElementById('userMessagesFilter');
-        
-        // Get unique users from messages
-        const users = new Map();
-        messagesSnapshot.forEach(doc => {
-            const message = doc.data();
-            if (message.userId && !users.has(message.userId)) {
-                users.set(message.userId, message.userId);
-            }
-        });
         
         // Clear existing options except the first one
         while (userMessagesFilter.children.length > 1) {
             userMessagesFilter.removeChild(userMessagesFilter.lastChild);
         }
         
-        // Add user options
-        users.forEach(userId => {
+        if (conversationsSnapshot.empty) {
+            return;
+        }
+        
+        conversationsSnapshot.forEach(doc => {
+            const conversation = doc.data();
             const option = document.createElement('option');
-            option.value = userId;
-            option.textContent = `User: ${userId.substring(0, 8)}...`;
+            option.value = conversation.userId;
+            option.textContent = `${conversation.userName} (${conversation.userEmail})`;
+            option.dataset.conversationId = doc.id;
             userMessagesFilter.appendChild(option);
         });
     }
@@ -3270,6 +3346,29 @@
         }
     }
 
+    // Settle conversation (admin function)
+    async function settleConversation() {
+        const selectedOption = userMessagesFilter.options[userMessagesFilter.selectedIndex];
+        const conversationId = selectedOption.dataset.conversationId;
+        
+        if (!conversationId) {
+            alert('Please select a conversation to settle');
+            return;
+        }
+        
+        try {
+            await db.collection('conversations').doc(conversationId).update({
+                status: 'settled',
+                settledAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            alert('Conversation marked as settled!');
+        } catch (error) {
+            console.error("Error settling conversation:", error);
+            alert('Error settling conversation: ' + error.message);
+        }
+    }
+
     // Debit user (admin function)
     async function debitUser(userId) {
         const amount = prompt("Enter amount to debit:");
@@ -3357,9 +3456,25 @@
                     updateAffiliateTransactionTable(snapshot);
                 });
             
+            // Set up real-time listener for affiliate links
+            db.collection('affiliateLinks')
+                .where('affiliateId', '==', userId)
+                .where('isActive', '==', true)
+                .onSnapshot((snapshot) => {
+                    updateAffiliateLinksTable(snapshot);
+                });
+            
         } catch (error) {
             console.error("Error loading affiliate data:", error);
         }
+    }
+
+    // Update affiliate stats
+    function updateAffiliateStats() {
+        affiliateEarningsEl.textContent = `${getCurrencySymbol()}${affiliateEarnings.toFixed(2)}`;
+        affiliateBalanceEl.textContent = `${getCurrencySymbol()}${affiliateBalance.toFixed(2)}`;
+        referredUsersEl.textContent = referredUsers;
+        activeLinksEl.textContent = activeLinks;
     }
 
     // Update transaction table
@@ -3378,12 +3493,16 @@
             const transaction = doc.data();
             const date = transaction.createdAt ? transaction.createdAt.toDate().toLocaleDateString() : 'N/A';
             const currencySymbol = userCountry === 'nigeria' ? '₦' : 'USDT ';
+            const amount = transaction.amount || 0;
+            const formattedAmount = amount >= 0 ? 
+                `<span style="color: var(--success)">+${currencySymbol}${Math.abs(amount)}</span>` : 
+                `<span style="color: var(--danger)">-${currencySymbol}${Math.abs(amount)}</span>`;
             
             const rowHTML = `
                 <tr>
                     <td>${date}</td>
                     <td>${transaction.type}</td>
-                    <td>${currencySymbol}${transaction.amount || 0}</td>
+                    <td>${formattedAmount}</td>
                     <td>${transaction.status || 'completed'}</td>
                 </tr>
             `;
@@ -3434,6 +3553,81 @@
         });
         
         affiliateTransactionTable.innerHTML = tableHTML;
+    }
+
+    // Update affiliate links table
+    function updateAffiliateLinksTable(linksSnapshot) {
+        const affiliateLinksList = document.getElementById('affiliateLinksList');
+        if (!affiliateLinksList) return;
+        
+        if (linksSnapshot.empty) {
+            affiliateLinksList.innerHTML = '<p style="text-align: center;">No active affiliate links</p>';
+            return;
+        }
+        
+        let tableHTML = `
+            <table class="gift-cards-table">
+                <thead>
+                    <tr>
+                        <th>Giveaway</th>
+                        <th>Link Code</th>
+                        <th>Clicks</th>
+                        <th>Conversions</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        linksSnapshot.forEach(doc => {
+            const link = doc.data();
+            
+            tableHTML += `
+                <tr>
+                    <td>${link.giveawayTitle || 'N/A'}</td>
+                    <td>${link.code}</td>
+                    <td>${link.clicks || 0}</td>
+                    <td>${link.conversions || 0}</td>
+                    <td>
+                        <div class="transaction-actions">
+                            <button class="btn btn-info btn-sm" onclick="copyAffiliateLink('${link.code}', '${link.giveawayId}')">Copy Link</button>
+                            <button class="btn btn-danger btn-sm" onclick="deactivateAffiliateLink('${doc.id}')">Deactivate</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        tableHTML += '</tbody></table>';
+        affiliateLinksList.innerHTML = tableHTML;
+    }
+
+    // Copy affiliate link
+    function copyAffiliateLink(code, giveawayId) {
+        const affiliateLink = `${window.location.origin}?giveaway=${giveawayId}&affiliate=${code}`;
+        navigator.clipboard.writeText(affiliateLink).then(() => {
+            alert('Affiliate link copied to clipboard!');
+        });
+    }
+
+    // Deactivate affiliate link
+    async function deactivateAffiliateLink(linkId) {
+        try {
+            await db.collection('affiliateLinks').doc(linkId).update({
+                isActive: false
+            });
+            
+            // Update active links count
+            activeLinks--;
+            await db.collection('affiliates').doc(user.uid).update({
+                activeLinks: firebase.firestore.FieldValue.increment(-1)
+            });
+            
+            alert('Affiliate link deactivated!');
+        } catch (error) {
+            console.error("Error deactivating affiliate link:", error);
+            alert('Error deactivating affiliate link: ' + error.message);
+        }
     }
 
     // Modal functions
@@ -4333,10 +4527,15 @@
             // Generate unique affiliate code
             const affiliateCode = generateAffiliateCode();
             
+            // Get giveaway details
+            const giveawayDoc = await db.collection('giveaways').doc(giveawayId).get();
+            const giveawayData = giveawayDoc.data();
+            
             // Save affiliate link
             await db.collection('affiliateLinks').add({
                 affiliateId: user.uid,
                 giveawayId: giveawayId,
+                giveawayTitle: giveawayData.title,
                 code: affiliateCode,
                 clicks: 0,
                 conversions: 0,
@@ -4473,13 +4672,6 @@
         walletBalanceEl.textContent = `${getCurrencySymbol()}${walletBalance.toFixed(2)}`;
         giftCardBalanceEl.textContent = giftCardBalance;
         giveawayCashbackBalanceEl.textContent = `${getCurrencySymbol()}${giveawayCashbackBalance.toFixed(2)}`;
-    }
-
-    function updateAffiliateStats() {
-        affiliateEarningsEl.textContent = `${getCurrencySymbol()}${affiliateEarnings.toFixed(2)}`;
-        affiliateBalanceEl.textContent = `${getCurrencySymbol()}${affiliateBalance.toFixed(2)}`;
-        referredUsersEl.textContent = referredUsers;
-        activeLinksEl.textContent = activeLinks;
     }
 
     function formatTime(time) {
@@ -4951,7 +5143,7 @@
             });
         });
         
-        // Giveaway type selection
+        // Giveaway type selection - FIXED
         giveawayTypeBtns.forEach(btn => {
             btn.addEventListener('click', function() {
                 giveawayTypeBtns.forEach(b => b.classList.remove('active'));
@@ -5015,6 +5207,11 @@
         
         // Admin reply form submission
         adminReplyForm.addEventListener('submit', handleAdminReply);
+        
+        // Settle conversation button
+        if (settleConversationBtn) {
+            settleConversationBtn.addEventListener('click', settleConversation);
+        }
         
         // User messages filter change
         userMessagesFilter.addEventListener('change', handleUserMessagesFilterChange);
@@ -5397,6 +5594,8 @@
     window.viewGiftCardDetails = viewGiftCardDetails;
     window.deactivateGiftCard = deactivateGiftCard;
     window.activateGiftCard = activateGiftCard;
+    window.copyAffiliateLink = copyAffiliateLink;
+    window.deactivateAffiliateLink = deactivateAffiliateLink;
 
     // Start the application
     document.addEventListener('DOMContentLoaded', init);
