@@ -1482,7 +1482,7 @@
                                 </thead>
                                 <tbody id="transactionTable">
                                     <tr>
-                                        <td colspan="4" style="text-align: center;">No transactions yet</td>
+                                        <td colspan="4" style="text-align: center;">Loading transactions...</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -2632,13 +2632,16 @@
         }
     }
 
-    // Load user data from Firestore with real-time updates
+    // Enhanced user data loading with proper real-time listeners
     async function loadUserData(userId) {
         try {
+            console.log("Loading user data for:", userId);
+            
             // Set up real-time listener for user data
             db.collection('users').doc(userId).onSnapshot((doc) => {
                 if (doc.exists) {
                     const userData = doc.data();
+                    console.log("User data received:", userData);
                     
                     // Update UI with user data
                     gamesPlayed = userData.gamesPlayed || 0;
@@ -2668,42 +2671,218 @@
                         loadAffiliateData(userId);
                     }
                 }
+            }, (error) => {
+                console.error("Error in user data listener:", error);
             });
             
-            // Set up real-time listener for user gift cards
-            db.collection('giftCards')
-                .where('userId', '==', userId)
-                .where('isActive', '==', true)
-                .onSnapshot((snapshot) => {
-                    updateAvailableGiftCards(snapshot);
-                });
+            // Load transactions with proper error handling
+            loadTransactionHistory();
             
-            // Set up real-time listener for user transactions
-            db.collection('transactions')
-                .where('userId', '==', userId)
-                .orderBy('createdAt', 'desc')
-                .onSnapshot((snapshot) => {
-                    updateTransactionTable(snapshot);
-                });
-            
-            // Set up real-time listener for customer care messages
-            db.collection('messages')
-                .where('userId', '==', userId)
-                .orderBy('createdAt', 'asc')
-                .onSnapshot((snapshot) => {
-                    updateCustomerCareMessages(snapshot);
-                }, (error) => {
-                    console.error("Error in messages listener:", error);
-                });
+            // Load gift cards with proper error handling
+            loadUserGiftCards(userId);
+                
+            // Load customer care messages
+            loadCustomerCareMessages();
             
         } catch (error) {
             console.error("Error loading user data:", error);
         }
     }
 
+    // Enhanced transaction history loading
+    async function loadTransactionHistory() {
+        try {
+            if (!user) return;
+            
+            console.log("Setting up transaction listener for user:", user.uid);
+            
+            // Set up real-time listener for transactions
+            db.collection('transactions')
+                .where('userId', '==', user.uid)
+                .orderBy('createdAt', 'desc')
+                .onSnapshot((snapshot) => {
+                    console.log("Transactions snapshot received:", snapshot.size, "documents");
+                    updateTransactionTable(snapshot);
+                }, (error) => {
+                    console.error("Error in transactions listener:", error);
+                    // Show user-friendly error
+                    transactionTable.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--danger);">Error loading transactions</td></tr>';
+                });
+        } catch (error) {
+            console.error("Error setting up transaction listener:", error);
+        }
+    }
+
+    // Enhanced user gift cards loading
+    async function loadUserGiftCards(userId) {
+        try {
+            db.collection('giftCards')
+                .where('userId', '==', userId)
+                .where('isActive', '==', true)
+                .onSnapshot((snapshot) => {
+                    console.log("User gift cards snapshot:", snapshot.size, "documents");
+                    updateAvailableGiftCards(snapshot);
+                }, (error) {
+                    console.error("Error in gift cards listener:", error);
+                    availableGiftCardsList.innerHTML = '<p style="text-align: center; color: var(--danger);">Error loading gift cards</p>';
+                });
+        } catch (error) {
+            console.error("Error loading user gift cards:", error);
+        }
+    }
+
+    // Enhanced customer care with conversation tracking
+    async function loadCustomerCareMessages() {
+        try {
+            if (!user) return;
+            
+            console.log("Loading customer care messages...");
+            
+            // First, check if there's an active conversation
+            const conversationQuery = await db.collection('conversations')
+                .where('userId', '==', user.uid)
+                .where('status', '==', 'open')
+                .get();
+                
+            if (!conversationQuery.empty) {
+                const conversationId = conversationQuery.docs[0].id;
+                
+                // Load messages for this conversation
+                db.collection('messages')
+                    .where('conversationId', '==', conversationId)
+                    .orderBy('createdAt', 'asc')
+                    .onSnapshot((snapshot) => {
+                        console.log("Customer care messages snapshot:", snapshot.size, "documents");
+                        updateCustomerCareMessages(snapshot);
+                    }, (error) => {
+                        console.error("Error in customer care messages listener:", error);
+                    });
+            } else {
+                // No active conversation, show welcome message
+                chatMessages.innerHTML = `
+                    <div class="message admin">
+                        <div class="message-header">
+                            <span>Admin</span>
+                            <span>Just now</span>
+                        </div>
+                        <div>Hello! How can we help you today?</div>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error("Error loading customer care messages:", error);
+        }
+    }
+
+    // Enhanced admin data loading
+    async function loadAdminData() {
+        try {
+            console.log("Setting up admin listeners...");
+            
+            // Load users
+            db.collection('users').onSnapshot((snapshot) => {
+                console.log("Users snapshot:", snapshot.size, "documents");
+                updateUsersList(snapshot);
+            }, (error) => {
+                console.error("Error in users listener:", error);
+            });
+
+            // Load conversations for messages
+            db.collection('conversations')
+                .where('status', '==', 'open')
+                .orderBy('updatedAt', 'desc')
+                .onSnapshot((snapshot) => {
+                    console.log("Conversations snapshot:", snapshot.size, "documents");
+                    updateAdminConversationsList(snapshot);
+                }, (error) => {
+                    console.error("Error in conversations listener:", error);
+                });
+
+            // Load assignable users
+            db.collection('users').onSnapshot((snapshot) => {
+                updateAssignUserSelect(snapshot);
+            }, (error) => {
+                console.error("Error in assign users listener:", error);
+            });
+
+            // Load payment requests
+            loadPaymentRequests();
+
+            // Load withdrawal requests  
+            loadWithdrawalRequests();
+
+            // Load gift cards
+            loadAllGiftCards();
+
+        } catch (error) {
+            console.error("Error setting up admin listeners:", error);
+        }
+    }
+
+    // Enhanced payment requests loading
+    async function loadPaymentRequests() {
+        try {
+            console.log("Loading payment requests...");
+            db.collection('transactions')
+                .where('status', '==', 'pending')
+                .orderBy('createdAt', 'desc')
+                .onSnapshot((snapshot) => {
+                    console.log("Payment requests snapshot:", snapshot.size, "documents");
+                    updatePaymentRequestsTable(snapshot);
+                }, (error) => {
+                    console.error("Error in payment requests listener:", error);
+                    const pendingList = document.getElementById('pendingTransactionsList');
+                    if (pendingList) {
+                        pendingList.innerHTML = '<p style="text-align: center; color: var(--danger);">Error loading payment requests</p>';
+                    }
+                });
+        } catch (error) {
+            console.error("Error loading payment requests:", error);
+        }
+    }
+
+    // Enhanced withdrawal requests loading
+    async function loadWithdrawalRequests() {
+        try {
+            console.log("Loading withdrawal requests...");
+            db.collection('withdrawalRequests')
+                .where('status', '==', 'pending')
+                .orderBy('createdAt', 'desc')
+                .onSnapshot((snapshot) => {
+                    console.log("Withdrawal requests snapshot:", snapshot.size, "documents");
+                    updateWithdrawalRequestsTable(snapshot);
+                }, (error) => {
+                    console.error("Error in withdrawal requests listener:", error);
+                    const withdrawalList = document.getElementById('withdrawalRequestsList');
+                    if (withdrawalList) {
+                        withdrawalList.innerHTML = '<p style="text-align: center; color: var(--danger);">Error loading withdrawal requests</p>';
+                    }
+                });
+        } catch (error) {
+            console.error("Error loading withdrawal requests:", error);
+        }
+    }
+
+    // Enhanced gift cards management
+    async function loadAllGiftCards() {
+        try {
+            db.collection('giftCards')
+                .orderBy('createdAt', 'desc')
+                .onSnapshot((snapshot) => {
+                    console.log("Gift cards snapshot:", snapshot.size, "documents");
+                    updateGiftCardsTable(snapshot);
+                }, (error) => {
+                    console.error("Error in gift cards listener:", error);
+                    giftCardsTable.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--danger);">Error loading gift cards</td></tr>';
+                });
+        } catch (error) {
+            console.error("Error loading gift cards:", error);
+        }
+    }
+
     // Update available gift cards
     function updateAvailableGiftCards(giftCardsSnapshot) {
-        if (giftCardsSnapshot.empty) {
+        if (!giftCardsSnapshot || giftCardsSnapshot.empty) {
             availableGiftCardsList.innerHTML = '<p style="text-align: center;">No gift cards available</p>';
             return;
         }
@@ -2756,7 +2935,7 @@
     async function updateCustomerCareMessages(messagesSnapshot) {
         chatMessages.innerHTML = '';
         
-        if (messagesSnapshot.empty) {
+        if (!messagesSnapshot || messagesSnapshot.empty) {
             chatMessages.innerHTML = `
                 <div class="message admin">
                     <div class="message-header">
@@ -2877,55 +3056,6 @@
         }
     }
 
-    // Load admin data with real-time updates
-    async function loadAdminData() {
-        try {
-            // Set up real-time listener for users
-            db.collection('users').onSnapshot((snapshot) => {
-                updateUsersList(snapshot);
-            });
-            
-            // Set up real-time listener for conversations
-            db.collection('conversations')
-                .where('status', '==', 'open')
-                .orderBy('updatedAt', 'desc')
-                .onSnapshot((snapshot) => {
-                    updateAdminConversationsList(snapshot);
-                });
-            
-            // Set up real-time listener for assign card users
-            db.collection('users').onSnapshot((snapshot) => {
-                updateAssignUserSelect(snapshot);
-            });
-            
-            // Set up real-time listener for pending transactions
-            db.collection('transactions')
-                .where('status', '==', 'pending')
-                .orderBy('createdAt', 'desc')
-                .onSnapshot((snapshot) => {
-                    updatePaymentRequestsTable(snapshot);
-                });
-            
-            // Set up real-time listener for withdrawal requests
-            db.collection('withdrawalRequests')
-                .where('status', '==', 'pending')
-                .orderBy('createdAt', 'desc')
-                .onSnapshot((snapshot) => {
-                    updateWithdrawalRequestsTable(snapshot);
-                });
-            
-            // Set up real-time listener for gift cards
-            db.collection('giftCards')
-                .orderBy('createdAt', 'desc')
-                .onSnapshot((snapshot) => {
-                    updateGiftCardsTable(snapshot);
-                });
-            
-        } catch (error) {
-            console.error("Error loading admin data:", error);
-        }
-    }
-
     // Update payment requests table with gift card modal style
     function updatePaymentRequestsTable(transactionsSnapshot) {
         const pendingTransactionsList = document.getElementById('pendingTransactionsList');
@@ -2935,7 +3065,7 @@
             return;
         }
         
-        if (transactionsSnapshot.empty) {
+        if (!transactionsSnapshot || transactionsSnapshot.empty) {
             pendingTransactionsList.innerHTML = '<p style="text-align: center; padding: 20px;">No pending payment requests</p>';
             return;
         }
@@ -2992,7 +3122,7 @@
             return;
         }
         
-        if (requestsSnapshot.empty) {
+        if (!requestsSnapshot || requestsSnapshot.empty) {
             withdrawalRequestsList.innerHTML = '<p style="text-align: center; padding: 20px;">No pending withdrawal requests</p>';
             return;
         }
@@ -3132,7 +3262,7 @@
     function updateUsersList(usersSnapshot) {
         const usersList = document.getElementById('usersList');
         
-        if (usersSnapshot.empty) {
+        if (!usersSnapshot || usersSnapshot.empty) {
             usersList.innerHTML = '<p style="text-align: center;">No users found</p>';
             return;
         }
@@ -3210,7 +3340,7 @@
             userMessagesFilter.removeChild(userMessagesFilter.lastChild);
         }
         
-        if (conversationsSnapshot.empty) {
+        if (!conversationsSnapshot || conversationsSnapshot.empty) {
             return;
         }
         
@@ -3228,7 +3358,7 @@
     function updateAssignUserSelect(usersSnapshot) {
         assignUser.innerHTML = '';
         
-        if (usersSnapshot.empty) {
+        if (!usersSnapshot || usersSnapshot.empty) {
             assignUser.innerHTML = '<option value="">No users found</option>';
             return;
         }
@@ -3285,7 +3415,7 @@
     function updateAdminChatMessages(messagesSnapshot) {
         adminChatMessages.innerHTML = '';
         
-        if (messagesSnapshot.empty) {
+        if (!messagesSnapshot || messagesSnapshot.empty) {
             adminChatMessages.innerHTML = '<p style="text-align: center;">No messages found</p>';
             return;
         }
@@ -3479,9 +3609,11 @@
 
     // Update transaction table
     function updateTransactionTable(transactionsSnapshot) {
-        if (transactionsSnapshot.empty) {
+        if (!transactionsSnapshot || transactionsSnapshot.empty) {
             transactionTable.innerHTML = '<tr><td colspan="4" style="text-align: center;">No transactions yet</td></tr>';
-            transactionDropdown.innerHTML = '';
+            if (transactionDropdown) {
+                transactionDropdown.innerHTML = '';
+            }
             return;
         }
         
@@ -3501,7 +3633,7 @@
             const rowHTML = `
                 <tr>
                     <td>${date}</td>
-                    <td>${transaction.type}</td>
+                    <td>${transaction.type || 'Transaction'}</td>
                     <td>${formattedAmount}</td>
                     <td>${transaction.status || 'completed'}</td>
                 </tr>
@@ -3517,12 +3649,16 @@
         
         transactionTable.innerHTML = tableHTML;
         
-        if (dropdownHTML) {
+        if (transactionDropdown && dropdownHTML) {
             transactionDropdown.innerHTML = `<table>${dropdownHTML}</table>`;
-            transactionToggle.style.display = 'block';
-        } else {
+            if (transactionToggle) {
+                transactionToggle.style.display = 'block';
+            }
+        } else if (transactionDropdown) {
             transactionDropdown.innerHTML = '';
-            transactionToggle.style.display = 'none';
+            if (transactionToggle) {
+                transactionToggle.style.display = 'none';
+            }
         }
         
         // Update last updated time
@@ -3531,7 +3667,7 @@
 
     // Update affiliate transaction table
     function updateAffiliateTransactionTable(transactionsSnapshot) {
-        if (transactionsSnapshot.empty) {
+        if (!transactionsSnapshot || transactionsSnapshot.empty) {
             affiliateTransactionTable.innerHTML = '<tr><td colspan="4" style="text-align: center;">No affiliate transactions yet</td></tr>';
             return;
         }
@@ -3560,7 +3696,7 @@
         const affiliateLinksList = document.getElementById('affiliateLinksList');
         if (!affiliateLinksList) return;
         
-        if (linksSnapshot.empty) {
+        if (!linksSnapshot || linksSnapshot.empty) {
             affiliateLinksList.innerHTML = '<p style="text-align: center;">No active affiliate links</p>';
             return;
         }
@@ -4431,7 +4567,7 @@
 
     // Update giveaway table
     function updateGiveawayTable(giveawaysSnapshot) {
-        if (giveawaysSnapshot.empty) {
+        if (!giveawaysSnapshot || giveawaysSnapshot.empty) {
             document.getElementById('giveawayTable').innerHTML = '<tr><td colspan="5" style="text-align: center;">No giveaways yet</td></tr>';
             return;
         }
@@ -4489,7 +4625,7 @@
 
     // Update affiliate giveaway list
     function updateAffiliateGiveawayList(giveawaysSnapshot) {
-        if (giveawaysSnapshot.empty) {
+        if (!giveawaysSnapshot || giveawaysSnapshot.empty) {
             affiliateGiveawayList.innerHTML = '<p style="text-align: center;">No active giveaways available</p>';
             return;
         }
@@ -4897,7 +5033,7 @@
         const filter = document.getElementById('giftCardFilter').value;
         const searchTerm = document.getElementById('searchGiftCards').value.toLowerCase();
         
-        if (giftCardsSnapshot.empty) {
+        if (!giftCardsSnapshot || giftCardsSnapshot.empty) {
             giftCardsTable.innerHTML = '<tr><td colspan="8" style="text-align: center;">No gift cards found</td></tr>';
             return;
         }
@@ -5036,19 +5172,6 @@
     function viewGiftCardDetails(giftCardId) {
         // You can implement a detailed view modal here
         alert('View gift card details for: ' + giftCardId);
-    }
-
-    // Load all gift cards with real-time updates
-    async function loadAllGiftCards() {
-        try {
-            db.collection('giftCards')
-                .orderBy('createdAt', 'desc')
-                .onSnapshot((snapshot) => {
-                    updateGiftCardsTable(snapshot);
-                });
-        } catch (error) {
-            console.error("Error loading gift cards:", error);
-        }
     }
 
     // Initialize everything
