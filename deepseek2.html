@@ -2580,21 +2580,31 @@ function initializeFirebase() {
 // FIXED: Enhanced transaction history loading with real-time listener
 async function loadTransactionHistory() {
     try {
+        if (!user || !user.uid) {
+            console.log("No user logged in, skipping transaction load");
+            return;
+        }
+        
         console.log("Loading transaction history for user:", user.uid);
         
         // Set up real-time listener for transactions
-        db.collection('transactions')
+        const unsubscribe = db.collection('transactions')
             .where('userId', '==', user.uid)
             .orderBy('createdAt', 'desc')
             .onSnapshot((snapshot) => {
-                console.log("Transactions loaded:", snapshot.size);
+                console.log("Transactions snapshot received:", snapshot.size, "documents");
                 updateTransactionTable(snapshot);
             }, (error) => {
-                console.error("Transaction error:", error);
+                console.error("Transaction listener error:", error);
                 transactionTable.innerHTML = '<tr><td colspan="4" style="text-align: center; color: red;">Error loading transactions</td></tr>';
             });
+            
+        // Store unsubscribe function for cleanup
+        window.transactionUnsubscribe = unsubscribe;
+        
     } catch (error) {
         console.error("Transaction setup error:", error);
+        transactionTable.innerHTML = '<tr><td colspan="4" style="text-align: center; color: red;">Error loading transactions</td></tr>';
     }
 }
 
@@ -2603,16 +2613,27 @@ async function loadPaymentRequests() {
     try {
         console.log("Loading payment requests...");
         
-        db.collection('transactions')
+        if (!isAdmin) {
+            console.log("User is not admin, skipping payment requests");
+            return;
+        }
+        
+        const unsubscribe = db.collection('transactions')
             .where('status', '==', 'pending')
             .orderBy('createdAt', 'desc')
             .onSnapshot((snapshot) => {
-                console.log("Payment requests:", snapshot.size);
+                console.log("Payment requests snapshot:", snapshot.size);
                 updatePaymentRequestsTable(snapshot);
             }, (error) => {
                 console.error("Payment requests error:", error);
-                document.getElementById('pendingTransactionsList').innerHTML = '<p style="text-align: center; color: red;">Error loading payment requests</p>';
+                const pendingList = document.getElementById('pendingTransactionsList');
+                if (pendingList) {
+                    pendingList.innerHTML = '<p style="text-align: center; color: red;">Error loading payment requests</p>';
+                }
             });
+            
+        window.paymentRequestsUnsubscribe = unsubscribe;
+        
     } catch (error) {
         console.error("Payment requests setup error:", error);
     }
@@ -2623,7 +2644,12 @@ async function loadWithdrawalRequests() {
     try {
         console.log("Loading withdrawal requests...");
         
-        db.collection('withdrawalRequests')
+        if (!isAdmin) {
+            console.log("User is not admin, skipping withdrawal requests");
+            return;
+        }
+        
+        const unsubscribe = db.collection('withdrawalRequests')
             .where('status', '==', 'pending')
             .orderBy('createdAt', 'desc')
             .onSnapshot((snapshot) => {
@@ -2631,8 +2657,14 @@ async function loadWithdrawalRequests() {
                 updateWithdrawalRequestsTable(snapshot);
             }, (error) => {
                 console.error("Withdrawal requests error:", error);
-                document.getElementById('withdrawalRequestsList').innerHTML = '<p style="text-align: center; color: red;">Error loading withdrawal requests</p>';
+                const withdrawalList = document.getElementById('withdrawalRequestsList');
+                if (withdrawalList) {
+                    withdrawalList.innerHTML = '<p style="text-align: center; color: red;">Error loading withdrawal requests</p>';
+                }
             });
+            
+        window.withdrawalRequestsUnsubscribe = unsubscribe;
+        
     } catch (error) {
         console.error("Withdrawal requests setup error:", error);
     }
@@ -2642,6 +2674,11 @@ async function loadWithdrawalRequests() {
 async function loadCustomerCareMessages() {
     try {
         console.log("Loading customer care messages...");
+        
+        if (!user || !user.uid) {
+            console.log("No user logged in");
+            return;
+        }
         
         // First, check if there's an active conversation
         const conversationQuery = await db.collection('conversations')
@@ -2653,7 +2690,7 @@ async function loadCustomerCareMessages() {
             const conversationId = conversationQuery.docs[0].id;
             
             // Load messages for this conversation
-            db.collection('messages')
+            const unsubscribe = db.collection('messages')
                 .where('conversationId', '==', conversationId)
                 .orderBy('createdAt', 'asc')
                 .onSnapshot((snapshot) => {
@@ -2662,6 +2699,8 @@ async function loadCustomerCareMessages() {
                 }, (error) => {
                     console.error("Error in customer care messages listener:", error);
                 });
+                
+            window.customerCareUnsubscribe = unsubscribe;
         } else {
             // No active conversation, show welcome message
             chatMessages.innerHTML = `
@@ -2685,24 +2724,28 @@ async function loadAdminData() {
         console.log("Setting up admin listeners...");
         
         // Load users
-        db.collection('users').onSnapshot((snapshot) => {
+        const usersUnsubscribe = db.collection('users').onSnapshot((snapshot) => {
             console.log("Users snapshot:", snapshot.size);
             updateUsersList(snapshot);
         });
+        window.usersUnsubscribe = usersUnsubscribe;
 
         // Load conversations for messages
-        db.collection('conversations')
+        const conversationsUnsubscribe = db.collection('conversations')
             .where('status', '==', 'open')
-            .orderBy('updatedAt', 'desc')
+            .orderBy('unreadCount', 'desc')
+            .orderBy('lastMessageAt', 'desc')
             .onSnapshot((snapshot) => {
                 console.log("Conversations snapshot:", snapshot.size);
                 updateAdminConversationsList(snapshot);
             });
+        window.conversationsUnsubscribe = conversationsUnsubscribe;
 
         // Load assignable users
-        db.collection('users').onSnapshot((snapshot) => {
+        const assignUsersUnsubscribe = db.collection('users').onSnapshot((snapshot) => {
             updateAssignUserSelect(snapshot);
         });
+        window.assignUsersUnsubscribe = assignUsersUnsubscribe;
 
         // Load payment requests
         loadPaymentRequests();
@@ -2724,7 +2767,7 @@ async function loadUserData(userId) {
         console.log("Loading user data for:", userId);
         
         // Set up real-time listener for user data
-        db.collection('users').doc(userId).onSnapshot((doc) => {
+        const userUnsubscribe = db.collection('users').doc(userId).onSnapshot((doc) => {
             if (doc.exists) {
                 const userData = doc.data();
                 console.log("User data received:", userData);
@@ -2760,12 +2803,13 @@ async function loadUserData(userId) {
         }, (error) => {
             console.error("Error in user data listener:", error);
         });
+        window.userUnsubscribe = userUnsubscribe;
         
         // Load transactions
         loadTransactionHistory();
         
         // Load gift cards
-        db.collection('giftCards')
+        const giftCardsUnsubscribe = db.collection('giftCards')
             .where('userId', '==', userId)
             .where('isActive', '==', true)
             .onSnapshot((snapshot) => {
@@ -2774,6 +2818,7 @@ async function loadUserData(userId) {
             }, (error) => {
                 console.error("Error in gift cards listener:", error);
             });
+        window.giftCardsUnsubscribe = giftCardsUnsubscribe;
             
         // Load customer care messages
         loadCustomerCareMessages();
@@ -2787,7 +2832,7 @@ async function loadUserData(userId) {
 async function loadConfiguration() {
     try {
         // Set up real-time listeners for configuration
-        db.collection('config').doc('gameSettings_nigeria').onSnapshot((doc) => {
+        const nigeriaSettingsUnsubscribe = db.collection('config').doc('gameSettings_nigeria').onSnapshot((doc) => {
             if (doc.exists) {
                 gameSettings.nigeria = { ...gameSettings.nigeria, ...doc.data() };
                 console.log("Nigeria game settings loaded:", gameSettings.nigeria);
@@ -2795,8 +2840,9 @@ async function loadConfiguration() {
                 updateFundWalletLink();
             }
         });
+        window.nigeriaSettingsUnsubscribe = nigeriaSettingsUnsubscribe;
         
-        db.collection('config').doc('gameSettings_other').onSnapshot((doc) => {
+        const otherSettingsUnsubscribe = db.collection('config').doc('gameSettings_other').onSnapshot((doc) => {
             if (doc.exists) {
                 gameSettings.other = { ...gameSettings.other, ...doc.data() };
                 console.log("Other countries game settings loaded:", gameSettings.other);
@@ -2804,14 +2850,16 @@ async function loadConfiguration() {
                 updateFundWalletLink();
             }
         });
+        window.otherSettingsUnsubscribe = otherSettingsUnsubscribe;
         
-        db.collection('config').doc('socialSettings').onSnapshot((doc) => {
+        const socialSettingsUnsubscribe = db.collection('config').doc('socialSettings').onSnapshot((doc) => {
             if (doc.exists) {
                 socialSettings = doc.data();
                 console.log("Social settings loaded:", socialSettings);
                 updateSocialLinks();
             }
         });
+        window.socialSettingsUnsubscribe = socialSettingsUnsubscribe;
         
     } catch (error) {
         console.error("Error loading configuration:", error);
@@ -2950,13 +2998,18 @@ async function updateCustomerCareMessages(messagesSnapshot) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// Handle customer care message submission
+// FIXED: Enhanced customer care message submission
 async function handleCustomerCareMessage(e) {
     e.preventDefault();
     const messageText = customerMessage.value.trim();
     
     if (!messageText) {
         alert('Please enter a message');
+        return;
+    }
+    
+    if (!user || !user.uid) {
+        alert('Please log in to send messages');
         return;
     }
     
@@ -2968,6 +3021,7 @@ async function handleCustomerCareMessage(e) {
             .get();
             
         let conversationId;
+        let conversationData;
         
         if (existingConversation.empty) {
             // Create new conversation
@@ -2976,15 +3030,29 @@ async function handleCustomerCareMessage(e) {
                 userName: user.displayName || 'User',
                 userEmail: user.email,
                 status: 'open',
+                unreadCount: 1, // New message from user
+                lastMessage: messageText,
+                lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             conversationId = conversationRef.id;
+            conversationData = {
+                userId: user.uid,
+                userName: user.displayName || 'User',
+                userEmail: user.email,
+                status: 'open'
+            };
         } else {
-            conversationId = existingConversation.docs[0].id;
-            // Update conversation timestamp
+            const doc = existingConversation.docs[0];
+            conversationId = doc.id;
+            conversationData = doc.data();
+            // Update conversation timestamp and unread count
             await db.collection('conversations').doc(conversationId).update({
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                lastMessage: messageText,
+                lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+                unreadCount: firebase.firestore.FieldValue.increment(1)
             });
         }
         
@@ -2993,29 +3061,17 @@ async function handleCustomerCareMessage(e) {
             userId: user.uid,
             conversationId: conversationId,
             sender: 'user',
+            senderEmail: user.email,
             text: messageText,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            read: false
+            read: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         
         // Clear input
         customerMessage.value = '';
         
-        // Optimistically add the message to the UI
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message user';
-        messageDiv.innerHTML = `
-            <div class="message-header">
-                <span>You</span>
-                <span>Just now</span>
-            </div>
-            <div>${messageText}</div>
-        `;
-        
-        chatMessages.appendChild(messageDiv);
-        
-        // Scroll to bottom
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        // Reload messages to show the new one
+        loadCustomerCareMessages();
         
     } catch (error) {
         console.error("Error sending message:", error);
@@ -3023,7 +3079,7 @@ async function handleCustomerCareMessage(e) {
     }
 }
 
-// Update payment requests table with gift card modal style
+// FIXED: Update payment requests table with gift card modal style
 function updatePaymentRequestsTable(transactionsSnapshot) {
     const pendingTransactionsList = document.getElementById('pendingTransactionsList');
     
@@ -3080,7 +3136,7 @@ function updatePaymentRequestsTable(transactionsSnapshot) {
     pendingTransactionsList.innerHTML = tableHTML;
 }
 
-// Update withdrawal requests table with gift card modal style
+// FIXED: Update withdrawal requests table with gift card modal style
 function updateWithdrawalRequestsTable(requestsSnapshot) {
     const withdrawalRequestsList = document.getElementById('withdrawalRequestsList');
     
@@ -3225,7 +3281,7 @@ async function declineWithdrawal(requestId) {
     }
 }
 
-// Update users list in admin panel
+// FIXED: Update users list in admin panel
 function updateUsersList(usersSnapshot) {
     const usersList = document.getElementById('usersList');
     
@@ -3298,9 +3354,14 @@ async function toggleVerification(userId, isCurrentlyVerified, currentType) {
     }
 }
 
-// Update admin conversations list
+// FIXED: Update admin conversations list with email and unread count
 function updateAdminConversationsList(conversationsSnapshot) {
     const userMessagesFilter = document.getElementById('userMessagesFilter');
+    
+    if (!userMessagesFilter) {
+        console.error('User messages filter element not found');
+        return;
+    }
     
     // Clear existing options except the first one
     while (userMessagesFilter.children.length > 1) {
@@ -3308,14 +3369,18 @@ function updateAdminConversationsList(conversationsSnapshot) {
     }
     
     if (conversationsSnapshot.empty) {
+        console.log("No conversations found");
         return;
     }
     
     conversationsSnapshot.forEach(doc => {
         const conversation = doc.data();
+        const unreadBadge = conversation.unreadCount > 0 ? 
+            `<span class="status-badge status-pending" style="margin-left: 5px;">+${conversation.unreadCount}</span>` : '';
+        
         const option = document.createElement('option');
         option.value = conversation.userId;
-        option.textContent = `${conversation.userName} (${conversation.userEmail})`;
+        option.textContent = `${conversation.userName} (${conversation.userEmail}) ${unreadBadge}`;
         option.dataset.conversationId = doc.id;
         userMessagesFilter.appendChild(option);
     });
@@ -3339,40 +3404,64 @@ function updateAssignUserSelect(usersSnapshot) {
     });
 }
 
-// Handle user messages filter change
+// FIXED: Handle user messages filter change
 async function handleUserMessagesFilterChange() {
     const userId = userMessagesFilter.value;
+    const selectedOption = userMessagesFilter.options[userMessagesFilter.selectedIndex];
     
     if (userId === 'all') {
         await loadAllAdminMessages();
     } else {
-        await loadUserAdminMessages(userId);
+        await loadUserAdminMessages(userId, selectedOption.dataset.conversationId);
     }
 }
 
 // Load all messages for admin
 async function loadAllAdminMessages() {
     try {
-        db.collection('messages')
+        const unsubscribe = db.collection('messages')
             .orderBy('createdAt', 'asc')
             .onSnapshot((snapshot) => {
                 updateAdminChatMessages(snapshot);
             });
+        window.allMessagesUnsubscribe = unsubscribe;
     } catch (error) {
         console.error("Error loading all messages:", error);
     }
 }
 
-// Load user messages for admin
-async function loadUserAdminMessages(userId) {
+// FIXED: Load user messages for admin
+async function loadUserAdminMessages(userId, conversationId) {
     try {
-        db.collection('messages')
-            .where('userId', '==', userId)
+        if (window.userMessagesUnsubscribe) {
+            window.userMessagesUnsubscribe();
+        }
+        
+        const unsubscribe = db.collection('messages')
+            .where('conversationId', '==', conversationId)
             .orderBy('createdAt', 'asc')
             .onSnapshot((snapshot) => {
                 updateAdminChatMessages(snapshot);
                 selectedUserId = userId;
+                
+                // Mark messages as read when admin views them
+                snapshot.forEach(async (doc) => {
+                    const message = doc.data();
+                    if (message.sender === 'user' && !message.read) {
+                        await db.collection('messages').doc(doc.id).update({
+                            read: true
+                        });
+                    }
+                });
+                
+                // Reset unread count for this conversation
+                if (conversationId) {
+                    db.collection('conversations').doc(conversationId).update({
+                        unreadCount: 0
+                    });
+                }
             });
+        window.userMessagesUnsubscribe = unsubscribe;
     } catch (error) {
         console.error("Error loading user messages:", error);
     }
@@ -3395,7 +3484,7 @@ function updateAdminChatMessages(messagesSnapshot) {
         messageDiv.className = `message ${message.sender === 'admin' ? 'admin' : 'user'}`;
         messageDiv.innerHTML = `
             <div class="message-header">
-                <span>${message.sender === 'admin' ? 'Admin' : 'User'}</span>
+                <span>${message.sender === 'admin' ? 'Admin' : message.senderEmail || 'User'}</span>
                 <span>${time}</span>
             </div>
             <div>${message.text}</div>
@@ -3408,32 +3497,53 @@ function updateAdminChatMessages(messagesSnapshot) {
     adminChatMessages.scrollTop = adminChatMessages.scrollHeight;
 }
 
-// Handle admin reply
+// FIXED: Enhanced admin reply function
 async function handleAdminReply(e) {
     e.preventDefault();
     const replyText = adminReplyMessage.value.trim();
+    const selectedOption = userMessagesFilter.options[userMessagesFilter.selectedIndex];
     
     if (!replyText) {
         alert('Please enter a reply');
         return;
     }
     
-    if (!selectedUserId) {
+    if (!selectedOption || selectedOption.value === 'all') {
         alert('Please select a user to reply to');
         return;
     }
     
+    const userId = selectedOption.value;
+    const conversationId = selectedOption.dataset.conversationId;
+    
     try {
+        // Get admin user data
+        const adminUser = auth.currentUser;
+        
         // Save admin reply
         await db.collection('messages').add({
-            userId: selectedUserId,
+            userId: userId,
+            conversationId: conversationId,
             sender: 'admin',
+            senderEmail: adminUser.email,
             text: replyText,
+            read: true, // Admin messages are automatically read
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // Update conversation - reset unread count since admin replied
+        await db.collection('conversations').doc(conversationId).update({
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            lastMessage: replyText,
+            lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+            unreadCount: 0 // Reset unread count when admin replies
         });
         
         // Clear input
         adminReplyMessage.value = '';
+        
+        // Reload admin messages to update the list
+        loadAdminData();
         
         alert('Reply sent successfully!');
         
@@ -3532,7 +3642,7 @@ async function banUser(userId) {
 // Load affiliate data with real-time updates
 async function loadAffiliateData(userId) {
     try {
-        db.collection('affiliates').doc(userId).onSnapshot((doc) => {
+        const affiliateUnsubscribe = db.collection('affiliates').doc(userId).onSnapshot((doc) => {
             if (doc.exists) {
                 const affiliateData = doc.data();
                 
@@ -3544,22 +3654,25 @@ async function loadAffiliateData(userId) {
                 updateAffiliateStats();
             }
         });
+        window.affiliateUnsubscribe = affiliateUnsubscribe;
         
         // Set up real-time listener for affiliate transactions
-        db.collection('affiliateTransactions')
+        const affiliateTransactionsUnsubscribe = db.collection('affiliateTransactions')
             .where('affiliateId', '==', userId)
             .orderBy('createdAt', 'desc')
             .onSnapshot((snapshot) => {
                 updateAffiliateTransactionTable(snapshot);
             });
+        window.affiliateTransactionsUnsubscribe = affiliateTransactionsUnsubscribe;
         
         // Set up real-time listener for affiliate links
-        db.collection('affiliateLinks')
+        const affiliateLinksUnsubscribe = db.collection('affiliateLinks')
             .where('affiliateId', '==', userId)
             .where('isActive', '==', true)
             .onSnapshot((snapshot) => {
                 updateAffiliateLinksTable(snapshot);
             });
+        window.affiliateLinksUnsubscribe = affiliateLinksUnsubscribe;
         
     } catch (error) {
         console.error("Error loading affiliate data:", error);
@@ -3574,8 +3687,14 @@ function updateAffiliateStats() {
     activeLinksEl.textContent = activeLinks;
 }
 
-// Update transaction table
+// FIXED: Update transaction table with better error handling
 function updateTransactionTable(transactionsSnapshot) {
+    const transactionTable = document.getElementById('transactionTable');
+    if (!transactionTable) {
+        console.error('Transaction table element not found');
+        return;
+    }
+    
     if (transactionsSnapshot.empty) {
         transactionTable.innerHTML = '<tr><td colspan="4" style="text-align: center;">No transactions yet</td></tr>';
         transactionDropdown.innerHTML = '';
@@ -3592,15 +3711,22 @@ function updateTransactionTable(transactionsSnapshot) {
         const currencySymbol = userCountry === 'nigeria' ? '₦' : 'USDT ';
         const amount = transaction.amount || 0;
         const formattedAmount = amount >= 0 ? 
-            `<span style="color: var(--success)">+${currencySymbol}${Math.abs(amount)}</span>` : 
-            `<span style="color: var(--danger)">-${currencySymbol}${Math.abs(amount)}</span>`;
+            `<span style="color: var(--success)">+${currencySymbol}${Math.abs(amount).toFixed(2)}</span>` : 
+            `<span style="color: var(--danger)">-${currencySymbol}${Math.abs(amount).toFixed(2)}</span>`;
+        
+        const status = transaction.status || 'completed';
+        const statusBadge = status === 'pending' ? 
+            `<span class="status-badge status-pending">Pending</span>` :
+            status === 'completed' ? 
+            `<span class="status-badge status-approved">Completed</span>` :
+            `<span class="status-badge status-declined">Declined</span>`;
         
         const rowHTML = `
             <tr>
                 <td>${date}</td>
-                <td>${transaction.type}</td>
+                <td>${transaction.type || 'Transaction'}</td>
                 <td>${formattedAmount}</td>
-                <td>${transaction.status || 'completed'}</td>
+                <td>${statusBadge}</td>
             </tr>
         `;
         
@@ -4517,12 +4643,13 @@ async function handleGiveawayCreation(e) {
 // Load user giveaways with real-time updates
 async function loadUserGiveaways() {
     try {
-        db.collection('giveaways')
+        const userGiveawaysUnsubscribe = db.collection('giveaways')
             .where('creatorId', '==', user.uid)
             .orderBy('createdAt', 'desc')
             .onSnapshot((snapshot) => {
                 updateGiveawayTable(snapshot);
             });
+        window.userGiveawaysUnsubscribe = userGiveawaysUnsubscribe;
     } catch (error) {
         console.error("Error loading giveaways:", error);
     }
@@ -4575,12 +4702,13 @@ function viewGiveaway(giveawayId) {
 // Load affiliate giveaways with real-time updates
 async function loadAffiliateGiveaways() {
     try {
-        db.collection('giveaways')
+        const affiliateGiveawaysUnsubscribe = db.collection('giveaways')
             .where('isActive', '==', true)
             .orderBy('createdAt', 'desc')
             .onSnapshot((snapshot) => {
                 updateAffiliateGiveawayList(snapshot);
             });
+        window.affiliateGiveawaysUnsubscribe = affiliateGiveawaysUnsubscribe;
     } catch (error) {
         console.error("Error loading affiliate giveaways:", error);
     }
@@ -4923,8 +5051,137 @@ function refreshGiftCards() {
     }
 }
 
-// Auth state handler
+// FIXED: Enhanced giveaway type button functionality
+function setupGiveawayTypeButtons() {
+    const giveawayTypeBtns = document.querySelectorAll('.giveaway-type-btn');
+    
+    giveawayTypeBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Remove active class from all buttons
+            giveawayTypeBtns.forEach(b => b.classList.remove('active'));
+            
+            // Add active class to clicked button
+            this.classList.add('active');
+            
+            // Update the hidden input value
+            const giveawayType = this.getAttribute('data-type');
+            document.getElementById('giveawayType').value = giveawayType;
+            
+            // Show/hide gift card fields based on selection
+            const giftcardGiveawayFields = document.getElementById('giftcardGiveawayFields');
+            if (giveawayType === 'giftcard') {
+                giftcardGiveawayFields.style.display = 'block';
+            } else {
+                giftcardGiveawayFields.style.display = 'none';
+            }
+            
+            console.log("Giveaway type selected:", giveawayType);
+        });
+    });
+    
+    // Set initial state
+    const initialActiveBtn = document.querySelector('.giveaway-type-btn.active');
+    if (initialActiveBtn) {
+        const initialType = initialActiveBtn.getAttribute('data-type');
+        document.getElementById('giveawayType').value = initialType;
+        
+        const giftcardGiveawayFields = document.getElementById('giftcardGiveawayFields');
+        if (initialType === 'giftcard') {
+            giftcardGiveawayFields.style.display = 'block';
+        } else {
+            giftcardGiveawayFields.style.display = 'none';
+        }
+    }
+}
+
+// FIXED: Enhanced gift card type button functionality
+function setupGiftCardTypeButtons() {
+    const giftcardTypeBtns = document.querySelectorAll('.giftcard-type-btn');
+    
+    giftcardTypeBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Remove active class from all buttons
+            giftcardTypeBtns.forEach(b => b.classList.remove('active'));
+            
+            // Add active class to clicked button
+            this.classList.add('active');
+            
+            // Update the hidden input value
+            const giftCardType = this.getAttribute('data-type');
+            document.getElementById('giftCardType').value = giftCardType;
+            
+            // Show/hide fields based on selection
+            const singleFields = document.getElementById('singleGiftCardFields');
+            const bulkFields = document.getElementById('bulkGiftCardFields');
+            
+            if (giftCardType === 'single') {
+                singleFields.style.display = 'block';
+                bulkFields.style.display = 'none';
+            } else {
+                singleFields.style.display = 'none';
+                bulkFields.style.display = 'block';
+            }
+            
+            console.log("Gift card type selected:", giftCardType);
+        });
+    });
+    
+    // Set initial state
+    const initialActiveBtn = document.querySelector('.giftcard-type-btn.active');
+    if (initialActiveBtn) {
+        const initialType = initialActiveBtn.getAttribute('data-type');
+        document.getElementById('giftCardType').value = initialType;
+        
+        const singleFields = document.getElementById('singleGiftCardFields');
+        const bulkFields = document.getElementById('bulkGiftCardFields');
+        
+        if (initialType === 'single') {
+            singleFields.style.display = 'block';
+            bulkFields.style.display = 'none';
+        } else {
+            singleFields.style.display = 'none';
+            bulkFields.style.display = 'block';
+        }
+    }
+}
+
+// Add cleanup functions to manage Firebase listeners
+function cleanupListeners() {
+    const listeners = [
+        'transactionUnsubscribe',
+        'paymentRequestsUnsubscribe',
+        'withdrawalRequestsUnsubscribe',
+        'customerCareUnsubscribe',
+        'usersUnsubscribe',
+        'conversationsUnsubscribe',
+        'assignUsersUnsubscribe',
+        'userUnsubscribe',
+        'giftCardsUnsubscribe',
+        'nigeriaSettingsUnsubscribe',
+        'otherSettingsUnsubscribe',
+        'socialSettingsUnsubscribe',
+        'affiliateUnsubscribe',
+        'affiliateTransactionsUnsubscribe',
+        'affiliateLinksUnsubscribe',
+        'allMessagesUnsubscribe',
+        'userMessagesUnsubscribe',
+        'userGiveawaysUnsubscribe',
+        'affiliateGiveawaysUnsubscribe'
+    ];
+    
+    listeners.forEach(listenerName => {
+        if (window[listenerName]) {
+            window[listenerName]();
+            window[listenerName] = null;
+        }
+    });
+}
+
+// FIXED: Auth state handler with proper cleanup
 async function handleAuthStateChanged(firebaseUser) {
+    // Cleanup previous listeners
+    cleanupListeners();
+    
     if (firebaseUser) {
         user = firebaseUser;
         console.log("User signed in:", user.email);
@@ -5140,11 +5397,12 @@ function viewGiftCardDetails(giftCardId) {
 // Load all gift cards with real-time updates
 async function loadAllGiftCards() {
     try {
-        db.collection('giftCards')
+        const allGiftCardsUnsubscribe = db.collection('giftCards')
             .orderBy('createdAt', 'desc')
             .onSnapshot((snapshot) => {
                 updateGiftCardsTable(snapshot);
             });
+        window.allGiftCardsUnsubscribe = allGiftCardsUnsubscribe;
     } catch (error) {
         console.error("Error loading gift cards:", error);
     }
@@ -5166,6 +5424,10 @@ function init() {
     updateWalletBalance();
     updateAffiliateStats();
     updateSidebarMenu();
+    
+    // Setup button functionalities
+    setupGiveawayTypeButtons();
+    setupGiftCardTypeButtons();
     
     console.log("Application initialized successfully");
 }
@@ -5225,37 +5487,11 @@ function setupEventListeners() {
         bulkGiftCardCount.textContent = cardCount;
     });
     
-    // Gift card type selection
-    giftcardTypeBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            giftcardTypeBtns.forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            giftCardTypeInput.value = this.dataset.type;
-            
-            if (this.dataset.type === 'single') {
-                singleGiftCardFields.style.display = 'block';
-                bulkGiftCardFields.style.display = 'none';
-            } else {
-                singleGiftCardFields.style.display = 'none';
-                bulkGiftCardFields.style.display = 'block';
-            }
-        });
-    });
+    // Gift card type selection - using the new setup function
+    setupGiftCardTypeButtons();
     
-    // Giveaway type selection - FIXED
-    giveawayTypeBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            giveawayTypeBtns.forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            giveawayTypeInput.value = this.dataset.type;
-            
-            if (this.dataset.type === 'giftcard') {
-                giftcardGiveawayFields.style.display = 'block';
-            } else {
-                giftcardGiveawayFields.style.display = 'none';
-            }
-        });
-    });
+    // Giveaway type selection - using the new setup function
+    setupGiveawayTypeButtons();
     
     // Country selection in registration
     countryBtns.forEach(btn => {
@@ -5698,116 +5934,45 @@ window.deactivateAffiliateLink = deactivateAffiliateLink;
 
 // Start the application
 document.addEventListener('DOMContentLoaded', init);
-</script>
 
-<!-- Additional utility functions -->
-<script>
-    // Utility function to format currency
-    function formatCurrency(amount, country = 'nigeria') {
-        const currency = country === 'nigeria' ? '₦' : 'USDT ';
-        return `${currency}${amount.toFixed(2)}`;
-    }
-
-    // Utility function to generate random IDs
-    function generateId(length = 8) {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let result = '';
-        for (let i = 0; i < length; i++) {
-            result += chars.charAt(Math.floor(Math.random() * chars.length));
+// Handle page visibility changes for real-time updates
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && user) {
+        // Page became visible, refresh data
+        loadUserData(user.uid);
+        if (isAdmin) {
+            loadAdminData();
         }
-        return result;
     }
+});
 
-    // Utility function to validate email
-    function validateEmail(email) {
-        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return re.test(email);
+// Handle online/offline status
+window.addEventListener('online', function() {
+    console.log('Application is online');
+    // Refresh data when coming back online
+    if (user) {
+        loadUserData(user.uid);
     }
+});
 
-    // Utility function to format date
-    function formatDate(date) {
-        return new Date(date).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+window.addEventListener('offline', function() {
+    console.log('Application is offline');
+    alert('You are currently offline. Some features may not work properly.');
+});
+
+// Error handling for uncaught errors
+window.addEventListener('error', function(e) {
+    console.error('Uncaught error:', e.error);
+    // You might want to send this to an error tracking service
+});
+
+// Handle beforeunload to clean up resources
+window.addEventListener('beforeunload', function() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
     }
-
-    // Initialize modals with reset functionality
-    document.addEventListener('DOMContentLoaded', function() {
-        // Reset gift card validation modal when opened
-        document.getElementById('giftCardValidationModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                resetGiftCardValidation();
-            }
-        });
-
-        // Reset giveaway form when modal is closed
-        document.getElementById('giveawaySection').addEventListener('click', function() {
-            if (!giveawayCreatedSection.style.display || giveawayCreatedSection.style.display === 'none') {
-                resetGiveawayForm();
-            }
-        });
-
-        // Reset gift card form when modal is closed
-        document.getElementById('generateGiftCardModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                resetGiftCardForm();
-            }
-        });
-
-        // Reset vendor card form when modal is closed
-        document.getElementById('generateVendorCardModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                resetVendorCardForm();
-            }
-        });
-
-        // Load tasks when task modal is opened
-        document.getElementById('taskCompletionModal').addEventListener('click', function() {
-            loadTasks();
-        });
-    });
-
-    // Handle page visibility changes for real-time updates
-    document.addEventListener('visibilitychange', function() {
-        if (!document.hidden && user) {
-            // Page became visible, refresh data
-            loadUserData(user.uid);
-            if (isAdmin) {
-                loadAdminData();
-            }
-        }
-    });
-
-    // Handle online/offline status
-    window.addEventListener('online', function() {
-        console.log('Application is online');
-        // Refresh data when coming back online
-        if (user) {
-            loadUserData(user.uid);
-        }
-    });
-
-    window.addEventListener('offline', function() {
-        console.log('Application is offline');
-        alert('You are currently offline. Some features may not work properly.');
-    });
-
-    // Error handling for uncaught errors
-    window.addEventListener('error', function(e) {
-        console.error('Uncaught error:', e.error);
-        // You might want to send this to an error tracking service
-    });
-
-    // Handle beforeunload to clean up resources
-    window.addEventListener('beforeunload', function() {
-        if (timerInterval) {
-            clearInterval(timerInterval);
-        }
-    });
+    cleanupListeners();
+});
 </script>
 </body>
 </html>
