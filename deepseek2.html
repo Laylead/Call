@@ -1111,6 +1111,31 @@
             color: var(--info);
         }
         
+        /* Gift Card Management Table */
+        .gift-cards-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .gift-cards-table th,
+        .gift-cards-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 14px;
+        }
+        
+        .gift-cards-table th {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--info);
+            font-weight: bold;
+        }
+        
+        .gift-cards-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        
         @media (max-width: 900px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -1244,6 +1269,10 @@
             
             .giveaway-link {
                 flex-direction: column;
+            }
+            
+            .gift-cards-table {
+                min-width: 800px;
             }
         }
         
@@ -1462,6 +1491,9 @@
                             </button>
                             <button id="viewMessagesBtn" class="btn btn-info">
                                 <i class="fas fa-envelope"></i> View Messages
+                            </button>
+                            <button id="manageGiftCardsBtn" class="btn btn-info">
+                                <i class="fas fa-gift"></i> Manage Gift Cards
                             </button>
                             <button id="generateVendorCardBtn" class="btn btn-warning">
                                 <i class="fas fa-gift"></i> Generate Vendor Card
@@ -2069,6 +2101,58 @@
         </div>
     </div>
     
+    <!-- NEW: Manage Gift Cards Modal -->
+    <div id="manageGiftCardsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Manage Gift Cards</h3>
+                <div class="refresh-container">
+                    <button class="refresh-btn" id="refreshGiftCardsBtn">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <button class="close-btn">&times;</button>
+            </div>
+            
+            <div class="form-group">
+                <label for="giftCardFilter">Filter Gift Cards</label>
+                <select id="giftCardFilter">
+                    <option value="all">All Gift Cards</option>
+                    <option value="active">Active (Unused)</option>
+                    <option value="used">Used</option>
+                    <option value="vendor">Vendor Cards</option>
+                    <option value="withWinners">With Winners</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <input type="text" id="searchGiftCards" placeholder="Search by code or user...">
+            </div>
+            
+            <div style="max-height: 500px; overflow-y: auto;">
+                <table class="gift-cards-table">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Type</th>
+                            <th>Value</th>
+                            <th>Balance</th>
+                            <th>Status</th>
+                            <th>User/Winner</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="giftCardsTable">
+                        <tr>
+                            <td colspan="8" style="text-align: center;">Loading gift cards...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
     <div id="generateVendorCardModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -2325,6 +2409,7 @@
     const adminSection = document.getElementById('adminSection');
     const manageUsersBtn = document.getElementById('manageUsersBtn');
     const viewMessagesBtn = document.getElementById('viewMessagesBtn');
+    const manageGiftCardsBtn = document.getElementById('manageGiftCardsBtn');
     const generateVendorCardBtn = document.getElementById('generateVendorCardBtn');
     const assignCardBtn = document.getElementById('assignCardBtn');
     const gameSettingsBtn = document.getElementById('gameSettingsBtn');
@@ -2419,6 +2504,10 @@
     const refreshWithdrawalRequestsBtn = document.getElementById('refreshWithdrawalRequestsBtn');
     const refreshPendingTransactionsBtn = document.getElementById('refreshPendingTransactionsBtn');
     const lastUpdatedEl = document.getElementById('lastUpdated');
+    const giftCardFilter = document.getElementById('giftCardFilter');
+    const searchGiftCards = document.getElementById('searchGiftCards');
+    const giftCardsTable = document.getElementById('giftCardsTable');
+    const refreshGiftCardsBtn = document.getElementById('refreshGiftCardsBtn');
 
     // Get all modals
     const modals = document.querySelectorAll('.modal');
@@ -2577,6 +2666,8 @@
                 .orderBy('createdAt', 'asc')
                 .onSnapshot((snapshot) => {
                     updateCustomerCareMessages(snapshot);
+                }, (error) => {
+                    console.error("Error in messages listener:", error);
                 });
             
         } catch (error) {
@@ -2636,7 +2727,7 @@
     }
 
     // Update customer care messages
-    function updateCustomerCareMessages(messagesSnapshot) {
+    async function updateCustomerCareMessages(messagesSnapshot) {
         chatMessages.innerHTML = '';
         
         if (messagesSnapshot.empty) {
@@ -2652,8 +2743,22 @@
             return;
         }
         
+        // Sort messages by timestamp
+        const messages = [];
         messagesSnapshot.forEach(doc => {
             const message = doc.data();
+            message.id = doc.id;
+            messages.push(message);
+        });
+        
+        messages.sort((a, b) => {
+            const timeA = a.createdAt ? a.createdAt.toDate().getTime() : 0;
+            const timeB = b.createdAt ? b.createdAt.toDate().getTime() : 0;
+            return timeA - timeB;
+        });
+        
+        // Display messages
+        messages.forEach(message => {
             const time = message.createdAt ? message.createdAt.toDate().toLocaleTimeString() : 'Just now';
             
             const messageDiv = document.createElement('div');
@@ -2689,13 +2794,28 @@
                 userId: user.uid,
                 sender: 'user',
                 text: messageText,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                read: false
             });
             
             // Clear input
             customerMessage.value = '';
             
-            alert('Message sent successfully!');
+            // Optimistically add the message to the UI
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message user';
+            messageDiv.innerHTML = `
+                <div class="message-header">
+                    <span>You</span>
+                    <span>Just now</span>
+                </div>
+                <div>${messageText}</div>
+            `;
+            
+            chatMessages.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
             
         } catch (error) {
             console.error("Error sending message:", error);
@@ -2739,6 +2859,13 @@
                     updateWithdrawalRequestsList(snapshot);
                 });
             
+            // Set up real-time listener for gift cards
+            db.collection('giftCards')
+                .orderBy('createdAt', 'desc')
+                .onSnapshot((snapshot) => {
+                    updateGiftCardsTable(snapshot);
+                });
+            
         } catch (error) {
             console.error("Error loading admin data:", error);
         }
@@ -2747,6 +2874,11 @@
     // Update pending transactions list with better formatting
     function updatePendingTransactionsList(transactionsSnapshot) {
         const pendingTransactionsList = document.getElementById('pendingTransactionsList');
+        
+        if (!pendingTransactionsList) {
+            console.error('Pending transactions list element not found');
+            return;
+        }
         
         if (transactionsSnapshot.empty) {
             pendingTransactionsList.innerHTML = '<p style="text-align: center; padding: 20px;">No pending payment requests</p>';
@@ -2787,6 +2919,11 @@
     // Update withdrawal requests list with better formatting
     function updateWithdrawalRequestsList(requestsSnapshot) {
         const withdrawalRequestsList = document.getElementById('withdrawalRequestsList');
+        
+        if (!withdrawalRequestsList) {
+            console.error('Withdrawal requests list element not found');
+            return;
+        }
         
         if (requestsSnapshot.empty) {
             withdrawalRequestsList.innerHTML = '<p style="text-align: center; padding: 20px;">No pending withdrawal requests</p>';
@@ -3669,6 +3806,11 @@
         const paymentDescription = document.getElementById('paymentDescription').value;
         const accountDetails = document.getElementById('accountDetails').value;
         
+        if (!name || !email || !amount || !paymentDescription || !accountDetails) {
+            alert('Please fill all fields');
+            return;
+        }
+        
         try {
             // Create pending transaction record with payment details
             await db.collection('transactions').add({
@@ -3685,7 +3827,7 @@
             });
             
             alert(`Funding request submitted for ${getCurrencySymbol()}${amount}. Please wait for admin approval.`);
-            closeModal(fundWalletModal);
+            closeModal(document.getElementById('fundWalletModal'));
             
             // Reset form
             document.getElementById('fundWalletForm').reset();
@@ -4482,6 +4624,14 @@
         }
     }
 
+    // Refresh gift cards manually
+    function refreshGiftCards() {
+        if (isAdmin) {
+            // This will trigger the real-time listener to update
+            alert('Gift cards refreshed!');
+        }
+    }
+
     // Auth state handler
     async function handleAuthStateChanged(firebaseUser) {
         if (firebaseUser) {
@@ -4547,6 +4697,168 @@
         updateUIForLoggedOutUser();
     }
 
+    // Gift Card Management Functions
+
+    // Update gift cards table with filters
+    async function updateGiftCardsTable(giftCardsSnapshot) {
+        const giftCardsTable = document.getElementById('giftCardsTable');
+        const filter = document.getElementById('giftCardFilter').value;
+        const searchTerm = document.getElementById('searchGiftCards').value.toLowerCase();
+        
+        if (giftCardsSnapshot.empty) {
+            giftCardsTable.innerHTML = '<tr><td colspan="8" style="text-align: center;">No gift cards found</td></tr>';
+            return;
+        }
+        
+        let tableHTML = '';
+        let giftCardsData = [];
+        
+        // First, get all gift cards and prepare data
+        const promises = giftCardsSnapshot.docs.map(async (doc) => {
+            const giftCard = doc.data();
+            giftCard.id = doc.id;
+            
+            // Get user info if available
+            if (giftCard.userId) {
+                try {
+                    const userDoc = await db.collection('users').doc(giftCard.userId).get();
+                    if (userDoc.exists) {
+                        giftCard.userData = userDoc.data();
+                    }
+                } catch (error) {
+                    console.error("Error fetching user data:", error);
+                }
+            }
+            
+            // Get winner info if available (from transactions)
+            if (giftCard.code) {
+                try {
+                    const winnerSnapshot = await db.collection('transactions')
+                        .where('giftCardCode', '==', giftCard.code)
+                        .where('isWinner', '==', true)
+                        .get();
+                    
+                    if (!winnerSnapshot.empty) {
+                        giftCard.hasWinner = true;
+                        giftCard.winnerTransaction = winnerSnapshot.docs[0].data();
+                    }
+                } catch (error) {
+                    console.error("Error fetching winner data:", error);
+                }
+            }
+            
+            return giftCard;
+        });
+        
+        // Wait for all data to be fetched
+        giftCardsData = await Promise.all(promises);
+        
+        // Apply filters
+        let filteredGiftCards = giftCardsData.filter(giftCard => {
+            // Search filter
+            if (searchTerm) {
+                const codeMatch = giftCard.code.toLowerCase().includes(searchTerm);
+                const userMatch = giftCard.userData && giftCard.userData.name && 
+                                giftCard.userData.name.toLowerCase().includes(searchTerm);
+                if (!codeMatch && !userMatch) return false;
+            }
+            
+            // Type filters
+            switch(filter) {
+                case 'active':
+                    return giftCard.remainingBalance > 0 && giftCard.isActive;
+                case 'used':
+                    return giftCard.remainingBalance <= 0 || !giftCard.isActive;
+                case 'vendor':
+                    return giftCard.isVendorCard;
+                case 'withWinners':
+                    return giftCard.hasWinner;
+                default:
+                    return true;
+            }
+        });
+        
+        // Generate table rows
+        filteredGiftCards.forEach(giftCard => {
+            const createdDate = giftCard.createdAt ? giftCard.createdAt.toDate().toLocaleDateString() : 'N/A';
+            const status = giftCard.isActive ? (giftCard.remainingBalance > 0 ? 'Active' : 'Used') : 'Inactive';
+            const statusClass = giftCard.isActive ? (giftCard.remainingBalance > 0 ? 'status-valid' : 'status-used') : 'status-used';
+            const type = giftCard.isVendorCard ? 'Vendor' : 'User';
+            const userInfo = giftCard.userData ? 
+                `${giftCard.userData.name || 'N/A'} (${giftCard.userData.email || 'N/A'})` : 
+                'Not Assigned';
+            const winnerInfo = giftCard.hasWinner ? `Winner: ${giftCard.winnerTransaction.userId}` : 'No Winner';
+            
+            tableHTML += `
+                <tr>
+                    <td><strong>${giftCard.code}</strong></td>
+                    <td>${type}</td>
+                    <td>${getCurrencySymbol()}${giftCard.value || 0}</td>
+                    <td>${getCurrencySymbol()}${giftCard.remainingBalance || 0}</td>
+                    <td><span class="status-badge ${statusClass}">${status}</span></td>
+                    <td>${giftCard.hasWinner ? winnerInfo : userInfo}</td>
+                    <td>${createdDate}</td>
+                    <td>
+                        <div class="transaction-actions">
+                            <button class="btn btn-sm btn-info" onclick="viewGiftCardDetails('${giftCard.id}')">View</button>
+                            ${giftCard.isActive ? 
+                                `<button class="btn btn-sm btn-warning" onclick="deactivateGiftCard('${giftCard.id}')">Deactivate</button>` :
+                                `<button class="btn btn-sm btn-success" onclick="activateGiftCard('${giftCard.id}')">Activate</button>`
+                            }
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        giftCardsTable.innerHTML = tableHTML;
+    }
+
+    // Gift card actions
+    async function deactivateGiftCard(giftCardId) {
+        if (confirm('Are you sure you want to deactivate this gift card?')) {
+            try {
+                await db.collection('giftCards').doc(giftCardId).update({
+                    isActive: false
+                });
+                alert('Gift card deactivated successfully!');
+            } catch (error) {
+                console.error("Error deactivating gift card:", error);
+                alert('Error deactivating gift card: ' + error.message);
+            }
+        }
+    }
+
+    async function activateGiftCard(giftCardId) {
+        try {
+            await db.collection('giftCards').doc(giftCardId).update({
+                isActive: true
+            });
+            alert('Gift card activated successfully!');
+        } catch (error) {
+            console.error("Error activating gift card:", error);
+            alert('Error activating gift card: ' + error.message);
+        }
+    }
+
+    function viewGiftCardDetails(giftCardId) {
+        // You can implement a detailed view modal here
+        alert('View gift card details for: ' + giftCardId);
+    }
+
+    // Load all gift cards with real-time updates
+    async function loadAllGiftCards() {
+        try {
+            db.collection('giftCards')
+                .orderBy('createdAt', 'desc')
+                .onSnapshot((snapshot) => {
+                    updateGiftCardsTable(snapshot);
+                });
+        } catch (error) {
+            console.error("Error loading gift cards:", error);
+        }
+    }
+
     // Initialize everything
     function init() {
         console.log("Initializing application...");
@@ -4590,6 +4902,10 @@
         // Admin controls
         if (manageUsersBtn) manageUsersBtn.addEventListener('click', () => openModal(document.getElementById('manageUsersModal')));
         if (viewMessagesBtn) viewMessagesBtn.addEventListener('click', () => openModal(document.getElementById('viewMessagesModal')));
+        if (manageGiftCardsBtn) manageGiftCardsBtn.addEventListener('click', () => {
+            openModal(document.getElementById('manageGiftCardsModal'));
+            loadAllGiftCards();
+        });
         if (generateVendorCardBtn) generateVendorCardBtn.addEventListener('click', () => openModal(document.getElementById('generateVendorCardModal')));
         if (assignCardBtn) assignCardBtn.addEventListener('click', () => openModal(document.getElementById('assignCardModal')));
         if (gameSettingsBtn) gameSettingsBtn.addEventListener('click', () => openModal(document.getElementById('gameSettingsModal')));
@@ -4732,6 +5048,13 @@
         refreshTransactionsBtn.addEventListener('click', refreshTransactions);
         refreshWithdrawalRequestsBtn.addEventListener('click', refreshWithdrawalRequests);
         refreshPendingTransactionsBtn.addEventListener('click', refreshPendingTransactions);
+        refreshGiftCardsBtn.addEventListener('click', refreshGiftCards);
+        
+        // Gift card management filters
+        giftCardFilter.addEventListener('change', loadAllGiftCards);
+        searchGiftCards.addEventListener('input', 
+            debounce(loadAllGiftCards, 300)
+        );
         
         // Form submissions
         document.getElementById('loginForm').addEventListener('submit', handleLogin);
@@ -5045,6 +5368,19 @@
         vendorCardResult.style.display = 'none';
     }
 
+    // Utility function to debounce function calls
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
     // Export functions to global scope for HTML onclick handlers
     window.copyGiftCardCode = copyGiftCardCode;
     window.approveTransaction = approveTransaction;
@@ -5058,6 +5394,9 @@
     window.copyGiveawayLink = copyGiveawayLink;
     window.generateAffiliateLink = generateAffiliateLink;
     window.validateGiftcard = validateGiftcard;
+    window.viewGiftCardDetails = viewGiftCardDetails;
+    window.deactivateGiftCard = deactivateGiftCard;
+    window.activateGiftCard = activateGiftCard;
 
     // Start the application
     document.addEventListener('DOMContentLoaded', init);
@@ -5096,19 +5435,6 @@
             hour: '2-digit',
             minute: '2-digit'
         });
-    }
-
-    // Utility function to debounce function calls
-    function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
     }
 
     // Initialize modals with reset functionality
