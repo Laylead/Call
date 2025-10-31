@@ -7,8 +7,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
-    <script src="config.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="config.js"></script>
     <style>
         /* All your existing CSS styles remain exactly the same */
         :root {
@@ -869,9 +869,23 @@
         }
         
         .giveaway-type-selector {
-            display: flex;
-            gap: 10px;
             margin-bottom: 20px;
+        }
+        
+        .giveaway-type-dropdown {
+            width: 100%;
+            padding: 12px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .giveaway-type-dropdown option {
+            background: #1a1a2e;
+            color: white;
         }
         
         .giveaway-type-btn {
@@ -961,7 +975,7 @@
             margin-top: 5px;
         }
         
-        .copy-btn {
+        .copy-btn, .paste-btn {
             background: var(--info);
             color: white;
             border: none;
@@ -972,7 +986,7 @@
             margin-left: 10px;
         }
         
-        .copy-btn:hover {
+        .copy-btn:hover, .paste-btn:hover {
             background: #3a7bc8;
         }
         
@@ -1374,115 +1388,28 @@
             margin-top: 5px;
         }
         
-        /* NEW: Gift Card Filter Styles */
-        .giftcard-filters {
+        .giftcard-filter {
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
-            flex-wrap: wrap;
         }
         
-        .giftcard-filter-btn {
-            padding: 8px 15px;
-            background: rgba(255, 255, 255, 0.05);
-            border: none;
+        .giftcard-filter button {
+            padding: 8px 16px;
             border-radius: 5px;
+            background: rgba(255, 255, 255, 0.05);
             color: white;
+            border: none;
             cursor: pointer;
             transition: all 0.3s ease;
         }
         
-        .giftcard-filter-btn.active {
+        .giftcard-filter button.active {
             background: var(--primary);
         }
         
-        .giftcard-filter-btn:hover {
+        .giftcard-filter button:hover {
             background: rgba(255, 255, 255, 0.1);
-        }
-        
-        /* NEW: Paste Button Styles */
-        .paste-btn {
-            background: var(--info);
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background 0.3s ease;
-        }
-        
-        .paste-btn:hover {
-            background: #3a7bc8;
-        }
-        
-        /* NEW: Giveaway Dropdown Styles */
-        .giveaway-dropdown {
-            position: relative;
-            display: inline-block;
-            width: 100%;
-            margin-bottom: 20px;
-        }
-        
-        .giveaway-dropdown-btn {
-            width: 100%;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 5px;
-            color: white;
-            text-align: left;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .giveaway-dropdown-content {
-            display: none;
-            position: absolute;
-            background: #1a1a2e;
-            min-width: 100%;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-            z-index: 1;
-            border-radius: 5px;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .giveaway-dropdown-content.show {
-            display: block;
-        }
-        
-        .giveaway-dropdown-item {
-            padding: 12px 16px;
-            color: white;
-            cursor: pointer;
-            transition: background 0.3s ease;
-        }
-        
-        .giveaway-dropdown-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-        
-        .giveaway-dropdown-item.active {
-            background: var(--primary);
-        }
-        
-        /* NEW: Delete Button Styles */
-        .delete-btn {
-            background: var(--danger);
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: background 0.3s ease;
-        }
-        
-        .delete-btn:hover {
-            background: #d11a6f;
         }
         
         @media (max-width: 900px) {
@@ -1636,8 +1563,8 @@
                 grid-template-columns: repeat(2, 1fr);
             }
             
-            .giftcard-filters {
-                flex-direction: column;
+            .giftcard-filter {
+                flex-wrap: wrap;
             }
         }
         
@@ -1821,31 +1748,20 @@
                         <i class="fas fa-headset"></i> Contact Customer Care
                     </button>
                     
-                    <!-- Available Gift Cards Section with Filters -->
+                    <!-- Available Gift Cards Section -->
                     <div class="transaction-history" style="margin-bottom: 30px;">
                         <div class="section-header">
-                            <h3>Available Gift Cards</h3>
-                            <div class="refresh-container">
-                                <button class="refresh-btn" id="refreshGiftCardsUserBtn">
-                                    <i class="fas fa-sync-alt"></i>
-                                </button>
+                            <h3 class="section-title">Available Gift Cards</h3>
+                            <div class="giftcard-filter">
+                                <button class="active" data-filter="all">All</button>
+                                <button data-filter="valid">Valid</button>
+                                <button data-filter="used">Used</button>
+                                <button data-filter="wins">Wins</button>
+                                <button id="viewAllGiftCardsBtn">View All</button>
                             </div>
                         </div>
-                        
-                        <div class="giftcard-filters">
-                            <button class="giftcard-filter-btn active" data-filter="all">All</button>
-                            <button class="giftcard-filter-btn" data-filter="valid">Valid</button>
-                            <button class="giftcard-filter-btn" data-filter="used">Used</button>
-                            <button class="giftcard-filter-btn" data-filter="winners">Winners</button>
-                            <button class="giftcard-filter-btn" id="viewAllGiftCardsBtn">View All</button>
-                        </div>
-                        
                         <div id="availableGiftCardsList">
                             <!-- Gift cards will be populated by JavaScript -->
-                        </div>
-                        
-                        <div id="allGiftCardsList" style="display: none;">
-                            <!-- All gift cards will be populated by JavaScript -->
                         </div>
                     </div>
                     
@@ -1987,31 +1903,17 @@
                 <div class="dashboard-section">
                     <h2 class="section-title">Create Giveaway</h2>
                     
-                    <!-- NEW: Dropdown for Giveaway Type Selection -->
-                    <div class="form-group">
-                        <label>Giveaway Type</label>
-                        <div class="giveaway-dropdown">
-                            <button class="giveaway-dropdown-btn" id="giveawayDropdownBtn">
-                                <span id="selectedGiveawayType">Open Giveaway</span>
-                                <i class="fas fa-chevron-down"></i>
-                            </button>
-                            <div class="giveaway-dropdown-content" id="giveawayDropdownContent">
-                                <div class="giveaway-dropdown-item active" data-type="open">
-                                    <h4>Open Giveaway</h4>
-                                    <p>Anyone can join using the link</p>
-                                    <p class="price" id="openGiveawayPriceDisplay">₦2,000</p>
-                                </div>
-                                <div class="giveaway-dropdown-item" data-type="giftcard">
-                                    <h4>Gift Card Giveaway</h4>
-                                    <p>Only your assigned gift cards can be used</p>
-                                    <p class="price" id="giftcardGiveawayPriceDisplay">Custom Price</p>
-                                </div>
-                            </div>
-                        </div>
-                        <input type="hidden" id="giveawayType" value="open">
+                    <div class="giveaway-type-selector">
+                        <label for="giveawayTypeDropdown">Select Giveaway Type</label>
+                        <select id="giveawayTypeDropdown" class="giveaway-type-dropdown">
+                            <option value="open">Open Giveaway - Anyone can join using the link</option>
+                            <option value="giftcard">Gift Card Giveaway - Only your assigned gift cards can be used</option>
+                        </select>
                     </div>
                     
                     <form id="giveawayForm">
+                        <input type="hidden" id="giveawayType" value="open">
+                        
                         <div class="giveaway-form-grid">
                             <div class="form-group">
                                 <label for="giveawayTitle">Giveaway Title</label>
@@ -2079,7 +1981,7 @@
                     
                     <div class="transaction-history" style="margin-top: 40px;">
                         <div class="section-header">
-                            <h3>My Giveaways</h3>
+                            <h3 class="section-title">My Giveaways</h3>
                             <div class="refresh-container">
                                 <button class="refresh-btn" id="refreshGiveawaysBtn">
                                     <i class="fas fa-sync-alt"></i>
@@ -2462,15 +2364,2831 @@
                 <h3 class="modal-title">Enter Gift Card Code</h3>
                 <button class="close-btn">&times;</button>
             </div>
+            <div class="giftcard-input">
+                <input type="text" id="giftcardCode" placeholder="Enter your gift card code">
+                <button class="paste-btn" id="pasteGiftcardBtn">
+                    <i class="fas fa-paste"></i> Paste
+                </button>
+            </div>
+            <div class="success-animation" id="successAnimation" style="display: none;">
+                <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                    <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+                    <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                </svg>
+            </div>
             <div class="form-group">
-                <label for="giftcardCode">Gift Card Code</label>
-                <div class="giftcard-input">
-                    <input type="text" id="giftcardCode" placeholder="Enter your gift card code">
-                    <!-- NEW: Paste Button -->
-                    <button type="button" class="paste-btn" id="pasteGiftCardBtn">
-                        <i class="fas fa-paste"></i> Paste
+                <button id="validateGiftcardBtn" class="btn btn-primary" style="width: 100%;">Validate Gift Card</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Payment Modal -->
+    <div id="paymentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirm Payment</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="payment-slider-container">
+                <p>Slide to confirm payment of <span id="paymentAmount">₦0</span></p>
+                <input type="range" min="0" max="100" value="0" class="payment-slider" id="paymentSlider">
+            </div>
+            <div class="payment-status" id="paymentStatus">
+                <!-- Payment status will be displayed here -->
+            </div>
+            <div class="success-animation" id="paymentSuccessAnimation" style="display: none;">
+                <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                    <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+                    <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Other modals (resultModal, winnerDetailsModal, etc.) -->
+    <div id="resultModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Game Result</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="result-popup" id="resultContent">
+                <!-- Result content will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+    
+    <div id="winnerDetailsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Winner Details</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="winnerForm">
+                <div class="winner-details">
+                    <div class="form-group">
+                        <label for="winnerName">Full Name</label>
+                        <input type="text" id="winnerName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="winnerPhone">Phone Number</label>
+                        <input type="text" id="winnerPhone" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="winnerSocial">Social Media Handle</label>
+                        <input type="text" id="winnerSocial" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="winnerBank">Bank Name</label>
+                        <input type="text" id="winnerBank">
+                    </div>
+                    <div class="form-group">
+                        <label for="winnerAccount">Account Number</label>
+                        <input type="text" id="winnerAccount">
+                    </div>
+                    <div class="form-group">
+                        <label for="paymentMethod">Payment Method</label>
+                        <select id="paymentMethod" required>
+                            <option value="bank">Bank Transfer</option>
+                            <option value="crypto">Cryptocurrency</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="cryptoDetails" style="display: none;">
+                        <label for="cryptoWallet">Crypto Wallet Address</label>
+                        <input type="text" id="cryptoWallet">
+                    </div>
+                    <!-- NEW: Payment Description and Amount Spent for Normal Game Winners -->
+                    <div class="form-group" id="paymentDetailsSection">
+                        <label for="paymentDescriptionWinner">Payment Description</label>
+                        <textarea id="paymentDescriptionWinner" placeholder="Describe the payment method and provide receipt number if applicable" required></textarea>
+                    </div>
+                    <div class="form-group" id="amountSpentSection">
+                        <label for="amountSpent">Total Amount Spent</label>
+                        <input type="number" id="amountSpent" min="0" step="0.01" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 20px;">Submit Details</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Modals -->
+    <div id="manageUsersModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Manage Users</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="form-group">
+                <input type="text" id="searchUsers" placeholder="Search users...">
+            </div>
+            <div class="user-list" id="usersList">
+                <!-- Users will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+    
+    <div id="viewMessagesModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">User Messages</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="form-group">
+                <select id="userMessagesFilter">
+                    <option value="all">All Users</option>
+                    <!-- User options will be populated by JavaScript -->
+                </select>
+            </div>
+            <div class="chat-messages" id="adminChatMessages">
+                <!-- Messages will be populated by JavaScript -->
+            </div>
+            <div class="chat-reply-form">
+                <form id="adminReplyForm">
+                    <div class="form-group">
+                        <textarea id="adminReplyMessage" placeholder="Type your reply..." rows="3" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Send Reply</button>
+                </form>
+            </div>
+            <div class="user-actions" style="margin-top: 15px;">
+                <button id="debitUserBtn" class="btn btn-warning btn-sm">Debit User</button>
+                <button id="banUserBtn" class="btn btn-danger btn-sm">Ban User</button>
+                <button id="settleConversationBtn" class="btn btn-success btn-sm">Settle Conversation</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- NEW: Manage Gift Cards Modal -->
+    <div id="manageGiftCardsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Manage Gift Cards</h3>
+                <div class="refresh-container">
+                    <button class="refresh-btn" id="refreshGiftCardsBtn">
+                        <i class="fas fa-sync-alt"></i>
                     </button>
                 </div>
+                <button class="close-btn">&times;</button>
+            </div>
+            
+            <div class="form-group">
+                <label for="giftCardFilter">Filter Gift Cards</label>
+                <select id="giftCardFilter">
+                    <option value="all">All Gift Cards</option>
+                    <option value="active">Active (Unused)</option>
+                    <option value="used">Used</option>
+                    <option value="vendor">Vendor Cards</option>
+                    <option value="withWinners">With Winners</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <input type="text" id="searchGiftCards" placeholder="Search by code or user...">
+            </div>
+            
+            <div style="max-height: 500px; overflow-y: auto;">
+                <table class="gift-cards-table">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Type</th>
+                            <th>Value</th>
+                            <th>Balance</th>
+                            <th>Status</th>
+                            <th>User/Winner</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="giftCardsTable">
+                        <tr>
+                            <td colspan="8" style="text-align: center;">Loading gift cards...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div id="generateVendorCardModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Generate Vendor Cards</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="vendorCardForm">
+                <div class="form-group">
+                    <label for="vendorCardCount">Number of Vendor Cards</label>
+                    <input type="number" id="vendorCardCount" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="vendorCardValue">Value per Card (<span id="vendorCurrencySymbol">₦</span>)</label>
+                    <input type="number" id="vendorCardValue" min="100" required>
+                </div>
+                <button type="submit" class="btn btn-warning" style="width: 100%;">Generate Vendor Cards</button>
+            </form>
+            <div class="giftcard-result" id="vendorCardResult" style="display: none;">
+                <h4>Vendor Cards Generated Successfully!</h4>
+                <p>Your vendor card codes:</p>
+                <div id="vendorCardCodesList"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="assignCardModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Assign Gift Card</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="assignCardForm">
+                <div class="form-group">
+                    <label for="assignUser">Select User</label>
+                    <select id="assignUser" required>
+                        <!-- Users will be populated by JavaScript -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="assignCardCount">Number of Gift Cards</label>
+                    <input type="number" id="assignCardCount" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="assignCardValue">Value per Card (<span id="assignCurrencySymbol">₦</span>)</label>
+                    <input type="number" id="assignCardValue" min="100" required>
+                </div>
+                <button type="submit" class="btn btn-success" style="width: 100%;">Assign Gift Cards</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="gameSettingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Game Settings</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="gameSettingsForm">
+                <div class="form-group">
+                    <label for="gamePrice">Game Price (<span id="gamePriceCurrency">₦</span>)</label>
+                    <input type="number" id="gamePrice" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="dailyWinners">Daily Winners Limit</label>
+                    <input type="number" id="dailyWinners" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="winningTime">Winning Time (seconds)</label>
+                    <input type="number" id="winningTimeSetting" step="0.01" min="0.1" required>
+                </div>
+                <div class="form-group">
+                    <label for="openGiveawayPrice">Open Giveaway Price (<span id="openGiveawayCurrency">₦</span>)</label>
+                    <input type="number" id="openGiveawayPrice" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="giftCardPaymentUrl">Gift Card Payment URL</label>
+                    <input type="url" id="giftCardPaymentUrl" required>
+                </div>
+                <div class="form-group">
+                    <label for="openGiveawayPaymentUrl">Open Giveaway Payment URL</label>
+                    <input type="url" id="openGiveawayPaymentUrl" required>
+                </div>
+                <div class="form-group">
+                    <label for="fundWalletUrl">Fund Wallet URL</label>
+                    <input type="url" id="fundWalletUrl" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Save Settings</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="socialSettingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Social Settings</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="socialSettingsForm">
+                <div class="form-group">
+                    <label for="youtubeUrl">YouTube URL</label>
+                    <input type="url" id="youtubeUrl">
+                </div>
+                <div class="form-group">
+                    <label for="tiktokUrl">TikTok URL</label>
+                    <input type="url" id="tiktokUrl">
+                </div>
+                <div class="form-group">
+                    <label for="twitterUrl">Twitter URL</label>
+                    <input type="url" id="twitterUrl">
+                </div>
+                <div class="form-group">
+                    <label for="facebookUrl">Facebook URL</label>
+                    <input type="url" id="facebookUrl">
+                </div>
+                <div class="form-group">
+                    <label for="instagramUrl">Instagram URL</label>
+                    <input type="url" id="instagramUrl">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Save Settings</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="withdrawalRequestsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Withdrawal Requests</h3>
+                <div class="refresh-container">
+                    <button class="refresh-btn" id="refreshWithdrawalRequestsBtn">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="pending-transactions">
+                <div id="withdrawalRequestsList" style="max-height: 500px; overflow-y: auto;">
+                    <!-- Withdrawal requests will be populated by JavaScript -->
+                    <p style="text-align: center; padding: 20px;">Loading withdrawal requests...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="pendingTransactionsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Payment Requests</h3>
+                <div class="refresh-container">
+                    <button class="refresh-btn" id="refreshPendingTransactionsBtn">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="pending-transactions">
+                <div id="pendingTransactionsList" style="max-height: 500px; overflow-y: auto;">
+                    <!-- Pending transactions will be populated by JavaScript -->
+                    <p style="text-align: center; padding: 20px;">Loading payment requests...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="taskCompletionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Complete Tasks to Play</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="task-list" id="taskList">
+                <!-- Tasks will be populated by JavaScript -->
+            </div>
+            <button id="completeTasksBtn" class="btn btn-success" style="width: 100%;">Complete Tasks & Play</button>
+        </div>
+    </div>
+
+    <!-- NEW: Customer Care Management Modal -->
+    <div id="customerCareManagementModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Customer Care Management</h3>
+                <div class="refresh-container">
+                    <button class="refresh-btn" id="refreshCustomerCareBtn">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <button class="close-btn">&times;</button>
+            </div>
+            
+            <div class="form-group">
+                <input type="text" id="searchCustomerCare" placeholder="Search users...">
+            </div>
+            
+            <div class="user-list" id="customerCareList">
+                <!-- Customer care users will be populated by JavaScript -->
+            </div>
+            
+            <div class="form-group">
+                <h4>Assign Customer Care Role</h4>
+                <select id="assignCustomerCareUser">
+                    <!-- Users will be populated by JavaScript -->
+                </select>
+                <button class="btn btn-success" id="assignCustomerCareBtn" style="width: 100%; margin-top: 10px;">
+                    <i class="fas fa-user-plus"></i> Assign as Customer Care
+                </button>
+            </div>
+            
+            <div class="form-group">
+                <h4>Customer Care Activity Monitor</h4>
+                <input type="date" id="careActivityDate">
+                <button class="btn btn-info" id="filterCareActivityBtn" style="width: 100%; margin-top: 10px;">
+                    <i class="fas fa-filter"></i> Filter by Date
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW: Giveaway Hunt Game Modal -->
+    <div id="giveawayHuntGameModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="giveawayHuntTitle">Play Giveaway</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="game-section">
+                <div class="target-time" id="huntTargetTimeDisplay">
+                    Target Time: <span id="huntTargetTimeValue">00.00</span> seconds
+                </div>
+                <div class="timer-display" id="huntTimerDisplay">00.00</div>
+                <div class="game-controls">
+                    <button id="huntStartBtn" class="btn btn-success game-btn">
+                        <i class="fas fa-play"></i> Start Game
+                    </button>
+                    <button id="huntStopBtn" class="btn btn-danger game-btn" disabled>
+                        <i class="fas fa-stop"></i> Stop Timer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW: Notification Popup -->
+    <div id="notificationPopup" class="notification-popup" style="display: none;">
+        <div id="notificationContent">
+            <!-- Notification content will be populated by JavaScript -->
+        </div>
+        <button class="notification-close">&times;</button>
+    </div><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Stop the Timer Game</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="config.js"></script>
+    <style>
+        /* All your existing CSS styles remain exactly the same */
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --success: #4cc9f0;
+            --danger: #f72585;
+            --warning: #f8961e;
+            --info: #4895ef;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --sidebar-width: 250px;
+            --header-height: 70px;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: var(--light);
+            min-height: 100vh;
+            overflow-x: hidden;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        
+        .container {
+            display: flex;
+            min-height: 100vh;
+            width: 100%;
+        }
+        
+        .sidebar {
+            width: var(--sidebar-width);
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            padding: 20px 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+        
+        .logo {
+            text-align: center;
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .logo h1 {
+            font-size: 24px;
+            color: var(--success);
+        }
+        
+        .logo span {
+            color: var(--warning);
+        }
+        
+        .sidebar-menu {
+            list-style: none;
+        }
+        
+        .sidebar-menu li {
+            margin-bottom: 5px;
+        }
+        
+        .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: var(--light);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .sidebar-menu a:hover, .sidebar-menu a.active {
+            background: rgba(255, 255, 255, 0.1);
+            border-left: 4px solid var(--success);
+        }
+        
+        .sidebar-menu i {
+            margin-right: 10px;
+            font-size: 18px;
+        }
+        
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            transition: all 0.3s ease;
+            padding: 20px;
+            width: calc(100% - var(--sidebar-width));
+        }
+        
+        .main-content.expanded {
+            margin-left: 0;
+            width: 100%;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 30px;
+        }
+        
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        
+        .auth-section {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            background-color: var(--secondary);
+        }
+        
+        .btn-success {
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .btn-success:hover:not(:disabled) {
+            background-color: #3a9fc9;
+        }
+        
+        .btn-danger {
+            background-color: var(--danger);
+            color: white;
+        }
+        
+        .btn-danger:hover:not(:disabled) {
+            background-color: #d11a6f;
+        }
+        
+        .btn-warning {
+            background-color: var(--warning);
+            color: white;
+        }
+        
+        .btn-warning:hover:not(:disabled) {
+            background-color: #e08515;
+        }
+        
+        .btn-info {
+            background-color: var(--info);
+            color: white;
+        }
+        
+        .btn-info:hover:not(:disabled) {
+            background-color: #3a7bc8;
+        }
+        
+        .content-section {
+            display: none;
+        }
+        
+        .content-section.active {
+            display: block;
+        }
+        
+        .game-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        .section-title {
+            font-size: 22px;
+            margin-bottom: 20px;
+            color: var(--success);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+        }
+        
+        .timer-display {
+            font-size: 120px;
+            text-align: center;
+            margin: 30px 0;
+            color: var(--warning);
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(248, 150, 30, 0.5);
+        }
+        
+        .game-controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .game-btn {
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 10px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--success);
+            margin-top: 5px;
+        }
+        
+        .dashboard-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            width: 100%;
+        }
+        
+        .dashboard-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .dashboard-card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .balance {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--success);
+            margin: 10px 0;
+        }
+        
+        .transaction-history {
+            margin-top: 30px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        th {
+            color: var(--info);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: #1a1a2e;
+            border-radius: 15px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-title {
+            font-size: 22px;
+            color: var(--success);
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--info);
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 16px;
+        }
+        
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        .admin-section {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .admin-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .chat-messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .message.user {
+            background: rgba(67, 97, 238, 0.2);
+        }
+        
+        .message.admin {
+            background: rgba(76, 201, 240, 0.2);
+        }
+        
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: var(--info);
+        }
+        
+        .winner-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .winner-details .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .giveaway-ended {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .giveaway-ended h2 {
+            color: var(--warning);
+            margin-bottom: 20px;
+        }
+        
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .social-links a {
+            color: var(--info);
+            font-size: 24px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .social-links a:hover {
+            color: var(--success);
+        }
+        
+        .difficulty-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .difficulty-easy {
+            background: var(--success);
+        }
+        
+        .difficulty-medium {
+            background: var(--warning);
+        }
+        
+        .difficulty-hard {
+            background: var(--danger);
+        }
+        
+        .giftcard-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .giftcard-input input {
+            flex: 1;
+        }
+        
+        .result-popup {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .result-popup h3 {
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+        
+        .result-popup p {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        
+        .payment-link {
+            background: var(--warning);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px 0;
+            transition: background 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .payment-link:hover {
+            background: #e08515;
+        }
+        
+        .page-footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+        
+        .page-footer h4 {
+            margin-bottom: 15px;
+            color: var(--info);
+        }
+        
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 14px;
+        }
+        
+        .success-animation {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        
+        .checkmark {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: block;
+            stroke-width: 2;
+            stroke: #4cc9f0;
+            stroke-miterlimit: 10;
+            box-shadow: inset 0px 0px 0px #4cc9f0;
+            animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
+        }
+        
+        .checkmark__circle {
+            stroke-dasharray: 166;
+            stroke-dashoffset: 166;
+            stroke-width: 2;
+            stroke-miterlimit: 10;
+            stroke: #4cc9f0;
+            fill: none;
+            animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+        }
+        
+        .checkmark__check {
+            transform-origin: 50% 50%;
+            stroke-dasharray: 48;
+            stroke-dashoffset: 48;
+            animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+        }
+        
+        @keyframes stroke {
+            100% {
+                stroke-dashoffset: 0;
+            }
+        }
+        
+        @keyframes scale {
+            0%, 100% {
+                transform: none;
+            }
+            50% {
+                transform: scale3d(1.1, 1.1, 1);
+            }
+        }
+        
+        @keyframes fill {
+            100% {
+                box-shadow: inset 0px 0px 0px 30px #4cc9f0;
+            }
+        }
+        
+        .target-time {
+            font-size: 24px;
+            margin: 15px 0;
+            color: var(--info);
+        }
+        
+        .giftcard-info {
+            background: rgba(76, 201, 240, 0.1);
+            border: 1px solid var(--success);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        
+        .giftcard-info h4 {
+            color: var(--success);
+            margin-bottom: 10px;
+        }
+        
+        .plays-remaining {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--warning);
+        }
+        
+        .login-required {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .login-required h2 {
+            color: var(--warning);
+            margin-bottom: 20px;
+        }
+        
+        .login-required p {
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+        
+        .affiliate-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .giveaway-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .giveaway-card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .giveaway-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .giveaway-card h3 {
+            color: var(--success);
+            margin-bottom: 10px;
+        }
+        
+        .giveaway-card p {
+            margin-bottom: 10px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .giveaway-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        
+        .giveaway-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .withdrawal-request {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--warning);
+        }
+        
+        .withdrawal-request:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+        
+        .withdrawal-status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .status-pending {
+            background: var(--warning);
+        }
+        
+        .status-approved {
+            background: var(--success);
+        }
+        
+        .status-declined {
+            background: var(--danger);
+        }
+        
+        .task-list {
+            margin: 20px 0;
+        }
+        
+        .task-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+        }
+        
+        .task-checkbox {
+            margin-right: 10px;
+        }
+        
+        .task-completed {
+            color: var(--success);
+        }
+        
+        .payment-slider-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .payment-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 15px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+        }
+        
+        .payment-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: var(--success);
+            cursor: pointer;
+        }
+        
+        .payment-slider::-moz-range-thumb {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: var(--success);
+            cursor: pointer;
+        }
+        
+        .payment-status {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .payment-success {
+            color: var(--success);
+        }
+        
+        .payment-failed {
+            color: var(--danger);
+        }
+        
+        .fund-wallet-dropdown {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+        
+        .fund-wallet-dropdown.active {
+            display: block;
+        }
+        
+        .user-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+        }
+        
+        .user-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .transaction-dropdown {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+        }
+        
+        .transaction-dropdown.active {
+            display: block;
+        }
+        
+        .transaction-toggle {
+            background: none;
+            border: none;
+            color: var(--info);
+            cursor: pointer;
+            text-decoration: underline;
+            margin-top: 10px;
+        }
+        
+        .giveaway-form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .giveaway-form-grid .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .giveaway-type-selector {
+            margin-bottom: 20px;
+        }
+        
+        .giveaway-type-dropdown {
+            width: 100%;
+            padding: 12px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .giveaway-type-dropdown option {
+            background: #1a1a2e;
+            color: white;
+        }
+        
+        .giveaway-type-btn {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .giveaway-type-btn.active {
+            background: var(--primary);
+        }
+        
+        .giveaway-type-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .chat-reply-form {
+            margin-top: 15px;
+        }
+        
+        .giftcard-result {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .giftcard-code {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--success);
+            margin: 10px 0;
+        }
+
+        /* New Styles for Additional Features */
+        .country-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .country-btn {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .country-btn.active {
+            background: var(--primary);
+            border-color: var(--success);
+        }
+        
+        .currency-display {
+            color: var(--warning);
+            font-weight: bold;
+        }
+        
+        .verified-badge {
+            color: var(--info);
+            margin-left: 5px;
+        }
+        
+        .gold-badge {
+            color: gold;
+        }
+        
+        .user-verification {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .giftcard-balance {
+            font-size: 14px;
+            color: var(--warning);
+            margin-top: 5px;
+        }
+        
+        .copy-btn, .paste-btn {
+            background: var(--info);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        
+        .copy-btn:hover, .paste-btn:hover {
+            background: #3a7bc8;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+        
+        .status-valid {
+            background: var(--success);
+        }
+        
+        .status-used {
+            background: var(--danger);
+        }
+        
+        .admin-country-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .admin-country-tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .admin-country-tab.active {
+            background: var(--primary);
+        }
+        
+        .pending-transactions {
+            margin-top: 20px;
+        }
+        
+        .transaction-actions {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        
+        .transaction-actions button {
+            padding: 8px 12px;
+            font-size: 12px;
+            border-radius: 5px;
+        }
+        
+        .giveaway-created {
+            background: rgba(76, 201, 240, 0.1);
+            border: 1px solid var(--success);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .giveaway-link {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .giveaway-link input {
+            flex: 1;
+        }
+        
+        .giftcard-type-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .giftcard-type-btn {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .giftcard-type-btn.active {
+            background: var(--primary);
+        }
+        
+        /* New Styles for Refresh Buttons */
+        .refresh-btn {
+            background: var(--info);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-left: 10px;
+        }
+        
+        .refresh-btn:hover {
+            background: var(--primary);
+            transform: rotate(90deg);
+        }
+        
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        
+        .section-header h3 {
+            margin: 0;
+            color: var(--success);
+        }
+        
+        .section-header .refresh-container {
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-header .refresh-container span {
+            margin-right: 10px;
+            font-size: 12px;
+            color: var(--info);
+        }
+        
+        /* Gift Card Management Table */
+        .gift-cards-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .gift-cards-table th,
+        .gift-cards-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 14px;
+        }
+        
+        .gift-cards-table th {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--info);
+            font-weight: bold;
+        }
+        
+        .gift-cards-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        
+        /* Conversation status badges */
+        .conversation-status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+        
+        .status-open {
+            background: var(--success);
+        }
+        
+        .status-settled {
+            background: var(--info);
+        }
+        
+        /* Giveaway Hunt Styles */
+        .giveaway-hunt-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .giveaway-hunt-card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 15px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .giveaway-hunt-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .giveaway-hunt-card .creator-info {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .giveaway-hunt-card .creator-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        
+        .giveaway-hunt-card .creator-details {
+            flex: 1;
+        }
+        
+        .giveaway-hunt-card .creator-name {
+            font-weight: bold;
+            color: var(--info);
+        }
+        
+        .giveaway-hunt-card .giveaway-title {
+            font-size: 18px;
+            color: var(--success);
+            margin-bottom: 10px;
+        }
+        
+        .giveaway-hunt-card .giveaway-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        
+        .giveaway-hunt-card .participants {
+            color: var(--warning);
+        }
+        
+        .giveaway-hunt-card .time-left {
+            color: var(--info);
+        }
+        
+        .giveaway-hunt-card .social-task {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        
+        .giveaway-hunt-card .play-btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s ease;
+        }
+        
+        .giveaway-hunt-card .play-btn:hover {
+            background: var(--secondary);
+        }
+        
+        .giveaway-hunt-card .play-btn:disabled {
+            background: rgba(255, 255, 255, 0.1);
+            cursor: not-allowed;
+        }
+        
+        .admin-user-filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .admin-stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .admin-stats-card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .admin-stats-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--success);
+            margin: 10px 0;
+        }
+        
+        .notification-popup {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--primary);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            max-width: 400px;
+        }
+        
+        .notification-popup.success {
+            background: var(--success);
+        }
+        
+        .notification-popup.warning {
+            background: var(--warning);
+        }
+        
+        .notification-popup.error {
+            background: var(--danger);
+        }
+        
+        .notification-close {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .customer-care-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+        }
+        
+        .customer-care-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .conversation-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        
+        .conversation-item {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .conversation-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .conversation-item.active {
+            background: rgba(67, 97, 238, 0.2);
+            border-left: 4px solid var(--primary);
+        }
+        
+        .conversation-user {
+            font-weight: bold;
+            color: var(--info);
+        }
+        
+        .conversation-preview {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 5px;
+        }
+        
+        .conversation-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--info);
+            margin-top: 5px;
+        }
+        
+        .giftcard-filter {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .giftcard-filter button {
+            padding: 8px 16px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .giftcard-filter button.active {
+            background: var(--primary);
+        }
+        
+        .giftcard-filter button:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        @media (max-width: 900px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+                padding: 15px;
+                width: 100%;
+            }
+            
+            .menu-toggle {
+                display: block;
+            }
+            
+            .dashboard-actions {
+                grid-template-columns: 1fr;
+            }
+            
+            .timer-display {
+                font-size: 80px;
+            }
+            
+            .game-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .game-btn {
+                width: 100%;
+                max-width: 300px;
+            }
+            
+            .winner-details {
+                grid-template-columns: 1fr;
+            }
+            
+            .giftcard-input {
+                flex-direction: column;
+            }
+            
+            .stats {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .auth-section {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .admin-controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .modal-content {
+                padding: 20px;
+                width: 95%;
+            }
+            
+            .sidebar-menu a {
+                padding: 15px 20px;
+            }
+            
+            .game-section {
+                padding: 20px;
+            }
+            
+            .dashboard-section {
+                padding: 20px;
+            }
+            
+            .section-title {
+                font-size: 20px;
+            }
+            
+            .social-links {
+                gap: 15px;
+            }
+            
+            .social-links a {
+                font-size: 20px;
+            }
+            
+            .giveaway-form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .giveaway-list {
+                grid-template-columns: 1fr;
+            }
+            
+            .affiliate-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .giveaway-actions {
+                flex-direction: column;
+            }
+            
+            .user-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .user-actions {
+                margin-top: 10px;
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            .transaction-table-container {
+                overflow-x: auto;
+            }
+            
+            table {
+                min-width: 600px;
+            }
+            
+            .country-selector {
+                flex-direction: column;
+            }
+            
+            .admin-country-tabs {
+                flex-direction: column;
+            }
+            
+            .giveaway-link {
+                flex-direction: column;
+            }
+            
+            .gift-cards-table {
+                min-width: 800px;
+            }
+            
+            .giveaway-hunt-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .admin-user-filters {
+                grid-template-columns: 1fr;
+            }
+            
+            .admin-stats-cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .giftcard-filter {
+                flex-wrap: wrap;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .timer-display {
+                font-size: 60px;
+            }
+            
+            .game-btn {
+                padding: 12px 20px;
+                font-size: 16px;
+            }
+            
+            .balance {
+                font-size: 24px;
+            }
+            
+            .modal-content {
+                padding: 15px;
+            }
+            
+            .modal-title {
+                font-size: 20px;
+            }
+            
+            .section-title {
+                font-size: 18px;
+            }
+            
+            .logo h1 {
+                font-size: 20px;
+            }
+            
+            .affiliate-stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .admin-stats-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="logo">
+                <h1>Stop<span>Timer</span></h1>
+            </div>
+            <ul class="sidebar-menu" id="sidebarMenu">
+                <!-- Menu items will be populated by JavaScript -->
+            </ul>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content" id="mainContent">
+            <header>
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="auth-section" id="authSection">
+                    <button id="loginBtn" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </button>
+                    <button id="registerBtn" class="btn btn-success">
+                        <i class="fas fa-user-plus"></i> Register
+                    </button>
+                    <button id="logoutBtn" class="btn btn-danger" style="display: none;">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+            </header>
+            
+            <!-- Game Section -->
+            <div class="content-section active" id="gameSection">
+                <div class="game-section">
+                    <h2 class="section-title">Stop The Timer Game</h2>
+                    
+                    <!-- Gift Card Info Display -->
+                    <div class="giftcard-info" id="giftcardInfo" style="display: none;">
+                        <h4>Active Gift Card</h4>
+                        <p>Card: <span id="activeCardCode"></span></p>
+                        <p class="plays-remaining">Balance: <span id="giftcardBalance">0</span></p>
+                    </div>
+                    
+                    <div class="target-time" id="targetTimeDisplay" style="display: none;">
+                        Target Time: <span id="targetTimeValue">00.00</span> seconds
+                    </div>
+                    <div class="timer-display" id="timerDisplay">00.00</div>
+                    <div class="game-controls">
+                        <button id="payGameBtn" class="btn btn-warning game-btn">
+                            <i class="fas fa-credit-card"></i> Pay to Play
+                        </button>
+                        <button id="startBtn" class="btn btn-success game-btn" disabled>
+                            <i class="fas fa-play"></i> Start Game
+                        </button>
+                        <button id="stopBtn" class="btn btn-danger game-btn" disabled>
+                            <i class="fas fa-stop"></i> Stop Timer
+                        </button>
+                    </div>
+                    <div class="stats">
+                        <div class="stat-card">
+                            <div>Games Played</div>
+                            <div class="stat-value" id="gamesPlayed">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div>Best Time</div>
+                            <div class="stat-value" id="bestTime">00.00</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Social Links Section -->
+                <div class="page-footer">
+                    <h4>Follow Us</h4>
+                    <div class="social-links" id="gameSocialLinks">
+                        <!-- Social links will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Dashboard Section -->
+            <div class="content-section" id="dashboardSection">
+                <div class="dashboard-section">
+                    <h2 class="section-title">Dashboard</h2>
+                    <div class="dashboard-actions">
+                        <div class="dashboard-card">
+                            <h3>Wallet Balance</h3>
+                            <div class="balance" id="walletBalance">₦0.00</div>
+                            <button id="fundWalletBtn" class="btn btn-primary">
+                                <i class="fas fa-wallet"></i> Fund Wallet
+                            </button>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>Gift Cards</h3>
+                            <div class="balance" id="giftCardBalance">0</div>
+                            <button id="generateGiftCardBtn" class="btn btn-warning">
+                                <i class="fas fa-gift"></i> Generate Gift Cards
+                            </button>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>Giveaway Cashback</h3>
+                            <div class="balance" id="giveawayCashbackBalance">₦0.00</div>
+                            <button id="requestWithdrawalBtn" class="btn btn-info">
+                                <i class="fas fa-money-bill-wave"></i> Request Withdrawal
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Customer Care Panel (for assigned customer care users) -->
+                    <div id="customerCarePanel" class="customer-care-panel" style="display: none;">
+                        <div class="customer-care-header">
+                            <h3 class="section-title">Customer Care Panel</h3>
+                            <div class="refresh-container">
+                                <button class="refresh-btn" id="refreshConversationsBtn">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="conversation-list" id="conversationList">
+                            <!-- Conversations will be populated by JavaScript -->
+                        </div>
+                        
+                        <div class="chat-messages" id="careChatMessages">
+                            <!-- Messages will be populated by JavaScript -->
+                        </div>
+                        
+                        <form id="careReplyForm">
+                            <div class="form-group">
+                                <textarea id="careReplyMessage" placeholder="Type your reply..." rows="3" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="width: 100%;">
+                                <i class="fas fa-paper-plane"></i> Send Reply
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <button id="customerCareBtn" class="btn btn-info" style="width: 100%; margin-bottom: 20px;">
+                        <i class="fas fa-headset"></i> Contact Customer Care
+                    </button>
+                    
+                    <!-- Available Gift Cards Section -->
+                    <div class="transaction-history" style="margin-bottom: 30px;">
+                        <div class="section-header">
+                            <h3 class="section-title">Available Gift Cards</h3>
+                            <div class="giftcard-filter">
+                                <button class="active" data-filter="all">All</button>
+                                <button data-filter="valid">Valid</button>
+                                <button data-filter="used">Used</button>
+                                <button data-filter="wins">Wins</button>
+                                <button id="viewAllGiftCardsBtn">View All</button>
+                            </div>
+                        </div>
+                        <div id="availableGiftCardsList">
+                            <!-- Gift cards will be populated by JavaScript -->
+                        </div>
+                    </div>
+                    
+                    <div class="transaction-history">
+                        <div class="section-header">
+                            <h3>Transaction History</h3>
+                            <div class="refresh-container">
+                                <span>Last updated: <span id="lastUpdated">Just now</span></span>
+                                <button class="refresh-btn" id="refreshTransactionsBtn">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <select id="transactionFilter">
+                                <option value="all">All Transactions</option>
+                                <option value="giftcards">Gift Card Transactions</option>
+                                <option value="used">Used Gift Cards</option>
+                                <option value="winners">Winners</option>
+                                <option value="losers">Losers</option>
+                                <option value="cashback">Giveaway Cashback</option>
+                                <option value="withdrawals">Withdrawals</option>
+                            </select>
+                        </div>
+                        <div class="transaction-table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Type</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="transactionTable">
+                                    <tr>
+                                        <td colspan="4" style="text-align: center;">No transactions yet</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <button class="transaction-toggle" id="transactionToggle">View All Transactions</button>
+                        <div class="transaction-dropdown" id="transactionDropdown">
+                            <!-- Additional transactions will be loaded here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Admin Section (only visible to admins) -->
+                    <div id="adminSection" class="admin-section" style="display: none;">
+                        <h3 class="section-title">Admin Panel</h3>
+                        
+                        <!-- Admin Stats Cards -->
+                        <div class="admin-stats-cards">
+                            <div class="admin-stats-card">
+                                <h3>Total Users</h3>
+                                <div class="admin-stats-value" id="totalUsers">0</div>
+                            </div>
+                            <div class="admin-stats-card">
+                                <h3>Total Balance</h3>
+                                <div class="admin-stats-value" id="totalBalance">₦0.00</div>
+                            </div>
+                            <div class="admin-stats-card">
+                                <h3>Today's Users</h3>
+                                <div class="admin-stats-value" id="todayUsers">0</div>
+                            </div>
+                            <div class="admin-stats-card">
+                                <h3>Today's Revenue</h3>
+                                <div class="admin-stats-value" id="todayRevenue">₦0.00</div>
+                            </div>
+                        </div>
+                        
+                        <!-- User Filters -->
+                        <div class="admin-user-filters">
+                            <select id="userFilter">
+                                <option value="all">All Users</option>
+                                <option value="just_funded">Just Funded</option>
+                                <option value="newly_joined">Newly Joined</option>
+                                <option value="highest_balance">Highest Balance</option>
+                                <option value="total_users">Total Users by Date</option>
+                                <option value="total_funds">Total Funds by Date</option>
+                            </select>
+                            <input type="date" id="filterDate">
+                            <button class="btn btn-primary" id="applyFilterBtn">Apply Filter</button>
+                            <button class="btn btn-info" id="sendNotificationBtn">Send Notification</button>
+                        </div>
+                        
+                        <!-- Country Tabs for Admin -->
+                        <div class="admin-country-tabs">
+                            <div class="admin-country-tab active" data-country="nigeria">Nigeria (₦)</div>
+                            <div class="admin-country-tab" data-country="other">Other (USDT)</div>
+                        </div>
+                        
+                        <div class="admin-controls">
+                            <button id="manageUsersBtn" class="btn btn-primary">
+                                <i class="fas fa-users"></i> Manage Users
+                            </button>
+                            <button id="viewMessagesBtn" class="btn btn-info">
+                                <i class="fas fa-envelope"></i> View Messages
+                            </button>
+                            <button id="manageGiftCardsBtn" class="btn btn-info">
+                                <i class="fas fa-gift"></i> Manage Gift Cards
+                            </button>
+                            <button id="generateVendorCardBtn" class="btn btn-warning">
+                                <i class="fas fa-gift"></i> Generate Vendor Card
+                            </button>
+                            <button id="assignCardBtn" class="btn btn-success">
+                                <i class="fas fa-tag"></i> Assign Gift Card
+                            </button>
+                            <button id="gameSettingsBtn" class="btn btn-info">
+                                <i class="fas fa-cog"></i> Game Settings
+                            </button>
+                            <button id="socialSettingsBtn" class="btn btn-primary">
+                                <i class="fas fa-share-alt"></i> Social Settings
+                            </button>
+                            <button id="withdrawalRequestsBtn" class="btn btn-warning">
+                                <i class="fas fa-money-bill-wave"></i> Withdrawal Requests
+                            </button>
+                            <button id="pendingTransactionsBtn" class="btn btn-danger">
+                                <i class="fas fa-clock"></i> Payment Requests
+                            </button>
+                            <button id="customerCareManagementBtn" class="btn btn-success">
+                                <i class="fas fa-headset"></i> Customer Care Management
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Social Links Section -->
+                <div class="page-footer">
+                    <h4>Follow Us</h4>
+                    <div class="social-links" id="dashboardSocialLinks">
+                        <!-- Social links will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Giveaway Section -->
+            <div class="content-section" id="giveawaySection">
+                <div class="dashboard-section">
+                    <h2 class="section-title">Create Giveaway</h2>
+                    
+                    <div class="giveaway-type-selector">
+                        <label for="giveawayTypeDropdown">Select Giveaway Type</label>
+                        <select id="giveawayTypeDropdown" class="giveaway-type-dropdown">
+                            <option value="open">Open Giveaway - Anyone can join using the link</option>
+                            <option value="giftcard">Gift Card Giveaway - Only your assigned gift cards can be used</option>
+                        </select>
+                    </div>
+                    
+                    <form id="giveawayForm">
+                        <input type="hidden" id="giveawayType" value="open">
+                        
+                        <div class="giveaway-form-grid">
+                            <div class="form-group">
+                                <label for="giveawayTitle">Giveaway Title</label>
+                                <input type="text" id="giveawayTitle" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="giveawayDifficulty">Difficulty Level</label>
+                                <select id="giveawayDifficulty" required>
+                                    <option value="easy">Easy</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="hard">Hard</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="participantLimit">Number of Participants</label>
+                                <input type="number" id="participantLimit" min="1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="winnersLimit">Number of Winners</label>
+                                <input type="number" id="winnersLimit" min="1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="giveawayStart">Start Time</label>
+                                <input type="datetime-local" id="giveawayStart" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="winningTime">Winning Time (seconds)</label>
+                                <input type="number" id="winningTime" step="0.01" min="0.1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="socialTask">Social Media Task</label>
+                                <input type="text" id="socialTask" placeholder="Follow our Instagram" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="socialLink">Social Media Link</label>
+                                <input type="url" id="socialLink" placeholder="https://instagram.com/username" required>
+                            </div>
+                        </div>
+                        
+                        <div id="giftcardGiveawayFields" style="display: none;">
+                            <div class="form-group">
+                                <label for="giftcardCount">Number of Gift Cards to Assign</label>
+                                <input type="number" id="giftcardCount" min="1" value="1">
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-warning" style="width: 100%;">
+                            <i class="fas fa-shopping-cart"></i> Buy & Generate Giveaway
+                        </button>
+                    </form>
+                    
+                    <!-- Giveaway Created Successfully Section -->
+                    <div id="giveawayCreatedSection" class="giveaway-created" style="display: none;">
+                        <h3>Giveaway Created Successfully!</h3>
+                        <p>Share this link with participants:</p>
+                        <div class="giveaway-link">
+                            <input type="text" id="giveawayLinkInput" readonly>
+                            <button class="btn btn-primary" id="copyGiveawayLinkBtn">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                        </div>
+                        <p>Gift Cards Generated: <span id="generatedGiftCardsCount">0</span></p>
+                        <div id="generatedGiftCardsList"></div>
+                    </div>
+                    
+                    <div class="transaction-history" style="margin-top: 40px;">
+                        <div class="section-header">
+                            <h3 class="section-title">My Giveaways</h3>
+                            <div class="refresh-container">
+                                <button class="refresh-btn" id="refreshGiveawaysBtn">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="transaction-table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Type</th>
+                                        <th>Participants</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="giveawayTable">
+                                    <tr>
+                                        <td colspan="5" style="text-align: center;">No giveaways yet</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Social Links Section -->
+                <div class="page-footer">
+                    <h4>Follow Us</h4>
+                    <div class="social-links" id="giveawaySocialLinks">
+                        <!-- Social links will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Giveaway Hunt Section -->
+            <div class="content-section" id="giveawayHuntSection">
+                <div class="dashboard-section">
+                    <h2 class="section-title">Giveaway Hunt</h2>
+                    <p style="text-align: center; margin-bottom: 30px;">Browse and participate in public giveaways!</p>
+                    
+                    <div class="form-group">
+                        <input type="text" id="searchGiveaways" placeholder="Search giveaways...">
+                    </div>
+                    
+                    <div class="giveaway-hunt-grid" id="giveawayHuntGrid">
+                        <!-- Giveaway cards will be populated by JavaScript -->
+                        <div style="text-align: center; grid-column: 1 / -1; padding: 40px;">
+                            <p>Loading giveaways...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Social Links Section -->
+                <div class="page-footer">
+                    <h4>Follow Us</h4>
+                    <div class="social-links" id="giveawayHuntSocialLinks">
+                        <!-- Social links will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Affiliate Dashboard Section -->
+            <div class="content-section" id="affiliateSection">
+                <div class="dashboard-section">
+                    <h2 class="section-title">Affiliate Dashboard</h2>
+                    
+                    <div class="affiliate-stats">
+                        <div class="dashboard-card">
+                            <h3>Total Earnings</h3>
+                            <div class="balance" id="affiliateEarnings">₦0.00</div>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>Available Balance</h3>
+                            <div class="balance" id="affiliateBalance">₦0.00</div>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>Referred Users</h3>
+                            <div class="balance" id="referredUsers">0</div>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>Active Links</h3>
+                            <div class="balance" id="activeLinks">0</div>
+                        </div>
+                    </div>
+                    
+                    <button id="requestAffiliateWithdrawalBtn" class="btn btn-info" style="width: 100%; margin-bottom: 20px;">
+                        <i class="fas fa-money-bill-wave"></i> Request Withdrawal
+                    </button>
+                    
+                    <div class="transaction-history" style="margin-bottom: 30px;">
+                        <h3 class="section-title">Affiliate Transactions</h3>
+                        <div class="transaction-table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Giveaway</th>
+                                        <th>Commission</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="affiliateTransactionTable">
+                                    <tr>
+                                        <td colspan="4" style="text-align: center;">No affiliate transactions yet</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <h3 class="section-title">Active Affiliate Links</h3>
+                    <div id="affiliateLinksList">
+                        <!-- Affiliate links will be populated by JavaScript -->
+                    </div>
+                    
+                    <h3 class="section-title">Available Giveaways</h3>
+                    <div class="form-group">
+                        <select id="giveawayFilter">
+                            <option value="all">All Giveaways</option>
+                            <option value="highest">Highest Paying</option>
+                            <option value="verified">Verified Users</option>
+                        </select>
+                    </div>
+                    
+                    <div class="giveaway-list" id="affiliateGiveawayList">
+                        <!-- Giveaway cards will be populated by JavaScript -->
+                    </div>
+                </div>
+                
+                <!-- Social Links Section -->
+                <div class="page-footer">
+                    <h4>Follow Us</h4>
+                    <div class="social-links" id="affiliateSocialLinks">
+                        <!-- Social links will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Shop Section -->
+            <div class="content-section" id="shopSection">
+                <div class="dashboard-section">
+                    <h2 class="section-title">Shop</h2>
+                    <p style="text-align: center; margin-bottom: 30px;">Welcome to our shop! Explore our products and services.</p>
+                    
+                    <div class="dashboard-actions">
+                        <div class="dashboard-card">
+                            <h3>Gift Cards</h3>
+                            <p>Purchase gift cards to play the game</p>
+                            <button class="btn btn-warning" id="shopGiftCardBtn">
+                                <i class="fas fa-gift"></i> Buy Gift Cards
+                            </button>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>Premium Features</h3>
+                            <p>Unlock exclusive game features</p>
+                            <button class="btn btn-primary" id="premiumBtn">
+                                <i class="fas fa-crown"></i> Upgrade Now
+                            </button>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>Merchandise</h3>
+                            <p>Get official StopTimer merchandise</p>
+                            <button class="btn btn-info" id="merchandiseBtn">
+                                <i class="fas fa-shopping-bag"></i> Shop Now
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Social Links Section -->
+                <div class="page-footer">
+                    <h4>Follow Us</h4>
+                    <div class="social-links" id="shopSocialLinks">
+                        <!-- Social links will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Giveaway Ended Section -->
+            <div class="content-section" id="giveawayEndedSection">
+                <div class="giveaway-ended">
+                    <h2>Giveaway Ended</h2>
+                    <p>We're sorry, this giveaway has ended. All available spots have been filled.</p>
+                    <p>Follow us on social media to get notified when your favorite creators or vendors start a new giveaway!</p>
+                    <div class="social-links" id="giveawayEndedSocialLinks">
+                        <!-- Social links will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- All Modals -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Login</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginEmail">Email</label>
+                    <input type="email" id="loginEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Register</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="registerName">Full Name</label>
+                    <input type="text" id="registerName" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerEmail">Email</label>
+                    <input type="email" id="registerEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">Password</label>
+                    <input type="password" id="registerPassword" required>
+                </div>
+                
+                <!-- Country Selection -->
+                <div class="form-group">
+                    <label>Select Country</label>
+                    <div class="country-selector">
+                        <div class="country-btn active" data-country="nigeria">
+                            <h4>Nigeria</h4>
+                            <p>Currency: Naira (₦)</p>
+                        </div>
+                        <div class="country-btn" data-country="other">
+                            <h4>Other Countries</h4>
+                            <p>Currency: USDT</p>
+                        </div>
+                    </div>
+                    <input type="hidden" id="userCountry" value="nigeria">
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="registerAffiliate"> Register as Affiliate
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-success" style="width: 100%;">Register</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="fundWalletModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Fund Wallet</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="form-group">
+                <p style="text-align: center; margin-bottom: 20px;">
+                    Click the button below to fund your wallet:
+                </p>
+                <a href="#" id="fundWalletLink" class="payment-link" style="width: 100%; text-align: center; display: block;">
+                    <i class="fas fa-wallet"></i> Fund Wallet
+                </a>
+            </div>
+            <div class="form-group">
+                <button id="iHaveFundedBtn" class="btn btn-primary" style="width: 100%;">
+                    <i class="fas fa-check-circle"></i> I Have Funded My Wallet
+                </button>
+            </div>
+            <div class="fund-wallet-dropdown" id="fundWalletDropdown">
+                <form id="fundWalletForm">
+                    <div class="form-group">
+                        <label for="fundName">Full Name</label>
+                        <input type="text" id="fundName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="fundEmail">Email</label>
+                        <input type="email" id="fundEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="fundAmount">Amount (<span id="currencySymbol">₦</span>)</label>
+                        <input type="number" id="fundAmount" min="100" step="100" required>
+                    </div>
+                    <!-- ADDED: Payment Description and Account Details -->
+                    <div class="form-group">
+                        <label for="paymentDescription">Payment Description</label>
+                        <textarea id="paymentDescription" placeholder="Describe how you made the payment (e.g., Bank Transfer, USDT transfer, etc.)" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="accountDetails">Account Details (Account Name/Number)</label>
+                        <input type="text" id="accountDetails" placeholder="e.g., John Doe / 1234567890" required>
+                    </div>
+                    <button type="submit" class="btn btn-success" style="width: 100%;">Submit Funding Details</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div id="customerCareModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Customer Care</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <!-- Messages will be populated by JavaScript -->
+            </div>
+            <form id="customerCareForm">
+                <div class="form-group">
+                    <textarea id="customerMessage" placeholder="Type your message here..." rows="3" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Send Message</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="generateGiftCardModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Generate Gift Cards</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="giftcard-type-selector">
+                <div class="giftcard-type-btn active" data-type="single">
+                    <h4>Single Gift Card</h4>
+                    <p>Custom amount</p>
+                </div>
+                <div class="giftcard-type-btn" data-type="bulk">
+                    <h4>Bulk Gift Cards</h4>
+                    <p>₦100 each</p>
+                </div>
+            </div>
+            <form id="giftCardForm">
+                <input type="hidden" id="giftCardType" value="single">
+                
+                <div id="singleGiftCardFields">
+                    <div class="form-group">
+                        <label for="giftCardAmount">Amount to Spend (<span id="giftCardCurrencySymbol">₦</span>)</label>
+                        <input type="number" id="giftCardAmount" min="100" step="100" required>
+                    </div>
+                    <div class="form-group">
+                        <p>You will get 1 gift card with <span id="giftCardValue">0</span> balance.</p>
+                    </div>
+                </div>
+                
+                <div id="bulkGiftCardFields" style="display: none;">
+                    <div class="form-group">
+                        <label for="bulkGiftCardAmount">Total Amount to Spend (<span id="bulkGiftCardCurrencySymbol">₦</span>)</label>
+                        <input type="number" id="bulkGiftCardAmount" min="100" step="100" required>
+                    </div>
+                    <div class="form-group">
+                        <p>You will get <span id="bulkGiftCardCount">0</span> gift cards, each with ₦100 balance.</p>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-warning" style="width: 100%;">Generate Gift Card</button>
+            </form>
+            <div class="giftcard-result" id="giftcardResult" style="display: none;">
+                <h4>Gift Card Generated Successfully!</h4>
+                <p>Your gift card code:</p>
+                <div id="giftcardCodesList"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="giftCardValidationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Enter Gift Card Code</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="giftcard-input">
+                <input type="text" id="giftcardCode" placeholder="Enter your gift card code">
+                <button class="paste-btn" id="pasteGiftcardBtn">
+                    <i class="fas fa-paste"></i> Paste
+                </button>
             </div>
             <div class="success-animation" id="successAnimation" style="display: none;">
                 <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
@@ -2980,6 +5698,34 @@ let gameSettings = {
 
 let socialSettings = {};
 
+// Firebase services
+let db, auth;
+
+// Initialize Firebase
+function initializeFirebase() {
+    try {
+        if (!firebaseConfig) {
+            throw new Error("Firebase configuration not found.");
+        }
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        
+        // Initialize services
+        db = firebase.firestore();
+        auth = firebase.auth();
+        
+        console.log("Firebase initialized successfully");
+        
+        // Set up auth state listener
+        auth.onAuthStateChanged(handleAuthStateChanged);
+        
+    } catch (error) {
+        console.error("Error initializing Firebase:", error);
+        alert("Error initializing Firebase: " + error.message);
+    }
+}
+
 // DOM elements
 const timerDisplay = document.getElementById('timerDisplay');
 const startBtn = document.getElementById('startBtn');
@@ -3012,6 +5758,7 @@ const withdrawalRequestsBtn = document.getElementById('withdrawalRequestsBtn');
 const pendingTransactionsBtn = document.getElementById('pendingTransactionsBtn');
 const validateGiftcardBtn = document.getElementById('validateGiftcardBtn');
 const giftcardCodeInput = document.getElementById('giftcardCode');
+const pasteGiftcardBtn = document.getElementById('pasteGiftcardBtn');
 const menuToggle = document.getElementById('menuToggle');
 const sidebar = document.getElementById('sidebar');
 const mainContent = document.getElementById('mainContent');
@@ -3019,11 +5766,9 @@ const sidebarMenu = document.getElementById('sidebarMenu');
 const contentSections = document.querySelectorAll('.content-section');
 const paymentMethod = document.getElementById('paymentMethod');
 const cryptoDetails = document.getElementById('cryptoDetails');
-const paymentLink = document.getElementById('paymentLink');
 const fundWalletLink = document.getElementById('fundWalletLink');
 const iHaveFundedBtn = document.getElementById('iHaveFundedBtn');
 const fundWalletDropdown = document.getElementById('fundWalletDropdown');
-const searchUsers = document.getElementById('searchUsers');
 const shopGiftCardBtn = document.getElementById('shopGiftCardBtn');
 const premiumBtn = document.getElementById('premiumBtn');
 const merchandiseBtn = document.getElementById('merchandiseBtn');
@@ -3033,7 +5778,7 @@ const successAnimation = document.getElementById('successAnimation');
 const giftcardInfo = document.getElementById('giftcardInfo');
 const activeCardCode = document.getElementById('activeCardCode');
 const giftcardBalance = document.getElementById('giftcardBalance');
-const giveawayTypeBtns = document.querySelectorAll('.giveaway-type-btn');
+const giveawayTypeDropdown = document.getElementById('giveawayTypeDropdown');
 const giveawayTypeInput = document.getElementById('giveawayType');
 const giftcardGiveawayFields = document.getElementById('giftcardGiveawayFields');
 const requestWithdrawalBtn = document.getElementById('requestWithdrawalBtn');
@@ -3104,86 +5849,12 @@ const giftCardsTable = document.getElementById('giftCardsTable');
 const refreshGiftCardsBtn = document.getElementById('refreshGiftCardsBtn');
 const settleConversationBtn = document.getElementById('settleConversationBtn');
 const affiliateLinksList = document.getElementById('affiliateLinksList');
-
-// NEW DOM Elements for Additional Features
-const customerCarePanel = document.getElementById('customerCarePanel');
-const conversationList = document.getElementById('conversationList');
-const careChatMessages = document.getElementById('careChatMessages');
-const careReplyForm = document.getElementById('careReplyForm');
-const careReplyMessage = document.getElementById('careReplyMessage');
-const refreshConversationsBtn = document.getElementById('refreshConversationsBtn');
-const customerCareManagementBtn = document.getElementById('customerCareManagementBtn');
-const customerCareManagementModal = document.getElementById('customerCareManagementModal');
-const searchCustomerCare = document.getElementById('searchCustomerCare');
-const customerCareList = document.getElementById('customerCareList');
-const assignCustomerCareUser = document.getElementById('assignCustomerCareUser');
-const assignCustomerCareBtn = document.getElementById('assignCustomerCareBtn');
-const careActivityDate = document.getElementById('careActivityDate');
-const filterCareActivityBtn = document.getElementById('filterCareActivityBtn');
-const refreshCustomerCareBtn = document.getElementById('refreshCustomerCareBtn');
-const giveawayHuntSection = document.getElementById('giveawayHuntSection');
-const searchGiveaways = document.getElementById('searchGiveaways');
-const giveawayHuntGrid = document.getElementById('giveawayHuntGrid');
-const giveawayHuntGameModal = document.getElementById('giveawayHuntGameModal');
-const giveawayHuntTitle = document.getElementById('giveawayHuntTitle');
-const huntTargetTimeDisplay = document.getElementById('huntTargetTimeDisplay');
-const huntTargetTimeValue = document.getElementById('huntTargetTimeValue');
-const huntTimerDisplay = document.getElementById('huntTimerDisplay');
-const huntStartBtn = document.getElementById('huntStartBtn');
-const huntStopBtn = document.getElementById('huntStopBtn');
-const userFilter = document.getElementById('userFilter');
-const filterDate = document.getElementById('filterDate');
-const applyFilterBtn = document.getElementById('applyFilterBtn');
-const sendNotificationBtn = document.getElementById('sendNotificationBtn');
-const totalUsers = document.getElementById('totalUsers');
-const totalBalance = document.getElementById('totalBalance');
-const todayUsers = document.getElementById('todayUsers');
-const todayRevenue = document.getElementById('todayRevenue');
-const notificationPopup = document.getElementById('notificationPopup');
-const notificationContent = document.getElementById('notificationContent');
-const notificationClose = document.querySelector('.notification-close');
-const paymentDescriptionWinner = document.getElementById('paymentDescriptionWinner');
-const amountSpent = document.getElementById('amountSpent');
-const paymentDetailsSection = document.getElementById('paymentDetailsSection');
-const amountSpentSection = document.getElementById('amountSpentSection');
-
-// NEW DOM Elements for Fixes
-const pasteGiftCardBtn = document.getElementById('pasteGiftCardBtn');
-const giveawayDropdownBtn = document.getElementById('giveawayDropdownBtn');
-const giveawayDropdownContent = document.getElementById('giveawayDropdownContent');
-const selectedGiveawayType = document.getElementById('selectedGiveawayType');
-const refreshGiftCardsUserBtn = document.getElementById('refreshGiftCardsUserBtn');
-const giftcardFilterBtns = document.querySelectorAll('.giftcard-filter-btn');
+const giftcardFilterBtns = document.querySelectorAll('.giftcard-filter button');
 const viewAllGiftCardsBtn = document.getElementById('viewAllGiftCardsBtn');
-const allGiftCardsList = document.getElementById('allGiftCardsList');
 const refreshGiveawaysBtn = document.getElementById('refreshGiveawaysBtn');
 
 // Get all modals
 const modals = document.querySelectorAll('.modal');
-
-// Firebase services
-let db, auth;
-
-// Initialize Firebase
-function initializeFirebase() {
-    try {
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        
-        // Initialize services
-        db = firebase.firestore();
-        auth = firebase.auth();
-        
-        console.log("Firebase initialized successfully");
-        
-        // Set up auth state listener
-        auth.onAuthStateChanged(handleAuthStateChanged);
-        
-    } catch (error) {
-        console.error("Error initializing Firebase:", error);
-        alert("Error initializing Firebase: " + error.message);
-    }
-}
 
 // FIXED: Enhanced transaction history loading with real-time listener
 async function loadTransactionHistory() {
@@ -3502,7 +6173,6 @@ async function loadUserData(userId) {
         // Load gift cards
         db.collection('giftCards')
             .where('userId', '==', userId)
-            .where('isActive', '==', true)
             .onSnapshot((snapshot) => {
                 console.log("User gift cards snapshot:", snapshot.size, "documents");
                 updateAvailableGiftCards(snapshot);
@@ -3512,6 +6182,9 @@ async function loadUserData(userId) {
             
         // Load customer care messages
         loadCustomerCareMessages();
+        
+        // Load user giveaways
+        loadUserGiveaways();
         
         return unsubscribe;
         
@@ -3679,52 +6352,32 @@ async function handleAdminReply(e) {
     }
 }
 
-// NEW: Fixed Giveaway Dropdown
-function setupGiveawayDropdown() {
-    const giveawayDropdownBtn = document.getElementById('giveawayDropdownBtn');
-    const giveawayDropdownContent = document.getElementById('giveawayDropdownContent');
-    const selectedGiveawayType = document.getElementById('selectedGiveawayType');
+// FIXED: Giveaway type selection with dropdown
+function setupGiveawayTypeDropdown() {
+    const giveawayTypeDropdown = document.getElementById('giveawayTypeDropdown');
     const giveawayTypeInput = document.getElementById('giveawayType');
     const giftcardGiveawayFields = document.getElementById('giftcardGiveawayFields');
     
-    // Toggle dropdown
-    giveawayDropdownBtn.addEventListener('click', function() {
-        giveawayDropdownContent.classList.toggle('show');
-    });
+    console.log("Setting up giveaway type dropdown");
     
-    // Handle dropdown item selection
-    document.querySelectorAll('.giveaway-dropdown-item').forEach(item => {
-        item.addEventListener('click', function() {
-            const type = this.dataset.type;
-            
-            // Update selected type
-            selectedGiveawayType.textContent = this.querySelector('h4').textContent;
-            giveawayTypeInput.value = type;
-            
-            // Update active item
-            document.querySelectorAll('.giveaway-dropdown-item').forEach(i => {
-                i.classList.remove('active');
-            });
-            this.classList.add('active');
-            
-            // Show/hide gift card fields
-            if (type === 'giftcard') {
-                giftcardGiveawayFields.style.display = 'block';
-            } else {
-                giftcardGiveawayFields.style.display = 'none';
-            }
-            
-            // Close dropdown
-            giveawayDropdownContent.classList.remove('show');
-        });
-    });
-    
-    // Close dropdown when clicking outside
-    document.addEventListener('click', function(e) {
-        if (!giveawayDropdownBtn.contains(e.target) && !giveawayDropdownContent.contains(e.target)) {
-            giveawayDropdownContent.classList.remove('show');
+    giveawayTypeDropdown.addEventListener('change', function() {
+        console.log("Giveaway type changed:", this.value);
+        
+        // Update hidden input
+        giveawayTypeInput.value = this.value;
+        
+        // Show/hide gift card fields
+        if (this.value === 'giftcard') {
+            giftcardGiveawayFields.style.display = 'block';
+            console.log("Showing gift card fields");
+        } else {
+            giftcardGiveawayFields.style.display = 'none';
+            console.log("Hiding gift card fields");
         }
     });
+    
+    // Trigger change to set initial state
+    giveawayTypeDropdown.dispatchEvent(new Event('change'));
 }
 
 // Load configuration from Firestore with real-time updates
@@ -3791,23 +6444,53 @@ function updateFundWalletLink() {
     }
 }
 
-// NEW: Enhanced Available Gift Cards with Filters
+// Update available gift cards with filtering
 function updateAvailableGiftCards(giftCardsSnapshot) {
     if (giftCardsSnapshot.empty) {
         availableGiftCardsList.innerHTML = '<p style="text-align: center;">No gift cards available</p>';
-        allGiftCardsList.innerHTML = '<p style="text-align: center;">No gift cards available</p>';
         return;
     }
     
     let giftCardsHTML = '';
-    let allGiftCardsHTML = '';
+    let giftCardsData = [];
     
+    // First, get all gift cards and prepare data
     giftCardsSnapshot.forEach(doc => {
         const giftCard = doc.data();
+        giftCard.id = doc.id;
+        giftCardsData.push(giftCard);
+    });
+    
+    // Get active filter
+    const activeFilter = document.querySelector('.giftcard-filter button.active').dataset.filter;
+    
+    // Apply filter
+    let filteredGiftCards = giftCardsData;
+    if (activeFilter !== 'all') {
+        filteredGiftCards = giftCardsData.filter(giftCard => {
+            switch(activeFilter) {
+                case 'valid':
+                    return giftCard.remainingBalance > 0 && giftCard.isActive;
+                case 'used':
+                    return giftCard.remainingBalance <= 0 || !giftCard.isActive;
+                case 'wins':
+                    // This would require checking for wins - simplified for now
+                    return giftCard.hasWinner || false;
+                default:
+                    return true;
+            }
+        });
+    }
+    
+    // Limit display to 3 cards unless "View All" is active
+    const displayGiftCards = activeFilter === 'all' ? filteredGiftCards : filteredGiftCards.slice(0, 3);
+    
+    // Generate HTML
+    displayGiftCards.forEach(giftCard => {
         const status = giftCard.remainingBalance > 0 ? 'Valid' : 'Used';
         const statusClass = giftCard.remainingBalance > 0 ? 'status-valid' : 'status-used';
         
-        const giftCardHTML = `
+        giftCardsHTML += `
             <div class="giftcard-info" style="margin-bottom: 10px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
@@ -3823,78 +6506,27 @@ function updateAvailableGiftCards(giftCardsSnapshot) {
                 </div>
             </div>
         `;
-        
-        // Add to all gift cards list
-        allGiftCardsHTML += giftCardHTML;
-        
-        // Only show first 3 in available gift cards
-        if (document.querySelectorAll('#availableGiftCardsList .giftcard-info').length < 3) {
-            giftCardsHTML += giftCardHTML;
-        }
     });
+    
+    // Show "View All" button if there are more than 3 cards
+    if (filteredGiftCards.length > 3 && activeFilter !== 'all') {
+        giftCardsHTML += `
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="btn btn-info btn-sm" onclick="showAllGiftCards()">
+                    View All (${filteredGiftCards.length})
+                </button>
+            </div>
+        `;
+    }
     
     availableGiftCardsList.innerHTML = giftCardsHTML;
-    allGiftCardsList.innerHTML = allGiftCardsHTML;
 }
 
-// NEW: Filter Gift Cards by Type
-function filterGiftCards(filterType) {
-    const allCards = document.querySelectorAll('#allGiftCardsList .giftcard-info');
-    
-    allCards.forEach(card => {
-        const statusBadge = card.querySelector('.status-badge');
-        const status = statusBadge.textContent.toLowerCase();
-        
-        let showCard = false;
-        
-        switch(filterType) {
-            case 'all':
-                showCard = true;
-                break;
-            case 'valid':
-                showCard = status === 'valid';
-                break;
-            case 'used':
-                showCard = status === 'used';
-                break;
-            case 'winners':
-                // This would require additional data - simplified for now
-                showCard = status === 'valid';
-                break;
-        }
-        
-        card.style.display = showCard ? 'block' : 'none';
-    });
-}
-
-// NEW: Toggle View All Gift Cards
-function toggleViewAllGiftCards() {
-    const isShowingAll = allGiftCardsList.style.display === 'block';
-    
-    if (isShowingAll) {
-        allGiftCardsList.style.display = 'none';
-        availableGiftCardsList.style.display = 'block';
-        viewAllGiftCardsBtn.textContent = 'View All';
-    } else {
-        allGiftCardsList.style.display = 'block';
-        availableGiftCardsList.style.display = 'none';
-        viewAllGiftCardsBtn.textContent = 'View Less';
-    }
-}
-
-// NEW: Paste Gift Card Code
-function pasteGiftCardCode() {
-    if (navigator.clipboard && navigator.clipboard.readText) {
-        navigator.clipboard.readText().then(text => {
-            giftcardCodeInput.value = text;
-        }).catch(err => {
-            console.error('Failed to read clipboard contents: ', err);
-            alert('Unable to paste from clipboard. Please paste manually.');
-        });
-    } else {
-        // Fallback for browsers that don't support clipboard API
-        giftcardCodeInput.focus();
-        document.execCommand('paste');
+// Show all gift cards
+function showAllGiftCards() {
+    const viewAllBtn = document.querySelector('.giftcard-filter button[data-filter="all"]');
+    if (viewAllBtn) {
+        viewAllBtn.click();
     }
 }
 
@@ -3902,6 +6534,16 @@ function pasteGiftCardCode() {
 function copyGiftCardCode(code) {
     navigator.clipboard.writeText(code).then(() => {
         alert('Gift card code copied to clipboard!');
+    });
+}
+
+// Paste gift card code
+function pasteGiftCardCode() {
+    navigator.clipboard.readText().then(text => {
+        giftcardCodeInput.value = text;
+    }).catch(err => {
+        console.error('Failed to read clipboard contents: ', err);
+        alert('Failed to paste from clipboard. Please paste manually.');
     });
 }
 
@@ -5075,7 +7717,7 @@ async function handleFundWallet(e) {
     }
 }
 
-// NEW: Fixed Generate Gift Cards with proper wallet deduction
+// Generate gift cards - FIXED to actually generate and deduct from wallet
 async function handleGiftCardGeneration(e) {
     e.preventDefault();
     
@@ -5135,7 +7777,8 @@ async function handleGiftCardGeneration(e) {
         
         // Deduct amount from wallet
         await db.collection('users').doc(user.uid).update({
-            walletBalance: firebase.firestore.FieldValue.increment(-amount)
+            walletBalance: firebase.firestore.FieldValue.increment(-amount),
+            giftCardBalance: firebase.firestore.FieldValue.increment(cardCount)
         });
         
         // Create transaction record
@@ -5149,6 +7792,7 @@ async function handleGiftCardGeneration(e) {
         
         // Update UI
         walletBalance -= amount;
+        giftCardBalance += cardCount;
         updateWalletBalance();
         
         // Show gift card codes
@@ -5288,7 +7932,7 @@ async function generateUniqueGiftCardCode() {
     return code;
 }
 
-// NEW: Fixed Giveaway Creation
+// Giveaway creation - FIXED to work properly
 async function handleGiveawayCreation(e) {
     e.preventDefault();
     
@@ -5472,8 +8116,10 @@ async function loadUserGiveaways() {
 
 // Update giveaway table
 function updateGiveawayTable(giveawaysSnapshot) {
+    const giveawayTable = document.getElementById('giveawayTable');
+    
     if (giveawaysSnapshot.empty) {
-        document.getElementById('giveawayTable').innerHTML = '<tr><td colspan="5" style="text-align: center;">No giveaways yet</td></tr>';
+        giveawayTable.innerHTML = '<tr><td colspan="5" style="text-align: center;">No giveaways yet</td></tr>';
         return;
     }
     
@@ -5492,16 +8138,16 @@ function updateGiveawayTable(giveawaysSnapshot) {
                 <td>
                     <button class="btn btn-sm btn-info" onclick="viewGiveaway('${giveaway.id}')">View</button>
                     <button class="btn btn-sm btn-warning" onclick="copyGiveawayLink('${giveaway.id}')">Copy Link</button>
-                    ${isAdmin ? `<button class="btn btn-sm btn-danger delete-btn" onclick="deleteGiveaway('${doc.id}')">Delete</button>` : ''}
+                    ${isAdmin ? `<button class="btn btn-sm btn-danger" onclick="deleteGiveaway('${doc.id}')">Delete</button>` : ''}
                 </td>
             </tr>
         `;
     });
     
-    document.getElementById('giveawayTable').innerHTML = tableHTML;
+    giveawayTable.innerHTML = tableHTML;
 }
 
-// NEW: Delete Giveaway (Admin Function)
+// Delete giveaway (admin function)
 async function deleteGiveaway(giveawayId) {
     if (confirm('Are you sure you want to delete this giveaway? This action cannot be undone.')) {
         try {
@@ -5883,18 +8529,10 @@ function refreshGiftCards() {
     }
 }
 
-// NEW: Refresh user gift cards
-function refreshUserGiftCards() {
-    if (user) {
-        // This will trigger the real-time listener to update
-        alert('Gift cards refreshed!');
-    }
-}
-
-// NEW: Refresh giveaways
+// Refresh giveaways manually
 function refreshGiveaways() {
     if (user) {
-        loadUserGiveaways();
+        // This will trigger the real-time listener to update
         alert('Giveaways refreshed!');
     }
 }
@@ -5964,7 +8602,188 @@ function logout() {
     updateUIForLoggedOutUser();
 }
 
-// NEW: Setup all event listeners
+// Gift Card Management Functions
+
+// Update gift cards table with filters
+async function updateGiftCardsTable(giftCardsSnapshot) {
+    const giftCardsTable = document.getElementById('giftCardsTable');
+    const filter = document.getElementById('giftCardFilter').value;
+    const searchTerm = document.getElementById('searchGiftCards').value.toLowerCase();
+    
+    if (giftCardsSnapshot.empty) {
+        giftCardsTable.innerHTML = '<tr><td colspan="8" style="text-align: center;">No gift cards found</td></tr>';
+        return;
+    }
+    
+    let tableHTML = '';
+    let giftCardsData = [];
+    
+    // First, get all gift cards and prepare data
+    const promises = giftCardsSnapshot.docs.map(async (doc) => {
+        const giftCard = doc.data();
+        giftCard.id = doc.id;
+        
+        // Get user info if available
+        if (giftCard.userId) {
+            try {
+                const userDoc = await db.collection('users').doc(giftCard.userId).get();
+                if (userDoc.exists) {
+                    giftCard.userData = userDoc.data();
+                }
+            } catch (error) {
+                console.error("Error fetching user data:", error);
+            }
+        }
+        
+        // Get winner info if available (from transactions)
+        if (giftCard.code) {
+            try {
+                const winnerSnapshot = await db.collection('transactions')
+                    .where('giftCardCode', '==', giftCard.code)
+                    .where('isWinner', '==', true)
+                    .get();
+                
+                if (!winnerSnapshot.empty) {
+                    giftCard.hasWinner = true;
+                    giftCard.winnerTransaction = winnerSnapshot.docs[0].data();
+                }
+            } catch (error) {
+                console.error("Error fetching winner data:", error);
+            }
+        }
+        
+        return giftCard;
+    });
+    
+    // Wait for all data to be fetched
+    giftCardsData = await Promise.all(promises);
+    
+    // Apply filters
+    let filteredGiftCards = giftCardsData.filter(giftCard => {
+        // Search filter
+        if (searchTerm) {
+            const codeMatch = giftCard.code.toLowerCase().includes(searchTerm);
+            const userMatch = giftCard.userData && giftCard.userData.name && 
+                            giftCard.userData.name.toLowerCase().includes(searchTerm);
+            if (!codeMatch && !userMatch) return false;
+        }
+        
+        // Type filters
+        switch(filter) {
+            case 'active':
+                return giftCard.remainingBalance > 0 && giftCard.isActive;
+            case 'used':
+                return giftCard.remainingBalance <= 0 || !giftCard.isActive;
+            case 'vendor':
+                return giftCard.isVendorCard;
+            case 'withWinners':
+                return giftCard.hasWinner;
+            default:
+                return true;
+        }
+    });
+    
+    // Generate table rows
+    filteredGiftCards.forEach(giftCard => {
+        const createdDate = giftCard.createdAt ? giftCard.createdAt.toDate().toLocaleDateString() : 'N/A';
+        const status = giftCard.isActive ? (giftCard.remainingBalance > 0 ? 'Active' : 'Used') : 'Inactive';
+        const statusClass = giftCard.isActive ? (giftCard.remainingBalance > 0 ? 'status-valid' : 'status-used') : 'status-used';
+        const type = giftCard.isVendorCard ? 'Vendor' : 'User';
+        const userInfo = giftCard.userData ? 
+            `${giftCard.userData.name || 'N/A'} (${giftCard.userData.email || 'N/A'})` : 
+            'Not Assigned';
+        const winnerInfo = giftCard.hasWinner ? `Winner: ${giftCard.winnerTransaction.userId}` : 'No Winner';
+        
+        tableHTML += `
+            <tr>
+                <td><strong>${giftCard.code}</strong></td>
+                <td>${type}</td>
+                <td>${getCurrencySymbol()}${giftCard.value || 0}</td>
+                <td>${getCurrencySymbol()}${giftCard.remainingBalance || 0}</td>
+                <td><span class="status-badge ${statusClass}">${status}</span></td>
+                <td>${giftCard.hasWinner ? winnerInfo : userInfo}</td>
+                <td>${createdDate}</td>
+                <td>
+                    <div class="transaction-actions">
+                        <button class="btn btn-sm btn-info" onclick="viewGiftCardDetails('${giftCard.id}')">View</button>
+                        ${giftCard.isActive ? 
+                            `<button class="btn btn-sm btn-warning" onclick="deactivateGiftCard('${giftCard.id}')">Deactivate</button>` :
+                            `<button class="btn btn-sm btn-success" onclick="activateGiftCard('${giftCard.id}')">Activate</button>`
+                        }
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    
+    giftCardsTable.innerHTML = tableHTML;
+}
+
+// Gift card actions
+async function deactivateGiftCard(giftCardId) {
+    if (confirm('Are you sure you want to deactivate this gift card?')) {
+        try {
+            await db.collection('giftCards').doc(giftCardId).update({
+                isActive: false
+            });
+            alert('Gift card deactivated successfully!');
+        } catch (error) {
+            console.error("Error deactivating gift card:", error);
+            alert('Error deactivating gift card: ' + error.message);
+        }
+    }
+}
+
+async function activateGiftCard(giftCardId) {
+    try {
+        await db.collection('giftCards').doc(giftCardId).update({
+            isActive: true
+        });
+        alert('Gift card activated successfully!');
+    } catch (error) {
+        console.error("Error activating gift card:", error);
+        alert('Error activating gift card: ' + error.message);
+    }
+}
+
+function viewGiftCardDetails(giftCardId) {
+    // You can implement a detailed view modal here
+    alert('View gift card details for: ' + giftCardId);
+}
+
+// Load all gift cards with real-time updates
+async function loadAllGiftCards() {
+    try {
+        db.collection('giftCards')
+            .orderBy('createdAt', 'desc')
+            .onSnapshot((snapshot) => {
+                updateGiftCardsTable(snapshot);
+            });
+    } catch (error) {
+        console.error("Error loading gift cards:", error);
+    }
+}
+
+// Initialize everything
+function init() {
+    console.log("Initializing application...");
+    
+    // Initialize Firebase
+    initializeFirebase();
+    
+    // Set up event listeners
+    setupEventListeners();
+    
+    // Initialize UI
+    updateTimerDisplay(currentTime);
+    updateStats();
+    updateWalletBalance();
+    updateAffiliateStats();
+    updateSidebarMenu();
+    
+    console.log("Application initialized successfully");
+}
+
 function setupEventListeners() {
     console.log("Setting up event listeners...");
     
@@ -5998,7 +8817,6 @@ function setupEventListeners() {
     if (socialSettingsBtn) socialSettingsBtn.addEventListener('click', () => openModal(document.getElementById('socialSettingsModal')));
     if (withdrawalRequestsBtn) withdrawalRequestsBtn.addEventListener('click', () => openModal(document.getElementById('withdrawalRequestsModal')));
     if (pendingTransactionsBtn) pendingTransactionsBtn.addEventListener('click', () => openModal(document.getElementById('pendingTransactionsModal')));
-    if (customerCareManagementBtn) customerCareManagementBtn.addEventListener('click', () => openModal(customerCareManagementModal));
     
     // Shop controls
     shopGiftCardBtn.addEventListener('click', () => openModal(generateGiftCardModal));
@@ -6007,9 +8825,7 @@ function setupEventListeners() {
     
     // Gift card validation
     validateGiftcardBtn.addEventListener('click', validateGiftcard);
-    
-    // NEW: Paste gift card button
-    pasteGiftCardBtn.addEventListener('click', pasteGiftCardCode);
+    pasteGiftcardBtn.addEventListener('click', pasteGiftCardCode);
     
     // Gift card amount calculation
     giftCardAmount.addEventListener('input', function() {
@@ -6041,8 +8857,8 @@ function setupEventListeners() {
         });
     });
     
-    // NEW: Giveaway dropdown
-    setupGiveawayDropdown();
+    // Giveaway type selection - FIXED with dropdown
+    setupGiveawayTypeDropdown();
     
     // Country selection in registration
     countryBtns.forEach(btn => {
@@ -6094,17 +8910,6 @@ function setupEventListeners() {
     // Admin reply form submission
     adminReplyForm.addEventListener('submit', handleAdminReply);
     
-    // Customer care reply form submission
-    careReplyForm.addEventListener('submit', handleCareReply);
-    
-    // Settle conversation button
-    if (settleConversationBtn) {
-        settleConversationBtn.addEventListener('click', settleConversation);
-    }
-    
-    // User messages filter change
-    userMessagesFilter.addEventListener('change', handleUserMessagesFilterChange);
-    
     // Fund wallet dropdown
     iHaveFundedBtn.addEventListener('click', function() {
         fundWalletDropdown.classList.toggle('active');
@@ -6124,12 +8929,8 @@ function setupEventListeners() {
         paymentMethod.addEventListener('change', function() {
             if (this.value === 'crypto') {
                 cryptoDetails.style.display = 'block';
-                paymentDetailsSection.style.display = 'none';
-                amountSpentSection.style.display = 'none';
             } else {
                 cryptoDetails.style.display = 'none';
-                paymentDetailsSection.style.display = 'block';
-                amountSpentSection.style.display = 'block';
             }
         });
     }
@@ -6139,24 +8940,7 @@ function setupEventListeners() {
     refreshWithdrawalRequestsBtn.addEventListener('click', refreshWithdrawalRequests);
     refreshPendingTransactionsBtn.addEventListener('click', refreshPendingTransactions);
     refreshGiftCardsBtn.addEventListener('click', refreshGiftCards);
-    refreshGiftCardsUserBtn.addEventListener('click', refreshUserGiftCards);
-    refreshConversationsBtn.addEventListener('click', refreshCustomerCareConversations);
-    refreshCustomerCareBtn.addEventListener('click', refreshCustomerCareUsers);
     refreshGiveawaysBtn.addEventListener('click', refreshGiveaways);
-    
-    // NEW: Gift card filter buttons
-    giftcardFilterBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            if (this.id !== 'viewAllGiftCardsBtn') {
-                giftcardFilterBtns.forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                filterGiftCards(this.dataset.filter);
-            }
-        });
-    });
-    
-    // NEW: View all gift cards button
-    viewAllGiftCardsBtn.addEventListener('click', toggleViewAllGiftCards);
     
     // Gift card management filters
     giftCardFilter.addEventListener('change', loadAllGiftCards);
@@ -6164,100 +8948,25 @@ function setupEventListeners() {
         debounce(loadAllGiftCards, 300)
     );
     
-    // Giveaway hunt search
-    searchGiveaways.addEventListener('input', 
-        debounce(loadPublicGiveaways, 300)
-    );
-    
-    // Admin user filters
-    applyFilterBtn.addEventListener('click', applyUserFilter);
-    sendNotificationBtn.addEventListener('click', sendBulkNotification);
-    
-    // Customer care management
-    assignCustomerCareBtn.addEventListener('click', assignCustomerCareRole);
-    filterCareActivityBtn.addEventListener('click', filterCareActivity);
-    searchCustomerCare.addEventListener('input', 
-        debounce(loadCustomerCareUsers, 300)
-    );
-    
-    // Giveaway hunt game controls
-    huntStartBtn.addEventListener('click', startHuntGame);
-    huntStopBtn.addEventListener('click', stopHuntGame);
-    
-    // Notification close
-    notificationClose.addEventListener('click', closeNotification);
-    
-    // Winner form submission
-    document.getElementById('winnerForm').addEventListener('submit', handleWinnerDetails);
-    
-    // Form submissions
-    document.getElementById('loginForm').addEventListener('submit', handleLogin);
-    document.getElementById('registerForm').addEventListener('submit', handleRegister);
-    document.getElementById('fundWalletForm').addEventListener('submit', handleFundWallet);
-    
-    // Game settings form
-    document.getElementById('gameSettingsForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const gamePrice = parseFloat(document.getElementById('gamePrice').value);
-        const dailyWinners = parseInt(document.getElementById('dailyWinners').value);
-        const winningTime = parseFloat(document.getElementById('winningTimeSetting').value);
-        const openGiveawayPrice = parseFloat(document.getElementById('openGiveawayPrice').value);
-        const giftCardPaymentUrl = document.getElementById('giftCardPaymentUrl').value;
-        const openGiveawayPaymentUrl = document.getElementById('openGiveawayPaymentUrl').value;
-        const fundWalletUrl = document.getElementById('fundWalletUrl').value;
-        
-        try {
-            // Save game settings for the current admin country
-            const settings = {
-                gamePrice: gamePrice,
-                dailyWinners: dailyWinners,
-                winningTime: winningTime,
-                openGiveawayPrice: openGiveawayPrice,
-                giftCardPaymentUrl: giftCardPaymentUrl,
-                openGiveawayPaymentUrl: openGiveawayPaymentUrl,
-                fundWalletUrl: fundWalletUrl
-            };
+    // Gift card filter buttons
+    giftcardFilterBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            giftcardFilterBtns.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
             
-            await db.collection('config').doc(`gameSettings_${adminCurrentCountry}`).set(settings, { merge: true });
-            
-            alert('Game settings saved successfully!');
-            closeModal(document.getElementById('gameSettingsModal'));
-        } catch (error) {
-            console.error("Error saving game settings:", error);
-            alert('Error saving game settings: ' + error.message);
-        }
+            // Reload gift cards with new filter
+            if (user) {
+                db.collection('giftCards')
+                    .where('userId', '==', user.uid)
+                    .onSnapshot((snapshot) => {
+                        updateAvailableGiftCards(snapshot);
+                    });
+            }
+        });
     });
     
-    // Social settings form
-    document.getElementById('socialSettingsForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const youtubeUrl = document.getElementById('youtubeUrl').value;
-        const tiktokUrl = document.getElementById('tiktokUrl').value;
-        const twitterUrl = document.getElementById('twitterUrl').value;
-        const facebookUrl = document.getElementById('facebookUrl').value;
-        const instagramUrl = document.getElementById('instagramUrl').value;
-        
-        try {
-            // Save social settings
-            const settings = {
-                youtube: youtubeUrl,
-                tiktok: tiktokUrl,
-                twitter: twitterUrl,
-                facebook: facebookUrl,
-                instagram: instagramUrl
-            };
-            
-            await db.collection('config').doc('socialSettings').set(settings, { merge: true });
-            
-            alert('Social settings saved successfully!');
-            closeModal(document.getElementById('socialSettingsModal'));
-        } catch (error) {
-            console.error("Error saving social settings:", error);
-            alert('Error saving social settings: ' + error.message);
-        }
-    });
+    // View all gift cards button
+    viewAllGiftCardsBtn.addEventListener('click', showAllGiftCards);
     
     // Close buttons
     document.querySelectorAll('.close-btn').forEach(button => {
@@ -6296,35 +9005,115 @@ function setupEventListeners() {
         filterGiveaways(this.value);
     });
     
-    // Search users
-    if (searchUsers) {
-        searchUsers.addEventListener('input', function() {
-            searchUsersList(this.value);
-        });
-    }
-    
     console.log("Event listeners setup complete");
 }
 
-// Initialize everything
-function init() {
-    console.log("Initializing application...");
+// Update admin settings form with current country settings
+function updateAdminSettingsForm() {
+    const settings = gameSettings[adminCurrentCountry];
     
-    // Initialize Firebase
-    initializeFirebase();
-    
-    // Set up event listeners
-    setupEventListeners();
-    
-    // Initialize UI
-    updateTimerDisplay(currentTime);
-    updateStats();
-    updateWalletBalance();
-    updateAffiliateStats();
-    updateSidebarMenu();
-    
-    console.log("Application initialized successfully");
+    document.getElementById('gamePrice').value = settings.gamePrice;
+    document.getElementById('dailyWinners').value = settings.dailyWinners;
+    document.getElementById('winningTimeSetting').value = settings.winningTime;
+    document.getElementById('openGiveawayPrice').value = settings.openGiveawayPrice;
+    document.getElementById('giftCardPaymentUrl').value = settings.giftCardPaymentUrl;
+    document.getElementById('openGiveawayPaymentUrl').value = settings.openGiveawayPaymentUrl;
+    document.getElementById('fundWalletUrl').value = settings.fundWalletUrl;
 }
+
+// Filter transactions
+async function filterTransactions(filterType) {
+    try {
+        let query = db.collection('transactions')
+            .where('userId', '==', user.uid)
+            .orderBy('createdAt', 'desc');
+        
+        if (filterType !== 'all') {
+            switch(filterType) {
+                case 'giftcards':
+                    query = query.where('type', 'in', ['Gift Card Purchase', 'Gift Card Usage']);
+                    break;
+                case 'used':
+                    query = query.where('type', '==', 'Gift Card Usage');
+                    break;
+                case 'winners':
+                    query = query.where('isWinner', '==', true);
+                    break;
+                case 'losers':
+                    query = query.where('isWinner', '==', false);
+                    break;
+                case 'cashback':
+                    query = query.where('type', '==', 'Giveaway Cashback');
+                    break;
+                case 'withdrawals':
+                    query = query.where('type', '==', 'Withdrawal');
+                    break;
+            }
+        }
+        
+        const snapshot = await query.get();
+        updateTransactionTable(snapshot);
+    } catch (error) {
+        console.error("Error filtering transactions:", error);
+    }
+}
+
+// Filter giveaways
+async function filterGiveaways(filterType) {
+    try {
+        let query = db.collection('giveaways')
+            .where('isActive', '==', true);
+        
+        if (filterType === 'highest') {
+            query = query.orderBy('participantLimit', 'desc');
+        } else if (filterType === 'verified') {
+            query = query.where('creatorVerified', '==', true);
+        } else {
+            query = query.orderBy('createdAt', 'desc');
+        }
+        
+        const snapshot = await query.get();
+        updateAffiliateGiveawayList(snapshot);
+    } catch (error) {
+        console.error("Error filtering giveaways:", error);
+    }
+}
+
+// Utility function to debounce function calls
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Export functions to global scope for HTML onclick handlers
+window.copyGiftCardCode = copyGiftCardCode;
+window.approveTransaction = approveTransaction;
+window.declineTransaction = declineTransaction;
+window.approveWithdrawal = approveWithdrawal;
+window.declineWithdrawal = declineWithdrawal;
+window.toggleVerification = toggleVerification;
+window.debitUser = debitUser;
+window.banUser = banUser;
+window.viewGiveaway = viewGiveaway;
+window.copyGiveawayLink = copyGiveawayLink;
+window.deleteGiveaway = deleteGiveaway;
+window.generateAffiliateLink = generateAffiliateLink;
+window.validateGiftcard = validateGiftcard;
+window.viewGiftCardDetails = viewGiftCardDetails;
+window.deactivateGiftCard = deactivateGiftCard;
+window.activateGiftCard = activateGiftCard;
+window.copyAffiliateLink = copyAffiliateLink;
+window.deactivateAffiliateLink = deactivateAffiliateLink;
+window.editTransactionAmount = editTransactionAmount;
+window.sendUserNotification = sendUserNotification;
+window.showAllGiftCards = showAllGiftCards;
 
 // Start the application
 document.addEventListener('DOMContentLoaded', init);
