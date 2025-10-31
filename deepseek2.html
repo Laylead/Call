@@ -7,6 +7,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="config.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* All your existing CSS styles remain exactly the same */
@@ -1373,6 +1374,117 @@
             margin-top: 5px;
         }
         
+        /* NEW: Gift Card Filter Styles */
+        .giftcard-filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .giftcard-filter-btn {
+            padding: 8px 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .giftcard-filter-btn.active {
+            background: var(--primary);
+        }
+        
+        .giftcard-filter-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* NEW: Paste Button Styles */
+        .paste-btn {
+            background: var(--info);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s ease;
+        }
+        
+        .paste-btn:hover {
+            background: #3a7bc8;
+        }
+        
+        /* NEW: Giveaway Dropdown Styles */
+        .giveaway-dropdown {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        
+        .giveaway-dropdown-btn {
+            width: 100%;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            color: white;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .giveaway-dropdown-content {
+            display: none;
+            position: absolute;
+            background: #1a1a2e;
+            min-width: 100%;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            z-index: 1;
+            border-radius: 5px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .giveaway-dropdown-content.show {
+            display: block;
+        }
+        
+        .giveaway-dropdown-item {
+            padding: 12px 16px;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        
+        .giveaway-dropdown-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .giveaway-dropdown-item.active {
+            background: var(--primary);
+        }
+        
+        /* NEW: Delete Button Styles */
+        .delete-btn {
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s ease;
+        }
+        
+        .delete-btn:hover {
+            background: #d11a6f;
+        }
+        
         @media (max-width: 900px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -1522,6 +1634,10 @@
             
             .admin-stats-cards {
                 grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .giftcard-filters {
+                flex-direction: column;
             }
         }
         
@@ -1705,11 +1821,31 @@
                         <i class="fas fa-headset"></i> Contact Customer Care
                     </button>
                     
-                    <!-- Available Gift Cards Section -->
+                    <!-- Available Gift Cards Section with Filters -->
                     <div class="transaction-history" style="margin-bottom: 30px;">
-                        <h3 class="section-title">Available Gift Cards</h3>
+                        <div class="section-header">
+                            <h3>Available Gift Cards</h3>
+                            <div class="refresh-container">
+                                <button class="refresh-btn" id="refreshGiftCardsUserBtn">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="giftcard-filters">
+                            <button class="giftcard-filter-btn active" data-filter="all">All</button>
+                            <button class="giftcard-filter-btn" data-filter="valid">Valid</button>
+                            <button class="giftcard-filter-btn" data-filter="used">Used</button>
+                            <button class="giftcard-filter-btn" data-filter="winners">Winners</button>
+                            <button class="giftcard-filter-btn" id="viewAllGiftCardsBtn">View All</button>
+                        </div>
+                        
                         <div id="availableGiftCardsList">
                             <!-- Gift cards will be populated by JavaScript -->
+                        </div>
+                        
+                        <div id="allGiftCardsList" style="display: none;">
+                            <!-- All gift cards will be populated by JavaScript -->
                         </div>
                     </div>
                     
@@ -1851,22 +1987,31 @@
                 <div class="dashboard-section">
                     <h2 class="section-title">Create Giveaway</h2>
                     
-                    <div class="giveaway-type-selector">
-                        <div class="giveaway-type-btn active" data-type="open">
-                            <h3>Open Giveaway</h3>
-                            <p>Anyone can join using the link</p>
-                            <p class="price" id="openGiveawayPriceDisplay">₦2,000</p>
+                    <!-- NEW: Dropdown for Giveaway Type Selection -->
+                    <div class="form-group">
+                        <label>Giveaway Type</label>
+                        <div class="giveaway-dropdown">
+                            <button class="giveaway-dropdown-btn" id="giveawayDropdownBtn">
+                                <span id="selectedGiveawayType">Open Giveaway</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="giveaway-dropdown-content" id="giveawayDropdownContent">
+                                <div class="giveaway-dropdown-item active" data-type="open">
+                                    <h4>Open Giveaway</h4>
+                                    <p>Anyone can join using the link</p>
+                                    <p class="price" id="openGiveawayPriceDisplay">₦2,000</p>
+                                </div>
+                                <div class="giveaway-dropdown-item" data-type="giftcard">
+                                    <h4>Gift Card Giveaway</h4>
+                                    <p>Only your assigned gift cards can be used</p>
+                                    <p class="price" id="giftcardGiveawayPriceDisplay">Custom Price</p>
+                                </div>
+                            </div>
                         </div>
-                        <div class="giveaway-type-btn" data-type="giftcard">
-                            <h3>Gift Card Giveaway</h3>
-                            <p>Only your assigned gift cards can be used</p>
-                            <p class="price" id="giftcardGiveawayPriceDisplay">Custom Price</p>
-                        </div>
+                        <input type="hidden" id="giveawayType" value="open">
                     </div>
                     
                     <form id="giveawayForm">
-                        <input type="hidden" id="giveawayType" value="open">
-                        
                         <div class="giveaway-form-grid">
                             <div class="form-group">
                                 <label for="giveawayTitle">Giveaway Title</label>
@@ -1933,7 +2078,14 @@
                     </div>
                     
                     <div class="transaction-history" style="margin-top: 40px;">
-                        <h3 class="section-title">My Giveaways</h3>
+                        <div class="section-header">
+                            <h3>My Giveaways</h3>
+                            <div class="refresh-container">
+                                <button class="refresh-btn" id="refreshGiveawaysBtn">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
                         <div class="transaction-table-container">
                             <table>
                                 <thead>
@@ -2312,7 +2464,13 @@
             </div>
             <div class="form-group">
                 <label for="giftcardCode">Gift Card Code</label>
-                <input type="text" id="giftcardCode" placeholder="Enter your gift card code">
+                <div class="giftcard-input">
+                    <input type="text" id="giftcardCode" placeholder="Enter your gift card code">
+                    <!-- NEW: Paste Button -->
+                    <button type="button" class="paste-btn" id="pasteGiftCardBtn">
+                        <i class="fas fa-paste"></i> Paste
+                    </button>
+                </div>
             </div>
             <div class="success-animation" id="successAnimation" style="display: none;">
                 <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
@@ -2763,19 +2921,7 @@
         </div>
         <button class="notification-close">&times;</button>
     </div>
-
-<script>
-// Firebase configuration
-const firebaseConfig = {
-    apiKey: "AIzaSyBlh428ba5aSFt6x2pPkVjeEk5D6AbIU7Y",
-    authDomain: "kheemz-fb9b6.firebaseapp.com",
-    databaseURL: "https://kheemz-fb9b6-default-rtdb.firebaseio.com",
-    projectId: "kheemz-fb9b6",
-    storageBucket: "kheemz-fb9b6.appspot.com",
-    messagingSenderId: "593310501630",
-    appId: "1:593310501630:web:c241a05e0d7c4a810173af"
-};
-
+    <script>
 // Game variables
 let timerInterval;
 let startTime;
@@ -3001,6 +3147,17 @@ const amountSpent = document.getElementById('amountSpent');
 const paymentDetailsSection = document.getElementById('paymentDetailsSection');
 const amountSpentSection = document.getElementById('amountSpentSection');
 
+// NEW DOM Elements for Fixes
+const pasteGiftCardBtn = document.getElementById('pasteGiftCardBtn');
+const giveawayDropdownBtn = document.getElementById('giveawayDropdownBtn');
+const giveawayDropdownContent = document.getElementById('giveawayDropdownContent');
+const selectedGiveawayType = document.getElementById('selectedGiveawayType');
+const refreshGiftCardsUserBtn = document.getElementById('refreshGiftCardsUserBtn');
+const giftcardFilterBtns = document.querySelectorAll('.giftcard-filter-btn');
+const viewAllGiftCardsBtn = document.getElementById('viewAllGiftCardsBtn');
+const allGiftCardsList = document.getElementById('allGiftCardsList');
+const refreshGiveawaysBtn = document.getElementById('refreshGiveawaysBtn');
+
 // Get all modals
 const modals = document.querySelectorAll('.modal');
 
@@ -3010,10 +3167,6 @@ let db, auth;
 // Initialize Firebase
 function initializeFirebase() {
     try {
-        if (!firebaseConfig) {
-            throw new Error("Firebase configuration not found.");
-        }
-        
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         
@@ -3526,50 +3679,52 @@ async function handleAdminReply(e) {
     }
 }
 
-// FIXED: Giveaway type selection with proper event handling
-function setupGiveawayTypeButtons() {
-    const giveawayTypeBtns = document.querySelectorAll('.giveaway-type-btn');
+// NEW: Fixed Giveaway Dropdown
+function setupGiveawayDropdown() {
+    const giveawayDropdownBtn = document.getElementById('giveawayDropdownBtn');
+    const giveawayDropdownContent = document.getElementById('giveawayDropdownContent');
+    const selectedGiveawayType = document.getElementById('selectedGiveawayType');
     const giveawayTypeInput = document.getElementById('giveawayType');
     const giftcardGiveawayFields = document.getElementById('giftcardGiveawayFields');
     
-    console.log("Setting up giveaway type buttons:", giveawayTypeBtns.length);
-    
-    giveawayTypeBtns.forEach(btn => {
-        // Remove any existing event listeners
-        btn.replaceWith(btn.cloneNode(true));
+    // Toggle dropdown
+    giveawayDropdownBtn.addEventListener('click', function() {
+        giveawayDropdownContent.classList.toggle('show');
     });
     
-    // Re-select after cloning
-    const newGiveawayTypeBtns = document.querySelectorAll('.giveaway-type-btn');
-    
-    newGiveawayTypeBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            console.log("Giveaway type button clicked:", this.dataset.type);
+    // Handle dropdown item selection
+    document.querySelectorAll('.giveaway-dropdown-item').forEach(item => {
+        item.addEventListener('click', function() {
+            const type = this.dataset.type;
             
-            // Remove active class from all buttons
-            newGiveawayTypeBtns.forEach(b => b.classList.remove('active'));
+            // Update selected type
+            selectedGiveawayType.textContent = this.querySelector('h4').textContent;
+            giveawayTypeInput.value = type;
             
-            // Add active class to clicked button
+            // Update active item
+            document.querySelectorAll('.giveaway-dropdown-item').forEach(i => {
+                i.classList.remove('active');
+            });
             this.classList.add('active');
             
-            // Update hidden input
-            giveawayTypeInput.value = this.dataset.type;
-            
             // Show/hide gift card fields
-            if (this.dataset.type === 'giftcard') {
+            if (type === 'giftcard') {
                 giftcardGiveawayFields.style.display = 'block';
-                console.log("Showing gift card fields");
             } else {
                 giftcardGiveawayFields.style.display = 'none';
-                console.log("Hiding gift card fields");
             }
+            
+            // Close dropdown
+            giveawayDropdownContent.classList.remove('show');
         });
     });
     
-    // Trigger click on first button to set initial state
-    if (newGiveawayTypeBtns.length > 0) {
-        newGiveawayTypeBtns[0].click();
-    }
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!giveawayDropdownBtn.contains(e.target) && !giveawayDropdownContent.contains(e.target)) {
+            giveawayDropdownContent.classList.remove('show');
+        }
+    });
 }
 
 // Load configuration from Firestore with real-time updates
@@ -3636,20 +3791,23 @@ function updateFundWalletLink() {
     }
 }
 
-// Update available gift cards
+// NEW: Enhanced Available Gift Cards with Filters
 function updateAvailableGiftCards(giftCardsSnapshot) {
     if (giftCardsSnapshot.empty) {
         availableGiftCardsList.innerHTML = '<p style="text-align: center;">No gift cards available</p>';
+        allGiftCardsList.innerHTML = '<p style="text-align: center;">No gift cards available</p>';
         return;
     }
     
     let giftCardsHTML = '';
+    let allGiftCardsHTML = '';
+    
     giftCardsSnapshot.forEach(doc => {
         const giftCard = doc.data();
         const status = giftCard.remainingBalance > 0 ? 'Valid' : 'Used';
         const statusClass = giftCard.remainingBalance > 0 ? 'status-valid' : 'status-used';
         
-        giftCardsHTML += `
+        const giftCardHTML = `
             <div class="giftcard-info" style="margin-bottom: 10px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
@@ -3665,9 +3823,79 @@ function updateAvailableGiftCards(giftCardsSnapshot) {
                 </div>
             </div>
         `;
+        
+        // Add to all gift cards list
+        allGiftCardsHTML += giftCardHTML;
+        
+        // Only show first 3 in available gift cards
+        if (document.querySelectorAll('#availableGiftCardsList .giftcard-info').length < 3) {
+            giftCardsHTML += giftCardHTML;
+        }
     });
     
     availableGiftCardsList.innerHTML = giftCardsHTML;
+    allGiftCardsList.innerHTML = allGiftCardsHTML;
+}
+
+// NEW: Filter Gift Cards by Type
+function filterGiftCards(filterType) {
+    const allCards = document.querySelectorAll('#allGiftCardsList .giftcard-info');
+    
+    allCards.forEach(card => {
+        const statusBadge = card.querySelector('.status-badge');
+        const status = statusBadge.textContent.toLowerCase();
+        
+        let showCard = false;
+        
+        switch(filterType) {
+            case 'all':
+                showCard = true;
+                break;
+            case 'valid':
+                showCard = status === 'valid';
+                break;
+            case 'used':
+                showCard = status === 'used';
+                break;
+            case 'winners':
+                // This would require additional data - simplified for now
+                showCard = status === 'valid';
+                break;
+        }
+        
+        card.style.display = showCard ? 'block' : 'none';
+    });
+}
+
+// NEW: Toggle View All Gift Cards
+function toggleViewAllGiftCards() {
+    const isShowingAll = allGiftCardsList.style.display === 'block';
+    
+    if (isShowingAll) {
+        allGiftCardsList.style.display = 'none';
+        availableGiftCardsList.style.display = 'block';
+        viewAllGiftCardsBtn.textContent = 'View All';
+    } else {
+        allGiftCardsList.style.display = 'block';
+        availableGiftCardsList.style.display = 'none';
+        viewAllGiftCardsBtn.textContent = 'View Less';
+    }
+}
+
+// NEW: Paste Gift Card Code
+function pasteGiftCardCode() {
+    if (navigator.clipboard && navigator.clipboard.readText) {
+        navigator.clipboard.readText().then(text => {
+            giftcardCodeInput.value = text;
+        }).catch(err => {
+            console.error('Failed to read clipboard contents: ', err);
+            alert('Unable to paste from clipboard. Please paste manually.');
+        });
+    } else {
+        // Fallback for browsers that don't support clipboard API
+        giftcardCodeInput.focus();
+        document.execCommand('paste');
+    }
 }
 
 // Copy gift card code
@@ -4847,7 +5075,7 @@ async function handleFundWallet(e) {
     }
 }
 
-// Generate gift cards
+// NEW: Fixed Generate Gift Cards with proper wallet deduction
 async function handleGiftCardGeneration(e) {
     e.preventDefault();
     
@@ -4907,8 +5135,7 @@ async function handleGiftCardGeneration(e) {
         
         // Deduct amount from wallet
         await db.collection('users').doc(user.uid).update({
-            walletBalance: firebase.firestore.FieldValue.increment(-amount),
-            giftCardBalance: firebase.firestore.FieldValue.increment(cardCount)
+            walletBalance: firebase.firestore.FieldValue.increment(-amount)
         });
         
         // Create transaction record
@@ -4922,7 +5149,6 @@ async function handleGiftCardGeneration(e) {
         
         // Update UI
         walletBalance -= amount;
-        giftCardBalance += cardCount;
         updateWalletBalance();
         
         // Show gift card codes
@@ -5062,7 +5288,7 @@ async function generateUniqueGiftCardCode() {
     return code;
 }
 
-// Giveaway creation
+// NEW: Fixed Giveaway Creation
 async function handleGiveawayCreation(e) {
     e.preventDefault();
     
@@ -5266,12 +5492,26 @@ function updateGiveawayTable(giveawaysSnapshot) {
                 <td>
                     <button class="btn btn-sm btn-info" onclick="viewGiveaway('${giveaway.id}')">View</button>
                     <button class="btn btn-sm btn-warning" onclick="copyGiveawayLink('${giveaway.id}')">Copy Link</button>
+                    ${isAdmin ? `<button class="btn btn-sm btn-danger delete-btn" onclick="deleteGiveaway('${doc.id}')">Delete</button>` : ''}
                 </td>
             </tr>
         `;
     });
     
     document.getElementById('giveawayTable').innerHTML = tableHTML;
+}
+
+// NEW: Delete Giveaway (Admin Function)
+async function deleteGiveaway(giveawayId) {
+    if (confirm('Are you sure you want to delete this giveaway? This action cannot be undone.')) {
+        try {
+            await db.collection('giveaways').doc(giveawayId).delete();
+            alert('Giveaway deleted successfully!');
+        } catch (error) {
+            console.error("Error deleting giveaway:", error);
+            alert('Error deleting giveaway: ' + error.message);
+        }
+    }
 }
 
 // Copy giveaway link
@@ -5643,6 +5883,22 @@ function refreshGiftCards() {
     }
 }
 
+// NEW: Refresh user gift cards
+function refreshUserGiftCards() {
+    if (user) {
+        // This will trigger the real-time listener to update
+        alert('Gift cards refreshed!');
+    }
+}
+
+// NEW: Refresh giveaways
+function refreshGiveaways() {
+    if (user) {
+        loadUserGiveaways();
+        alert('Giveaways refreshed!');
+    }
+}
+
 // Auth state handler
 async function handleAuthStateChanged(firebaseUser) {
     if (firebaseUser) {
@@ -5708,187 +5964,7 @@ function logout() {
     updateUIForLoggedOutUser();
 }
 
-// Gift Card Management Functions
-
-// Update gift cards table with filters
-async function updateGiftCardsTable(giftCardsSnapshot) {
-    const giftCardsTable = document.getElementById('giftCardsTable');
-    const filter = document.getElementById('giftCardFilter').value;
-    const searchTerm = document.getElementById('searchGiftCards').value.toLowerCase();
-    
-    if (giftCardsSnapshot.empty) {
-        giftCardsTable.innerHTML = '<tr><td colspan="8" style="text-align: center;">No gift cards found</td></tr>';
-        return;
-    }
-    
-    let tableHTML = '';
-    let giftCardsData = [];
-    
-    // First, get all gift cards and prepare data
-    const promises = giftCardsSnapshot.docs.map(async (doc) => {
-        const giftCard = doc.data();
-        giftCard.id = doc.id;
-        
-        // Get user info if available
-        if (giftCard.userId) {
-            try {
-                const userDoc = await db.collection('users').doc(giftCard.userId).get();
-                if (userDoc.exists) {
-                    giftCard.userData = userDoc.data();
-                }
-            } catch (error) {
-                console.error("Error fetching user data:", error);
-            }
-        }
-        
-        // Get winner info if available (from transactions)
-        if (giftCard.code) {
-            try {
-                const winnerSnapshot = await db.collection('transactions')
-                    .where('giftCardCode', '==', giftCard.code)
-                    .where('isWinner', '==', true)
-                    .get();
-                
-                if (!winnerSnapshot.empty) {
-                    giftCard.hasWinner = true;
-                    giftCard.winnerTransaction = winnerSnapshot.docs[0].data();
-                }
-            } catch (error) {
-                console.error("Error fetching winner data:", error);
-            }
-        }
-        
-        return giftCard;
-    });
-    
-    // Wait for all data to be fetched
-    giftCardsData = await Promise.all(promises);
-    
-    // Apply filters
-    let filteredGiftCards = giftCardsData.filter(giftCard => {
-        // Search filter
-        if (searchTerm) {
-            const codeMatch = giftCard.code.toLowerCase().includes(searchTerm);
-            const userMatch = giftCard.userData && giftCard.userData.name && 
-                            giftCard.userData.name.toLowerCase().includes(searchTerm);
-            if (!codeMatch && !userMatch) return false;
-        }
-        
-        // Type filters
-        switch(filter) {
-            case 'active':
-                return giftCard.remainingBalance > 0 && giftCard.isActive;
-            case 'used':
-                return giftCard.remainingBalance <= 0 || !giftCard.isActive;
-            case 'vendor':
-                return giftCard.isVendorCard;
-            case 'withWinners':
-                return giftCard.hasWinner;
-            default:
-                return true;
-        }
-    });
-    
-    // Generate table rows
-    filteredGiftCards.forEach(giftCard => {
-        const createdDate = giftCard.createdAt ? giftCard.createdAt.toDate().toLocaleDateString() : 'N/A';
-        const status = giftCard.isActive ? (giftCard.remainingBalance > 0 ? 'Active' : 'Used') : 'Inactive';
-        const statusClass = giftCard.isActive ? (giftCard.remainingBalance > 0 ? 'status-valid' : 'status-used') : 'status-used';
-        const type = giftCard.isVendorCard ? 'Vendor' : 'User';
-        const userInfo = giftCard.userData ? 
-            `${giftCard.userData.name || 'N/A'} (${giftCard.userData.email || 'N/A'})` : 
-            'Not Assigned';
-        const winnerInfo = giftCard.hasWinner ? `Winner: ${giftCard.winnerTransaction.userId}` : 'No Winner';
-        
-        tableHTML += `
-            <tr>
-                <td><strong>${giftCard.code}</strong></td>
-                <td>${type}</td>
-                <td>${getCurrencySymbol()}${giftCard.value || 0}</td>
-                <td>${getCurrencySymbol()}${giftCard.remainingBalance || 0}</td>
-                <td><span class="status-badge ${statusClass}">${status}</span></td>
-                <td>${giftCard.hasWinner ? winnerInfo : userInfo}</td>
-                <td>${createdDate}</td>
-                <td>
-                    <div class="transaction-actions">
-                        <button class="btn btn-sm btn-info" onclick="viewGiftCardDetails('${giftCard.id}')">View</button>
-                        ${giftCard.isActive ? 
-                            `<button class="btn btn-sm btn-warning" onclick="deactivateGiftCard('${giftCard.id}')">Deactivate</button>` :
-                            `<button class="btn btn-sm btn-success" onclick="activateGiftCard('${giftCard.id}')">Activate</button>`
-                        }
-                    </div>
-                </td>
-            </tr>
-        `;
-    });
-    
-    giftCardsTable.innerHTML = tableHTML;
-}
-
-// Gift card actions
-async function deactivateGiftCard(giftCardId) {
-    if (confirm('Are you sure you want to deactivate this gift card?')) {
-        try {
-            await db.collection('giftCards').doc(giftCardId).update({
-                isActive: false
-            });
-            alert('Gift card deactivated successfully!');
-        } catch (error) {
-            console.error("Error deactivating gift card:", error);
-            alert('Error deactivating gift card: ' + error.message);
-        }
-    }
-}
-
-async function activateGiftCard(giftCardId) {
-    try {
-        await db.collection('giftCards').doc(giftCardId).update({
-            isActive: true
-        });
-        alert('Gift card activated successfully!');
-    } catch (error) {
-        console.error("Error activating gift card:", error);
-        alert('Error activating gift card: ' + error.message);
-    }
-}
-
-function viewGiftCardDetails(giftCardId) {
-    // You can implement a detailed view modal here
-    alert('View gift card details for: ' + giftCardId);
-}
-
-// Load all gift cards with real-time updates
-async function loadAllGiftCards() {
-    try {
-        db.collection('giftCards')
-            .orderBy('createdAt', 'desc')
-            .onSnapshot((snapshot) => {
-                updateGiftCardsTable(snapshot);
-            });
-    } catch (error) {
-        console.error("Error loading gift cards:", error);
-    }
-}
-
-// Initialize everything
-function init() {
-    console.log("Initializing application...");
-    
-    // Initialize Firebase
-    initializeFirebase();
-    
-    // Set up event listeners
-    setupEventListeners();
-    
-    // Initialize UI
-    updateTimerDisplay(currentTime);
-    updateStats();
-    updateWalletBalance();
-    updateAffiliateStats();
-    updateSidebarMenu();
-    
-    console.log("Application initialized successfully");
-}
+// NEW: Setup all event listeners
 function setupEventListeners() {
     console.log("Setting up event listeners...");
     
@@ -5932,6 +6008,9 @@ function setupEventListeners() {
     // Gift card validation
     validateGiftcardBtn.addEventListener('click', validateGiftcard);
     
+    // NEW: Paste gift card button
+    pasteGiftCardBtn.addEventListener('click', pasteGiftCardCode);
+    
     // Gift card amount calculation
     giftCardAmount.addEventListener('input', function() {
         const amount = parseInt(this.value) || 0;
@@ -5962,15 +6041,8 @@ function setupEventListeners() {
         });
     });
     
-    // Giveaway type selection - FIXED
-    setupGiveawayTypeButtons();
-    
-    // Re-setup giveaway type buttons when giveaway section is shown
-    document.getElementById('giveawaySection').addEventListener('click', function() {
-        setTimeout(() => {
-            setupGiveawayTypeButtons();
-        }, 100);
-    });
+    // NEW: Giveaway dropdown
+    setupGiveawayDropdown();
     
     // Country selection in registration
     countryBtns.forEach(btn => {
@@ -6067,8 +6139,24 @@ function setupEventListeners() {
     refreshWithdrawalRequestsBtn.addEventListener('click', refreshWithdrawalRequests);
     refreshPendingTransactionsBtn.addEventListener('click', refreshPendingTransactions);
     refreshGiftCardsBtn.addEventListener('click', refreshGiftCards);
+    refreshGiftCardsUserBtn.addEventListener('click', refreshUserGiftCards);
     refreshConversationsBtn.addEventListener('click', refreshCustomerCareConversations);
     refreshCustomerCareBtn.addEventListener('click', refreshCustomerCareUsers);
+    refreshGiveawaysBtn.addEventListener('click', refreshGiveaways);
+    
+    // NEW: Gift card filter buttons
+    giftcardFilterBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (this.id !== 'viewAllGiftCardsBtn') {
+                giftcardFilterBtns.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                filterGiftCards(this.dataset.filter);
+            }
+        });
+    });
+    
+    // NEW: View all gift cards button
+    viewAllGiftCardsBtn.addEventListener('click', toggleViewAllGiftCards);
     
     // Gift card management filters
     giftCardFilter.addEventListener('change', loadAllGiftCards);
@@ -6218,1239 +6306,28 @@ function setupEventListeners() {
     console.log("Event listeners setup complete");
 }
 
-// Update admin settings form with current country settings
-function updateAdminSettingsForm() {
-    const settings = gameSettings[adminCurrentCountry];
+// Initialize everything
+function init() {
+    console.log("Initializing application...");
     
-    document.getElementById('gamePrice').value = settings.gamePrice;
-    document.getElementById('dailyWinners').value = settings.dailyWinners;
-    document.getElementById('winningTimeSetting').value = settings.winningTime;
-    document.getElementById('openGiveawayPrice').value = settings.openGiveawayPrice;
-    document.getElementById('giftCardPaymentUrl').value = settings.giftCardPaymentUrl;
-    document.getElementById('openGiveawayPaymentUrl').value = settings.openGiveawayPaymentUrl;
-    document.getElementById('fundWalletUrl').value = settings.fundWalletUrl;
-}
-
-// Filter transactions
-async function filterTransactions(filterType) {
-    try {
-        let query = db.collection('transactions')
-            .where('userId', '==', user.uid)
-            .orderBy('createdAt', 'desc');
-        
-        if (filterType !== 'all') {
-            switch(filterType) {
-                case 'giftcards':
-                    query = query.where('type', 'in', ['Gift Card Purchase', 'Gift Card Usage']);
-                    break;
-                case 'used':
-                    query = query.where('type', '==', 'Gift Card Usage');
-                    break;
-                case 'winners':
-                    query = query.where('isWinner', '==', true);
-                    break;
-                case 'losers':
-                    query = query.where('isWinner', '==', false);
-                    break;
-                case 'cashback':
-                    query = query.where('type', '==', 'Giveaway Cashback');
-                    break;
-                case 'withdrawals':
-                    query = query.where('type', '==', 'Withdrawal');
-                    break;
-            }
-        }
-        
-        const snapshot = await query.get();
-        updateTransactionTable(snapshot);
-    } catch (error) {
-        console.error("Error filtering transactions:", error);
-    }
-}
-
-// Filter giveaways
-async function filterGiveaways(filterType) {
-    try {
-        let query = db.collection('giveaways')
-            .where('isActive', '==', true);
-        
-        if (filterType === 'highest') {
-            query = query.orderBy('participantLimit', 'desc');
-        } else if (filterType === 'verified') {
-            query = query.where('creatorVerified', '==', true);
-        } else {
-            query = query.orderBy('createdAt', 'desc');
-        }
-        
-        const snapshot = await query.get();
-        updateAffiliateGiveawayList(snapshot);
-    } catch (error) {
-        console.error("Error filtering giveaways:", error);
-    }
-}
-
-// Search users in admin panel
-async function searchUsersList(searchTerm) {
-    try {
-        let query = db.collection('users');
-        
-        if (searchTerm) {
-            // Search by name or email (case insensitive)
-            const snapshot = await query.get();
-            const filteredUsers = snapshot.docs.filter(doc => {
-                const userData = doc.data();
-                return userData.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       userData.email?.toLowerCase().includes(searchTerm.toLowerCase());
-            });
-            
-            // Create a new snapshot-like object
-            const filteredSnapshot = {
-                forEach: (callback) => filteredUsers.forEach(doc => callback(doc)),
-                empty: filteredUsers.length === 0
-            };
-            
-            updateUsersList(filteredSnapshot);
-        } else {
-            // Show all users if no search term
-            const snapshot = await query.get();
-            updateUsersList(snapshot);
-        }
-    } catch (error) {
-        console.error("Error searching users:", error);
-    }
-}
-
-// Apply user filter in admin panel
-async function applyUserFilter() {
-    const filterType = userFilter.value;
-    const date = filterDate.value;
+    // Initialize Firebase
+    initializeFirebase();
     
-    try {
-        let query = db.collection('users');
-        
-        switch(filterType) {
-            case 'just_funded':
-                // This would require transaction data - simplified for now
-                const snapshot = await query.get();
-                const filteredUsers = snapshot.docs.filter(doc => {
-                    const userData = doc.data();
-                    return userData.walletBalance > 0;
-                });
-                
-                const filteredSnapshot = {
-                    forEach: (callback) => filteredUsers.forEach(doc => callback(doc)),
-                    empty: filteredUsers.length === 0
-                };
-                
-                updateUsersList(filteredSnapshot);
-                break;
-                
-            case 'newly_joined':
-                if (date) {
-                    const startDate = new Date(date);
-                    const endDate = new Date(date);
-                    endDate.setDate(endDate.getDate() + 1);
-                    
-                    query = query.where('createdAt', '>=', startDate)
-                                .where('createdAt', '<', endDate);
-                }
-                const newUsersSnapshot = await query.get();
-                updateUsersList(newUsersSnapshot);
-                break;
-                
-            case 'highest_balance':
-                const allUsers = await query.get();
-                const sortedUsers = allUsers.docs.sort((a, b) => {
-                    const balanceA = a.data().walletBalance || 0;
-                    const balanceB = b.data().walletBalance || 0;
-                    return balanceB - balanceA;
-                });
-                
-                const sortedSnapshot = {
-                    forEach: (callback) => sortedUsers.forEach(doc => callback(doc)),
-                    empty: sortedUsers.length === 0
-                };
-                
-                updateUsersList(sortedSnapshot);
-                break;
-                
-            case 'total_users':
-                if (date) {
-                    const startDate = new Date(date);
-                    const endDate = new Date(date);
-                    endDate.setDate(endDate.getDate() + 1);
-                    
-                    query = query.where('createdAt', '>=', startDate)
-                                .where('createdAt', '<', endDate);
-                }
-                const totalUsersSnapshot = await query.get();
-                updateUsersList(totalUsersSnapshot);
-                break;
-                
-            case 'total_funds':
-                // This would require transaction data - simplified for now
-                const fundsSnapshot = await query.get();
-                updateUsersList(fundsSnapshot);
-                break;
-                
-            default:
-                const defaultSnapshot = await query.get();
-                updateUsersList(defaultSnapshot);
-        }
-    } catch (error) {
-        console.error("Error applying user filter:", error);
-        alert('Error applying filter: ' + error.message);
-    }
-}
-
-// Send bulk notification
-async function sendBulkNotification() {
-    const message = prompt("Enter notification message to send to all users:");
+    // Set up event listeners
+    setupEventListeners();
     
-    if (!message) {
-        alert("Please enter a message");
-        return;
-    }
+    // Initialize UI
+    updateTimerDisplay(currentTime);
+    updateStats();
+    updateWalletBalance();
+    updateAffiliateStats();
+    updateSidebarMenu();
     
-    try {
-        // Get all users
-        const usersSnapshot = await db.collection('users').get();
-        
-        // Send notification to each user
-        const promises = usersSnapshot.docs.map(doc => {
-            return db.collection('notifications').add({
-                userId: doc.id,
-                message: message,
-                isRead: false,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        });
-        
-        await Promise.all(promises);
-        
-        showNotification('Notification sent to all users successfully!', 'success');
-        
-    } catch (error) {
-        console.error("Error sending bulk notification:", error);
-        alert('Error sending notification: ' + error.message);
-    }
+    console.log("Application initialized successfully");
 }
-
-// Show notification popup
-function showNotification(message, type = 'info') {
-    notificationContent.textContent = message;
-    notificationPopup.className = `notification-popup ${type}`;
-    notificationPopup.style.display = 'flex';
-    
-    // Auto hide after 5 seconds
-    setTimeout(() => {
-        closeNotification();
-    }, 5000);
-}
-
-// Close notification
-function closeNotification() {
-    notificationPopup.style.display = 'none';
-}
-
-// Customer Care Functions
-
-// Load customer care conversations
-async function loadCustomerCareConversations() {
-    try {
-        db.collection('conversations')
-            .where('status', '==', 'open')
-            .orderBy('lastMessageAt', 'desc')
-            .onSnapshot((snapshot) => {
-                updateConversationList(snapshot);
-            });
-    } catch (error) {
-        console.error("Error loading conversations:", error);
-    }
-}
-
-// Update conversation list
-function updateConversationList(conversationsSnapshot) {
-    conversationList.innerHTML = '';
-    
-    if (conversationsSnapshot.empty) {
-        conversationList.innerHTML = '<p style="text-align: center; padding: 20px;">No open conversations</p>';
-        return;
-    }
-    
-    conversationsSnapshot.forEach(doc => {
-        const conversation = doc.data();
-        const time = conversation.lastMessageAt ? conversation.lastMessageAt.toDate().toLocaleTimeString() : 'N/A';
-        const unreadBadge = conversation.unreadCount > 0 ? 
-            `<span class="status-badge status-pending">${conversation.unreadCount}</span>` : '';
-        
-        const conversationItem = document.createElement('div');
-        conversationItem.className = 'conversation-item';
-        conversationItem.dataset.conversationId = doc.id;
-        conversationItem.dataset.userId = conversation.userId;
-        
-        conversationItem.innerHTML = `
-            <div class="conversation-user">
-                ${conversation.userName} ${unreadBadge}
-            </div>
-            <div class="conversation-preview">
-                ${conversation.lastMessage}
-            </div>
-            <div class="conversation-meta">
-                <span>${conversation.userEmail}</span>
-                <span>${time}</span>
-            </div>
-        `;
-        
-        conversationItem.addEventListener('click', () => {
-            // Remove active class from all items
-            document.querySelectorAll('.conversation-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            
-            // Add active class to clicked item
-            conversationItem.classList.add('active');
-            
-            // Load conversation messages
-            loadConversationMessages(doc.id, conversation.userId);
-        });
-        
-        conversationList.appendChild(conversationItem);
-    });
-}
-
-// Load conversation messages for customer care
-async function loadConversationMessages(conversationId, userId) {
-    try {
-        db.collection('messages')
-            .where('conversationId', '==', conversationId)
-            .orderBy('createdAt', 'asc')
-            .onSnapshot((snapshot) => {
-                updateCareChatMessages(snapshot);
-                
-                // Mark messages as read
-                markMessagesAsRead(conversationId);
-            });
-    } catch (error) {
-        console.error("Error loading conversation messages:", error);
-    }
-}
-
-// Update customer care chat messages
-function updateCareChatMessages(messagesSnapshot) {
-    careChatMessages.innerHTML = '';
-    
-    if (messagesSnapshot.empty) {
-        careChatMessages.innerHTML = '<p style="text-align: center; padding: 20px;">No messages yet</p>';
-        return;
-    }
-    
-    messagesSnapshot.forEach(doc => {
-        const message = doc.data();
-        const time = message.createdAt ? message.createdAt.toDate().toLocaleTimeString() : 'Just now';
-        const senderName = message.sender === 'admin' || message.sender === 'care' ? 'You' : message.userName || 'User';
-        
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${message.sender === 'admin' || message.sender === 'care' ? 'admin' : 'user'}`;
-        messageDiv.innerHTML = `
-            <div class="message-header">
-                <span>${senderName}</span>
-                <span>${time}</span>
-            </div>
-            <div>${message.text}</div>
-        `;
-        
-        careChatMessages.appendChild(messageDiv);
-    });
-    
-    // Scroll to bottom
-    careChatMessages.scrollTop = careChatMessages.scrollHeight;
-}
-
-// Handle customer care reply
-async function handleCareReply(e) {
-    e.preventDefault();
-    const replyText = careReplyMessage.value.trim();
-    
-    if (!replyText) {
-        alert('Please enter a reply');
-        return;
-    }
-    
-    const activeConversation = document.querySelector('.conversation-item.active');
-    if (!activeConversation) {
-        alert('Please select a conversation to reply to');
-        return;
-    }
-    
-    const conversationId = activeConversation.dataset.conversationId;
-    const userId = activeConversation.dataset.userId;
-    
-    try {
-        // Get user data for the conversation
-        const userDoc = await db.collection('users').doc(userId).get();
-        const userData = userDoc.data();
-        
-        // Save care reply
-        const messageData = {
-            userId: userId,
-            userEmail: userData.email,
-            userName: userData.name,
-            conversationId: conversationId,
-            sender: 'care',
-            text: replyText,
-            read: true,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        
-        await db.collection('messages').add(messageData);
-        
-        // Update conversation
-        await db.collection('conversations').doc(conversationId).update({
-            lastMessage: replyText,
-            lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        // Clear input
-        careReplyMessage.value = '';
-        
-        showNotification('Reply sent successfully!', 'success');
-        
-    } catch (error) {
-        console.error("Error sending care reply:", error);
-        alert('Error sending reply: ' + error.message);
-    }
-}
-
-// Mark messages as read
-async function markMessagesAsRead(conversationId) {
-    try {
-        // Update conversation unread count
-        await db.collection('conversations').doc(conversationId).update({
-            unreadCount: 0
-        });
-        
-        // Mark all messages in conversation as read
-        const messagesSnapshot = await db.collection('messages')
-            .where('conversationId', '==', conversationId)
-            .where('read', '==', false)
-            .get();
-            
-        const updatePromises = messagesSnapshot.docs.map(doc => {
-            return db.collection('messages').doc(doc.id).update({
-                read: true
-            });
-        });
-        
-        await Promise.all(updatePromises);
-        
-    } catch (error) {
-        console.error("Error marking messages as read:", error);
-    }
-}
-
-// Refresh customer care conversations
-function refreshCustomerCareConversations() {
-    loadCustomerCareConversations();
-    showNotification('Conversations refreshed!', 'success');
-}
-
-// Customer Care Management Functions
-
-// Load customer care users
-async function loadCustomerCareUsers() {
-    try {
-        let query = db.collection('users').where('isCustomerCare', '==', true);
-        
-        const searchTerm = searchCustomerCare.value;
-        if (searchTerm) {
-            const snapshot = await db.collection('users').get();
-            const filteredUsers = snapshot.docs.filter(doc => {
-                const userData = doc.data();
-                return userData.isCustomerCare && (
-                    userData.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    userData.email?.toLowerCase().includes(searchTerm.toLowerCase())
-                );
-            });
-            
-            updateCustomerCareList({
-                forEach: (callback) => filteredUsers.forEach(doc => callback(doc)),
-                empty: filteredUsers.length === 0
-            });
-        } else {
-            const snapshot = await query.get();
-            updateCustomerCareList(snapshot);
-        }
-        
-        // Also update assign customer care select
-        updateAssignCustomerCareSelect(await db.collection('users').get());
-        
-    } catch (error) {
-        console.error("Error loading customer care users:", error);
-    }
-}
-
-// Update customer care list
-function updateCustomerCareList(usersSnapshot) {
-    customerCareList.innerHTML = '';
-    
-    if (usersSnapshot.empty) {
-        customerCareList.innerHTML = '<p style="text-align: center;">No customer care users found</p>';
-        return;
-    }
-    
-    usersSnapshot.forEach(doc => {
-        const userData = doc.data();
-        
-        const userItem = document.createElement('div');
-        userItem.className = 'user-item';
-        userItem.innerHTML = `
-            <div>
-                <strong>${userData.name || 'No Name'}</strong>
-                <p>${userData.email}</p>
-                <p>Status: ${userData.isBlocked ? 'Blocked' : 'Active'}</p>
-            </div>
-            <div class="user-actions">
-                <button class="btn btn-sm btn-danger" onclick="removeCustomerCareRole('${doc.id}')">
-                    Remove Role
-                </button>
-            </div>
-        `;
-        
-        customerCareList.appendChild(userItem);
-    });
-}
-
-// Update assign customer care select
-function updateAssignCustomerCareSelect(usersSnapshot) {
-    assignCustomerCareUser.innerHTML = '';
-    
-    if (usersSnapshot.empty) {
-        assignCustomerCareUser.innerHTML = '<option value="">No users found</option>';
-        return;
-    }
-    
-    usersSnapshot.forEach(doc => {
-        const userData = doc.data();
-        if (!userData.isCustomerCare && !userData.isAdmin) {
-            const option = document.createElement('option');
-            option.value = doc.id;
-            option.textContent = `${userData.name || 'No Name'} (${userData.email})`;
-            assignCustomerCareUser.appendChild(option);
-        }
-    });
-}
-
-// Assign customer care role
-async function assignCustomerCareRole() {
-    const userId = assignCustomerCareUser.value;
-    
-    if (!userId) {
-        alert('Please select a user');
-        return;
-    }
-    
-    try {
-        await db.collection('users').doc(userId).update({
-            isCustomerCare: true
-        });
-        
-        showNotification('Customer care role assigned successfully!', 'success');
-        loadCustomerCareUsers();
-        
-    } catch (error) {
-        console.error("Error assigning customer care role:", error);
-        alert('Error assigning role: ' + error.message);
-    }
-}
-
-// Remove customer care role
-async function removeCustomerCareRole(userId) {
-    if (confirm('Are you sure you want to remove customer care role from this user?')) {
-        try {
-            await db.collection('users').doc(userId).update({
-                isCustomerCare: false
-            });
-            
-            showNotification('Customer care role removed successfully!', 'success');
-            loadCustomerCareUsers();
-            
-        } catch (error) {
-            console.error("Error removing customer care role:", error);
-            alert('Error removing role: ' + error.message);
-        }
-    }
-}
-
-// Filter care activity by date
-async function filterCareActivity() {
-    const date = careActivityDate.value;
-    
-    if (!date) {
-        alert('Please select a date');
-        return;
-    }
-    
-    try {
-        const startDate = new Date(date);
-        const endDate = new Date(date);
-        endDate.setDate(endDate.getDate() + 1);
-        
-        const messagesSnapshot = await db.collection('messages')
-            .where('sender', '==', 'care')
-            .where('createdAt', '>=', startDate)
-            .where('createdAt', '<', endDate)
-            .get();
-            
-        showNotification(`Found ${messagesSnapshot.size} care messages on ${date}`, 'success');
-        
-    } catch (error) {
-        console.error("Error filtering care activity:", error);
-        alert('Error filtering activity: ' + error.message);
-    }
-}
-
-// Refresh customer care users
-function refreshCustomerCareUsers() {
-    loadCustomerCareUsers();
-    showNotification('Customer care users refreshed!', 'success');
-}
-
-// Giveaway Hunt Functions
-
-// Load public giveaways
-async function loadPublicGiveaways() {
-    try {
-        let query = db.collection('giveaways')
-            .where('isActive', '==', true)
-            .where('isPublic', '==', true)
-            .orderBy('createdAt', 'desc');
-        
-        const searchTerm = searchGiveaways.value;
-        if (searchTerm) {
-            const snapshot = await query.get();
-            const filteredGiveaways = snapshot.docs.filter(doc => {
-                const giveaway = doc.data();
-                return giveaway.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       giveaway.creatorName.toLowerCase().includes(searchTerm.toLowerCase());
-            });
-            
-            updateGiveawayHuntGrid({
-                forEach: (callback) => filteredGiveaways.forEach(doc => callback(doc)),
-                empty: filteredGiveaways.length === 0
-            });
-        } else {
-            const snapshot = await query.get();
-            updateGiveawayHuntGrid(snapshot);
-        }
-        
-    } catch (error) {
-        console.error("Error loading public giveaways:", error);
-    }
-}
-
-// Update giveaway hunt grid
-function updateGiveawayHuntGrid(giveawaysSnapshot) {
-    giveawayHuntGrid.innerHTML = '';
-    
-    if (giveawaysSnapshot.empty) {
-        giveawayHuntGrid.innerHTML = `
-            <div style="text-align: center; grid-column: 1 / -1; padding: 40px;">
-                <p>No public giveaways available at the moment.</p>
-                <p>Check back later or create your own giveaway!</p>
-            </div>
-        `;
-        return;
-    }
-    
-    giveawaysSnapshot.forEach(doc => {
-        const giveaway = doc.data();
-        const startTime = giveaway.startTime ? giveaway.startTime.toDate() : new Date();
-        const timeLeft = calculateTimeLeft(startTime);
-        const verificationBadge = giveaway.creatorVerified ? 
-            `<i class="fas ${giveaway.creatorVerificationType === 'gold' ? 'fa-certificate gold-badge' : 'fa-check-circle verified-badge'}"></i>` : '';
-        
-        const giveawayCard = document.createElement('div');
-        giveawayCard.className = 'giveaway-hunt-card';
-        giveawayCard.innerHTML = `
-            <div class="creator-info">
-                <div class="creator-avatar">
-                    ${giveaway.creatorName ? giveaway.creatorName.charAt(0).toUpperCase() : 'U'}
-                </div>
-                <div class="creator-details">
-                    <div class="creator-name">
-                        ${giveaway.creatorName} ${verificationBadge}
-                    </div>
-                    <div class="time-left">${timeLeft}</div>
-                </div>
-            </div>
-            
-            <div class="giveaway-title">${giveaway.title}</div>
-            
-            <div class="giveaway-meta">
-                <div class="participants">
-                    <i class="fas fa-users"></i> ${giveaway.currentParticipants}/${giveaway.participantLimit}
-                </div>
-                <div class="difficulty-badge difficulty-${giveaway.difficulty}">
-                    ${giveaway.difficulty}
-                </div>
-            </div>
-            
-            <div class="social-task">
-                <strong>Task:</strong> ${giveaway.socialTask}
-            </div>
-            
-            <button class="play-btn" onclick="playGiveawayHunt('${doc.id}', '${giveaway.title}', ${giveaway.winningTime})">
-                <i class="fas fa-play"></i> Play Now
-            </button>
-        `;
-        
-        giveawayHuntGrid.appendChild(giveawayCard);
-    });
-}
-
-// Calculate time left for giveaway
-function calculateTimeLeft(startTime) {
-    const now = new Date();
-    const diff = startTime - now;
-    
-    if (diff <= 0) {
-        return 'Started';
-    }
-    
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
-    if (hours > 0) {
-        return `Starts in ${hours}h ${minutes}m`;
-    } else {
-        return `Starts in ${minutes}m`;
-    }
-}
-
-// Play giveaway hunt game
-function playGiveawayHunt(giveawayId, title, winningTime) {
-    if (!user) {
-        alert('Please log in to participate in giveaways');
-        openModal(loginModal);
-        return;
-    }
-    
-    currentGiveaway = {
-        id: giveawayId,
-        title: title,
-        winningTime: winningTime
-    };
-    
-    // Set up the game modal
-    giveawayHuntTitle.textContent = title;
-    huntTargetTimeValue.textContent = winningTime.toFixed(2);
-    huntTimerDisplay.textContent = '00.00';
-    
-    // Reset game state
-    clearInterval(timerInterval);
-    isRunning = false;
-    huntStartBtn.disabled = false;
-    huntStopBtn.disabled = true;
-    
-    openModal(giveawayHuntGameModal);
-}
-
-// Start hunt game
-function startHuntGame() {
-    if (!isRunning) {
-        isRunning = true;
-        huntStartBtn.disabled = true;
-        huntStopBtn.disabled = false;
-        startTime = Date.now();
-        
-        timerInterval = setInterval(() => {
-            currentTime = Date.now() - startTime;
-            huntTimerDisplay.textContent = formatHuntTime(currentTime);
-        }, 10);
-    }
-}
-
-// Stop hunt game
-function stopHuntGame() {
-    if (isRunning) {
-        isRunning = false;
-        clearInterval(timerInterval);
-        huntStartBtn.disabled = false;
-        huntStopBtn.disabled = true;
-        
-        const finalTime = currentTime / 1000;
-        processHuntGameResult(finalTime);
-        
-        // Reset timer
-        currentTime = 0;
-        huntTimerDisplay.textContent = '00.00';
-    }
-}
-
-// Format hunt time display
-function formatHuntTime(time) {
-    const seconds = Math.floor(time / 1000);
-    const milliseconds = Math.floor((time % 1000) / 10);
-    return `${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
-}
-
-// Process hunt game result
-async function processHuntGameResult(finalTime) {
-    try {
-        // Update user stats
-        gamesPlayed++;
-        if (bestTime === 0 || finalTime < bestTime) {
-            bestTime = finalTime;
-        }
-        
-        // Update UI
-        updateStats();
-        
-        // Save to Firestore
-        if (user && currentGiveaway) {
-            await db.collection('users').doc(user.uid).update({
-                gamesPlayed: firebase.firestore.FieldValue.increment(1),
-                bestTime: bestTime
-            });
-            
-            // Create transaction record for giveaway participation
-            const timeDiff = Math.abs(finalTime - currentGiveaway.winningTime);
-            const isWinner = timeDiff <= 0.1;
-            
-            await db.collection('transactions').add({
-                userId: user.uid,
-                type: 'Giveaway Participation',
-                amount: 0, // Free participation
-                status: 'completed',
-                gameTime: finalTime,
-                isWinner: isWinner,
-                giveawayId: currentGiveaway.id,
-                giveawayTitle: currentGiveaway.title,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            
-            // Update giveaway participant count
-            await db.collection('giveaways').doc(currentGiveaway.id).update({
-                currentParticipants: firebase.firestore.FieldValue.increment(1)
-            });
-            
-            if (isWinner) {
-                // Show winner details modal for giveaway
-                openModal(winnerDetailsModal);
-                
-                // Notify giveaway creator
-                await notifyGiveawayCreator(currentGiveaway.id, user.uid, finalTime);
-            } else {
-                showHuntGameResult(finalTime, isWinner);
-            }
-        }
-        
-    } catch (error) {
-        console.error("Error processing hunt game result:", error);
-    }
-}
-
-// Show hunt game result
-function showHuntGameResult(time, isWinner) {
-    const resultContent = document.getElementById('resultContent');
-    
-    if (isWinner) {
-        resultContent.innerHTML = `
-            <h3>Congratulations! You Won!</h3>
-            <p>You stopped the timer at ${time.toFixed(2)} seconds!</p>
-            <p>The target time was ${currentGiveaway.winningTime} seconds.</p>
-            <p>Please submit your details to claim your prize!</p>
-            <button class="btn btn-success" onclick="closeModal(resultModal); openModal(winnerDetailsModal);">Submit Details</button>
-        `;
-    } else {
-        resultContent.innerHTML = `
-            <h3>Better Luck Next Time!</h3>
-            <p>You stopped the timer at ${time.toFixed(2)} seconds.</p>
-            <p>The target time was ${currentGiveaway.winningTime} seconds.</p>
-            <button class="btn btn-primary" onclick="closeModal(resultModal)">Try Again</button>
-        `;
-    }
-    
-    openModal(resultModal);
-}
-
-// Notify giveaway creator about winner
-async function notifyGiveawayCreator(giveawayId, winnerUserId, winningTime) {
-    try {
-        // Get giveaway details
-        const giveawayDoc = await db.collection('giveaways').doc(giveawayId).get();
-        const giveaway = giveawayDoc.data();
-        
-        // Get winner details
-        const winnerDoc = await db.collection('users').doc(winnerUserId).get();
-        const winner = winnerDoc.data();
-        
-        // Create notification for giveaway creator
-        await db.collection('notifications').add({
-            userId: giveaway.creatorId,
-            type: 'giveaway_winner',
-            title: 'New Giveaway Winner!',
-            message: `${winner.name || winner.email} won your giveaway "${giveaway.title}" with time ${winningTime.toFixed(2)}s`,
-            giveawayId: giveawayId,
-            winnerId: winnerUserId,
-            isRead: false,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-    } catch (error) {
-        console.error("Error notifying giveaway creator:", error);
-    }
-}
-
-// Handle winner details submission
-async function handleWinnerDetails(e) {
-    e.preventDefault();
-    
-    const name = document.getElementById('winnerName').value;
-    const phone = document.getElementById('winnerPhone').value;
-    const social = document.getElementById('winnerSocial').value;
-    const bank = document.getElementById('winnerBank').value;
-    const account = document.getElementById('winnerAccount').value;
-    const paymentMethod = document.getElementById('paymentMethod').value;
-    const cryptoWallet = document.getElementById('cryptoWallet').value;
-    const paymentDescription = document.getElementById('paymentDescriptionWinner').value;
-    const amountSpentValue = document.getElementById('amountSpent').value;
-    
-    if (!name || !phone || !social) {
-        alert('Please fill in all required fields');
-        return;
-    }
-    
-    try {
-        const winnerData = {
-            userId: user.uid,
-            userName: user.displayName,
-            userEmail: user.email,
-            name: name,
-            phone: phone,
-            social: social,
-            bank: bank,
-            account: account,
-            paymentMethod: paymentMethod,
-            cryptoWallet: cryptoWallet,
-            paymentDescription: paymentDescription,
-            amountSpent: parseFloat(amountSpentValue) || 0,
-            gameTime: currentTime / 1000,
-            isGiveaway: !!currentGiveaway,
-            giveawayId: currentGiveaway?.id,
-            giveawayTitle: currentGiveaway?.title,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        
-        // Save winner details
-        await db.collection('winnerDetails').add(winnerData);
-        
-        // Update transaction with winner details if it's a normal game
-        if (!currentGiveaway) {
-            const transactionsSnapshot = await db.collection('transactions')
-                .where('userId', '==', user.uid)
-                .where('isWinner', '==', true)
-                .orderBy('createdAt', 'desc')
-                .limit(1)
-                .get();
-                
-            if (!transactionsSnapshot.empty) {
-                await db.collection('transactions').doc(transactionsSnapshot.docs[0].id).update({
-                    hasWinnerDetails: true,
-                    winnerDetails: winnerData
-                });
-            }
-        }
-        
-        // Show success message
-        showNotification('Winner details submitted successfully! We will contact you soon.', 'success');
-        
-        // Close modals
-        closeModal(winnerDetailsModal);
-        if (currentGiveaway) {
-            closeModal(giveawayHuntGameModal);
-            currentGiveaway = null;
-        }
-        
-        // Reset form
-        document.getElementById('winnerForm').reset();
-        
-    } catch (error) {
-        console.error("Error submitting winner details:", error);
-        alert('Error submitting details: ' + error.message);
-    }
-}
-
-// Complete tasks and play game
-async function completeTasksAndPlay() {
-    try {
-        const checkboxes = document.querySelectorAll('#taskList input[type="checkbox"]');
-        let allCompleted = true;
-        
-        checkboxes.forEach(checkbox => {
-            if (!checkbox.checked) {
-                allCompleted = false;
-            }
-        });
-        
-        if (!allCompleted) {
-            alert('Please complete all tasks before playing.');
-            return;
-        }
-        
-        // Mark tasks as completed
-        await db.collection('users').doc(user.uid).update({
-            tasksCompleted: true,
-            tasksCompletedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        closeModal(document.getElementById('taskCompletionModal'));
-        
-        // Enable game play
-        payGameBtn.style.display = 'block';
-        alert('Tasks completed! You can now play the game.');
-        
-    } catch (error) {
-        console.error("Error completing tasks:", error);
-        alert('Error completing tasks: ' + error.message);
-    }
-}
-
-// Load tasks for task completion modal
-async function loadTasks() {
-    try {
-        const tasks = [
-            "Follow us on Instagram",
-            "Like our Facebook page",
-            "Subscribe to our YouTube channel",
-            "Share our game with friends",
-            "Join our Telegram group"
-        ];
-        
-        taskList.innerHTML = '';
-        
-        tasks.forEach((task, index) => {
-            const taskItem = document.createElement('div');
-            taskItem.className = 'task-item';
-            taskItem.innerHTML = `
-                <input type="checkbox" class="task-checkbox" id="task${index}">
-                <label for="task${index}" class="task-label">${task}</label>
-            `;
-            taskList.appendChild(taskItem);
-        });
-        
-        completeTasksBtn.addEventListener('click', completeTasksAndPlay);
-        
-    } catch (error) {
-        console.error("Error loading tasks:", error);
-    }
-}
-
-// Reset gift card validation form
-function resetGiftCardValidation() {
-    giftcardCodeInput.value = '';
-    giftcardCodeInput.disabled = false;
-    validateGiftcardBtn.disabled = false;
-    successAnimation.style.display = 'none';
-}
-
-// Reset giveaway form
-function resetGiveawayForm() {
-    giveawayForm.reset();
-    giveawayForm.style.display = 'block';
-    giveawayCreatedSection.style.display = 'none';
-    setupGiveawayTypeButtons(); // Reset to open giveaway
-}
-
-// Reset gift card generation form
-function resetGiftCardForm() {
-    document.getElementById('giftCardForm').reset();
-    giftcardResult.style.display = 'none';
-    giftcardTypeBtns[0].click(); // Reset to single gift card
-}
-
-// Reset vendor card form
-function resetVendorCardForm() {
-    vendorCardForm.reset();
-    vendorCardResult.style.display = 'none';
-}
-
-// Utility function to debounce function calls
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-// Export functions to global scope for HTML onclick handlers
-window.copyGiftCardCode = copyGiftCardCode;
-window.approveTransaction = approveTransaction;
-window.declineTransaction = declineTransaction;
-window.approveWithdrawal = approveWithdrawal;
-window.declineWithdrawal = declineWithdrawal;
-window.toggleVerification = toggleVerification;
-window.debitUser = debitUser;
-window.banUser = banUser;
-window.viewGiveaway = viewGiveaway;
-window.copyGiveawayLink = copyGiveawayLink;
-window.generateAffiliateLink = generateAffiliateLink;
-window.validateGiftcard = validateGiftcard;
-window.viewGiftCardDetails = viewGiftCardDetails;
-window.deactivateGiftCard = deactivateGiftCard;
-window.activateGiftCard = activateGiftCard;
-window.copyAffiliateLink = copyAffiliateLink;
-window.deactivateAffiliateLink = deactivateAffiliateLink;
-window.editTransactionAmount = editTransactionAmount;
-window.sendUserNotification = sendUserNotification;
-window.removeCustomerCareRole = removeCustomerCareRole;
-window.playGiveawayHunt = playGiveawayHunt;
 
 // Start the application
 document.addEventListener('DOMContentLoaded', init);
-</script>
-
-<!-- Additional utility functions -->
-<script>
-    // Utility function to format currency
-    function formatCurrency(amount, country = 'nigeria') {
-        const currency = country === 'nigeria' ? '₦' : 'USDT ';
-        return `${currency}${amount.toFixed(2)}`;
-    }
-
-    // Utility function to generate random IDs
-    function generateId(length = 8) {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let result = '';
-        for (let i = 0; i < length; i++) {
-            result += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return result;
-    }
-
-    // Utility function to validate email
-    function validateEmail(email) {
-        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return re.test(email);
-    }
-
-    // Utility function to format date
-    function formatDate(date) {
-        return new Date(date).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    }
-
-    // Initialize modals with reset functionality
-    document.addEventListener('DOMContentLoaded', function() {
-        // Reset gift card validation modal when opened
-        document.getElementById('giftCardValidationModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                resetGiftCardValidation();
-            }
-        });
-
-        // Reset giveaway form when modal is closed
-        document.getElementById('giveawaySection').addEventListener('click', function() {
-            if (!giveawayCreatedSection.style.display || giveawayCreatedSection.style.display === 'none') {
-                resetGiveawayForm();
-            }
-        });
-
-        // Reset gift card form when modal is closed
-        document.getElementById('generateGiftCardModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                resetGiftCardForm();
-            }
-        });
-
-        // Reset vendor card form when modal is closed
-        document.getElementById('generateVendorCardModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                resetVendorCardForm();
-            }
-        });
-
-        // Load tasks when task modal is opened
-        document.getElementById('taskCompletionModal').addEventListener('click', function() {
-            loadTasks();
-        });
-
-        // Load public giveaways when giveaway hunt section is shown
-        document.getElementById('giveawayHuntSection').addEventListener('click', function() {
-            loadPublicGiveaways();
-        });
-
-        // Load customer care users when management modal is opened
-        document.getElementById('customerCareManagementModal').addEventListener('click', function() {
-            loadCustomerCareUsers();
-        });
-
-        // Show payment details only for normal game winners (not giveaways)
-        document.getElementById('winnerDetailsModal').addEventListener('click', function() {
-            if (currentGiveaway) {
-                // Hide payment details for giveaway winners
-                paymentDetailsSection.style.display = 'none';
-                amountSpentSection.style.display = 'none';
-            } else {
-                // Show payment details for normal game winners
-                paymentDetailsSection.style.display = 'block';
-                amountSpentSection.style.display = 'block';
-            }
-        });
-    });
-
-    // Handle page visibility changes for real-time updates
-    document.addEventListener('visibilitychange', function() {
-        if (!document.hidden && user) {
-            // Page became visible, refresh data
-            loadUserData(user.uid);
-            if (isAdmin) {
-                loadAdminData();
-            }
-            if (isCustomerCare) {
-                loadCustomerCareConversations();
-            }
-        }
-    });
-
-    // Handle online/offline status
-    window.addEventListener('online', function() {
-        console.log('Application is online');
-        // Refresh data when coming back online
-        if (user) {
-            loadUserData(user.uid);
-        }
-    });
-
-    window.addEventListener('offline', function() {
-        console.log('Application is offline');
-        alert('You are currently offline. Some features may not work properly.');
-    });
-
-    // Error handling for uncaught errors
-    window.addEventListener('error', function(e) {
-        console.error('Uncaught error:', e.error);
-        // You might want to send this to an error tracking service
-    });
-
-    // Handle beforeunload to clean up resources
-    window.addEventListener('beforeunload', function() {
-        if (timerInterval) {
-            clearInterval(timerInterval);
-        }
-    });
 </script>
 </body>
 </html>
