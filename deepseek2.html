@@ -4,11 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Stop the Timer Game</title>
+    
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    
+    <!-- External Configuration -->
     <script src="config.js"></script>
+    
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- External Styles -->
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -155,26 +163,19 @@
                     <div class="transaction-history" style="margin-bottom: 30px;">
                         <div class="section-header">
                             <h3>Available Gift Cards</h3>
-                            <div class="refresh-container">
-                                <button class="refresh-btn" id="refreshGiftCardsBtn">
-                                    <i class="fas fa-sync-alt"></i>
-                                </button>
+                            <div class="giftcard-filter">
+                                <select id="giftcardViewFilter">
+                                    <option value="all">All Gift Cards</option>
+                                    <option value="valid">Valid</option>
+                                    <option value="used">Used</option>
+                                    <option value="withWins">With Wins</option>
+                                </select>
+                                <button class="btn btn-info btn-sm" id="viewAllGiftcardsBtn">View All</button>
                             </div>
-                        </div>
-                        <div class="form-group">
-                            <select id="giftCardFilter">
-                                <option value="all">All Gift Cards</option>
-                                <option value="active">Active (Unused)</option>
-                                <option value="used">Used</option>
-                                <option value="winners">With Wins</option>
-                            </select>
                         </div>
                         <div id="availableGiftCardsList">
                             <!-- Gift cards will be populated by JavaScript -->
                         </div>
-                        <button class="btn btn-info" id="viewAllGiftCardsBtn" style="width: 100%; margin-top: 15px;">
-                            <i class="fas fa-eye"></i> View All Gift Cards
-                        </button>
                     </div>
                     
                     <div class="transaction-history">
@@ -297,9 +298,6 @@
                             <button id="customerCareManagementBtn" class="btn btn-success">
                                 <i class="fas fa-headset"></i> Customer Care Management
                             </button>
-                            <button id="manageGiveawaysBtn" class="btn btn-info">
-                                <i class="fas fa-gift"></i> Manage Giveaways
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -320,26 +318,10 @@
                     
                     <div class="form-group">
                         <label for="giveawayTypeSelect">Giveaway Type</label>
-                        <select id="giveawayTypeSelect" class="giveaway-type-dropdown">
+                        <select id="giveawayTypeSelect" class="form-control">
                             <option value="open">Open Giveaway</option>
                             <option value="giftcard">Gift Card Giveaway</option>
                         </select>
-                    </div>
-                    
-                    <div id="openGiveawayInfo" class="giveaway-type-info">
-                        <div class="giftcard-info">
-                            <h4>Open Giveaway</h4>
-                            <p>Anyone can join using the link</p>
-                            <p class="price">Price: <span id="openGiveawayPriceDisplay">₦2,000</span></p>
-                        </div>
-                    </div>
-                    
-                    <div id="giftcardGiveawayInfo" class="giveaway-type-info" style="display: none;">
-                        <div class="giftcard-info">
-                            <h4>Gift Card Giveaway</h4>
-                            <p>Only your assigned gift cards can be used</p>
-                            <p class="price">Custom Price</p>
-                        </div>
                     </div>
                     
                     <form id="giveawayForm">
@@ -411,7 +393,14 @@
                     </div>
                     
                     <div class="transaction-history" style="margin-top: 40px;">
-                        <h3 class="section-title">My Giveaways</h3>
+                        <div class="section-header">
+                            <h3>My Giveaways</h3>
+                            <div class="refresh-container">
+                                <button class="refresh-btn" id="refreshGiveawaysBtn">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
                         <div class="transaction-table-container">
                             <table>
                                 <thead>
@@ -792,9 +781,7 @@
                 <label for="giftcardCode">Gift Card Code</label>
                 <div class="giftcard-input">
                     <input type="text" id="giftcardCode" placeholder="Enter your gift card code">
-                    <button class="btn btn-info" id="pasteGiftCardBtn">
-                        <i class="fas fa-paste"></i> Paste
-                    </button>
+                    <button type="button" id="pasteGiftcardCode" class="btn btn-info">Paste</button>
                 </div>
             </div>
             <div class="success-animation" id="successAnimation" style="display: none;">
@@ -1247,92 +1234,7 @@
         <button class="notification-close">&times;</button>
     </div>
 
-    <!-- NEW: All Gift Cards Modal -->
-    <div id="allGiftCardsModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">All My Gift Cards</h3>
-                <div class="refresh-container">
-                    <button class="refresh-btn" id="refreshAllGiftCardsBtn">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                </div>
-                <button class="close-btn">&times;</button>
-            </div>
-            
-            <div class="form-group">
-                <label for="allGiftCardsFilter">Filter Gift Cards</label>
-                <select id="allGiftCardsFilter">
-                    <option value="all">All Gift Cards</option>
-                    <option value="active">Active (Unused)</option>
-                    <option value="used">Used</option>
-                    <option value="winners">With Wins</option>
-                </select>
-            </div>
-            
-            <div style="max-height: 500px; overflow-y: auto;">
-                <table class="gift-cards-table">
-                    <thead>
-                        <tr>
-                            <th>Code</th>
-                            <th>Value</th>
-                            <th>Balance</th>
-                            <th>Status</th>
-                            <th>Wins</th>
-                            <th>Created</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="allGiftCardsTable">
-                        <tr>
-                            <td colspan="7" style="text-align: center;">Loading gift cards...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- NEW: Manage Giveaways Modal -->
-    <div id="manageGiveawaysModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">Manage Giveaways</h3>
-                <div class="refresh-container">
-                    <button class="refresh-btn" id="refreshGiveawaysBtn">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                </div>
-                <button class="close-btn">&times;</button>
-            </div>
-            
-            <div class="form-group">
-                <input type="text" id="searchGiveawaysAdmin" placeholder="Search giveaways...">
-            </div>
-            
-            <div style="max-height: 500px; overflow-y: auto;">
-                <table class="gift-cards-table">
-                    <thead>
-                        <tr>
-                            <th>Title</th>
-                            <th>Creator</th>
-                            <th>Type</th>
-                            <th>Participants</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="giveawaysTable">
-                        <tr>
-                            <td colspan="7" style="text-align: center;">Loading giveaways...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <script src="app.js"></script>
+    <!-- External Scripts -->
+    <script src="script.js"></script>
 </body>
 </html>
