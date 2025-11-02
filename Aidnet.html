@@ -181,6 +181,41 @@
             padding: 15px 0;
         }
         
+        .notification-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--accent-color);
+            color: var(--dark-color);
+            padding: 10px 0;
+            text-align: center;
+            z-index: 1050;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .validation-button-pulse {
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 0 0 rgba(251, 188, 5, 0.7);
+        }
+        
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(251, 188, 5, 0.7);
+            }
+            
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(251, 188, 5, 0);
+            }
+            
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(251, 188, 5, 0);
+            }
+        }
+        
         @media (max-width: 768px) {
             .hero-section {
                 padding: 60px 0;
@@ -194,6 +229,14 @@
     </style>
 </head>
 <body>
+    <!-- Global Notification Banner -->
+    <div id="global-notification" class="notification-banner" style="display: none;">
+        <div class="container">
+            <span id="notification-text"></span>
+            <button class="btn btn-sm btn-outline-dark ms-3" onclick="dismissNotification()">Dismiss</button>
+        </div>
+    </div>
+
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
         <div class="container">
@@ -210,6 +253,9 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#" onclick="showPage('about')">About</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showPage('contact')">Contact</a>
                     </li>
                     <li class="nav-item" id="auth-nav-item">
                         <a class="nav-link btn btn-outline-primary ms-2" href="#" onclick="showPage('login')">Login</a>
@@ -452,7 +498,7 @@
                                         <textarea class="form-control" id="aid-reason" rows="3" required></textarea>
                                     </div>
                                     <div class="mb-3">
-                                        <label for="aid-amount" class="form-label">Requested Amount ($)</label>
+                                        <label for="aid-amount" class="form-label">Requested Amount (<span id="currency-symbol">$</span>)</label>
                                         <input type="number" class="form-control" id="aid-amount" required>
                                     </div>
                                     <div class="mb-3">
@@ -507,7 +553,7 @@
                             </div>
                             <div class="card-body">
                                 <p>You need to validate your approval to complete the aid application process.</p>
-                                <button class="btn btn-warning" id="validate-approval-btn">
+                                <button class="btn btn-warning validation-button-pulse" id="validate-approval-btn">
                                     <i class="fas fa-check-circle me-2"></i>Validate Approval
                                 </button>
                             </div>
@@ -569,25 +615,67 @@
                     <div class="col-md-8">
                         <div class="card">
                             <div class="card-header">
-                                <h5 class="card-title mb-0">Withdrawal Settings</h5>
+                                <h5 class="card-title mb-0">System Settings</h5>
                             </div>
                             <div class="card-body">
-                                <div class="mb-3">
-                                    <label for="withdrawal-action" class="form-label">Withdrawal Action</label>
-                                    <select class="form-control" id="withdrawal-action">
-                                        <option value="popup">Show Popup Notification</option>
-                                        <option value="redirect">Redirect to External Link</option>
-                                    </select>
+                                <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="withdrawal-tab" data-bs-toggle="tab" data-bs-target="#withdrawal" type="button">Withdrawal</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="contact-tab" data-bs-toggle="tab" data-bs-target="#contact" type="button">Contact Info</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="notification-tab" data-bs-toggle="tab" data-bs-target="#notification" type="button">Notifications</button>
+                                    </li>
+                                </ul>
+                                <div class="tab-content mt-3" id="settingsTabsContent">
+                                    <div class="tab-pane fade show active" id="withdrawal" role="tabpanel">
+                                        <div class="mb-3">
+                                            <label for="withdrawal-action" class="form-label">Withdrawal Action</label>
+                                            <select class="form-control" id="withdrawal-action">
+                                                <option value="popup">Show Popup Notification</option>
+                                                <option value="redirect">Redirect to External Link</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3" id="redirect-url-container" style="display: none;">
+                                            <label for="redirect-url" class="form-label">Redirect URL</label>
+                                            <input type="url" class="form-control" id="redirect-url" placeholder="https://example.com">
+                                        </div>
+                                        <div class="mb-3" id="popup-message-container">
+                                            <label for="popup-message" class="form-label">Popup Message</label>
+                                            <textarea class="form-control" id="popup-message" rows="3">Withdrawal functionality is currently unavailable. Please check back later or contact support.</textarea>
+                                        </div>
+                                        <button class="btn btn-primary" id="save-withdrawal-settings">Save Settings</button>
+                                    </div>
+                                    <div class="tab-pane fade" id="contact" role="tabpanel">
+                                        <div class="mb-3">
+                                            <label for="contact-email" class="form-label">Contact Email</label>
+                                            <input type="email" class="form-control" id="contact-email" placeholder="support@networkaid.com">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="contact-phone" class="form-label">Contact Phone</label>
+                                            <input type="text" class="form-control" id="contact-phone" placeholder="+1 (555) 123-4567">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="contact-address" class="form-label">Contact Address</label>
+                                            <textarea class="form-control" id="contact-address" rows="3" placeholder="123 Support Street, City, State 12345"></textarea>
+                                        </div>
+                                        <button class="btn btn-primary" id="save-contact-settings">Save Contact Info</button>
+                                    </div>
+                                    <div class="tab-pane fade" id="notification" role="tabpanel">
+                                        <div class="mb-3">
+                                            <label for="global-notification-text" class="form-label">Global Notification Message</label>
+                                            <textarea class="form-control" id="global-notification-text" rows="3" placeholder="Enter notification message for all users"></textarea>
+                                        </div>
+                                        <div class="mb-3 form-check">
+                                            <input type="checkbox" class="form-check-input" id="notification-active">
+                                            <label class="form-check-label" for="notification-active">Show notification to all users</label>
+                                        </div>
+                                        <button class="btn btn-primary me-2" id="save-notification-settings">Save Notification</button>
+                                        <button class="btn btn-danger" id="clear-notification">Clear Notification</button>
+                                    </div>
                                 </div>
-                                <div class="mb-3" id="redirect-url-container" style="display: none;">
-                                    <label for="redirect-url" class="form-label">Redirect URL</label>
-                                    <input type="url" class="form-control" id="redirect-url" placeholder="https://example.com">
-                                </div>
-                                <div class="mb-3" id="popup-message-container">
-                                    <label for="popup-message" class="form-label">Popup Message</label>
-                                    <textarea class="form-control" id="popup-message" rows="3">Withdrawal functionality is currently unavailable. Please check back later or contact support.</textarea>
-                                </div>
-                                <button class="btn btn-primary" id="save-settings-btn">Save Settings</button>
                             </div>
                         </div>
                     </div>
@@ -596,8 +684,13 @@
                 <div class="row mt-4">
                     <div class="col-12">
                         <div class="card">
-                            <div class="card-header">
+                            <div class="card-header d-flex justify-content-between align-items-center">
                                 <h5 class="card-title mb-0">Pending Applications</h5>
+                                <div>
+                                    <button class="btn btn-sm btn-success" id="bulk-approve-btn">
+                                        <i class="fas fa-check me-1"></i> Bulk Approve Selected
+                                    </button>
+                                </div>
                             </div>
                             <div class="card-body">
                                 <div id="pending-applications-list">
@@ -611,8 +704,13 @@
                 <div class="row mt-4">
                     <div class="col-12">
                         <div class="card">
-                            <div class="card-header">
+                            <div class="card-header d-flex justify-content-between align-items-center">
                                 <h5 class="card-title mb-0">User Management</h5>
+                                <div>
+                                    <button class="btn btn-sm btn-primary" id="bulk-fund-btn">
+                                        <i class="fas fa-plus me-1"></i> Bulk Fund Selected
+                                    </button>
+                                </div>
                             </div>
                             <div class="card-body">
                                 <div id="users-list">
@@ -701,6 +799,53 @@
                 </div>
             </div>
         </div>
+
+        <!-- Contact Page -->
+        <div id="contact-page" class="page-content" style="display: none;">
+            <div class="container mt-4">
+                <div class="row">
+                    <div class="col-lg-8 mx-auto">
+                        <div class="card">
+                            <div class="card-body">
+                                <h2 class="card-title mb-4">Contact Us</h2>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h5>Customer Support</h5>
+                                        <p><i class="fas fa-envelope me-2"></i> <span id="contact-email-display">support@networkaid.com</span></p>
+                                        <p><i class="fas fa-phone me-2"></i> <span id="contact-phone-display">+1 (555) 123-4567</span></p>
+                                        <p><i class="fas fa-clock me-2"></i> Mon-Fri: 9AM-5PM EST</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h5>Mailing Address</h5>
+                                        <p id="contact-address-display">Network Aid Assistance<br>
+                                        123 Support Street<br>
+                                        City, State 12345<br>
+                                        United States</p>
+                                    </div>
+                                </div>
+                                <hr class="my-4">
+                                <h5>Send us a message</h5>
+                                <form id="contact-form">
+                                    <div class="mb-3">
+                                        <label for="contact-name" class="form-label">Your Name</label>
+                                        <input type="text" class="form-control" id="contact-name" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="contact-email" class="form-label">Email Address</label>
+                                        <input type="email" class="form-control" id="contact-email" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="contact-message" class="form-label">Message</label>
+                                        <textarea class="form-control" id="contact-message" rows="4" required></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Send Message</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Footer -->
@@ -716,6 +861,7 @@
                     <ul class="list-unstyled">
                         <li><a href="#" class="text-light text-decoration-none" onclick="showPage('home')">Home</a></li>
                         <li><a href="#" class="text-light text-decoration-none" onclick="showPage('about')">About</a></li>
+                        <li><a href="#" class="text-light text-decoration-none" onclick="showPage('contact')">Contact</a></li>
                     </ul>
                 </div>
                 <div class="col-md-3 mb-4">
@@ -728,8 +874,8 @@
                 <div class="col-md-3 mb-4">
                     <h5>Contact Us</h5>
                     <ul class="list-unstyled">
-                        <li><i class="fas fa-envelope me-2"></i> support@networkaid.com</li>
-                        <li><i class="fas fa-phone me-2"></i> +1 (555) 123-4567</li>
+                        <li><i class="fas fa-envelope me-2"></i> <span id="footer-email">support@networkaid.com</span></li>
+                        <li><i class="fas fa-phone me-2"></i> <span id="footer-phone">+1 (555) 123-4567</span></li>
                     </ul>
                 </div>
             </div>
@@ -771,7 +917,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>The AID/HELP is non-refundable and is sponsored by your network providers. To receive the funds, you need to subscribe to your personal network.</p>
+                    <p>The AID/HELP is <strong>FREE</strong> and is sponsored by your network providers. To receive the funds, you need to subscribe to your personal network.</p>
                     <p>By proceeding, you acknowledge that this aid is provided as a one-time assistance and cannot be refunded once disbursed.</p>
                 </div>
                 <div class="modal-footer">
@@ -815,7 +961,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="fund-amount" class="form-label">Amount to Fund ($)</label>
+                        <label for="fund-amount" class="form-label">Amount to Fund</label>
                         <input type="number" class="form-control" id="fund-amount" min="1" step="0.01">
                     </div>
                     <div class="mb-3">
@@ -826,6 +972,33 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-primary" id="confirm-funding-btn">Fund Account</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Funding Modal -->
+    <div class="modal fade" id="bulkFundingModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Bulk Fund Selected Users</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="bulk-fund-amount" class="form-label">Amount to Fund Each User</label>
+                        <input type="number" class="form-control" id="bulk-fund-amount" min="1" step="0.01">
+                    </div>
+                    <div class="mb-3">
+                        <label for="bulk-fund-reason" class="form-label">Reason (Optional)</label>
+                        <input type="text" class="form-control" id="bulk-fund-reason" placeholder="e.g., Approved aid applications">
+                    </div>
+                    <p class="text-muted" id="bulk-users-count">0 users selected</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirm-bulk-funding-btn">Fund Selected Users</button>
                 </div>
             </div>
         </div>
@@ -851,6 +1024,18 @@
         let isAdmin = false;
         let applicationData = null;
         let stream = null;
+        let selectedUsers = [];
+        let selectedApplications = [];
+        let currencySymbols = {
+            'USA': '$',
+            'UK': '£',
+            'Canada': 'C$',
+            'Australia': 'A$',
+            'Nigeria': '₦',
+            'South Africa': 'R',
+            'Kenya': 'KSh',
+            'Ghana': 'GH₵'
+        };
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
@@ -860,6 +1045,8 @@
             initializeEventListeners();
             checkAuthState();
             loadAdminSettings();
+            checkGlobalNotification();
+            checkSubscriptionVerification();
         });
 
         // Initialize all event listeners
@@ -880,6 +1067,12 @@
             const aidForm = document.getElementById('aid-application-form');
             if (aidForm) {
                 aidForm.addEventListener('submit', handleAidApplication);
+            }
+            
+            // Contact form
+            const contactForm = document.getElementById('contact-form');
+            if (contactForm) {
+                contactForm.addEventListener('submit', handleContactForm);
             }
             
             // Withdrawal button
@@ -925,6 +1118,9 @@
                     const redirectUrl = getAdminSetting('redirectUrl') || adminConfig.defaultRedirectUrl;
                     window.open(redirectUrl, '_blank');
                     
+                    // Mark that user clicked the link
+                    localStorage.setItem('subsLinkClicked', 'true');
+                    
                     // Show subscription verification modal after a delay
                     setTimeout(function() {
                         const subscriptionModal = new bootstrap.Modal(document.getElementById('subscriptionModal'));
@@ -950,6 +1146,10 @@
                         if (applicationData) {
                             updateApplicationStatus(applicationData.id, 'pending');
                         }
+                        
+                        // Clear the flag
+                        localStorage.removeItem('subsLinkClicked');
+                        localStorage.setItem('subsVerified', 'true');
                         
                         Swal.fire({
                             icon: 'success',
@@ -980,15 +1180,47 @@
                 });
             }
             
-            const saveSettingsBtn = document.getElementById('save-settings-btn');
-            if (saveSettingsBtn) {
-                saveSettingsBtn.addEventListener('click', saveAdminSettings);
+            // Save settings buttons
+            const saveWithdrawalSettings = document.getElementById('save-withdrawal-settings');
+            if (saveWithdrawalSettings) {
+                saveWithdrawalSettings.addEventListener('click', saveWithdrawalSettings);
             }
             
-            // Confirm funding button
+            const saveContactSettings = document.getElementById('save-contact-settings');
+            if (saveContactSettings) {
+                saveContactSettings.addEventListener('click', saveContactSettings);
+            }
+            
+            const saveNotificationSettings = document.getElementById('save-notification-settings');
+            if (saveNotificationSettings) {
+                saveNotificationSettings.addEventListener('click', saveNotificationSettings);
+            }
+            
+            const clearNotification = document.getElementById('clear-notification');
+            if (clearNotification) {
+                clearNotification.addEventListener('click', clearNotification);
+            }
+            
+            // Bulk action buttons
+            const bulkApproveBtn = document.getElementById('bulk-approve-btn');
+            if (bulkApproveBtn) {
+                bulkApproveBtn.addEventListener('click', bulkApproveApplications);
+            }
+            
+            const bulkFundBtn = document.getElementById('bulk-fund-btn');
+            if (bulkFundBtn) {
+                bulkFundBtn.addEventListener('click', showBulkFundingModal);
+            }
+            
+            // Confirm funding buttons
             const confirmFundingBtn = document.getElementById('confirm-funding-btn');
             if (confirmFundingBtn) {
                 confirmFundingBtn.addEventListener('click', confirmFunding);
+            }
+            
+            const confirmBulkFundingBtn = document.getElementById('confirm-bulk-funding-btn');
+            if (confirmBulkFundingBtn) {
+                confirmBulkFundingBtn.addEventListener('click', confirmBulkFunding);
             }
         }
 
@@ -1067,6 +1299,7 @@
                         maritalStatus: maritalStatus,
                         email: email,
                         balance: 0,
+                        currency: currencySymbols[country] || '$',
                         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                         role: 'user'
                     });
@@ -1143,6 +1376,7 @@
                     return firebase.firestore().collection('applications').add({
                         userId: currentUserId,
                         userEmail: currentUser.email,
+                        userCountry: document.getElementById('country').value || 'USA',
                         reason: reason,
                         amount: parseFloat(amount),
                         photoURL: downloadURL,
@@ -1180,7 +1414,7 @@
                         confirmButtonColor: '#1a73e8'
                     });
                     
-                    // Show notification about validation requirement
+                    // Show notification about validation requirement after a delay
                     setTimeout(function() {
                         Swal.fire({
                             icon: 'info',
@@ -1207,6 +1441,24 @@
                         confirmButtonColor: '#1a73e8'
                     });
                 });
+        }
+        
+        // Handle contact form submission
+        function handleContactForm(e) {
+            e.preventDefault();
+            const name = document.getElementById('contact-name').value;
+            const email = document.getElementById('contact-email').value;
+            const message = document.getElementById('contact-message').value;
+            
+            // In a real application, you would send this to a backend
+            Swal.fire({
+                icon: 'success',
+                title: 'Message Sent!',
+                text: 'Thank you for your message. We will get back to you soon.',
+                confirmButtonColor: '#1a73e8'
+            });
+            
+            document.getElementById('contact-form').reset();
         }
         
         // Handle withdrawal request
@@ -1279,7 +1531,11 @@
                         // Update UI with user data
                         document.getElementById('user-name').textContent = userData.fullName;
                         document.getElementById('user-name-nav').textContent = userData.fullName;
-                        document.getElementById('user-balance').textContent = '$' + (userData.balance || 0).toFixed(2);
+                        
+                        // Set currency based on country
+                        const currency = userData.currency || currencySymbols[userData.country] || '$';
+                        document.getElementById('user-balance').textContent = currency + (userData.balance || 0).toFixed(2);
+                        document.getElementById('currency-symbol').textContent = currency;
                         
                         // Update profile page
                         document.getElementById('profile-full-name').textContent = userData.fullName;
@@ -1332,7 +1588,7 @@
                         appElement.innerHTML = `
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
-                                    <strong>Amount: $${app.amount}</strong>
+                                    <strong>Amount: ${currencySymbols[app.userCountry] || '$'}${app.amount}</strong>
                                     <p class="mb-1">Reason: ${app.reason}</p>
                                     <p class="mb-0">Status: <span class="${statusClass}">${app.status}</span></p>
                                     <small class="text-muted">Submitted: ${app.createdAt?.toDate().toLocaleDateString()}</small>
@@ -1369,8 +1625,26 @@
                     }
                     
                     // Show validate approval section if there's a submitted application that needs validation
-                    if (hasPending) {
+                    if (hasPending && !localStorage.getItem('subsVerified')) {
                         document.getElementById('validate-approval-section').style.display = 'block';
+                        
+                        // Show validation reminder if user hasn't validated yet
+                        if (!localStorage.getItem('validationReminderShown')) {
+                            setTimeout(() => {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Action Required',
+                                    text: 'Please validate your approval to complete your aid application.',
+                                    confirmButtonText: 'Take me there',
+                                    confirmButtonColor: '#1a73e8'
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        document.getElementById('validate-approval-section').scrollIntoView({ behavior: 'smooth' });
+                                    }
+                                });
+                                localStorage.setItem('validationReminderShown', 'true');
+                            }, 2000);
+                        }
                     }
                 })
                 .catch((error) => {
@@ -1421,10 +1695,13 @@
                         userElement.className = 'user-list-item';
                         userElement.innerHTML = `
                             <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">${user.fullName}</h6>
-                                    <p class="mb-1 text-muted">${user.email}</p>
-                                    <p class="mb-0">Balance: $${user.balance || 0}</p>
+                                <div class="form-check">
+                                    <input class="form-check-input user-checkbox" type="checkbox" value="${doc.id}" id="user-${doc.id}">
+                                    <label class="form-check-label" for="user-${doc.id}">
+                                        <h6 class="mb-1">${user.fullName}</h6>
+                                        <p class="mb-1 text-muted">${user.email}</p>
+                                        <p class="mb-0">Balance: ${user.currency || '$'}${user.balance || 0}</p>
+                                    </label>
                                 </div>
                                 <div>
                                     <button class="btn btn-sm btn-primary" onclick="fundUser('${doc.id}', '${user.fullName}')">
@@ -1434,6 +1711,17 @@
                             </div>
                         `;
                         usersList.appendChild(userElement);
+                    });
+                    
+                    // Add event listeners to checkboxes
+                    document.querySelectorAll('.user-checkbox').forEach(checkbox => {
+                        checkbox.addEventListener('change', function() {
+                            if (this.checked) {
+                                selectedUsers.push(this.value);
+                            } else {
+                                selectedUsers = selectedUsers.filter(id => id !== this.value);
+                            }
+                        });
                     });
                 })
                 .catch((error) => {
@@ -1460,11 +1748,14 @@
                         appElement.className = 'user-list-item';
                         appElement.innerHTML = `
                             <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">${app.userEmail}</h6>
-                                    <p class="mb-1">Amount: $${app.amount}</p>
-                                    <p class="mb-0">Reason: ${app.reason}</p>
-                                    <small class="text-muted">Submitted: ${app.createdAt?.toDate().toLocaleDateString()}</small>
+                                <div class="form-check">
+                                    <input class="form-check-input application-checkbox" type="checkbox" value="${doc.id}" id="app-${doc.id}">
+                                    <label class="form-check-label" for="app-${doc.id}">
+                                        <h6 class="mb-1">${app.userEmail}</h6>
+                                        <p class="mb-1">Amount: ${currencySymbols[app.userCountry] || '$'}${app.amount}</p>
+                                        <p class="mb-0">Reason: ${app.reason}</p>
+                                        <small class="text-muted">Submitted: ${app.createdAt?.toDate().toLocaleDateString()}</small>
+                                    </label>
                                 </div>
                                 <div>
                                     <button class="btn btn-sm btn-success me-1" onclick="approveApplication('${doc.id}')">
@@ -1477,6 +1768,17 @@
                             </div>
                         `;
                         applicationsList.appendChild(appElement);
+                    });
+                    
+                    // Add event listeners to application checkboxes
+                    document.querySelectorAll('.application-checkbox').forEach(checkbox => {
+                        checkbox.addEventListener('change', function() {
+                            if (this.checked) {
+                                selectedApplications.push(this.value);
+                            } else {
+                                selectedApplications = selectedApplications.filter(id => id !== this.value);
+                            }
+                        });
                     });
                 })
                 .catch((error) => {
@@ -1505,12 +1807,35 @@
             document.getElementById('popup-message').value = popupMessage;
             document.getElementById('redirect-url').value = redirectUrl;
             
+            // Load contact info
+            const contactEmail = localStorage.getItem('contactEmail') || 'support@networkaid.com';
+            const contactPhone = localStorage.getItem('contactPhone') || '+1 (555) 123-4567';
+            const contactAddress = localStorage.getItem('contactAddress') || 'Network Aid Assistance\n123 Support Street\nCity, State 12345\nUnited States';
+            
+            document.getElementById('contact-email').value = contactEmail;
+            document.getElementById('contact-phone').value = contactPhone;
+            document.getElementById('contact-address').value = contactAddress;
+            
+            // Update display
+            document.getElementById('contact-email-display').textContent = contactEmail;
+            document.getElementById('contact-phone-display').textContent = contactPhone;
+            document.getElementById('contact-address-display').innerHTML = contactAddress.replace(/\n/g, '<br>');
+            document.getElementById('footer-email').textContent = contactEmail;
+            document.getElementById('footer-phone').textContent = contactPhone;
+            
+            // Load notification settings
+            const notificationText = localStorage.getItem('globalNotification') || '';
+            const notificationActive = localStorage.getItem('notificationActive') === 'true';
+            
+            document.getElementById('global-notification-text').value = notificationText;
+            document.getElementById('notification-active').checked = notificationActive;
+            
             // Trigger change to show/hide relevant fields
             document.getElementById('withdrawal-action').dispatchEvent(new Event('change'));
         }
         
-        // Save admin settings
-        function saveAdminSettings() {
+        // Save withdrawal settings
+        function saveWithdrawalSettings() {
             const withdrawalAction = document.getElementById('withdrawal-action').value;
             const popupMessage = document.getElementById('popup-message').value;
             const redirectUrl = document.getElementById('redirect-url').value;
@@ -1522,9 +1847,98 @@
             Swal.fire({
                 icon: 'success',
                 title: 'Settings Saved!',
-                text: 'Admin settings have been updated successfully.',
+                text: 'Withdrawal settings have been updated successfully.',
                 confirmButtonColor: '#1a73e8'
             });
+        }
+        
+        // Save contact settings
+        function saveContactSettings() {
+            const contactEmail = document.getElementById('contact-email').value;
+            const contactPhone = document.getElementById('contact-phone').value;
+            const contactAddress = document.getElementById('contact-address').value;
+            
+            localStorage.setItem('contactEmail', contactEmail);
+            localStorage.setItem('contactPhone', contactPhone);
+            localStorage.setItem('contactAddress', contactAddress);
+            
+            // Update display
+            document.getElementById('contact-email-display').textContent = contactEmail;
+            document.getElementById('contact-phone-display').textContent = contactPhone;
+            document.getElementById('contact-address-display').innerHTML = contactAddress.replace(/\n/g, '<br>');
+            document.getElementById('footer-email').textContent = contactEmail;
+            document.getElementById('footer-phone').textContent = contactPhone;
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Contact Info Updated!',
+                text: 'Contact information has been updated successfully.',
+                confirmButtonColor: '#1a73e8'
+            });
+        }
+        
+        // Save notification settings
+        function saveNotificationSettings() {
+            const notificationText = document.getElementById('global-notification-text').value;
+            const notificationActive = document.getElementById('notification-active').checked;
+            
+            localStorage.setItem('globalNotification', notificationText);
+            localStorage.setItem('notificationActive', notificationActive);
+            
+            // Update global notification
+            checkGlobalNotification();
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Notification Saved!',
+                text: 'Global notification settings have been updated.',
+                confirmButtonColor: '#1a73e8'
+            });
+        }
+        
+        // Clear notification
+        function clearNotification() {
+            localStorage.removeItem('globalNotification');
+            localStorage.removeItem('notificationActive');
+            
+            document.getElementById('global-notification-text').value = '';
+            document.getElementById('notification-active').checked = false;
+            
+            // Hide notification banner
+            document.getElementById('global-notification').style.display = 'none';
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Notification Cleared!',
+                text: 'Global notification has been removed.',
+                confirmButtonColor: '#1a73e8'
+            });
+        }
+        
+        // Check and show global notification
+        function checkGlobalNotification() {
+            const notificationText = localStorage.getItem('globalNotification');
+            const notificationActive = localStorage.getItem('notificationActive') === 'true';
+            
+            if (notificationActive && notificationText) {
+                document.getElementById('notification-text').textContent = notificationText;
+                document.getElementById('global-notification').style.display = 'block';
+            } else {
+                document.getElementById('global-notification').style.display = 'none';
+            }
+        }
+        
+        // Dismiss notification
+        function dismissNotification() {
+            document.getElementById('global-notification').style.display = 'none';
+        }
+        
+        // Check if user needs to verify subscription
+        function checkSubscriptionVerification() {
+            if (localStorage.getItem('subsLinkClicked') && !localStorage.getItem('subsVerified')) {
+                const subscriptionModal = new bootstrap.Modal(document.getElementById('subscriptionModal'));
+                subscriptionModal.show();
+            }
         }
         
         // Get admin setting
@@ -1658,7 +2072,68 @@
             });
         }
         
-        // Confirm funding
+        // Bulk approve applications
+        function bulkApproveApplications() {
+            if (selectedApplications.length === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No Applications Selected',
+                    text: 'Please select at least one application to approve.',
+                    confirmButtonColor: '#1a73e8'
+                });
+                return;
+            }
+            
+            const batch = firebase.firestore().batch();
+            
+            selectedApplications.forEach(appId => {
+                const appRef = firebase.firestore().collection('applications').doc(appId);
+                batch.update(appRef, {
+                    status: 'approved',
+                    reviewedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            });
+            
+            batch.commit()
+                .then(() => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Applications Approved!',
+                        text: `${selectedApplications.length} applications have been approved.`,
+                        confirmButtonColor: '#1a73e8'
+                    });
+                    selectedApplications = [];
+                    loadAdminData();
+                })
+                .catch((error) => {
+                    console.error("Error bulk approving applications:", error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Bulk Approval Failed',
+                        text: 'There was an error approving the applications.',
+                        confirmButtonColor: '#1a73e8'
+                    });
+                });
+        }
+        
+        // Show bulk funding modal
+        function showBulkFundingModal() {
+            if (selectedUsers.length === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No Users Selected',
+                    text: 'Please select at least one user to fund.',
+                    confirmButtonColor: '#1a73e8'
+                });
+                return;
+            }
+            
+            document.getElementById('bulk-users-count').textContent = `${selectedUsers.length} users selected`;
+            const bulkFundingModal = new bootstrap.Modal(document.getElementById('bulkFundingModal'));
+            bulkFundingModal.show();
+        }
+        
+        // Confirm funding for single user
         function confirmFunding() {
             const amount = parseFloat(document.getElementById('fund-amount').value);
             const reason = document.getElementById('fund-reason').value;
@@ -1702,7 +2177,7 @@
                     Swal.fire({
                         icon: 'success',
                         title: 'Account Funded!',
-                        text: `Successfully funded $${amount} to ${userName}'s account.`,
+                        text: `Successfully funded ${amount} to ${userName}'s account.`,
                         confirmButtonColor: '#1a73e8'
                     });
                     
@@ -1715,6 +2190,71 @@
                         icon: 'error',
                         title: 'Funding Failed',
                         text: 'There was an error funding the user account.',
+                        confirmButtonColor: '#1a73e8'
+                    });
+                });
+        }
+        
+        // Confirm bulk funding
+        function confirmBulkFunding() {
+            const amount = parseFloat(document.getElementById('bulk-fund-amount').value);
+            const reason = document.getElementById('bulk-fund-reason').value;
+            
+            if (!amount || amount <= 0) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Invalid Amount',
+                    text: 'Please enter a valid amount to fund.',
+                    confirmButtonColor: '#1a73e8'
+                });
+                return;
+            }
+            
+            const batch = firebase.firestore().batch();
+            const promises = [];
+            
+            selectedUsers.forEach(userId => {
+                const userRef = firebase.firestore().collection('users').doc(userId);
+                promises.push(userRef.get().then(doc => {
+                    if (doc.exists) {
+                        const userData = doc.data();
+                        const currentBalance = userData.balance || 0;
+                        const newBalance = currentBalance + amount;
+                        batch.update(userRef, { balance: newBalance });
+                    }
+                }));
+            });
+            
+            Promise.all(promises)
+                .then(() => {
+                    return batch.commit();
+                })
+                .then(() => {
+                    // Close modal
+                    const bulkFundingModal = bootstrap.Modal.getInstance(document.getElementById('bulkFundingModal'));
+                    bulkFundingModal.hide();
+                    
+                    // Reset form
+                    document.getElementById('bulk-fund-amount').value = '';
+                    document.getElementById('bulk-fund-reason').value = '';
+                    
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Users Funded!',
+                        text: `Successfully funded ${amount} to ${selectedUsers.length} users.`,
+                        confirmButtonColor: '#1a73e8'
+                    });
+                    
+                    // Clear selection and reload
+                    selectedUsers = [];
+                    loadAdminData();
+                })
+                .catch((error) => {
+                    console.error("Error bulk funding users:", error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Bulk Funding Failed',
+                        text: 'There was an error funding the users.',
                         confirmButtonColor: '#1a73e8'
                     });
                 });
