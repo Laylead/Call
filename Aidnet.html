@@ -236,6 +236,17 @@
             border-bottom: none;
         }
         
+        .hero-icon-container {
+            margin-top: 40px;
+            text-align: center;
+        }
+        
+        .hero-icon {
+            font-size: 8rem;
+            opacity: 0.8;
+            color: white;
+        }
+        
         @media (max-width: 768px) {
             .hero-section {
                 padding: 60px 0;
@@ -250,6 +261,14 @@
                 left: 10px;
                 right: 10px;
                 max-width: none;
+            }
+            
+            .hero-icon {
+                font-size: 6rem;
+            }
+            
+            .hero-icon-container {
+                margin-top: 30px;
             }
         }
     </style>
@@ -318,8 +337,8 @@
                             <button class="btn btn-outline-light btn-lg" onclick="showPage('about')">Learn More</button>
                         </div>
                         <div class="col-lg-6">
-                            <div style="background: rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; text-align: center;">
-                                <i class="fas fa-hand-holding-usd" style="font-size: 8rem; opacity: 0.8;"></i>
+                            <div class="hero-icon-container">
+                                <i class="fas fa-hands-helping hero-icon"></i>
                             </div>
                         </div>
                     </div>
@@ -351,7 +370,7 @@
                     </div>
                     <div class="col-md-4 text-center">
                         <div class="feature-icon">
-                            <i class="fas fa-hand-holding-usd"></i>
+                            <i class="fas fa-hand-holding-heart"></i>
                         </div>
                         <h4>Receive Assistance</h4>
                         <p class="text-muted">Get approved and receive the <span class="aid-blue">AID</span> directly to your account.</p>
@@ -501,6 +520,12 @@
                                     <span>Current Application:</span>
                                     <span id="application-status" class="status-pending">No Application</span>
                                 </div>
+                                <div id="aid-funds-pending" style="display: none;">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span>AID Funds Pending:</span>
+                                        <span id="pending-funds-amount" class="status-approved">$0.00</span>
+                                    </div>
+                                </div>
                                 <div id="last-application-container" style="display: none;">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <span>Last Application:</span>
@@ -524,10 +549,6 @@
                                     <div class="mb-3">
                                         <label for="aid-reason" class="form-label">Reason for <span class="aid-blue">AID</span> Request</label>
                                         <textarea class="form-control" id="aid-reason" rows="3" required placeholder="Briefly explain why you need assistance"></textarea>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="aid-amount" class="form-label">Requested Amount (<span id="currency-symbol">$</span>)</label>
-                                        <input type="number" class="form-control" id="aid-amount" required min="1" placeholder="Enter amount">
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label">Face Verification</label>
@@ -656,8 +677,8 @@
                                     <span id="total-users">0</span>
                                 </div>
                                 <div class="d-flex justify-content-between mb-3">
-                                    <span>Pending Applications:</span>
-                                    <span id="pending-applications">0</span>
+                                    <span>Pending Validations:</span>
+                                    <span id="pending-validations">0</span>
                                 </div>
                                 <div class="d-flex justify-content-between">
                                     <span>Approved Applications:</span>
@@ -699,12 +720,10 @@
                             </div>
                             <div class="card-body">
                                 <div class="mb-3">
-                                    <label for="bulk-fund-amount" class="form-label">Bulk Fund Amount</label>
-                                    <input type="number" class="form-control" id="bulk-fund-amount" placeholder="Enter amount">
+                                    <label for="bulk-approval-amount" class="form-label">Bulk Approval Amount (<span id="admin-currency-symbol">$</span>)</label>
+                                    <input type="number" class="form-control" id="bulk-approval-amount" placeholder="Enter amount">
                                 </div>
-                                <button class="btn btn-success w-100 mb-2" id="bulk-fund-btn">Fund All Users</button>
-                                <button class="btn btn-danger w-100 mb-2" id="bulk-debit-btn">Debit All Users</button>
-                                <button class="btn btn-primary w-100" id="bulk-approve-btn">Approve All Pending</button>
+                                <button class="btn btn-primary w-100" id="bulk-approve-btn">Approve All Pending Validations</button>
                             </div>
                         </div>
                     </div>
@@ -750,11 +769,20 @@
                     <div class="col-12">
                         <div class="card">
                             <div class="card-header">
-                                <h5 class="card-title mb-0">Pending <span class="aid-blue">AID</span> Applications</h5>
+                                <h5 class="card-title mb-0">Pending Validations</h5>
                             </div>
                             <div class="card-body">
-                                <div id="pending-applications-list">
-                                    <p class="text-muted">No pending applications.</p>
+                                <div class="mb-3">
+                                    <label for="application-filter" class="form-label">Filter Applications</label>
+                                    <select class="form-control" id="application-filter">
+                                        <option value="all">All Applications</option>
+                                        <option value="pending">Pending Validations</option>
+                                        <option value="submitted">Submitted Applications</option>
+                                        <option value="validated">Validated Applications</option>
+                                    </select>
+                                </div>
+                                <div id="pending-validations-list">
+                                    <p class="text-muted">No pending validations.</p>
                                 </div>
                             </div>
                         </div>
@@ -957,32 +985,6 @@
         </div>
     </div>
 
-    <!-- Funding Modal -->
-    <div class="modal fade" id="fundingModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Fund User Account</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="fund-amount" class="form-label">Amount to Fund (<span id="fund-currency-symbol">$</span>)</label>
-                        <input type="number" class="form-control" id="fund-amount" min="1" step="0.01">
-                    </div>
-                    <div class="mb-3">
-                        <label for="fund-reason" class="form-label">Reason (Optional)</label>
-                        <input type="text" class="form-control" id="fund-reason" placeholder="e.g., Approved aid application">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="confirm-funding-btn">Fund Account</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Application Details Modal -->
     <div class="modal fade" id="applicationDetailsModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
@@ -998,7 +1000,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" id="approve-application-btn">Approve Application</button>
+                    <button type="button" class="btn btn-success" id="allow-reapply-btn">Allow Reapplication</button>
                 </div>
             </div>
         </div>
@@ -1146,9 +1148,13 @@
                         const subscriptionModal = bootstrap.Modal.getInstance(document.getElementById('subscriptionModal'));
                         subscriptionModal.hide();
                         
-                        // Update application status to pending approval
+                        // Update application status to pending validation
                         if (currentApplicationId) {
-                            updateApplicationStatus(currentApplicationId, 'pending');
+                            updateApplicationStatus(currentApplicationId, 'pending_validation');
+                            
+                            // Show pending funds in dashboard
+                            document.getElementById('aid-funds-pending').style.display = 'block';
+                            document.getElementById('pending-funds-amount').textContent = userCurrency + window.applicationData.amount;
                         }
                         
                         // Clear the redirected flag
@@ -1158,7 +1164,7 @@
                         Swal.fire({
                             icon: 'success',
                             title: 'Subscription Verified!',
-                            text: 'Thank you for verifying your subscription! Your AID application is now complete and pending approval.',
+                            text: 'Thank you for verifying your subscription! Your AID application is now pending validation.',
                             confirmButtonColor: '#1a73e8'
                         });
                     } else {
@@ -1179,19 +1185,9 @@
             }
             
             // Bulk actions
-            const bulkFundBtn = document.getElementById('bulk-fund-btn');
-            if (bulkFundBtn) {
-                bulkFundBtn.addEventListener('click', bulkFundUsers);
-            }
-            
-            const bulkDebitBtn = document.getElementById('bulk-debit-btn');
-            if (bulkDebitBtn) {
-                bulkDebitBtn.addEventListener('click', bulkDebitUsers);
-            }
-            
             const bulkApproveBtn = document.getElementById('bulk-approve-btn');
             if (bulkApproveBtn) {
-                bulkApproveBtn.addEventListener('click', bulkApproveApplications);
+                bulkApproveBtn.addEventListener('click', bulkApproveValidations);
             }
             
             // Contact info
@@ -1211,16 +1207,16 @@
                 removeNotificationBtn.addEventListener('click', removeGlobalNotification);
             }
             
-            // Confirm funding button
-            const confirmFundingBtn = document.getElementById('confirm-funding-btn');
-            if (confirmFundingBtn) {
-                confirmFundingBtn.addEventListener('click', confirmFunding);
+            // Allow reapplication button
+            const allowReapplyBtn = document.getElementById('allow-reapply-btn');
+            if (allowReapplyBtn) {
+                allowReapplyBtn.addEventListener('click', allowUserReapplication);
             }
             
-            // Approve application button
-            const approveApplicationBtn = document.getElementById('approve-application-btn');
-            if (approveApplicationBtn) {
-                approveApplicationBtn.addEventListener('click', approveCurrentApplication);
+            // Application filter
+            const applicationFilter = document.getElementById('application-filter');
+            if (applicationFilter) {
+                applicationFilter.addEventListener('change', filterApplications);
             }
         }
 
@@ -1306,7 +1302,8 @@
                         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                         role: 'user',
                         isBanned: false,
-                        deviceId: generateDeviceId()
+                        deviceId: generateDeviceId(),
+                        canReapply: true
                     });
                 })
                 .then(() => {
@@ -1368,10 +1365,21 @@
                         return;
                     }
                     
+                    // Check if user can reapply
+                    if (doc.exists && !doc.data().canReapply) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Cannot Apply',
+                            text: 'You cannot apply for AID at this time. Please wait for admin approval to reapply.',
+                            confirmButtonColor: '#1a73e8'
+                        });
+                        return;
+                    }
+                    
                     // Check if user has a pending application
                     return firebase.firestore().collection('applications')
                         .where('userId', '==', currentUserId)
-                        .where('status', 'in', ['submitted', 'pending'])
+                        .where('status', 'in', ['submitted', 'pending_validation'])
                         .get();
                 })
                 .then((querySnapshot) => {
@@ -1386,7 +1394,6 @@
                     }
                     
                     const reason = document.getElementById('aid-reason').value;
-                    const amount = document.getElementById('aid-amount').value;
                     const photoData = document.getElementById('photo').src;
                     
                     if (!photoData || photoData === '') {
@@ -1408,7 +1415,6 @@
                         userId: currentUserId,
                         userEmail: currentUser.email,
                         reason: reason,
-                        amount: parseFloat(amount),
                         photoURL: photoData, // Store base64 directly for speed
                         status: 'submitted',
                         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1430,9 +1436,13 @@
                         id: docRef.id,
                         userId: currentUserId,
                         reason: reason,
-                        amount: amount,
                         status: 'submitted'
                     };
+                    
+                    // Update user to prevent reapplication
+                    firebase.firestore().collection('users').doc(currentUserId).update({
+                        canReapply: false
+                    });
                     
                     // Hide application form
                     document.getElementById('aid-application-section').style.display = 'none';
@@ -1629,18 +1639,36 @@
                             currentApplicationId = doc.id;
                         });
                     } else {
-                        // Check if user has a pending application
+                        // Check if user has a pending validation application
                         firebase.firestore().collection('applications')
                             .where('userId', '==', currentUserId)
-                            .where('status', 'in', ['submitted', 'pending'])
+                            .where('status', 'in', ['submitted', 'pending_validation'])
                             .get()
                             .then((pendingSnapshot) => {
                                 if (!pendingSnapshot.empty) {
                                     // User has a pending application, hide the form
                                     document.getElementById('aid-application-section').style.display = 'none';
+                                    
+                                    // Check if it's pending validation and show funds pending
+                                    pendingSnapshot.forEach((doc) => {
+                                        const app = doc.data();
+                                        if (app.status === 'pending_validation') {
+                                            document.getElementById('aid-funds-pending').style.display = 'block';
+                                            document.getElementById('pending-funds-amount').textContent = userCurrency + (app.approvedAmount || '0.00');
+                                        }
+                                    });
                                 } else {
-                                    // User can apply for aid
-                                    document.getElementById('aid-application-section').style.display = 'block';
+                                    // Check if user can reapply
+                                    firebase.firestore().collection('users').doc(currentUserId).get()
+                                        .then((userDoc) => {
+                                            if (userDoc.exists && userDoc.data().canReapply) {
+                                                // User can apply for aid
+                                                document.getElementById('aid-application-section').style.display = 'block';
+                                            } else {
+                                                // User cannot reapply
+                                                document.getElementById('aid-application-section').style.display = 'none';
+                                            }
+                                        });
                                 }
                             });
                     }
@@ -1686,10 +1714,10 @@
                         appElement.innerHTML = `
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
-                                    <strong>Amount: ${userCurrency}${app.amount}</strong>
+                                    <strong>Application Date: ${app.createdAt?.toDate().toLocaleDateString()}</strong>
                                     <p class="mb-1">Reason: ${app.reason}</p>
                                     <p class="mb-0">Status: <span class="${statusClass}">${app.status}</span></p>
-                                    <small class="text-muted">Submitted: ${app.createdAt?.toDate().toLocaleDateString()}</small>
+                                    ${app.approvedAmount ? `<p class="mb-0">Approved Amount: ${userCurrency}${app.approvedAmount}</p>` : ''}
                                 </div>
                                 <div>
                                     ${app.validated ? '<span class="badge bg-success">Validated</span>' : '<span class="badge bg-warning">Not Validated</span>'}
@@ -1704,7 +1732,7 @@
                             latestApplication = app;
                         }
                         
-                        if (app.status === 'submitted' || app.status === 'pending') {
+                        if (app.status === 'submitted' || app.status === 'pending_validation') {
                             hasPending = true;
                         }
                         
@@ -1828,10 +1856,11 @@
                                     <h6 class="mb-1">${user.fullName} ${user.isBanned ? '<span class="badge bg-danger">Banned</span>' : ''}</h6>
                                     <p class="mb-1 text-muted">${user.email}</p>
                                     <p class="mb-0">Balance: ${userCurrency}${user.balance || 0}</p>
+                                    <p class="mb-0">Can Reapply: ${user.canReapply ? 'Yes' : 'No'}</p>
                                 </div>
                                 <div>
-                                    <button class="btn btn-sm btn-primary me-1" onclick="fundUser('${doc.id}', '${user.fullName}', '${userCurrency}')">
-                                        <i class="fas fa-plus me-1"></i> Fund
+                                    <button class="btn btn-sm btn-primary me-1" onclick="viewApplicationDetails('${doc.id}')">
+                                        <i class="fas fa-eye me-1"></i> View
                                     </button>
                                     ${user.isBanned ? 
                                         `<button class="btn btn-sm btn-success" onclick="unbanUser('${doc.id}')">
@@ -1851,18 +1880,38 @@
                     console.error("Error getting users:", error);
                 });
             
-            // Load pending applications
-            firebase.firestore().collection('applications')
-                .where('status', 'in', ['submitted', 'pending'])
-                .get()
+            // Load pending validations
+            filterApplications();
+        }
+        
+        // Filter applications based on selected filter
+        function filterApplications() {
+            if (!isAdmin) return;
+            
+            const filter = document.getElementById('application-filter').value;
+            let query = firebase.firestore().collection('applications');
+            
+            if (filter === 'pending') {
+                query = query.where('status', '==', 'pending_validation');
+            } else if (filter === 'submitted') {
+                query = query.where('status', '==', 'submitted');
+            } else if (filter === 'validated') {
+                query = query.where('status', '==', 'approved');
+            }
+            
+            query.orderBy('createdAt', 'desc').get()
                 .then((querySnapshot) => {
-                    const applicationsList = document.getElementById('pending-applications-list');
+                    const applicationsList = document.getElementById('pending-validations-list');
                     applicationsList.innerHTML = '';
-                    document.getElementById('pending-applications').textContent = querySnapshot.size;
                     
                     if (querySnapshot.empty) {
-                        applicationsList.innerHTML = '<p class="text-muted">No pending applications.</p>';
+                        applicationsList.innerHTML = '<p class="text-muted">No applications found.</p>';
                         return;
+                    }
+                    
+                    // Update counts
+                    if (filter === 'pending') {
+                        document.getElementById('pending-validations').textContent = querySnapshot.size;
                     }
                     
                     querySnapshot.forEach((doc) => {
@@ -1873,19 +1922,13 @@
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <h6 class="mb-1">${app.userEmail}</h6>
-                                    <p class="mb-1">Amount: ${userCurrency}${app.amount}</p>
-                                    <p class="mb-0">Reason: ${app.reason}</p>
+                                    <p class="mb-1">Reason: ${app.reason}</p>
+                                    <p class="mb-0">Status: ${app.status}</p>
                                     <small class="text-muted">Submitted: ${app.createdAt?.toDate().toLocaleDateString()}</small>
                                 </div>
                                 <div>
-                                    <button class="btn btn-sm btn-primary me-1" onclick="viewApplicationDetails('${doc.id}')">
+                                    <button class="btn btn-sm btn-primary" onclick="viewApplicationDetails('${doc.id}')">
                                         <i class="fas fa-eye me-1"></i> View
-                                    </button>
-                                    <button class="btn btn-sm btn-success me-1" onclick="approveApplication('${doc.id}')">
-                                        <i class="fas fa-check me-1"></i> Approve
-                                    </button>
-                                    <button class="btn btn-sm btn-danger" onclick="rejectApplication('${doc.id}')">
-                                        <i class="fas fa-times me-1"></i> Reject
                                     </button>
                                 </div>
                             </div>
@@ -1894,18 +1937,7 @@
                     });
                 })
                 .catch((error) => {
-                    console.error("Error getting pending applications:", error);
-                });
-            
-            // Load approved applications count
-            firebase.firestore().collection('applications')
-                .where('status', '==', 'approved')
-                .get()
-                .then((querySnapshot) => {
-                    document.getElementById('approved-applications').textContent = querySnapshot.size;
-                })
-                .catch((error) => {
-                    console.error("Error getting approved applications:", error);
+                    console.error("Error getting applications:", error);
                 });
         }
         
@@ -1999,13 +2031,10 @@
                 subscriptionPhone: phoneNumber,
                 subscriptionVerified: true,
                 subscriptionVerifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                status: 'pending' // Change status to pending for admin approval
+                status: 'pending_validation' // Change status to pending validation
             })
             .then(() => {
                 console.log("Subscription information stored successfully");
-                
-                // Hide validation section
-                document.getElementById('validate-approval-section').style.display = 'none';
                 
                 // Reload user applications
                 loadUserApplications();
@@ -2024,9 +2053,6 @@
             })
             .then(() => {
                 console.log("Application status updated successfully");
-                
-                // Hide validation section
-                document.getElementById('validate-approval-section').style.display = 'none';
                 
                 // Reload user applications
                 loadUserApplications();
@@ -2164,157 +2190,132 @@
         }
         
         // Admin functions
-        function fundUser(userId, userName, currency) {
-            window.currentFundingUser = { id: userId, name: userName, currency: currency };
-            document.getElementById('fund-currency-symbol').textContent = currency;
-            const fundingModal = new bootstrap.Modal(document.getElementById('fundingModal'));
-            fundingModal.show();
+        function viewApplicationDetails(applicationId) {
+            firebase.firestore().collection('applications').doc(applicationId).get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        const app = doc.data();
+                        const detailsContent = document.getElementById('application-details-content');
+                        
+                        // Get user data for currency
+                        return firebase.firestore().collection('users').doc(app.userId).get()
+                            .then((userDoc) => {
+                                const userData = userDoc.data();
+                                const userCurrency = userData.currency || '$';
+                                
+                                detailsContent.innerHTML = `
+                                    <div class="row mb-3">
+                                        <div class="col-sm-4"><strong>User Email:</strong></div>
+                                        <div class="col-sm-8">${app.userEmail}</div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-sm-4"><strong>Reason for AID:</strong></div>
+                                        <div class="col-sm-8">${app.reason}</div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-sm-4"><strong>Status:</strong></div>
+                                        <div class="col-sm-8">${app.status}</div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-sm-4"><strong>Validated:</strong></div>
+                                        <div class="col-sm-8">${app.validated ? 'Yes' : 'No'}</div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-sm-4"><strong>Subscription Verified:</strong></div>
+                                        <div class="col-sm-8">${app.subscriptionVerified ? 'Yes' : 'No'}</div>
+                                    </div>
+                                    ${app.subscriptionPhone ? `
+                                    <div class="row mb-3">
+                                        <div class="col-sm-4"><strong>Subscription Phone:</strong></div>
+                                        <div class="col-sm-8">${app.subscriptionPhone}</div>
+                                    </div>
+                                    ` : ''}
+                                    <div class="row mb-3">
+                                        <div class="col-sm-4"><strong>Submitted:</strong></div>
+                                        <div class="col-sm-8">${app.createdAt?.toDate().toLocaleString()}</div>
+                                    </div>
+                                    ${app.photoURL ? `
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <strong>Verification Photo:</strong>
+                                            <div class="mt-2">
+                                                <img src="${app.photoURL}" alt="Verification Photo" class="img-fluid rounded" style="max-height: 300px;">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    ` : ''}
+                                `;
+                                
+                                // Store current application ID for reapplication
+                                window.currentAdminApplicationId = applicationId;
+                                window.currentAdminUserId = app.userId;
+                                
+                                const modal = new bootstrap.Modal(document.getElementById('applicationDetailsModal'));
+                                modal.show();
+                            });
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error getting application details:", error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Could not load application details.',
+                        confirmButtonColor: '#1a73e8'
+                    });
+                });
         }
         
-        function bulkFundUsers() {
-            const amount = parseFloat(document.getElementById('bulk-fund-amount').value);
+        function allowUserReapplication() {
+            const userId = window.currentAdminUserId;
+            
+            if (!userId) return;
+            
+            // Update user to allow reapplication
+            firebase.firestore().collection('users').doc(userId).update({
+                canReapply: true
+            })
+            .then(() => {
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('applicationDetailsModal'));
+                modal.hide();
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Reapplication Allowed!',
+                    text: 'The user can now apply for AID again.',
+                    confirmButtonColor: '#1a73e8'
+                });
+                
+                loadAdminData();
+            })
+            .catch((error) => {
+                console.error("Error allowing reapplication:", error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'There was an error allowing reapplication.',
+                    confirmButtonColor: '#1a73e8'
+                });
+            });
+        }
+        
+        function bulkApproveValidations() {
+            const amount = parseFloat(document.getElementById('bulk-approval-amount').value);
             
             if (!amount || amount <= 0) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Invalid Amount',
-                    text: 'Please enter a valid amount to fund.',
+                    text: 'Please enter a valid approval amount.',
                     confirmButtonColor: '#1a73e8'
                 });
                 return;
             }
             
             Swal.fire({
-                title: 'Bulk Fund All Users?',
-                text: `This will add ${userCurrency}${amount} to every user's account.`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#1a73e8',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Yes, fund all users!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    firebase.firestore().collection('users').get()
-                        .then((querySnapshot) => {
-                            const batch = firebase.firestore().batch();
-                            
-                            querySnapshot.forEach((doc) => {
-                                const userData = doc.data();
-                                const currentBalance = userData.balance || 0;
-                                const newBalance = currentBalance + amount;
-                                
-                                batch.update(doc.ref, { balance: newBalance });
-                                
-                                // Add transaction record
-                                const transactionData = {
-                                    userId: doc.id,
-                                    type: 'credit',
-                                    amount: amount,
-                                    description: 'Bulk funding by admin',
-                                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                                };
-                                firebase.firestore().collection('transactions').add(transactionData);
-                            });
-                            
-                            return batch.commit();
-                        })
-                        .then(() => {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Bulk Funding Complete!',
-                                text: `All users have been funded with ${userCurrency}${amount}.`,
-                                confirmButtonColor: '#1a73e8'
-                            });
-                            
-                            loadAdminData();
-                        })
-                        .catch((error) => {
-                            console.error("Error bulk funding users:", error);
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Bulk Funding Failed',
-                                text: 'There was an error funding all users.',
-                                confirmButtonColor: '#1a73e8'
-                            });
-                        });
-                }
-            });
-        }
-        
-        function bulkDebitUsers() {
-            const amount = parseFloat(document.getElementById('bulk-fund-amount').value);
-            
-            if (!amount || amount <= 0) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Invalid Amount',
-                    text: 'Please enter a valid amount to debit.',
-                    confirmButtonColor: '#1a73e8'
-                });
-                return;
-            }
-            
-            Swal.fire({
-                title: 'Bulk Debit All Users?',
-                text: `This will debit ${userCurrency}${amount} from every user's account.`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#1a73e8',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Yes, debit all users!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    firebase.firestore().collection('users').get()
-                        .then((querySnapshot) => {
-                            const batch = firebase.firestore().batch();
-                            
-                            querySnapshot.forEach((doc) => {
-                                const userData = doc.data();
-                                const currentBalance = userData.balance || 0;
-                                const newBalance = Math.max(0, currentBalance - amount);
-                                
-                                batch.update(doc.ref, { balance: newBalance });
-                                
-                                // Add transaction record
-                                const transactionData = {
-                                    userId: doc.id,
-                                    type: 'debit',
-                                    amount: amount,
-                                    description: 'Bulk debit by admin',
-                                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                                };
-                                firebase.firestore().collection('transactions').add(transactionData);
-                            });
-                            
-                            return batch.commit();
-                        })
-                        .then(() => {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Bulk Debit Complete!',
-                                text: `All users have been debited with ${userCurrency}${amount}.`,
-                                confirmButtonColor: '#1a73e8'
-                            });
-                            
-                            loadAdminData();
-                        })
-                        .catch((error) => {
-                            console.error("Error bulk debiting users:", error);
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Bulk Debit Failed',
-                                text: 'There was an error debiting all users.',
-                                confirmButtonColor: '#1a73e8'
-                            });
-                        });
-                }
-            });
-        }
-        
-        function bulkApproveApplications() {
-            Swal.fire({
-                title: 'Approve All Pending Applications?',
-                text: 'This will approve all pending AID applications.',
+                title: 'Approve All Pending Validations?',
+                text: `This will approve all pending validations and fund user accounts with ${userCurrency}${amount}.`,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#1a73e8',
@@ -2323,7 +2324,7 @@
             }).then((result) => {
                 if (result.isConfirmed) {
                     firebase.firestore().collection('applications')
-                        .where('status', 'in', ['submitted', 'pending'])
+                        .where('status', '==', 'pending_validation')
                         .get()
                         .then((querySnapshot) => {
                             const batch = firebase.firestore().batch();
@@ -2332,6 +2333,7 @@
                                 const app = doc.data();
                                 batch.update(doc.ref, { 
                                     status: 'approved',
+                                    approvedAmount: amount,
                                     reviewedAt: firebase.firestore.FieldValue.serverTimestamp()
                                 });
                                 
@@ -2341,17 +2343,18 @@
                                         if (userDoc.exists) {
                                             const userData = userDoc.data();
                                             const currentBalance = userData.balance || 0;
-                                            const newBalance = currentBalance + app.amount;
+                                            const newBalance = currentBalance + amount;
                                             
                                             firebase.firestore().collection('users').doc(app.userId).update({
-                                                balance: newBalance
+                                                balance: newBalance,
+                                                canReapply: true
                                             });
                                             
                                             // Add transaction record
                                             const transactionData = {
                                                 userId: app.userId,
                                                 type: 'credit',
-                                                amount: app.amount,
+                                                amount: amount,
                                                 description: 'AID application approved',
                                                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
                                             };
@@ -2366,252 +2369,22 @@
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Bulk Approval Complete!',
-                                text: 'All pending applications have been approved.',
+                                text: `All pending validations have been approved and funded with ${userCurrency}${amount}.`,
                                 confirmButtonColor: '#1a73e8'
                             });
                             
                             loadAdminData();
                         })
                         .catch((error) => {
-                            console.error("Error bulk approving applications:", error);
+                            console.error("Error bulk approving validations:", error);
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Bulk Approval Failed',
-                                text: 'There was an error approving all applications.',
+                                text: 'There was an error approving all validations.',
                                 confirmButtonColor: '#1a73e8'
                             });
                         });
                 }
-            });
-        }
-        
-        function viewApplicationDetails(applicationId) {
-            firebase.firestore().collection('applications').doc(applicationId).get()
-                .then((doc) => {
-                    if (doc.exists) {
-                        const app = doc.data();
-                        const detailsContent = document.getElementById('application-details-content');
-                        
-                        detailsContent.innerHTML = `
-                            <div class="row mb-3">
-                                <div class="col-sm-4"><strong>User Email:</strong></div>
-                                <div class="col-sm-8">${app.userEmail}</div>
-                            </div>
-                            <div class="row mb-3">
-                                <div class="col-sm-4"><strong>Reason for AID:</strong></div>
-                                <div class="col-sm-8">${app.reason}</div>
-                            </div>
-                            <div class="row mb-3">
-                                <div class="col-sm-4"><strong>Requested Amount:</strong></div>
-                                <div class="col-sm-8">${userCurrency}${app.amount}</div>
-                            </div>
-                            <div class="row mb-3">
-                                <div class="col-sm-4"><strong>Status:</strong></div>
-                                <div class="col-sm-8">${app.status}</div>
-                            </div>
-                            <div class="row mb-3">
-                                <div class="col-sm-4"><strong>Validated:</strong></div>
-                                <div class="col-sm-8">${app.validated ? 'Yes' : 'No'}</div>
-                            </div>
-                            <div class="row mb-3">
-                                <div class="col-sm-4"><strong>Subscription Verified:</strong></div>
-                                <div class="col-sm-8">${app.subscriptionVerified ? 'Yes' : 'No'}</div>
-                            </div>
-                            ${app.subscriptionPhone ? `
-                            <div class="row mb-3">
-                                <div class="col-sm-4"><strong>Subscription Phone:</strong></div>
-                                <div class="col-sm-8">${app.subscriptionPhone}</div>
-                            </div>
-                            ` : ''}
-                            <div class="row mb-3">
-                                <div class="col-sm-4"><strong>Submitted:</strong></div>
-                                <div class="col-sm-8">${app.createdAt?.toDate().toLocaleString()}</div>
-                            </div>
-                            ${app.photoURL ? `
-                            <div class="row">
-                                <div class="col-12">
-                                    <strong>Verification Photo:</strong>
-                                    <div class="mt-2">
-                                        <img src="${app.photoURL}" alt="Verification Photo" class="img-fluid rounded" style="max-height: 300px;">
-                                    </div>
-                                </div>
-                            </div>
-                            ` : ''}
-                        `;
-                        
-                        // Store current application ID for approval
-                        window.currentAdminApplicationId = applicationId;
-                        window.currentAdminApplicationAmount = app.amount;
-                        
-                        const modal = new bootstrap.Modal(document.getElementById('applicationDetailsModal'));
-                        modal.show();
-                    }
-                })
-                .catch((error) => {
-                    console.error("Error getting application details:", error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Could not load application details.',
-                        confirmButtonColor: '#1a73e8'
-                    });
-                });
-        }
-        
-        function approveCurrentApplication() {
-            const applicationId = window.currentAdminApplicationId;
-            const amount = window.currentAdminApplicationAmount;
-            
-            if (!applicationId) return;
-            
-            // Update application status
-            firebase.firestore().collection('applications').doc(applicationId).update({
-                status: 'approved',
-                reviewedAt: firebase.firestore.FieldValue.serverTimestamp()
-            })
-            .then(() => {
-                // Get user ID from application
-                return firebase.firestore().collection('applications').doc(applicationId).get();
-            })
-            .then((doc) => {
-                if (doc.exists) {
-                    const app = doc.data();
-                    const userId = app.userId;
-                    
-                    // Fund user account
-                    return firebase.firestore().collection('users').doc(userId).get()
-                        .then((userDoc) => {
-                            if (userDoc.exists) {
-                                const userData = userDoc.data();
-                                const currentBalance = userData.balance || 0;
-                                const newBalance = currentBalance + amount;
-                                
-                                return firebase.firestore().collection('users').doc(userId).update({
-                                    balance: newBalance
-                                });
-                            }
-                        })
-                        .then(() => {
-                            // Add transaction record
-                            const transactionData = {
-                                userId: userId,
-                                type: 'credit',
-                                amount: amount,
-                                description: 'AID application approved',
-                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                            };
-                            return firebase.firestore().collection('transactions').add(transactionData);
-                        });
-                }
-            })
-            .then(() => {
-                // Close modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('applicationDetailsModal'));
-                modal.hide();
-                
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Application Approved!',
-                    text: 'The AID application has been approved and the user account has been funded.',
-                    confirmButtonColor: '#1a73e8'
-                });
-                
-                loadAdminData();
-            })
-            .catch((error) => {
-                console.error("Error approving application:", error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Approval Failed',
-                    text: 'There was an error approving the application.',
-                    confirmButtonColor: '#1a73e8'
-                });
-            });
-        }
-        
-        function approveApplication(applicationId) {
-            firebase.firestore().collection('applications').doc(applicationId).update({
-                status: 'approved',
-                reviewedAt: firebase.firestore.FieldValue.serverTimestamp()
-            })
-            .then(() => {
-                // Get application to get user ID and amount
-                return firebase.firestore().collection('applications').doc(applicationId).get();
-            })
-            .then((doc) => {
-                if (doc.exists) {
-                    const app = doc.data();
-                    const userId = app.userId;
-                    const amount = app.amount;
-                    
-                    // Fund user account
-                    return firebase.firestore().collection('users').doc(userId).get()
-                        .then((userDoc) => {
-                            if (userDoc.exists) {
-                                const userData = userDoc.data();
-                                const currentBalance = userData.balance || 0;
-                                const newBalance = currentBalance + amount;
-                                
-                                return firebase.firestore().collection('users').doc(userId).update({
-                                    balance: newBalance
-                                });
-                            }
-                        })
-                        .then(() => {
-                            // Add transaction record
-                            const transactionData = {
-                                userId: userId,
-                                type: 'credit',
-                                amount: amount,
-                                description: 'AID application approved',
-                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                            };
-                            return firebase.firestore().collection('transactions').add(transactionData);
-                        });
-                }
-            })
-            .then(() => {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Application Approved!',
-                    text: 'The AID application has been approved and the user account has been funded.',
-                    confirmButtonColor: '#1a73e8'
-                });
-                loadAdminData();
-            })
-            .catch((error) => {
-                console.error("Error approving application:", error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Approval Failed',
-                    text: 'There was an error approving the application.',
-                    confirmButtonColor: '#1a73e8'
-                });
-            });
-        }
-        
-        function rejectApplication(applicationId) {
-            firebase.firestore().collection('applications').doc(applicationId).update({
-                status: 'rejected',
-                reviewedAt: firebase.firestore.FieldValue.serverTimestamp()
-            })
-            .then(() => {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Application Rejected!',
-                    text: 'The AID application has been rejected.',
-                    confirmButtonColor: '#1a73e8'
-                });
-                loadAdminData();
-            })
-            .catch((error) => {
-                console.error("Error rejecting application:", error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Rejection Failed',
-                    text: 'There was an error rejecting the application.',
-                    confirmButtonColor: '#1a73e8'
-                });
             });
         }
         
@@ -2661,80 +2434,6 @@
                     confirmButtonColor: '#1a73e8'
                 });
             });
-        }
-        
-        // Confirm funding
-        function confirmFunding() {
-            const amount = parseFloat(document.getElementById('fund-amount').value);
-            const reason = document.getElementById('fund-reason').value;
-            
-            if (!amount || amount <= 0) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Invalid Amount',
-                    text: 'Please enter a valid amount to fund.',
-                    confirmButtonColor: '#1a73e8'
-                });
-                return;
-            }
-            
-            const userId = window.currentFundingUser.id;
-            const userName = window.currentFundingUser.name;
-            const currency = window.currentFundingUser.currency;
-            
-            // Get current balance
-            firebase.firestore().collection('users').doc(userId).get()
-                .then((doc) => {
-                    if (doc.exists) {
-                        const userData = doc.data();
-                        const currentBalance = userData.balance || 0;
-                        const newBalance = currentBalance + amount;
-                        
-                        // Update user balance
-                        return firebase.firestore().collection('users').doc(userId).update({
-                            balance: newBalance
-                        });
-                    }
-                })
-                .then(() => {
-                    // Add transaction record
-                    const transactionData = {
-                        userId: userId,
-                        type: 'credit',
-                        amount: amount,
-                        description: reason || 'Admin funding',
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    };
-                    return firebase.firestore().collection('transactions').add(transactionData);
-                })
-                .then(() => {
-                    // Close modal
-                    const fundingModal = bootstrap.Modal.getInstance(document.getElementById('fundingModal'));
-                    fundingModal.hide();
-                    
-                    // Reset form
-                    document.getElementById('fund-amount').value = '';
-                    document.getElementById('fund-reason').value = '';
-                    
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Account Funded!',
-                        text: `Successfully funded ${currency}${amount} to ${userName}'s account.`,
-                        confirmButtonColor: '#1a73e8'
-                    });
-                    
-                    // Reload admin data
-                    loadAdminData();
-                })
-                .catch((error) => {
-                    console.error("Error funding user:", error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Funding Failed',
-                        text: 'There was an error funding the user account.',
-                        confirmButtonColor: '#1a73e8'
-                    });
-                });
         }
         
         // Camera functionality
