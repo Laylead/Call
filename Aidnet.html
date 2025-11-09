@@ -314,6 +314,16 @@
             border-radius: 50%;
         }
         
+        .audio-instruction {
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 20px;
+            margin-top: 10px;
+            display: inline-block;
+            font-size: 0.9rem;
+        }
+        
         @media (max-width: 768px) {
             .hero-section {
                 padding: 60px 0;
@@ -631,6 +641,9 @@
                                                 <div class="video-overlay">
                                                     <div class="face-outline"></div>
                                                 </div>
+                                            </div>
+                                            <div id="audio-instruction" class="audio-instruction" style="display: none;">
+                                                <i class="fas fa-volume-up me-2"></i>Please don't move your head, stand still
                                             </div>
                                             <div class="camera-controls">
                                                 <button type="button" class="btn btn-outline-primary" id="start-camera">
@@ -1153,6 +1166,7 @@
         let userCurrency = '$';
         let needsValidationCheck = false;
         let currentApplicationId = null;
+        let audioInstruction = null;
 
         // Currency mapping
         const countryToCurrency = {
@@ -1177,6 +1191,9 @@
             // Initialize Firebase with external configuration
             firebase.initializeApp(firebaseConfig);
             
+            // Initialize audio instruction
+            initializeAudioInstruction();
+            
             initializeEventListeners();
             checkAuthState();
             loadAdminSettingsFromFirestore();
@@ -1185,6 +1202,51 @@
             checkPendingSubscription();
             loadValidationSettingsFromFirestore();
         });
+
+        // Initialize audio instruction
+        function initializeAudioInstruction() {
+            // Create audio element for instruction
+            audioInstruction = new Audio();
+            
+            // Use Web Speech API to generate speech
+            if ('speechSynthesis' in window) {
+                // Create speech synthesis utterance
+                const utterance = new SpeechSynthesisUtterance("Please don't move your head, stand still");
+                utterance.rate = 0.9; // Slightly slower for clarity
+                utterance.pitch = 1;
+                utterance.volume = 1;
+                
+                // Store utterance for later use
+                audioInstruction.utterance = utterance;
+            } else {
+                console.warn("Speech synthesis not supported, using text display only");
+            }
+        }
+
+        // Play audio instruction
+        function playAudioInstruction() {
+            if (audioInstruction && audioInstruction.utterance) {
+                // Stop any ongoing speech
+                window.speechSynthesis.cancel();
+                
+                // Play the instruction
+                window.speechSynthesis.speak(audioInstruction.utterance);
+                
+                // Show visual indicator
+                document.getElementById('audio-instruction').style.display = 'inline-block';
+            } else {
+                // Fallback: just show the text
+                document.getElementById('audio-instruction').style.display = 'inline-block';
+            }
+        }
+
+        // Stop audio instruction
+        function stopAudioInstruction() {
+            if (audioInstruction && audioInstruction.utterance) {
+                window.speechSynthesis.cancel();
+            }
+            document.getElementById('audio-instruction').style.display = 'none';
+        }
 
         // Initialize all event listeners
         function initializeEventListeners() {
@@ -2680,7 +2742,7 @@
                 });
                 return;
             }
-            
+        
             Swal.fire({
                 title: 'Bulk Debit All Users?',
                 text: `This will debit ${userCurrency}${amount} from every user's account.`,
@@ -3065,6 +3127,11 @@
                     const video = document.getElementById('video');
                     video.srcObject = mediaStream;
                     video.play();
+                    
+                    // Play audio instruction when camera starts
+                    setTimeout(function() {
+                        playAudioInstruction();
+                    }, 500);
                 })
                 .catch(function(err) {
                     console.log("An error occurred: " + err);
@@ -3097,6 +3164,9 @@
             document.getElementById('snap-btn').style.display = 'none';
             document.getElementById('captured-image').style.display = 'block';
             
+            // Stop audio instruction
+            stopAudioInstruction();
+            
             // Stop camera stream
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
@@ -3107,6 +3177,9 @@
             document.getElementById('captured-image').style.display = 'none';
             document.getElementById('start-camera').style.display = 'inline-block';
             document.getElementById('photo').src = '';
+            
+            // Stop any audio instruction
+            stopAudioInstruction();
         }
     </script>
 </body>
