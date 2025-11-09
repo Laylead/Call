@@ -1715,7 +1715,7 @@
             return deviceId;
         }
         
-        // FAST AID APPLICATION SUBMISSION - Optimized for speed
+        // FIXED: AID APPLICATION SUBMISSION - Now properly handles all variables
         function handleAidApplication(e) {
             e.preventDefault();
             
@@ -1728,6 +1728,11 @@
                 });
                 return;
             }
+            
+            // Get form values first
+            const reason = document.getElementById('aid-reason').value;
+            const amount = document.getElementById('aid-amount').value;
+            const photoData = document.getElementById('photo').src;
             
             // Check if user is allowed to reapply
             firebase.firestore().collection('users').doc(currentUserId).get()
@@ -1743,7 +1748,7 @@
                                 text: 'Your account has been restricted. Please contact support for assistance.',
                                 confirmButtonColor: '#1a73e8'
                             });
-                            return;
+                            return Promise.reject(new Error('User is banned'));
                         }
                         
                         // Check if user is allowed to reapply
@@ -1754,7 +1759,7 @@
                                 text: 'You cannot apply for AID at this time. Please contact support if you believe this is an error.',
                                 confirmButtonColor: '#1a73e8'
                             });
-                            return;
+                            return Promise.reject(new Error('User cannot reapply'));
                         }
                         
                         // Check if user has a pending application
@@ -1772,12 +1777,8 @@
                             text: 'You already have a pending AID application. Please wait for it to be processed before submitting a new one.',
                             confirmButtonColor: '#1a73e8'
                         });
-                        return;
+                        return Promise.reject(new Error('User has pending application'));
                     }
-                    
-                    const reason = document.getElementById('aid-reason').value;
-                    const amount = document.getElementById('aid-amount').value;
-                    const photoData = document.getElementById('photo').src;
                     
                     if (!photoData || photoData === '') {
                         Swal.fire({
@@ -1786,14 +1787,14 @@
                             text: 'Please take a verification photo before submitting.',
                             confirmButtonColor: '#1a73e8'
                         });
-                        return;
+                        return Promise.reject(new Error('Photo is required'));
                     }
                     
                     // Show loading spinner immediately
                     document.getElementById('application-loading').style.display = 'block';
                     document.getElementById('submit-application-btn').disabled = true;
                     
-                    // FAST SUBMISSION - Skip complex image processing
+                    // Application data object
                     const applicationData = {
                         userId: currentUserId,
                         userEmail: currentUser.email,
@@ -1806,7 +1807,7 @@
                         subscriptionVerified: false
                     };
                     
-                    // Save application to Firestore directly - no image upload delay
+                    // Save application to Firestore directly
                     return firebase.firestore().collection('applications').add(applicationData);
                 })
                 .then((docRef) => {
@@ -1861,12 +1862,18 @@
                     document.getElementById('application-loading').style.display = 'none';
                     document.getElementById('submit-application-btn').disabled = false;
                     
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Submission Failed',
-                        text: 'There was an error submitting your application. Please try again.',
-                        confirmButtonColor: '#1a73e8'
-                    });
+                    // Only show error if it's not one of our handled cases
+                    if (error.message !== 'User is banned' && 
+                        error.message !== 'User cannot reapply' && 
+                        error.message !== 'User has pending application' &&
+                        error.message !== 'Photo is required') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Submission Failed',
+                            text: 'There was an error submitting your application. Please try again.',
+                            confirmButtonColor: '#1a73e8'
+                        });
+                    }
                 });
         }
         
@@ -2819,7 +2826,7 @@
                 })
                 .catch((error) => {
                     console.error("Error checking global notification:", error);
-                });
+                    });
         }
         
         // Admin functions
