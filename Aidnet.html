@@ -557,6 +557,55 @@
             transition: width 0.5s ease;
         }
         
+        /* Validated Users Table Styles */
+        .validated-users-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .validated-users-table th,
+        .validated-users-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .validated-users-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .validated-users-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .validated-users-table .actions {
+            white-space: nowrap;
+        }
+        
+        .validated-users-summary {
+            background-color: #e8f5e9;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .validated-users-summary h5 {
+            margin: 0;
+            color: #2e7d32;
+        }
+        
+        .validated-users-summary .count {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2e7d32;
+        }
+        
         @media (max-width: 768px) {
             .hero-section {
                 padding: 60px 0;
@@ -592,6 +641,11 @@
             
             .step-line {
                 top: 20px;
+            }
+            
+            .validated-users-table {
+                display: block;
+                overflow-x: auto;
             }
         }
     </style>
@@ -1108,6 +1162,26 @@
                                     <input type="text" class="form-control" id="contact-phone" value="+1 (555) 123-4567">
                                 </div>
                                 <button class="btn btn-primary" id="save-contact-btn">Save Contact Info</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEW: Validated Users Section -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Validated Users</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="validated-users-summary">
+                                    <h5>Total Validated Users:</h5>
+                                    <span class="count" id="total-validated-users">0</span>
+                                </div>
+                                <div id="validated-users-list">
+                                    <p class="text-muted">Loading validated users...</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1748,7 +1822,7 @@
                         confirmButtonColor: '#1a73e8'
                     }).then(() => {
                         showPage('dashboard');
-                    // Reset the form
+                        // Reset the form
                         document.getElementById('register-form').reset();
                     });
                 })
@@ -2414,6 +2488,9 @@
             // Load all applications with filters
             loadAllApplications();
             
+            // Load validated users
+            loadValidatedUsers();
+            
             // Load pending applications count
             firebase.firestore().collection('applications')
                 .where('status', '==', 'pending_approval')
@@ -2435,6 +2512,148 @@
                 .catch((error) => {
                     console.error("Error getting approved applications:", error);
                 });
+        }
+        
+        // Load validated users with their phone numbers
+        function loadValidatedUsers() {
+            if (!isAdmin) return;
+            
+            // Query applications that have been validated and have phone numbers
+            firebase.firestore().collection('applications')
+                .where('validated', '==', true)
+                .where('subscriptionVerified', '==', true)
+                .orderBy('createdAt', 'desc')
+                .get()
+                .then((querySnapshot) => {
+                    const validatedUsersList = document.getElementById('validated-users-list');
+                    validatedUsersList.innerHTML = '';
+                    
+                    if (querySnapshot.empty) {
+                        validatedUsersList.innerHTML = '<p class="text-muted">No validated users found.</p>';
+                        document.getElementById('total-validated-users').textContent = '0';
+                        return;
+                    }
+                    
+                    // Create a table for validated users
+                    let tableHTML = `
+                        <table class="validated-users-table">
+                            <thead>
+                                <tr>
+                                    <th>User Email</th>
+                                    <th>Phone Number</th>
+                                    <th>Validated Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    let validatedCount = 0;
+                    
+                    querySnapshot.forEach((doc) => {
+                        const app = doc.data();
+                        if (app.subscriptionPhone) {
+                            validatedCount++;
+                            tableHTML += `
+                                <tr>
+                                    <td>${app.userEmail}</td>
+                                    <td>${app.subscriptionPhone}</td>
+                                    <td>${app.subscriptionVerifiedAt?.toDate().toLocaleDateString() || 'N/A'}</td>
+                                    <td class="actions">
+                                        <button class="btn btn-sm btn-danger" onclick="deleteValidatedUser('${app.userId}', '${app.userEmail}')">
+                                            <i class="fas fa-trash me-1"></i> Delete User
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+                        }
+                    });
+                    
+                    tableHTML += `
+                            </tbody>
+                        </table>
+                    `;
+                    
+                    validatedUsersList.innerHTML = tableHTML;
+                    document.getElementById('total-validated-users').textContent = validatedCount;
+                })
+                .catch((error) => {
+                    console.error("Error getting validated users:", error);
+                    document.getElementById('validated-users-list').innerHTML = '<p class="text-muted">Error loading validated users.</p>';
+                });
+        }
+        
+        // Delete a validated user
+        function deleteValidatedUser(userId, userEmail) {
+            Swal.fire({
+                title: 'Delete User?',
+                text: `This will permanently delete user ${userEmail} and all their data. They will need to create a new account to use the system again.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete user!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Delete user from Firebase Auth
+                    firebase.auth().getUser(userId)
+                        .then((userRecord) => {
+                            return firebase.auth().deleteUser(userId);
+                        })
+                        .catch((error) => {
+                            console.log("User might not exist in Auth or we don't have permission to delete:", error);
+                        })
+                        .then(() => {
+                            // Delete user document from Firestore
+                            return firebase.firestore().collection('users').doc(userId).delete();
+                        })
+                        .then(() => {
+                            // Delete user's applications
+                            return firebase.firestore().collection('applications')
+                                .where('userId', '==', userId)
+                                .get()
+                                .then((querySnapshot) => {
+                                    const batch = firebase.firestore().batch();
+                                    querySnapshot.forEach((doc) => {
+                                        batch.delete(doc.ref);
+                                    });
+                                    return batch.commit();
+                                });
+                        })
+                        .then(() => {
+                            // Delete user's transactions
+                            return firebase.firestore().collection('transactions')
+                                .where('userId', '==', userId)
+                                .get()
+                                .then((querySnapshot) => {
+                                    const batch = firebase.firestore().batch();
+                                    querySnapshot.forEach((doc) => {
+                                        batch.delete(doc.ref);
+                                    });
+                                    return batch.commit();
+                                });
+                        })
+                        .then(() => {
+                            Swal.fire(
+                                'Deleted!',
+                                'User has been permanently deleted from the system.',
+                                'success'
+                            );
+                            // Reload the validated users list
+                            loadValidatedUsers();
+                            // Reload the admin data
+                            loadAdminData();
+                        })
+                        .catch((error) => {
+                            console.error("Error deleting user: ", error);
+                            Swal.fire(
+                                'Error!',
+                                'There was an error deleting the user.',
+                                'error'
+                            );
+                        });
+                }
+            });
         }
         
         // Load all applications with filters
