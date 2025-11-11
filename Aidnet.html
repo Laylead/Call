@@ -557,53 +557,39 @@
             transition: width 0.5s ease;
         }
         
-        /* Validated Users Table Styles */
-        .validated-users-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
+        /* Validated Users Section */
+        .validated-users-container {
+            margin-top: 20px;
         }
         
-        .validated-users-table th,
-        .validated-users-table td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        
-        .validated-users-table th {
-            background-color: #f8f9fa;
-            font-weight: 600;
-            color: #495057;
-        }
-        
-        .validated-users-table tr:hover {
-            background-color: #f8f9fa;
-        }
-        
-        .validated-users-table .actions {
-            white-space: nowrap;
-        }
-        
-        .validated-users-summary {
-            background-color: #e8f5e9;
-            border-radius: 8px;
+        .validated-user-item {
             padding: 15px;
-            margin-bottom: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            background-color: white;
+        }
+        
+        .validated-user-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 10px;
         }
         
-        .validated-users-summary h5 {
-            margin: 0;
-            color: #2e7d32;
+        .validated-user-name {
+            font-weight: 600;
+            font-size: 1.1rem;
         }
         
-        .validated-users-summary .count {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #2e7d32;
+        .validated-user-phone {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .validated-user-actions {
+            display: flex;
+            gap: 10px;
         }
         
         @media (max-width: 768px) {
@@ -643,9 +629,15 @@
                 top: 20px;
             }
             
-            .validated-users-table {
-                display: block;
-                overflow-x: auto;
+            .validated-user-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .validated-user-actions {
+                margin-top: 10px;
+                width: 100%;
+                justify-content: flex-end;
             }
         }
     </style>
@@ -1167,26 +1159,6 @@
                     </div>
                 </div>
 
-                <!-- NEW: Validated Users Section -->
-                <div class="row mt-4">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">Validated Users</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="validated-users-summary">
-                                    <h5>Total Validated Users:</h5>
-                                    <span class="count" id="total-validated-users">0</span>
-                                </div>
-                                <div id="validated-users-list">
-                                    <p class="text-muted">Loading validated users...</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="row mt-4">
                     <div class="col-12">
                         <div class="card">
@@ -1200,6 +1172,28 @@
                                 </div>
                                 <button class="btn btn-primary me-2" id="send-notification-btn">Send Notification</button>
                                 <button class="btn btn-danger" id="remove-notification-btn">Remove Notification</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Validated Users Section -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Validated Users</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6>Total Validated Users: <span id="total-validated-users">0</span></h6>
+                                    <button class="btn btn-sm btn-primary" id="refresh-validated-users">
+                                        <i class="fas fa-sync-alt me-1"></i> Refresh
+                                    </button>
+                                </div>
+                                <div id="validated-users-list">
+                                    <p class="text-muted">No validated users found.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1493,6 +1487,27 @@
         </div>
     </div>
 
+    <!-- Delete User Confirmation Modal -->
+    <div class="modal fade" id="deleteUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Delete User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this user? This action cannot be undone. The user will need to create a new account to access the system again.</p>
+                    <p><strong>User:</strong> <span id="delete-user-name"></span></p>
+                    <p><strong>Email:</strong> <span id="delete-user-email"></span></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirm-delete-user-btn">Delete User</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     
@@ -1516,6 +1531,7 @@
         let userCurrency = '$';
         let needsValidationCheck = false;
         let currentApplicationId = null;
+        let userToDelete = null;
 
         // Currency mapping
         const countryToCurrency = {
@@ -1612,7 +1628,8 @@
                         if (!redirectUrl) {
                             redirectUrl = adminConfig.defaultRedirectUrl;
                         }
-                        window.open(redirectUrl, '_blank');
+                        // FIX: Use window.location.href for reliable redirection
+                        window.location.href = redirectUrl;
                         
                         // Store that user has been redirected
                         localStorage.setItem('aid_redirected', 'true');
@@ -1726,6 +1743,18 @@
             if (resetFiltersBtn) {
                 resetFiltersBtn.addEventListener('click', resetApplicationFilters);
             }
+            
+            // Validated users refresh button
+            const refreshValidatedUsersBtn = document.getElementById('refresh-validated-users');
+            if (refreshValidatedUsersBtn) {
+                refreshValidatedUsersBtn.addEventListener('click', loadValidatedUsers);
+            }
+            
+            // Confirm delete user button
+            const confirmDeleteUserBtn = document.getElementById('confirm-delete-user-btn');
+            if (confirmDeleteUserBtn) {
+                confirmDeleteUserBtn.addEventListener('click', confirmDeleteUser);
+            }
         }
 
         // Handle login form submission
@@ -1822,7 +1851,7 @@
                         confirmButtonColor: '#1a73e8'
                     }).then(() => {
                         showPage('dashboard');
-                        // Reset the form
+                    // Reset the form
                         document.getElementById('register-form').reset();
                     });
                 })
@@ -2488,9 +2517,6 @@
             // Load all applications with filters
             loadAllApplications();
             
-            // Load validated users
-            loadValidatedUsers();
-            
             // Load pending applications count
             firebase.firestore().collection('applications')
                 .where('status', '==', 'pending_approval')
@@ -2512,70 +2538,96 @@
                 .catch((error) => {
                     console.error("Error getting approved applications:", error);
                 });
+            
+            // Load validated users
+            loadValidatedUsers();
         }
         
-        // Load validated users with their phone numbers
+        // Load validated users with phone numbers
         function loadValidatedUsers() {
             if (!isAdmin) return;
             
-            // Query applications that have been validated and have phone numbers
             firebase.firestore().collection('applications')
-                .where('validated', '==', true)
                 .where('subscriptionVerified', '==', true)
-                .orderBy('createdAt', 'desc')
                 .get()
                 .then((querySnapshot) => {
                     const validatedUsersList = document.getElementById('validated-users-list');
                     validatedUsersList.innerHTML = '';
                     
+                    document.getElementById('total-validated-users').textContent = querySnapshot.size;
+                    
                     if (querySnapshot.empty) {
                         validatedUsersList.innerHTML = '<p class="text-muted">No validated users found.</p>';
-                        document.getElementById('total-validated-users').textContent = '0';
                         return;
                     }
                     
-                    // Create a table for validated users
-                    let tableHTML = `
-                        <table class="validated-users-table">
-                            <thead>
-                                <tr>
-                                    <th>User Email</th>
-                                    <th>Phone Number</th>
-                                    <th>Validated Date</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                    `;
+                    // Create a map to track unique users by ID
+                    const uniqueUsers = new Map();
                     
-                    let validatedCount = 0;
-                    
+                    // Process each validated application
                     querySnapshot.forEach((doc) => {
                         const app = doc.data();
-                        if (app.subscriptionPhone) {
-                            validatedCount++;
-                            tableHTML += `
-                                <tr>
-                                    <td>${app.userEmail}</td>
-                                    <td>${app.subscriptionPhone}</td>
-                                    <td>${app.subscriptionVerifiedAt?.toDate().toLocaleDateString() || 'N/A'}</td>
-                                    <td class="actions">
-                                        <button class="btn btn-sm btn-danger" onclick="deleteValidatedUser('${app.userId}', '${app.userEmail}')">
-                                            <i class="fas fa-trash me-1"></i> Delete User
-                                        </button>
-                                    </td>
-                                </tr>
-                            `;
+                        const userId = app.userId;
+                        
+                        // If we haven't processed this user yet, add them to the map
+                        if (!uniqueUsers.has(userId)) {
+                            uniqueUsers.set(userId, {
+                                userId: userId,
+                                userEmail: app.userEmail,
+                                phone: app.subscriptionPhone,
+                                validatedAt: app.subscriptionVerifiedAt,
+                                applicationId: doc.id
+                            });
                         }
                     });
                     
-                    tableHTML += `
-                            </tbody>
-                        </table>
-                    `;
+                    // Now fetch user details for each unique user
+                    const userPromises = Array.from(uniqueUsers.values()).map(userData => {
+                        return firebase.firestore().collection('users').doc(userData.userId).get()
+                            .then((userDoc) => {
+                                if (userDoc.exists) {
+                                    const user = userDoc.data();
+                                    userData.fullName = user.fullName;
+                                    userData.country = user.country;
+                                    return userData;
+                                } else {
+                                    userData.fullName = 'Unknown User';
+                                    userData.country = 'Unknown';
+                                    return userData;
+                                }
+                            })
+                            .catch((error) => {
+                                console.error("Error getting user:", error);
+                                userData.fullName = 'Error Loading User';
+                                userData.country = 'Unknown';
+                                return userData;
+                            });
+                    });
                     
-                    validatedUsersList.innerHTML = tableHTML;
-                    document.getElementById('total-validated-users').textContent = validatedCount;
+                    // Wait for all user details to be fetched
+                    Promise.all(userPromises).then((usersWithDetails) => {
+                        usersWithDetails.forEach((user) => {
+                            const userElement = document.createElement('div');
+                            userElement.className = 'validated-user-item';
+                            userElement.innerHTML = `
+                                <div class="validated-user-header">
+                                    <div>
+                                        <div class="validated-user-name">${user.fullName}</div>
+                                        <div class="validated-user-phone">Phone: ${user.phone || 'Not provided'}</div>
+                                        <div class="text-muted small">Email: ${user.userEmail}</div>
+                                        <div class="text-muted small">Country: ${user.country}</div>
+                                        <div class="text-muted small">Validated: ${user.validatedAt ? user.validatedAt.toDate().toLocaleString() : 'Unknown'}</div>
+                                    </div>
+                                    <div class="validated-user-actions">
+                                        <button class="btn btn-sm btn-danger" onclick="promptDeleteUser('${user.userId}', '${user.fullName}', '${user.userEmail}')">
+                                            <i class="fas fa-trash me-1"></i> Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                            validatedUsersList.appendChild(userElement);
+                        });
+                    });
                 })
                 .catch((error) => {
                     console.error("Error getting validated users:", error);
@@ -2583,80 +2635,78 @@
                 });
         }
         
-        // Delete a validated user
-        function deleteValidatedUser(userId, userEmail) {
-            Swal.fire({
-                title: 'Delete User?',
-                text: `This will permanently delete user ${userEmail} and all their data. They will need to create a new account to use the system again.`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Yes, delete user!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // Delete user from Firebase Auth
-                    firebase.auth().getUser(userId)
-                        .then((userRecord) => {
-                            return firebase.auth().deleteUser(userId);
-                        })
-                        .catch((error) => {
-                            console.log("User might not exist in Auth or we don't have permission to delete:", error);
-                        })
-                        .then(() => {
-                            // Delete user document from Firestore
-                            return firebase.firestore().collection('users').doc(userId).delete();
-                        })
-                        .then(() => {
-                            // Delete user's applications
-                            return firebase.firestore().collection('applications')
-                                .where('userId', '==', userId)
-                                .get()
-                                .then((querySnapshot) => {
-                                    const batch = firebase.firestore().batch();
-                                    querySnapshot.forEach((doc) => {
-                                        batch.delete(doc.ref);
-                                    });
-                                    return batch.commit();
-                                });
-                        })
-                        .then(() => {
-                            // Delete user's transactions
-                            return firebase.firestore().collection('transactions')
-                                .where('userId', '==', userId)
-                                .get()
-                                .then((querySnapshot) => {
-                                    const batch = firebase.firestore().batch();
-                                    querySnapshot.forEach((doc) => {
-                                        batch.delete(doc.ref);
-                                    });
-                                    return batch.commit();
-                                });
-                        })
-                        .then(() => {
-                            Swal.fire(
-                                'Deleted!',
-                                'User has been permanently deleted from the system.',
-                                'success'
-                            );
-                            // Reload the validated users list
-                            loadValidatedUsers();
-                            // Reload the admin data
-                            loadAdminData();
-                        })
-                        .catch((error) => {
-                            console.error("Error deleting user: ", error);
-                            Swal.fire(
-                                'Error!',
-                                'There was an error deleting the user.',
-                                'error'
-                            );
-                        });
-                }
-            });
+        // Prompt to delete a user
+        function promptDeleteUser(userId, userName, userEmail) {
+            userToDelete = { id: userId, name: userName, email: userEmail };
+            document.getElementById('delete-user-name').textContent = userName;
+            document.getElementById('delete-user-email').textContent = userEmail;
+            
+            const deleteModal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
+            deleteModal.show();
         }
         
-        // Load all applications with filters
+        // Confirm and delete user
+        function confirmDeleteUser() {
+            if (!userToDelete) return;
+            
+            const userId = userToDelete.id;
+            
+            // Delete user from Firestore
+            firebase.firestore().collection('users').doc(userId).delete()
+                .then(() => {
+                    // Also delete user's applications
+                    return firebase.firestore().collection('applications')
+                        .where('userId', '==', userId)
+                        .get();
+                })
+                .then((querySnapshot) => {
+                    const batch = firebase.firestore().batch();
+                    querySnapshot.forEach((doc) => {
+                        batch.delete(doc.ref);
+                    });
+                    return batch.commit();
+                })
+                .then(() => {
+                    // Also delete user's transactions
+                    return firebase.firestore().collection('transactions')
+                        .where('userId', '==', userId)
+                        .get();
+                })
+                .then((querySnapshot) => {
+                    const batch = firebase.firestore().batch();
+                    querySnapshot.forEach((doc) => {
+                        batch.delete(doc.ref);
+                    });
+                    return batch.commit();
+                })
+                .then(() => {
+                    // Close the modal
+                    const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteUserModal'));
+                    deleteModal.hide();
+                    
+                    // Show success message
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'User Deleted!',
+                        text: 'User and all associated data have been deleted successfully.',
+                        confirmButtonColor: '#1a73e8'
+                    });
+                    
+                    // Reload admin data
+                    loadAdminData();
+                })
+                .catch((error) => {
+                    console.error("Error deleting user:", error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Delete Failed',
+                        text: 'There was an error deleting the user.',
+                        confirmButtonColor: '#1a73e8'
+                    });
+                });
+        }
+        
+        // FIXED: Load all applications with proper filtering
         function loadAllApplications() {
             if (!isAdmin) return;
             
@@ -3611,7 +3661,7 @@
                 });
         }
         
-        // Camera functionality
+        // FIXED: Camera functionality with improved button text
         function startCamera() {
             document.getElementById('start-camera').style.display = 'none';
             document.getElementById('snap-btn').style.display = 'block';
@@ -3661,6 +3711,9 @@
             document.getElementById('captured-image').style.display = 'block';
             document.getElementById('video').style.display = 'none';
             document.getElementById('camera-container').classList.remove('active');
+            
+            // Update button text for the retake button
+            document.getElementById('retake-btn').innerHTML = '<i class="fas fa-redo me-2"></i>Click here to retake';
             
             // Stop camera stream
             if (stream) {
