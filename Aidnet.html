@@ -1433,7 +1433,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Not Yet</button>
+                    <button type="button" class="btn btn-secondary" id="not-yet-subscribed-btn">Not Yet</button>
                     <button type="button" class="btn btn-primary" id="confirm-subscription-btn">Yes, I have subscribed</button>
                 </div>
             </div>
@@ -1561,8 +1561,10 @@
             loadAdminSettingsFromFirestore();
             loadContactInfoFromFirestore();
             checkGlobalNotificationFromFirestore();
-            checkPendingSubscription();
             loadValidationSettingsFromFirestore();
+            
+            // Check if user has a pending subscription verification
+            checkPendingSubscriptionOnLoad();
         });
 
         // Initialize all event listeners
@@ -1610,9 +1612,7 @@
             // Validate approval button
             const validateApprovalBtn = document.getElementById('validate-approval-btn');
             if (validateApprovalBtn) {
-                validateApprovalBtn.addEventListener('click', function() {
-                    showValidationTerms();
-                });
+                validateApprovalBtn.addEventListener('click', handleValidationButtonClick);
             }
             
             // Proceed to subscription button
@@ -1628,18 +1628,40 @@
                         if (!redirectUrl) {
                             redirectUrl = adminConfig.defaultRedirectUrl;
                         }
-                        // FIX: Use window.location.href for reliable redirection
-                        window.location.href = redirectUrl;
                         
-                        // Store that user has been redirected
-                        localStorage.setItem('aid_redirected', 'true');
-                        localStorage.setItem('aid_redirect_time', Date.now().toString());
+                        // Store that user has been redirected for subscription
+                        localStorage.setItem('aid_subscription_redirected', 'true');
+                        localStorage.setItem('aid_subscription_time', Date.now().toString());
+                        
+                        // Open in new tab and focus
+                        const newWindow = window.open(redirectUrl, '_blank');
+                        if (newWindow) {
+                            newWindow.focus();
+                        }
                         
                         // Show subscription verification modal after a short delay
                         setTimeout(function() {
-                            checkPendingSubscription();
-                        }, 1000);
+                            // Check if user has returned to the page
+                            if (document.hasFocus()) {
+                                showSubscriptionVerificationModal();
+                            }
+                        }, 3000);
                     });
+                });
+            }
+            
+            // Not Yet button in subscription modal
+            const notYetSubscribedBtn = document.getElementById('not-yet-subscribed-btn');
+            if (notYetSubscribedBtn) {
+                notYetSubscribedBtn.addEventListener('click', function() {
+                    // Close subscription modal
+                    const subscriptionModal = bootstrap.Modal.getInstance(document.getElementById('subscriptionModal'));
+                    subscriptionModal.hide();
+                    
+                    // Show terms modal again so user can proceed to subscribe
+                    setTimeout(function() {
+                        showValidationTerms();
+                    }, 500);
                 });
             }
             
@@ -1662,8 +1684,8 @@
                         }
                         
                         // Clear the redirected flag
-                        localStorage.removeItem('aid_redirected');
-                        localStorage.removeItem('aid_redirect_time');
+                        localStorage.removeItem('aid_subscription_redirected');
+                        localStorage.removeItem('aid_subscription_time');
                         
                         Swal.fire({
                             icon: 'success',
@@ -1754,6 +1776,63 @@
             const confirmDeleteUserBtn = document.getElementById('confirm-delete-user-btn');
             if (confirmDeleteUserBtn) {
                 confirmDeleteUserBtn.addEventListener('click', confirmDeleteUser);
+            }
+        }
+
+        // Handle validation button click with improved flow
+        function handleValidationButtonClick() {
+            // Check if user has already been redirected for subscription
+            const wasRedirected = localStorage.getItem('aid_subscription_redirected') === 'true';
+            const redirectTime = localStorage.getItem('aid_subscription_time');
+            
+            if (wasRedirected && redirectTime) {
+                const timeDiff = Date.now() - parseInt(redirectTime);
+                const hoursDiff = timeDiff / (1000 * 60 * 60);
+                
+                // If user was redirected within the last 24 hours, show phone verification
+                if (hoursDiff < 24) {
+                    showSubscriptionVerificationModal();
+                } else {
+                    // Redirect expired, show terms again
+                    localStorage.removeItem('aid_subscription_redirected');
+                    localStorage.removeItem('aid_subscription_time');
+                    showValidationTerms();
+                }
+            } else {
+                // First time clicking, show terms
+                showValidationTerms();
+            }
+        }
+
+        // Show subscription verification modal
+        function showSubscriptionVerificationModal() {
+            const subscriptionModal = new bootstrap.Modal(document.getElementById('subscriptionModal'));
+            subscriptionModal.show();
+        }
+
+        // Check for pending subscription on page load
+        function checkPendingSubscriptionOnLoad() {
+            if (!currentUser) return;
+            
+            // Check if user was redirected but hasn't verified subscription
+            const wasRedirected = localStorage.getItem('aid_subscription_redirected') === 'true';
+            const redirectTime = localStorage.getItem('aid_subscription_time');
+            
+            // Show subscription modal if user was redirected (within last 24 hours)
+            if (wasRedirected && redirectTime) {
+                const timeDiff = Date.now() - parseInt(redirectTime);
+                const hoursDiff = timeDiff / (1000 * 60 * 60);
+                
+                if (hoursDiff < 24) {
+                    // Wait a bit for page to load completely
+                    setTimeout(function() {
+                        showSubscriptionVerificationModal();
+                    }, 1500);
+                } else {
+                    // Clear old redirect data
+                    localStorage.removeItem('aid_subscription_redirected');
+                    localStorage.removeItem('aid_subscription_time');
+                }
             }
         }
 
@@ -2992,46 +3071,6 @@
             .catch((error) => {
                 console.error("Error updating application status:", error);
             });
-        }
-        
-        // Check for pending subscription verification
-        function checkPendingSubscription() {
-            if (!currentUser) return;
-            
-            // Check if user was redirected but hasn't verified subscription
-            const wasRedirected = localStorage.getItem('aid_redirected') === 'true';
-            const redirectTime = localStorage.getItem('aid_redirect_time');
-            
-            // Show subscription modal if user was redirected (within last 24 hours)
-            if (wasRedirected && redirectTime) {
-                const timeDiff = Date.now() - parseInt(redirectTime);
-                const hoursDiff = timeDiff / (1000 * 60 * 60);
-                
-                if (hoursDiff < 24) {
-                    const subscriptionModal = new bootstrap.Modal(document.getElementById('subscriptionModal'));
-                    subscriptionModal.show();
-                } else {
-                    // Clear old redirect data
-                    localStorage.removeItem('aid_redirected');
-                    localStorage.removeItem('aid_redirect_time');
-                }
-            }
-            
-            // Also check if there are any applications that need subscription verification
-            firebase.firestore().collection('applications')
-                .where('userId', '==', currentUserId)
-                .where('validated', '==', true)
-                .where('subscriptionVerified', '==', false)
-                .get()
-                .then((querySnapshot) => {
-                    if (!querySnapshot.empty) {
-                        const subscriptionModal = new bootstrap.Modal(document.getElementById('subscriptionModal'));
-                        subscriptionModal.show();
-                    }
-                })
-                .catch((error) => {
-                    console.error("Error checking pending subscription:", error);
-                });
         }
         
         // Load contact information from Firestore
