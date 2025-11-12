@@ -1526,29 +1526,16 @@
         let currentUser = null;
         let currentUserId = null;
         let isAdmin = false;
-        let applicationData = null;
         let stream = null;
         let userCurrency = '$';
-        let needsValidationCheck = false;
         let currentApplicationId = null;
         let userToDelete = null;
 
         // Currency mapping
         const countryToCurrency = {
-            'USA': '$',
-            'UK': '£',
-            'Canada': 'CA$',
-            'Australia': 'A$',
-            'Nigeria': '₦',
-            'South Africa': 'R',
-            'Kenya': 'KSh',
-            'Ghana': 'GH₵',
-            'India': '₹',
-            'Brazil': 'R$',
-            'Germany': '€',
-            'France': '€',
-            'Japan': '¥',
-            'China': '¥'
+            'USA': '$', 'UK': '£', 'Canada': 'CA$', 'Australia': 'A$',
+            'Nigeria': '₦', 'South Africa': 'R', 'Kenya': 'KSh', 'Ghana': 'GH₵',
+            'India': '₹', 'Brazil': 'R$', 'Germany': '€', 'France': '€', 'Japan': '¥', 'China': '¥'
         };
 
         // Initialize the application
@@ -1562,221 +1549,114 @@
             loadContactInfoFromFirestore();
             checkGlobalNotificationFromFirestore();
             loadValidationSettingsFromFirestore();
-            
-            // Check if user has a pending subscription verification
-            checkPendingSubscriptionOnLoad();
         });
 
         // Initialize all event listeners
         function initializeEventListeners() {
             // Login form
-            const loginForm = document.getElementById('login-form');
-            if (loginForm) {
-                loginForm.addEventListener('submit', handleLogin);
-            }
+            document.getElementById('login-form')?.addEventListener('submit', handleLogin);
             
             // Register form
-            const registerForm = document.getElementById('register-form');
-            if (registerForm) {
-                registerForm.addEventListener('submit', handleRegister);
-            }
+            document.getElementById('register-form')?.addEventListener('submit', handleRegister);
             
-            // Aid application form - FAST SUBMISSION
-            const aidForm = document.getElementById('aid-application-form');
-            if (aidForm) {
-                aidForm.addEventListener('submit', handleAidApplication);
-            }
+            // Aid application form
+            document.getElementById('aid-application-form')?.addEventListener('submit', handleAidApplication);
             
             // Withdrawal button
-            const withdrawalBtn = document.getElementById('withdrawal-btn');
-            if (withdrawalBtn) {
-                withdrawalBtn.addEventListener('click', handleWithdrawal);
-            }
+            document.getElementById('withdrawal-btn')?.addEventListener('click', handleWithdrawal);
             
             // Camera functionality
-            const startCameraBtn = document.getElementById('start-camera');
-            if (startCameraBtn) {
-                startCameraBtn.addEventListener('click', startCamera);
-            }
-            
-            const snapBtn = document.getElementById('snap-btn');
-            if (snapBtn) {
-                snapBtn.addEventListener('click', capturePhoto);
-            }
-            
-            const retakeBtn = document.getElementById('retake-btn');
-            if (retakeBtn) {
-                retakeBtn.addEventListener('click', retakePhoto);
-            }
+            document.getElementById('start-camera')?.addEventListener('click', startCamera);
+            document.getElementById('snap-btn')?.addEventListener('click', capturePhoto);
+            document.getElementById('retake-btn')?.addEventListener('click', retakePhoto);
             
             // Validate approval button
-            const validateApprovalBtn = document.getElementById('validate-approval-btn');
-            if (validateApprovalBtn) {
-                validateApprovalBtn.addEventListener('click', handleValidationButtonClick);
-            }
+            document.getElementById('validate-approval-btn')?.addEventListener('click', handleValidationButtonClick);
             
             // Proceed to subscription button
-            const proceedSubscriptionBtn = document.getElementById('proceed-subscription-btn');
-            if (proceedSubscriptionBtn) {
-                proceedSubscriptionBtn.addEventListener('click', function() {
-                    // Close terms modal
-                    const termsModal = bootstrap.Modal.getInstance(document.getElementById('termsModal'));
-                    termsModal.hide();
+            document.getElementById('proceed-subscription-btn')?.addEventListener('click', function() {
+                const termsModal = bootstrap.Modal.getInstance(document.getElementById('termsModal'));
+                termsModal.hide();
+                
+                getAdminSettingFromFirestore('redirectUrl').then(redirectUrl => {
+                    if (!redirectUrl) redirectUrl = adminConfig.defaultRedirectUrl;
                     
-                    // Get redirect URL from Firestore
-                    getAdminSettingFromFirestore('redirectUrl').then(redirectUrl => {
-                        if (!redirectUrl) {
-                            redirectUrl = adminConfig.defaultRedirectUrl;
-                        }
-                        
-                        // Store that user has been redirected for subscription
-                        localStorage.setItem('aid_subscription_redirected', 'true');
-                        localStorage.setItem('aid_subscription_time', Date.now().toString());
-                        
-                        // Open in new tab and focus
-                        const newWindow = window.open(redirectUrl, '_blank');
-                        if (newWindow) {
-                            newWindow.focus();
-                        }
-                        
-                        // Show subscription verification modal after a short delay
-                        setTimeout(function() {
-                            // Check if user has returned to the page
-                            if (document.hasFocus()) {
-                                showSubscriptionVerificationModal();
-                            }
-                        }, 3000);
-                    });
+                    // Store that user has been redirected for subscription
+                    localStorage.setItem('aid_subscription_redirected', 'true');
+                    localStorage.setItem('aid_subscription_time', Date.now().toString());
+                    
+                    // Open in new window
+                    window.open(redirectUrl, '_blank', 'noopener,noreferrer');
                 });
-            }
+            });
             
             // Not Yet button in subscription modal
-            const notYetSubscribedBtn = document.getElementById('not-yet-subscribed-btn');
-            if (notYetSubscribedBtn) {
-                notYetSubscribedBtn.addEventListener('click', function() {
-                    // Close subscription modal
+            document.getElementById('not-yet-subscribed-btn')?.addEventListener('click', function() {
+                const subscriptionModal = bootstrap.Modal.getInstance(document.getElementById('subscriptionModal'));
+                subscriptionModal.hide();
+            });
+            
+            // Confirm subscription button
+            document.getElementById('confirm-subscription-btn')?.addEventListener('click', function() {
+                const phoneNumber = document.getElementById('phone-number').value;
+                if (phoneNumber) {
+                    storeSubscriptionInfo(phoneNumber);
                     const subscriptionModal = bootstrap.Modal.getInstance(document.getElementById('subscriptionModal'));
                     subscriptionModal.hide();
                     
-                    // Show terms modal again so user can proceed to subscribe
-                    setTimeout(function() {
-                        showValidationTerms();
-                    }, 500);
-                });
-            }
-            
-            // Confirm subscription button
-            const confirmSubscriptionBtn = document.getElementById('confirm-subscription-btn');
-            if (confirmSubscriptionBtn) {
-                confirmSubscriptionBtn.addEventListener('click', function() {
-                    const phoneNumber = document.getElementById('phone-number').value;
-                    if (phoneNumber) {
-                        // Store subscription info in Firebase
-                        storeSubscriptionInfo(phoneNumber);
-                        
-                        // Close modal
-                        const subscriptionModal = bootstrap.Modal.getInstance(document.getElementById('subscriptionModal'));
-                        subscriptionModal.hide();
-                        
-                        // Update application status to pending approval
-                        if (currentApplicationId) {
-                            updateApplicationStatus(currentApplicationId, 'pending_approval');
-                        }
-                        
-                        // Clear the redirected flag
-                        localStorage.removeItem('aid_subscription_redirected');
-                        localStorage.removeItem('aid_subscription_time');
-                        
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Subscription Verified!',
-                            text: 'Thank you for verifying your subscription! Your AID application is now pending approval.',
-                            confirmButtonColor: '#1a73e8'
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Phone Number Required',
-                            text: 'Please enter your phone number.',
-                            confirmButtonColor: '#1a73e8'
-                        });
+                    if (currentApplicationId) {
+                        updateApplicationStatus(currentApplicationId, 'pending_approval');
                     }
-                });
-            }
+                    
+                    localStorage.removeItem('aid_subscription_redirected');
+                    localStorage.removeItem('aid_subscription_time');
+                    
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Subscription Verified!',
+                        text: 'Thank you for verifying your subscription! Your AID application is now pending approval.',
+                        confirmButtonColor: '#1a73e8'
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Phone Number Required',
+                        text: 'Please enter your phone number.',
+                        confirmButtonColor: '#1a73e8'
+                    });
+                }
+            });
             
             // Admin settings
-            const saveValidationSettingsBtn = document.getElementById('save-validation-settings');
-            if (saveValidationSettingsBtn) {
-                saveValidationSettingsBtn.addEventListener('click', saveValidationSettingsToFirestore);
-            }
+            document.getElementById('save-validation-settings')?.addEventListener('click', saveValidationSettingsToFirestore);
             
             // Bulk actions
-            const bulkFundBtn = document.getElementById('bulk-fund-btn');
-            if (bulkFundBtn) {
-                bulkFundBtn.addEventListener('click', bulkFundUsers);
-            }
-            
-            const bulkDebitBtn = document.getElementById('bulk-debit-btn');
-            if (bulkDebitBtn) {
-                bulkDebitBtn.addEventListener('click', bulkDebitUsers);
-            }
-            
-            const bulkApproveBtn = document.getElementById('bulk-approve-btn');
-            if (bulkApproveBtn) {
-                bulkApproveBtn.addEventListener('click', bulkApproveValidatedApplications);
-            }
+            document.getElementById('bulk-fund-btn')?.addEventListener('click', bulkFundUsers);
+            document.getElementById('bulk-debit-btn')?.addEventListener('click', bulkDebitUsers);
+            document.getElementById('bulk-approve-btn')?.addEventListener('click', bulkApproveValidatedApplications);
             
             // Contact info
-            const saveContactBtn = document.getElementById('save-contact-btn');
-            if (saveContactBtn) {
-                saveContactBtn.addEventListener('click', saveContactInfoToFirestore);
-            }
+            document.getElementById('save-contact-btn')?.addEventListener('click', saveContactInfoToFirestore);
             
             // Notification buttons
-            const sendNotificationBtn = document.getElementById('send-notification-btn');
-            if (sendNotificationBtn) {
-                sendNotificationBtn.addEventListener('click', sendGlobalNotificationToFirestore);
-            }
-            
-            const removeNotificationBtn = document.getElementById('remove-notification-btn');
-            if (removeNotificationBtn) {
-                removeNotificationBtn.addEventListener('click', removeGlobalNotificationFromFirestore);
-            }
+            document.getElementById('send-notification-btn')?.addEventListener('click', sendGlobalNotificationToFirestore);
+            document.getElementById('remove-notification-btn')?.addEventListener('click', removeGlobalNotificationFromFirestore);
             
             // Confirm funding button
-            const confirmFundingBtn = document.getElementById('confirm-funding-btn');
-            if (confirmFundingBtn) {
-                confirmFundingBtn.addEventListener('click', confirmFunding);
-            }
+            document.getElementById('confirm-funding-btn')?.addEventListener('click', confirmFunding);
             
             // Allow reapplication button
-            const allowReapplyBtn = document.getElementById('allow-reapply-btn');
-            if (allowReapplyBtn) {
-                allowReapplyBtn.addEventListener('click', allowUserReapply);
-            }
+            document.getElementById('allow-reapply-btn')?.addEventListener('click', allowUserReapply);
             
             // Application filters
-            const applyFiltersBtn = document.getElementById('apply-filters');
-            if (applyFiltersBtn) {
-                applyFiltersBtn.addEventListener('click', loadAllApplications);
-            }
-            
-            const resetFiltersBtn = document.getElementById('reset-filters');
-            if (resetFiltersBtn) {
-                resetFiltersBtn.addEventListener('click', resetApplicationFilters);
-            }
+            document.getElementById('apply-filters')?.addEventListener('click', loadAllApplications);
+            document.getElementById('reset-filters')?.addEventListener('click', resetApplicationFilters);
             
             // Validated users refresh button
-            const refreshValidatedUsersBtn = document.getElementById('refresh-validated-users');
-            if (refreshValidatedUsersBtn) {
-                refreshValidatedUsersBtn.addEventListener('click', loadValidatedUsers);
-            }
+            document.getElementById('refresh-validated-users')?.addEventListener('click', loadValidatedUsers);
             
             // Confirm delete user button
-            const confirmDeleteUserBtn = document.getElementById('confirm-delete-user-btn');
-            if (confirmDeleteUserBtn) {
-                confirmDeleteUserBtn.addEventListener('click', confirmDeleteUser);
-            }
+            document.getElementById('confirm-delete-user-btn')?.addEventListener('click', confirmDeleteUser);
         }
 
         // Handle validation button click with improved flow
@@ -1810,30 +1690,15 @@
             subscriptionModal.show();
         }
 
-        // Check for pending subscription on page load
-        function checkPendingSubscriptionOnLoad() {
-            if (!currentUser) return;
-            
-            // Check if user was redirected but hasn't verified subscription
-            const wasRedirected = localStorage.getItem('aid_subscription_redirected') === 'true';
-            const redirectTime = localStorage.getItem('aid_subscription_time');
-            
-            // Show subscription modal if user was redirected (within last 24 hours)
-            if (wasRedirected && redirectTime) {
-                const timeDiff = Date.now() - parseInt(redirectTime);
-                const hoursDiff = timeDiff / (1000 * 60 * 60);
+        // Show validation terms modal
+        function showValidationTerms() {
+            getAdminSettingFromFirestore('termsMessage').then(termsMessage => {
+                if (!termsMessage) termsMessage = adminConfig.termsMessage;
+                document.getElementById('terms-message-content').textContent = termsMessage;
                 
-                if (hoursDiff < 24) {
-                    // Wait a bit for page to load completely
-                    setTimeout(function() {
-                        showSubscriptionVerificationModal();
-                    }, 1500);
-                } else {
-                    // Clear old redirect data
-                    localStorage.removeItem('aid_subscription_redirected');
-                    localStorage.removeItem('aid_subscription_time');
-                }
-            }
+                const termsModal = new bootstrap.Modal(document.getElementById('termsModal'));
+                termsModal.show();
+            });
         }
 
         // Handle login form submission
@@ -1842,15 +1707,11 @@
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
             
-            // Firebase authentication
             firebase.auth().signInWithEmailAndPassword(email, password)
                 .then((userCredential) => {
-                    // Signed in
-                    const user = userCredential.user;
-                    currentUser = user;
+                    currentUser = userCredential.user;
                     currentUserId = user.uid;
                     
-                    // Check if user is admin
                     checkAdminStatus(user.uid);
                     
                     Swal.fire({
@@ -1863,12 +1724,10 @@
                     });
                 })
                 .catch((error) => {
-                    const errorCode = error.code;
-                    const errorMessage = error.message;
                     Swal.fire({
                         icon: 'error',
                         title: 'Login Failed',
-                        text: errorMessage,
+                        text: error.message,
                         confirmButtonColor: '#1a73e8'
                     });
                 });
@@ -1895,30 +1754,18 @@
                 return;
             }
             
-            // Firebase authentication
             firebase.auth().createUserWithEmailAndPassword(email, password)
                 .then((userCredential) => {
-                    // Signed up
-                    const user = userCredential.user;
-                    currentUser = user;
+                    currentUser = userCredential.user;
                     currentUserId = user.uid;
                     
-                    // Set currency based on country
                     userCurrency = countryToCurrency[country] || '$';
                     
-                    // Save additional user data to Firestore
                     return firebase.firestore().collection('users').doc(user.uid).set({
-                        fullName: fullName,
-                        age: age,
-                        country: country,
-                        maritalStatus: maritalStatus,
-                        email: email,
-                        balance: 0,
-                        currency: userCurrency,
+                        fullName, age, country, maritalStatus, email,
+                        balance: 0, currency: userCurrency,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                        role: 'user',
-                        isBanned: false,
-                        canReapply: true, // New field to control reapplication
+                        role: 'user', isBanned: false, canReapply: true,
                         deviceId: generateDeviceId()
                     });
                 })
@@ -1930,17 +1777,14 @@
                         confirmButtonColor: '#1a73e8'
                     }).then(() => {
                         showPage('dashboard');
-                    // Reset the form
                         document.getElementById('register-form').reset();
                     });
                 })
                 .catch((error) => {
-                    const errorCode = error.code;
-                    const errorMessage = error.message;
                     Swal.fire({
                         icon: 'error',
                         title: 'Registration Failed',
-                        text: errorMessage,
+                        text: error.message,
                         confirmButtonColor: '#1a73e8'
                     });
                 });
@@ -1956,7 +1800,7 @@
             return deviceId;
         }
         
-        // FIXED: AID APPLICATION SUBMISSION - Now properly handles all variables
+        // Handle AID application submission
         function handleAidApplication(e) {
             e.preventDefault();
             
@@ -1970,18 +1814,15 @@
                 return;
             }
             
-            // Get form values first
             const reason = document.getElementById('aid-reason').value;
             const amount = document.getElementById('aid-amount').value;
             const photoData = document.getElementById('photo').src;
             
-            // Check if user is allowed to reapply
             firebase.firestore().collection('users').doc(currentUserId).get()
                 .then((doc) => {
                     if (doc.exists) {
                         const userData = doc.data();
                         
-                        // Check if user is banned
                         if (userData.isBanned) {
                             Swal.fire({
                                 icon: 'error',
@@ -1992,7 +1833,6 @@
                             return Promise.reject(new Error('User is banned'));
                         }
                         
-                        // Check if user is allowed to reapply
                         if (!userData.canReapply) {
                             Swal.fire({
                                 icon: 'error',
@@ -2003,7 +1843,6 @@
                             return Promise.reject(new Error('User cannot reapply'));
                         }
                         
-                        // Check if user has a pending application
                         return firebase.firestore().collection('applications')
                             .where('userId', '==', currentUserId)
                             .where('status', 'in', ['submitted', 'pending_approval'])
@@ -2031,64 +1870,43 @@
                         return Promise.reject(new Error('Photo is required'));
                     }
                     
-                    // Show loading spinner immediately
                     document.getElementById('application-loading').style.display = 'block';
                     document.getElementById('submit-application-btn').disabled = true;
                     
-                    // Update step indicator to show submission in progress
                     updateStepIndicator(3);
                     
-                    // Application data object
                     const applicationData = {
                         userId: currentUserId,
                         userEmail: currentUser.email,
                         reason: reason,
                         amount: parseFloat(amount),
-                        photoURL: photoData, // Store base64 directly for speed
+                        photoURL: photoData,
                         status: 'submitted',
                         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                         validated: false,
                         subscriptionVerified: false
                     };
                     
-                    // Save application to Firestore directly
                     return firebase.firestore().collection('applications').add(applicationData);
                 })
                 .then((docRef) => {
-                    // Hide loading spinner immediately
                     document.getElementById('application-loading').style.display = 'none';
                     document.getElementById('submit-application-btn').disabled = false;
                     
-                    // Store application data for later use
                     currentApplicationId = docRef.id;
-                    window.applicationData = {
-                        id: docRef.id,
-                        userId: currentUserId,
-                        reason: reason,
-                        amount: amount,
-                        status: 'submitted'
-                    };
                     
-                    // Set user cannot reapply until admin allows
                     firebase.firestore().collection('users').doc(currentUserId).update({
                         canReapply: false
                     });
                     
-                    // Hide application form completely
                     document.getElementById('aid-application-section').style.display = 'none';
-                    
-                    // Show validate approval section immediately
                     document.getElementById('validate-approval-section').style.display = 'block';
-                    needsValidationCheck = true;
                     
-                    // Reset form
                     document.getElementById('aid-application-form').reset();
                     retakePhoto();
                     
-                    // Reset step indicator
                     resetStepIndicator();
                     
-                    // Show success message immediately
                     Swal.fire({
                         icon: 'success',
                         title: 'Application Submitted!',
@@ -2096,12 +1914,10 @@
                         confirmButtonColor: '#1a73e8'
                     });
                     
-                    // Show validation reminder immediately
                     setTimeout(function() {
                         showValidationReminder();
                     }, 500);
                     
-                    // Update application history
                     loadUserApplications();
                 })
                 .catch((error) => {
@@ -2109,7 +1925,6 @@
                     document.getElementById('application-loading').style.display = 'none';
                     document.getElementById('submit-application-btn').disabled = false;
                     
-                    // Only show error if it's not one of our handled cases
                     if (error.message !== 'User is banned' && 
                         error.message !== 'User cannot reapply' && 
                         error.message !== 'User has pending application' &&
@@ -2126,13 +1941,11 @@
         
         // Update step indicator with animations
         function updateStepIndicator(stepNumber) {
-            // Reset all steps
             const steps = document.querySelectorAll('.step');
             steps.forEach(step => {
                 step.classList.remove('active', 'completed');
             });
             
-            // Mark previous steps as completed and current step as active
             for (let i = 1; i <= stepNumber; i++) {
                 const stepElement = document.getElementById(`step-${i}`);
                 if (stepElement) {
@@ -2152,7 +1965,6 @@
                 step.classList.remove('active', 'completed');
             });
             
-            // Set first step as active
             document.getElementById('step-1').classList.add('active');
         }
         
@@ -2169,13 +1981,11 @@
                 cancelButtonColor: '#6c757d'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    // Scroll to and highlight the validation button
                     document.getElementById('validate-approval-section').scrollIntoView({ 
                         behavior: 'smooth',
                         block: 'center'
                     });
                     
-                    // Add extra highlight effect
                     const validationCard = document.getElementById('validate-approval-section').querySelector('.card');
                     validationCard.classList.add('validation-highlight');
                     
@@ -2186,25 +1996,10 @@
             });
         }
         
-        // Show validation terms modal
-        function showValidationTerms() {
-            getAdminSettingFromFirestore('termsMessage').then(termsMessage => {
-                if (!termsMessage) {
-                    termsMessage = adminConfig.termsMessage;
-                }
-                document.getElementById('terms-message-content').textContent = termsMessage;
-                
-                const termsModal = new bootstrap.Modal(document.getElementById('termsModal'));
-                termsModal.show();
-            });
-        }
-        
         // Handle withdrawal request
         function handleWithdrawal() {
             getAdminSettingFromFirestore('withdrawalAction').then(withdrawalAction => {
-                if (!withdrawalAction) {
-                    withdrawalAction = 'popup';
-                }
+                if (!withdrawalAction) withdrawalAction = 'popup';
                 
                 if (withdrawalAction === 'popup') {
                     getAdminSettingFromFirestore('popupMessage').then(message => {
@@ -2219,9 +2014,7 @@
                     });
                 } else if (withdrawalAction === 'redirect') {
                     getAdminSettingFromFirestore('redirectUrl').then(redirectUrl => {
-                        if (!redirectUrl) {
-                            redirectUrl = adminConfig.defaultRedirectUrl;
-                        }
+                        if (!redirectUrl) redirectUrl = adminConfig.defaultRedirectUrl;
                         window.open(redirectUrl, '_blank');
                     });
                 }
@@ -2232,36 +2025,27 @@
         function checkAuthState() {
             firebase.auth().onAuthStateChanged((user) => {
                 if (user) {
-                    // User is signed in
                     currentUser = user;
                     currentUserId = user.uid;
                     
-                    // Update UI for logged in user
                     document.getElementById('auth-nav-item').style.display = 'none';
                     document.getElementById('user-nav-item').style.display = 'block';
                     
-                    // Load user data
                     loadUserData(user.uid);
-                    
-                    // Check if user is admin
                     checkAdminStatus(user.uid);
                     
-                    // Show dashboard if on home page
                     if (document.getElementById('home-page').style.display !== 'none') {
                         showPage('dashboard');
                     }
                 } else {
-                    // User is signed out
                     currentUser = null;
                     currentUserId = null;
                     isAdmin = false;
                     
-                    // Update UI for logged out user
                     document.getElementById('auth-nav-item').style.display = 'block';
                     document.getElementById('user-nav-item').style.display = 'none';
                     document.getElementById('admin-nav-item').style.display = 'none';
                     
-                    // Show home page if on a protected page
                     if (document.getElementById('dashboard-page').style.display !== 'none' || 
                         document.getElementById('admin-page').style.display !== 'none' ||
                         document.getElementById('profile-page').style.display !== 'none') {
@@ -2278,29 +2062,21 @@
                     if (doc.exists) {
                         const userData = doc.data();
                         
-                        // Set currency
                         userCurrency = userData.currency || '$';
                         document.getElementById('currency-symbol').textContent = userCurrency;
                         
-                        // Update UI with user data
                         document.getElementById('user-name').textContent = userData.fullName;
                         document.getElementById('user-name-nav').textContent = userData.fullName;
                         document.getElementById('user-balance').textContent = userCurrency + (userData.balance || 0).toFixed(2);
                         
-                        // Update profile page
                         document.getElementById('profile-full-name').textContent = userData.fullName;
                         document.getElementById('profile-email').textContent = userData.email;
                         document.getElementById('profile-age').textContent = userData.age;
                         document.getElementById('profile-country').textContent = userData.country;
                         document.getElementById('profile-marital-status').textContent = userData.maritalStatus;
                         
-                        // Load user applications
                         loadUserApplications();
-                        
-                        // Check if user has a pending application that needs validation
                         checkPendingValidation();
-                        
-                        // Check for pending funds
                         checkPendingFunds();
                     }
                 })
@@ -2320,33 +2096,27 @@
                 .get()
                 .then((querySnapshot) => {
                     if (!querySnapshot.empty) {
-                        // User has a submitted application that needs validation
                         document.getElementById('aid-application-section').style.display = 'none';
                         document.getElementById('validate-approval-section').style.display = 'block';
                         
-                        // Store the application ID
                         querySnapshot.forEach((doc) => {
                             currentApplicationId = doc.id;
                         });
                     } else {
-                        // Check if user has a pending application
                         firebase.firestore().collection('applications')
                             .where('userId', '==', currentUserId)
                             .where('status', 'in', ['submitted', 'pending_approval'])
                             .get()
                             .then((pendingSnapshot) => {
                                 if (!pendingSnapshot.empty) {
-                                    // User has a pending application, hide the form
                                     document.getElementById('aid-application-section').style.display = 'none';
                                 } else {
-                                    // Check if user can reapply
                                     firebase.firestore().collection('users').doc(currentUserId).get()
                                         .then((userDoc) => {
                                             if (userDoc.exists) {
                                                 const userData = userDoc.data();
                                                 if (userData.canReapply) {
                                                     document.getElementById('aid-application-section').style.display = 'block';
-                                                    // Reset step indicator when form is shown
                                                     resetStepIndicator();
                                                 } else {
                                                     document.getElementById('aid-application-section').style.display = 'none';
@@ -2410,8 +2180,6 @@
                         return;
                     }
                     
-                    let hasPending = false;
-                    let needsValidation = false;
                     let latestApplication = null;
                     
                     querySnapshot.forEach((doc) => {
@@ -2441,27 +2209,15 @@
                         
                         applicationsList.appendChild(appElement);
                         
-                        if (!latestApplication) {
-                            latestApplication = app;
-                        }
-                        
-                        if (app.status === 'submitted' || app.status === 'pending_approval') {
-                            hasPending = true;
-                        }
-                        
-                        if (app.status === 'submitted' && !app.validated) {
-                            needsValidation = true;
-                        }
+                        if (!latestApplication) latestApplication = app;
                     });
                     
-                    // Update application status display
                     if (latestApplication) {
                         document.getElementById('application-status').textContent = latestApplication.status;
                         document.getElementById('application-status').className = statusClass;
                         
                         if (querySnapshot.size > 1) {
                             document.getElementById('last-application-container').style.display = 'block';
-                            // For demo purposes, set last application as approved
                             document.getElementById('last-application-status').textContent = 'approved';
                             document.getElementById('last-application-status').className = 'status-approved';
                         }
@@ -2593,8 +2349,8 @@
                     console.error("Error getting users:", error);
                 });
             
-            // Load all applications with filters
             loadAllApplications();
+            loadValidatedUsers();
             
             // Load pending applications count
             firebase.firestore().collection('applications')
@@ -2617,9 +2373,6 @@
                 .catch((error) => {
                     console.error("Error getting approved applications:", error);
                 });
-            
-            // Load validated users
-            loadValidatedUsers();
         }
         
         // Load validated users with phone numbers
@@ -2640,15 +2393,12 @@
                         return;
                     }
                     
-                    // Create a map to track unique users by ID
                     const uniqueUsers = new Map();
                     
-                    // Process each validated application
                     querySnapshot.forEach((doc) => {
                         const app = doc.data();
                         const userId = app.userId;
                         
-                        // If we haven't processed this user yet, add them to the map
                         if (!uniqueUsers.has(userId)) {
                             uniqueUsers.set(userId, {
                                 userId: userId,
@@ -2660,7 +2410,6 @@
                         }
                     });
                     
-                    // Now fetch user details for each unique user
                     const userPromises = Array.from(uniqueUsers.values()).map(userData => {
                         return firebase.firestore().collection('users').doc(userData.userId).get()
                             .then((userDoc) => {
@@ -2683,7 +2432,6 @@
                             });
                     });
                     
-                    // Wait for all user details to be fetched
                     Promise.all(userPromises).then((usersWithDetails) => {
                         usersWithDetails.forEach((user) => {
                             const userElement = document.createElement('div');
@@ -2730,10 +2478,8 @@
             
             const userId = userToDelete.id;
             
-            // Delete user from Firestore
             firebase.firestore().collection('users').doc(userId).delete()
                 .then(() => {
-                    // Also delete user's applications
                     return firebase.firestore().collection('applications')
                         .where('userId', '==', userId)
                         .get();
@@ -2746,7 +2492,6 @@
                     return batch.commit();
                 })
                 .then(() => {
-                    // Also delete user's transactions
                     return firebase.firestore().collection('transactions')
                         .where('userId', '==', userId)
                         .get();
@@ -2759,11 +2504,9 @@
                     return batch.commit();
                 })
                 .then(() => {
-                    // Close the modal
                     const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteUserModal'));
                     deleteModal.hide();
                     
-                    // Show success message
                     Swal.fire({
                         icon: 'success',
                         title: 'User Deleted!',
@@ -2771,7 +2514,6 @@
                         confirmButtonColor: '#1a73e8'
                     });
                     
-                    // Reload admin data
                     loadAdminData();
                 })
                 .catch((error) => {
@@ -2785,7 +2527,7 @@
                 });
         }
         
-        // FIXED: Load all applications with proper filtering
+        // Load all applications with proper filtering
         function loadAllApplications() {
             if (!isAdmin) return;
             
@@ -2795,12 +2537,10 @@
             
             let query = firebase.firestore().collection('applications');
             
-            // Apply status filter
             if (statusFilter !== 'all') {
                 query = query.where('status', '==', statusFilter);
             }
             
-            // Apply date filters
             if (dateFrom) {
                 const fromDate = new Date(dateFrom);
                 query = query.where('createdAt', '>=', fromDate);
@@ -2808,7 +2548,7 @@
             
             if (dateTo) {
                 const toDate = new Date(dateTo);
-                toDate.setHours(23, 59, 59, 999); // End of the day
+                toDate.setHours(23, 59, 59, 999);
                 query = query.where('createdAt', '<=', toDate);
             }
             
@@ -2870,30 +2610,23 @@
         // Load validation settings from Firestore
         function loadValidationSettingsFromFirestore() {
             getAdminSettingFromFirestore('validationButtonText').then(buttonText => {
-                if (!buttonText) {
-                    buttonText = adminConfig.validationButtonText;
-                }
+                if (!buttonText) buttonText = adminConfig.validationButtonText;
                 document.getElementById('validation-button-text').textContent = buttonText;
                 
-                // Update admin panel fields
                 if (document.getElementById('validation-button-text-input')) {
                     document.getElementById('validation-button-text-input').value = buttonText;
                 }
             });
             
             getAdminSettingFromFirestore('termsMessage').then(termsMessage => {
-                if (!termsMessage) {
-                    termsMessage = adminConfig.termsMessage;
-                }
+                if (!termsMessage) termsMessage = adminConfig.termsMessage;
                 if (document.getElementById('terms-message')) {
                     document.getElementById('terms-message').value = termsMessage;
                 }
             });
             
             getAdminSettingFromFirestore('redirectUrl').then(redirectUrl => {
-                if (!redirectUrl) {
-                    redirectUrl = adminConfig.defaultRedirectUrl;
-                }
+                if (!redirectUrl) redirectUrl = adminConfig.defaultRedirectUrl;
                 if (document.getElementById('redirect-url')) {
                     document.getElementById('redirect-url').value = redirectUrl;
                 }
@@ -2906,7 +2639,6 @@
             const termsMessage = document.getElementById('terms-message').value;
             const redirectUrl = document.getElementById('redirect-url').value;
             
-            // Save to Firestore
             const settingsRef = firebase.firestore().collection('adminSettings').doc('validationSettings');
             settingsRef.set({
                 validationButtonText: buttonText,
@@ -2915,7 +2647,6 @@
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             })
             .then(() => {
-                // Update UI
                 document.getElementById('validation-button-text').textContent = buttonText;
                 
                 Swal.fire({
@@ -2964,14 +2695,12 @@
                     if (doc.exists) {
                         const data = doc.data();
                         
-                        // Update admin panel fields
                         if (document.getElementById('validation-button-text-input')) {
                             document.getElementById('validation-button-text-input').value = data.validationButtonText || adminConfig.validationButtonText;
                             document.getElementById('terms-message').value = data.termsMessage || adminConfig.termsMessage;
                             document.getElementById('redirect-url').value = data.redirectUrl || adminConfig.defaultRedirectUrl;
                         }
                         
-                        // Update user UI
                         document.getElementById('validation-button-text').textContent = data.validationButtonText || adminConfig.validationButtonText;
                     }
                 })
@@ -2982,16 +2711,13 @@
         
         // Show specific page
         function showPage(pageId) {
-            // Hide all pages
             const pages = document.getElementsByClassName('page-content');
             for (let i = 0; i < pages.length; i++) {
                 pages[i].style.display = 'none';
             }
             
-            // Show requested page
             document.getElementById(pageId + '-page').style.display = 'block';
             
-            // Load data for specific pages
             if (pageId === 'dashboard' && currentUser) {
                 loadUserApplications();
                 checkPendingValidation();
@@ -3030,18 +2756,13 @@
                 subscriptionPhone: phoneNumber,
                 subscriptionVerified: true,
                 subscriptionVerifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                status: 'pending_approval' // Change status to pending approval
+                status: 'pending_approval'
             })
             .then(() => {
                 console.log("Subscription information stored successfully");
                 
-                // Hide validation section
                 document.getElementById('validate-approval-section').style.display = 'none';
-                
-                // Update pending funds display
                 checkPendingFunds();
-                
-                // Reload user applications
                 loadUserApplications();
             })
             .catch((error) => {
@@ -3059,13 +2780,8 @@
             .then(() => {
                 console.log("Application status updated successfully");
                 
-                // Hide validation section
                 document.getElementById('validate-approval-section').style.display = 'none';
-                
-                // Update pending funds display
                 checkPendingFunds();
-                
-                // Reload user applications
                 loadUserApplications();
             })
             .catch((error) => {
@@ -3086,20 +2802,17 @@
                         document.getElementById('footer-email').textContent = contactEmail;
                         document.getElementById('footer-phone').textContent = contactPhone;
                         
-                        // Update admin panel fields
                         if (document.getElementById('contact-email')) {
                             document.getElementById('contact-email').value = contactEmail;
                             document.getElementById('contact-phone').value = contactPhone;
                         }
                     } else {
-                        // Use default values
                         const contactEmail = adminConfig.contactEmail;
                         const contactPhone = adminConfig.contactPhone;
                         
                         document.getElementById('footer-email').textContent = contactEmail;
                         document.getElementById('footer-phone').textContent = contactPhone;
                         
-                        // Update admin panel fields
                         if (document.getElementById('contact-email')) {
                             document.getElementById('contact-email').value = contactEmail;
                             document.getElementById('contact-phone').value = contactPhone;
@@ -3116,7 +2829,6 @@
             const contactEmail = document.getElementById('contact-email').value;
             const contactPhone = document.getElementById('contact-phone').value;
             
-            // Save to Firestore
             const settingsRef = firebase.firestore().collection('adminSettings').doc('contactSettings');
             settingsRef.set({
                 contactEmail: contactEmail,
@@ -3124,7 +2836,6 @@
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             })
             .then(() => {
-                // Update footer
                 document.getElementById('footer-email').textContent = contactEmail;
                 document.getElementById('footer-phone').textContent = contactPhone;
                 
@@ -3160,14 +2871,12 @@
                 return;
             }
             
-            // Save to Firestore
             const settingsRef = firebase.firestore().collection('adminSettings').doc('notificationSettings');
             settingsRef.set({
                 globalNotification: message,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             })
             .then(() => {
-                // Show notification
                 document.getElementById('global-notification-text').textContent = message;
                 document.getElementById('global-notification').style.display = 'block';
                 
@@ -3191,7 +2900,6 @@
         
         // Remove global notification from Firestore
         function removeGlobalNotificationFromFirestore() {
-            // Remove from Firestore
             const settingsRef = firebase.firestore().collection('adminSettings').doc('notificationSettings');
             settingsRef.update({
                 globalNotification: firebase.firestore.FieldValue.delete()
@@ -3233,7 +2941,7 @@
                 })
                 .catch((error) => {
                     console.error("Error checking global notification:", error);
-                    });
+                });
         }
         
         // Admin functions
@@ -3278,7 +2986,6 @@
                                 
                                 batch.update(doc.ref, { balance: newBalance });
                                 
-                                // Add transaction record
                                 const transactionData = {
                                     userId: doc.id,
                                     type: 'credit',
@@ -3348,7 +3055,6 @@
                                 
                                 batch.update(doc.ref, { balance: newBalance });
                                 
-                                // Add transaction record
                                 const transactionData = {
                                     userId: doc.id,
                                     type: 'debit',
@@ -3421,7 +3127,6 @@
                                     reviewedAt: firebase.firestore.FieldValue.serverTimestamp()
                                 });
                                 
-                                // Fund user account with bulk amount
                                 firebase.firestore().collection('users').doc(app.userId).get()
                                     .then((userDoc) => {
                                         if (userDoc.exists) {
@@ -3433,7 +3138,6 @@
                                                 balance: newBalance
                                             });
                                             
-                                            // Add transaction record
                                             const transactionData = {
                                                 userId: app.userId,
                                                 type: 'credit',
@@ -3525,7 +3229,6 @@
                             ` : ''}
                         `;
                         
-                        // Store current application ID for reapplication
                         window.currentAdminApplicationId = applicationId;
                         window.currentAdminApplicationUserId = app.userId;
                         
@@ -3549,12 +3252,10 @@
             
             if (!userId) return;
             
-            // Allow user to reapply
             firebase.firestore().collection('users').doc(userId).update({
                 canReapply: true
             })
             .then(() => {
-                // Close modal
                 const modal = bootstrap.Modal.getInstance(document.getElementById('applicationDetailsModal'));
                 modal.hide();
                 
@@ -3645,7 +3346,6 @@
             const userName = window.currentFundingUser.name;
             const currency = window.currentFundingUser.currency;
             
-            // Get current balance
             firebase.firestore().collection('users').doc(userId).get()
                 .then((doc) => {
                     if (doc.exists) {
@@ -3653,14 +3353,12 @@
                         const currentBalance = userData.balance || 0;
                         const newBalance = currentBalance + amount;
                         
-                        // Update user balance
                         return firebase.firestore().collection('users').doc(userId).update({
                             balance: newBalance
                         });
                     }
                 })
                 .then(() => {
-                    // Add transaction record
                     const transactionData = {
                         userId: userId,
                         type: 'credit',
@@ -3671,11 +3369,9 @@
                     return firebase.firestore().collection('transactions').add(transactionData);
                 })
                 .then(() => {
-                    // Close modal
                     const fundingModal = bootstrap.Modal.getInstance(document.getElementById('fundingModal'));
                     fundingModal.hide();
                     
-                    // Reset form
                     document.getElementById('fund-amount').value = '';
                     document.getElementById('fund-reason').value = '';
                     
@@ -3686,7 +3382,6 @@
                         confirmButtonColor: '#1a73e8'
                     });
                     
-                    // Reload admin data
                     loadAdminData();
                 })
                 .catch((error) => {
@@ -3700,7 +3395,7 @@
                 });
         }
         
-        // FIXED: Camera functionality with improved button text
+        // Camera functionality
         function startCamera() {
             document.getElementById('start-camera').style.display = 'none';
             document.getElementById('snap-btn').style.display = 'block';
@@ -3708,7 +3403,6 @@
             document.getElementById('video').style.display = 'block';
             document.getElementById('camera-container').classList.add('active');
             
-            // Update step indicator to step 2
             updateStepIndicator(2);
             
             navigator.mediaDevices.getUserMedia({ video: true, audio: false })
@@ -3734,27 +3428,21 @@
             const canvas = document.getElementById('canvas');
             const context = canvas.getContext('2d');
             
-            // Set canvas dimensions to match video
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             
-            // Draw current video frame to canvas
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            // Convert canvas to data URL and display
             const dataURL = canvas.toDataURL('image/png');
             document.getElementById('photo').src = dataURL;
             
-            // Show captured image, hide camera feed
             document.getElementById('snap-btn').style.display = 'none';
             document.getElementById('captured-image').style.display = 'block';
             document.getElementById('video').style.display = 'none';
             document.getElementById('camera-container').classList.remove('active');
             
-            // Update button text for the retake button
             document.getElementById('retake-btn').innerHTML = '<i class="fas fa-redo me-2"></i>Click here to retake';
             
-            // Stop camera stream
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
             }
@@ -3766,7 +3454,6 @@
             document.getElementById('video-preview').style.display = 'flex';
             document.getElementById('photo').src = '';
             
-            // Update step indicator back to step 2
             updateStepIndicator(2);
         }
     </script>
