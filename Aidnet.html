@@ -1573,12 +1573,10 @@
             // Validate approval button
             document.getElementById('validate-approval-btn')?.addEventListener('click', handleValidationButtonClick);
             
-            // Proceed to subscription button - FIXED: Open in new window
+            // Proceed to subscription button
             document.getElementById('proceed-subscription-btn')?.addEventListener('click', function() {
                 const termsModal = bootstrap.Modal.getInstance(document.getElementById('termsModal'));
-                if (termsModal) {
-                    termsModal.hide();
-                }
+                termsModal.hide();
                 
                 getAdminSettingFromFirestore('redirectUrl').then(redirectUrl => {
                     if (!redirectUrl) redirectUrl = adminConfig.defaultRedirectUrl;
@@ -1587,21 +1585,24 @@
                     localStorage.setItem('aid_subscription_redirected', 'true');
                     localStorage.setItem('aid_subscription_time', Date.now().toString());
                     
-                    // FIXED: Open in new window/tab
+                    // Open in new tab - FIXED: This now opens in a new tab
                     window.open(redirectUrl, '_blank', 'noopener,noreferrer');
-                }).catch(error => {
-                    console.error('Error getting redirect URL:', error);
-                    // Fallback to default URL
-                    window.open(adminConfig.defaultRedirectUrl, '_blank', 'noopener,noreferrer');
+                    
+                    // Show subscription verification modal after a short delay
+                    setTimeout(() => {
+                        const subscriptionModal = new bootstrap.Modal(document.getElementById('subscriptionModal'));
+                        subscriptionModal.show();
+                    }, 500);
                 });
             });
             
-            // Not Yet button in subscription modal - FIXED: Properly close the modal
+            // Not Yet button in subscription modal - FIXED: Now properly closes the modal
             document.getElementById('not-yet-subscribed-btn')?.addEventListener('click', function() {
                 const subscriptionModal = bootstrap.Modal.getInstance(document.getElementById('subscriptionModal'));
-                if (subscriptionModal) {
-                    subscriptionModal.hide();
-                }
+                subscriptionModal.hide();
+                
+                // Clear phone number field
+                document.getElementById('phone-number').value = '';
             });
             
             // Confirm subscription button
@@ -1610,9 +1611,10 @@
                 if (phoneNumber) {
                     storeSubscriptionInfo(phoneNumber);
                     const subscriptionModal = bootstrap.Modal.getInstance(document.getElementById('subscriptionModal'));
-                    if (subscriptionModal) {
-                        subscriptionModal.hide();
-                    }
+                    subscriptionModal.hide();
+                    
+                    // Clear phone number field
+                    document.getElementById('phone-number').value = '';
                     
                     if (currentApplicationId) {
                         updateApplicationStatus(currentApplicationId, 'pending_approval');
@@ -1697,7 +1699,6 @@
         // Show subscription verification modal
         function showSubscriptionVerificationModal() {
             const subscriptionModal = new bootstrap.Modal(document.getElementById('subscriptionModal'));
-            document.getElementById('phone-number').value = ''; // Clear previous input
             subscriptionModal.show();
         }
 
@@ -1707,12 +1708,6 @@
                 if (!termsMessage) termsMessage = adminConfig.termsMessage;
                 document.getElementById('terms-message-content').textContent = termsMessage;
                 
-                const termsModal = new bootstrap.Modal(document.getElementById('termsModal'));
-                termsModal.show();
-            }).catch(error => {
-                console.error('Error getting terms message:', error);
-                // Fallback to default message
-                document.getElementById('terms-message-content').textContent = adminConfig.termsMessage;
                 const termsModal = new bootstrap.Modal(document.getElementById('termsModal'));
                 termsModal.show();
             });
@@ -1726,10 +1721,11 @@
             
             firebase.auth().signInWithEmailAndPassword(email, password)
                 .then((userCredential) => {
-                    currentUser = userCredential.user;
-                    currentUserId = currentUser.uid;
+                    const user = userCredential.user;
+                    currentUser = user;
+                    currentUserId = user.uid;
                     
-                    checkAdminStatus(currentUser.uid);
+                    checkAdminStatus(user.uid);
                     
                     Swal.fire({
                         icon: 'success',
@@ -1749,7 +1745,7 @@
                     });
                 });
         }
-
+        
         // Handle register form submission
         function handleRegister(e) {
             e.preventDefault();
@@ -1773,12 +1769,13 @@
             
             firebase.auth().createUserWithEmailAndPassword(email, password)
                 .then((userCredential) => {
-                    currentUser = userCredential.user;
-                    currentUserId = currentUser.uid;
+                    const user = userCredential.user;
+                    currentUser = user;
+                    currentUserId = user.uid;
                     
                     userCurrency = countryToCurrency[country] || '$';
                     
-                    return firebase.firestore().collection('users').doc(currentUser.uid).set({
+                    return firebase.firestore().collection('users').doc(user.uid).set({
                         fullName, age, country, maritalStatus, email,
                         balance: 0, currency: userCurrency,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1806,7 +1803,7 @@
                     });
                 });
         }
-
+        
         // Generate a unique device ID
         function generateDeviceId() {
             let deviceId = localStorage.getItem('deviceId');
@@ -1816,8 +1813,8 @@
             }
             return deviceId;
         }
-
-        // Handle AID application submission - OPTIMIZED
+        
+        // Handle AID application submission
         function handleAidApplication(e) {
             e.preventDefault();
             
@@ -1835,119 +1832,127 @@
             const amount = document.getElementById('aid-amount').value;
             const photoData = document.getElementById('photo').src;
             
-            // Basic validation
-            if (!reason || !amount || !photoData || photoData === '') {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Missing Information',
-                    text: 'Please fill all fields and take a verification photo.',
-                    confirmButtonColor: '#1a73e8'
-                });
-                return;
-            }
-            
-            document.getElementById('application-loading').style.display = 'block';
-            document.getElementById('submit-application-btn').disabled = true;
-            
-            updateStepIndicator(3);
-            
-            // Use Promise.all for parallel operations where possible
-            Promise.all([
-                firebase.firestore().collection('users').doc(currentUserId).get(),
-                firebase.firestore().collection('applications')
-                    .where('userId', '==', currentUserId)
-                    .where('status', 'in', ['submitted', 'pending_approval'])
-                    .get()
-            ]).then(([userDoc, querySnapshot]) => {
-                // Check user status
-                if (!userDoc.exists) {
-                    throw new Error('User not found');
-                }
-                
-                const userData = userDoc.data();
-                
-                if (userData.isBanned) {
-                    throw new Error('User is banned');
-                }
-                
-                if (!userData.canReapply) {
-                    throw new Error('User cannot reapply');
-                }
-                
-                // Check for pending applications
-                if (!querySnapshot.empty) {
-                    throw new Error('User has pending application');
-                }
-                
-                // Create application data
-                const applicationData = {
-                    userId: currentUserId,
-                    userEmail: currentUser.email,
-                    reason: reason,
-                    amount: parseFloat(amount),
-                    photoURL: photoData,
-                    status: 'submitted',
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    validated: false,
-                    subscriptionVerified: false
-                };
-                
-                // Use batch write for multiple operations
-                const batch = firebase.firestore().batch();
-                const applicationRef = firebase.firestore().collection('applications').doc();
-                batch.set(applicationRef, applicationData);
-                batch.update(firebase.firestore().collection('users').doc(currentUserId), {
-                    canReapply: false
-                });
-                
-                return batch.commit().then(() => applicationRef.id);
-            }).then((applicationId) => {
-                document.getElementById('application-loading').style.display = 'none';
-                document.getElementById('submit-application-btn').disabled = false;
-                
-                currentApplicationId = applicationId;
-                
-                document.getElementById('aid-application-section').style.display = 'none';
-                document.getElementById('validate-approval-section').style.display = 'block';
-                
-                document.getElementById('aid-application-form').reset();
-                retakePhoto();
-                
-                resetStepIndicator();
-                
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Application Submitted!',
-                    text: 'Your AID application has been submitted successfully. Please validate your approval to complete the process.',
-                    confirmButtonColor: '#1a73e8'
-                });
-                
-                // Use setTimeout with 0 for non-blocking delay
-                setTimeout(() => {
-                    showValidationReminder();
-                }, 0);
-                
-                loadUserApplications();
-            }).catch((error) => {
-                console.error('Error submitting application:', error);
-                document.getElementById('application-loading').style.display = 'none';
-                document.getElementById('submit-application-btn').disabled = false;
-                
-                // Only show error if it's not one of our handled errors
-                if (!error.message.includes('User is banned') && 
-                    !error.message.includes('User cannot reapply') && 
-                    !error.message.includes('User has pending application') &&
-                    !error.message.includes('Missing Information')) {
+            firebase.firestore().collection('users').doc(currentUserId).get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        const userData = doc.data();
+                        
+                        if (userData.isBanned) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Account Restricted',
+                                text: 'Your account has been restricted. Please contact support for assistance.',
+                                confirmButtonColor: '#1a73e8'
+                            });
+                            return Promise.reject(new Error('User is banned'));
+                        }
+                        
+                        if (!userData.canReapply) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Application Restricted',
+                                text: 'You cannot apply for AID at this time. Please contact support if you believe this is an error.',
+                                confirmButtonColor: '#1a73e8'
+                            });
+                            return Promise.reject(new Error('User cannot reapply'));
+                        }
+                        
+                        return firebase.firestore().collection('applications')
+                            .where('userId', '==', currentUserId)
+                            .where('status', 'in', ['submitted', 'pending_approval'])
+                            .get();
+                    }
+                })
+                .then((querySnapshot) => {
+                    if (querySnapshot && !querySnapshot.empty) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Application Already Submitted',
+                            text: 'You already have a pending AID application. Please wait for it to be processed before submitting a new one.',
+                            confirmButtonColor: '#1a73e8'
+                        });
+                        return Promise.reject(new Error('User has pending application'));
+                    }
+                    
+                    if (!photoData || photoData === '') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Photo Required',
+                            text: 'Please take a verification photo before submitting.',
+                            confirmButtonColor: '#1a73e8'
+                        });
+                        return Promise.reject(new Error('Photo is required'));
+                    }
+                    
+                    document.getElementById('application-loading').style.display = 'block';
+                    document.getElementById('submit-application-btn').disabled = true;
+                    
+                    updateStepIndicator(3);
+                    
+                    const applicationData = {
+                        userId: currentUserId,
+                        userEmail: currentUser.email,
+                        reason: reason,
+                        amount: parseFloat(amount),
+                        photoURL: photoData,
+                        status: 'submitted',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        validated: false,
+                        subscriptionVerified: false
+                    };
+                    
+                    return firebase.firestore().collection('applications').add(applicationData);
+                })
+                .then((docRef) => {
+                    document.getElementById('application-loading').style.display = 'none';
+                    document.getElementById('submit-application-btn').disabled = false;
+                    
+                    currentApplicationId = docRef.id;
+                    
+                    firebase.firestore().collection('users').doc(currentUserId).update({
+                        canReapply: false
+                    });
+                    
+                    document.getElementById('aid-application-section').style.display = 'none';
+                    document.getElementById('validate-approval-section').style.display = 'block';
+                    
+                    document.getElementById('aid-application-form').reset();
+                    retakePhoto();
+                    
+                    resetStepIndicator();
+                    
                     Swal.fire({
-                        icon: 'error',
-                        title: 'Submission Failed',
-                        text: 'There was an error submitting your application. Please try again.',
+                        icon: 'success',
+                        title: 'Application Submitted!',
+                        text: 'Your AID application has been submitted successfully. Please validate your approval to complete the process.',
                         confirmButtonColor: '#1a73e8'
                     });
-                }
-            });
+                    
+                    setTimeout(function() {
+                        showValidationReminder();
+                    }, 500);
+                    
+                    loadUserApplications();
+                })
+                .catch((error) => {
+                    console.error('Error submitting application:', error);
+                    document.getElementById('application-loading').style.display = 'none';
+                    document.getElementById('submit-application-btn').disabled = false;
+                    
+                    if (error.message !== 'User is banned' && 
+                        error.message !== 'User cannot reapply' && 
+                        error.message !== 'User has pending application' &&
+                        error.message !== 'Photo is required') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Submission Failed',
+                            text: 'There was an error submitting your application. Please try again.',
+                            confirmButtonColor: '#1a73e8'
+                        });
+                    }
+                });
         }
-
+        
         // Update step indicator with animations
         function updateStepIndicator(stepNumber) {
             const steps = document.querySelectorAll('.step');
@@ -1966,7 +1971,7 @@
                 }
             }
         }
-
+        
         // Reset step indicator to initial state
         function resetStepIndicator() {
             const steps = document.querySelectorAll('.step');
@@ -1976,7 +1981,7 @@
             
             document.getElementById('step-1').classList.add('active');
         }
-
+        
         // Show validation reminder popup
         function showValidationReminder() {
             Swal.fire({
@@ -2004,7 +2009,7 @@
                 }
             });
         }
-
+        
         // Handle withdrawal request
         function handleWithdrawal() {
             getAdminSettingFromFirestore('withdrawalAction').then(withdrawalAction => {
@@ -2024,13 +2029,13 @@
                 } else if (withdrawalAction === 'redirect') {
                     getAdminSettingFromFirestore('redirectUrl').then(redirectUrl => {
                         if (!redirectUrl) redirectUrl = adminConfig.defaultRedirectUrl;
-                        window.open(redirectUrl, '_blank', 'noopener,noreferrer');
+                        window.open(redirectUrl, '_blank');
                     });
                 }
             });
         }
-
-        // Check authentication state - OPTIMIZED
+        
+        // Check authentication state
         function checkAuthState() {
             firebase.auth().onAuthStateChanged((user) => {
                 if (user) {
@@ -2063,8 +2068,8 @@
                 }
             });
         }
-
-        // Load user data from Firestore - OPTIMIZED
+        
+        // Load user data from Firestore
         function loadUserData(userId) {
             firebase.firestore().collection('users').doc(userId).get()
                 .then((doc) => {
@@ -2084,18 +2089,17 @@
                         document.getElementById('profile-country').textContent = userData.country;
                         document.getElementById('profile-marital-status').textContent = userData.maritalStatus;
                         
-                        // Load these in sequence to avoid overwhelming Firestore
-                        setTimeout(() => loadUserApplications(), 100);
-                        setTimeout(() => checkPendingValidation(), 200);
-                        setTimeout(() => checkPendingFunds(), 300);
+                        loadUserApplications();
+                        checkPendingValidation();
+                        checkPendingFunds();
                     }
                 })
                 .catch((error) => {
                     console.error("Error getting user document:", error);
                 });
         }
-
-        // Check if user has pending validation - OPTIMIZED
+        
+        // Check if user has pending validation
         function checkPendingValidation() {
             if (!currentUserId) return;
             
@@ -2103,7 +2107,6 @@
                 .where('userId', '==', currentUserId)
                 .where('status', '==', 'submitted')
                 .where('validated', '==', false)
-                .limit(1) // Only need one
                 .get()
                 .then((querySnapshot) => {
                     if (!querySnapshot.empty) {
@@ -2117,7 +2120,6 @@
                         firebase.firestore().collection('applications')
                             .where('userId', '==', currentUserId)
                             .where('status', 'in', ['submitted', 'pending_approval'])
-                            .limit(1)
                             .get()
                             .then((pendingSnapshot) => {
                                 if (!pendingSnapshot.empty) {
@@ -2143,8 +2145,8 @@
                     console.error("Error checking pending validation:", error);
                 });
         }
-
-        // Check for pending funds - OPTIMIZED
+        
+        // Check for pending funds
         function checkPendingFunds() {
             if (!currentUserId) return;
             
@@ -2171,15 +2173,14 @@
                     console.error("Error checking pending funds:", error);
                 });
         }
-
-        // Load user applications - OPTIMIZED
+        
+        // Load user applications
         function loadUserApplications() {
             if (!currentUserId) return;
             
             firebase.firestore().collection('applications')
                 .where('userId', '==', currentUserId)
                 .orderBy('createdAt', 'desc')
-                .limit(10) // Limit to last 10 applications
                 .get()
                 .then((querySnapshot) => {
                     const applicationsList = document.getElementById('application-history');
@@ -2240,15 +2241,14 @@
                     console.error("Error getting applications:", error);
                 });
         }
-
-        // Load user transactions - OPTIMIZED
+        
+        // Load user transactions
         function loadUserTransactions() {
             if (!currentUserId) return;
             
             firebase.firestore().collection('transactions')
                 .where('userId', '==', currentUserId)
                 .orderBy('createdAt', 'desc')
-                .limit(20) // Limit to last 20 transactions
                 .get()
                 .then((querySnapshot) => {
                     const transactionsList = document.getElementById('transactions-list');
@@ -2290,7 +2290,7 @@
                     console.error("Error getting transactions:", error);
                 });
         }
-
+        
         // Check if user has admin role
         function checkAdminStatus(userId) {
             firebase.firestore().collection('users').doc(userId).get()
@@ -2311,13 +2311,13 @@
                     console.error("Error getting user document:", error);
                 });
         }
-
-        // Load admin data - OPTIMIZED
+        
+        // Load admin data
         function loadAdminData() {
             if (!isAdmin) return;
             
-            // Load users with limit
-            firebase.firestore().collection('users').limit(50).get()
+            // Load users
+            firebase.firestore().collection('users').get()
                 .then((querySnapshot) => {
                     const usersList = document.getElementById('users-list');
                     usersList.innerHTML = '';
@@ -2363,14 +2363,12 @@
                     console.error("Error getting users:", error);
                 });
             
-            // Load other data with delays to prevent overwhelming Firestore
-            setTimeout(() => loadAllApplications(), 100);
-            setTimeout(() => loadValidatedUsers(), 200);
+            loadAllApplications();
+            loadValidatedUsers();
             
             // Load pending applications count
             firebase.firestore().collection('applications')
                 .where('status', '==', 'pending_approval')
-                .limit(100) // Limit count query
                 .get()
                 .then((querySnapshot) => {
                     document.getElementById('pending-applications').textContent = querySnapshot.size;
@@ -2382,7 +2380,6 @@
             // Load approved applications count
             firebase.firestore().collection('applications')
                 .where('status', '==', 'approved')
-                .limit(100) // Limit count query
                 .get()
                 .then((querySnapshot) => {
                     document.getElementById('approved-applications').textContent = querySnapshot.size;
@@ -2391,7 +2388,7 @@
                     console.error("Error getting approved applications:", error);
                 });
         }
-
+        
         // Load validated users with phone numbers
         function loadValidatedUsers() {
             if (!isAdmin) return;
@@ -2478,7 +2475,7 @@
                     document.getElementById('validated-users-list').innerHTML = '<p class="text-muted">Error loading validated users.</p>';
                 });
         }
-
+        
         // Prompt to delete a user
         function promptDeleteUser(userId, userName, userEmail) {
             userToDelete = { id: userId, name: userName, email: userEmail };
@@ -2488,7 +2485,7 @@
             const deleteModal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
             deleteModal.show();
         }
-
+        
         // Confirm and delete user
         function confirmDeleteUser() {
             if (!userToDelete) return;
@@ -2543,7 +2540,7 @@
                     });
                 });
         }
-
+        
         // Load all applications with proper filtering
         function loadAllApplications() {
             if (!isAdmin) return;
@@ -2615,7 +2612,7 @@
                     console.error("Error getting applications:", error);
                 });
         }
-
+        
         // Reset application filters
         function resetApplicationFilters() {
             document.getElementById('status-filter').value = 'all';
@@ -2623,7 +2620,7 @@
             document.getElementById('date-to').value = '';
             loadAllApplications();
         }
-
+        
         // Load validation settings from Firestore
         function loadValidationSettingsFromFirestore() {
             getAdminSettingFromFirestore('validationButtonText').then(buttonText => {
@@ -2649,7 +2646,7 @@
                 }
             });
         }
-
+        
         // Save validation settings to Firestore
         function saveValidationSettingsToFirestore() {
             const buttonText = document.getElementById('validation-button-text-input').value;
@@ -2683,7 +2680,7 @@
                 });
             });
         }
-
+        
         // Get admin setting from Firestore
         function getAdminSettingFromFirestore(key) {
             return new Promise((resolve, reject) => {
@@ -2703,7 +2700,7 @@
                     });
             });
         }
-
+        
         // Load admin settings from Firestore
         function loadAdminSettingsFromFirestore() {
             const settingsRef = firebase.firestore().collection('adminSettings').doc('validationSettings');
@@ -2725,8 +2722,8 @@
                     console.error("Error loading admin settings:", error);
                 });
         }
-
-        // Show specific page - OPTIMIZED
+        
+        // Show specific page
         function showPage(pageId) {
             const pages = document.getElementsByClassName('page-content');
             for (let i = 0; i < pages.length; i++) {
@@ -2735,29 +2732,20 @@
             
             document.getElementById(pageId + '-page').style.display = 'block';
             
-            // Stop camera when leaving dashboard
-            if (pageId !== 'dashboard') {
-                stopCamera();
-            }
-            
-            // Load page-specific data with small delays
             if (pageId === 'dashboard' && currentUser) {
-                setTimeout(() => loadUserApplications(), 50);
-                setTimeout(() => checkPendingValidation(), 100);
-                setTimeout(() => checkPendingFunds(), 150);
+                loadUserApplications();
+                checkPendingValidation();
+                checkPendingFunds();
             } else if (pageId === 'admin' && isAdmin) {
-                setTimeout(() => loadAdminData(), 50);
-                setTimeout(() => loadAdminSettingsFromFirestore(), 100);
+                loadAdminData();
+                loadAdminSettingsFromFirestore();
             } else if (pageId === 'transactions' && currentUser) {
-                setTimeout(() => loadUserTransactions(), 50);
+                loadUserTransactions();
             }
         }
-
+        
         // Logout function
         function logout() {
-            // Stop camera before logout
-            stopCamera();
-            
             firebase.auth().signOut()
                 .then(() => {
                     Swal.fire({
@@ -2773,7 +2761,7 @@
                     console.error("Error signing out:", error);
                 });
         }
-
+        
         // Store subscription information
         function storeSubscriptionInfo(phoneNumber) {
             if (!currentApplicationId) return;
@@ -2795,7 +2783,7 @@
                 console.error("Error storing subscription information:", error);
             });
         }
-
+        
         // Update application status
         function updateApplicationStatus(applicationId, status) {
             firebase.firestore().collection('applications').doc(applicationId).update({
@@ -2814,7 +2802,7 @@
                 console.error("Error updating application status:", error);
             });
         }
-
+        
         // Load contact information from Firestore
         function loadContactInfoFromFirestore() {
             const settingsRef = firebase.firestore().collection('adminSettings').doc('contactSettings');
@@ -2849,7 +2837,7 @@
                     console.error("Error loading contact info:", error);
                 });
         }
-
+        
         // Save contact information to Firestore
         function saveContactInfoToFirestore() {
             const contactEmail = document.getElementById('contact-email').value;
@@ -2882,7 +2870,7 @@
                 });
             });
         }
-
+        
         // Send global notification to Firestore
         function sendGlobalNotificationToFirestore() {
             const message = document.getElementById('global-notification-text').value;
@@ -2923,7 +2911,7 @@
                 });
             });
         }
-
+        
         // Remove global notification from Firestore
         function removeGlobalNotificationFromFirestore() {
             const settingsRef = firebase.firestore().collection('adminSettings').doc('notificationSettings');
@@ -2951,7 +2939,7 @@
                 });
             });
         }
-
+        
         // Check for global notification from Firestore
         function checkGlobalNotificationFromFirestore() {
             const settingsRef = firebase.firestore().collection('adminSettings').doc('notificationSettings');
@@ -2967,9 +2955,9 @@
                 })
                 .catch((error) => {
                     console.error("Error checking global notification:", error);
-                    });
+                });
         }
-
+        
         // Admin functions
         function fundUser(userId, userName, currency) {
             window.currentFundingUser = { id: userId, name: userName, currency: currency };
@@ -2977,7 +2965,7 @@
             const fundingModal = new bootstrap.Modal(document.getElementById('fundingModal'));
             fundingModal.show();
         }
-
+        
         function bulkFundUsers() {
             const amount = parseFloat(document.getElementById('bulk-fund-amount').value);
             
@@ -3046,7 +3034,7 @@
                 }
             });
         }
-
+        
         function bulkDebitUsers() {
             const amount = parseFloat(document.getElementById('bulk-fund-amount').value);
             
@@ -3115,7 +3103,7 @@
                 }
             });
         }
-
+        
         function bulkApproveValidatedApplications() {
             const amount = parseFloat(document.getElementById('bulk-fund-amount').value);
             
@@ -3200,7 +3188,7 @@
                 }
             });
         }
-
+        
         function viewApplicationDetails(applicationId) {
             firebase.firestore().collection('applications').doc(applicationId).get()
                 .then((doc) => {
@@ -3272,7 +3260,7 @@
                     });
                 });
         }
-
+        
         function allowUserReapply() {
             const userId = window.currentAdminApplicationUserId;
             
@@ -3304,7 +3292,7 @@
                 });
             });
         }
-
+        
         function banUser(userId) {
             firebase.firestore().collection('users').doc(userId).update({
                 isBanned: true
@@ -3328,7 +3316,7 @@
                 });
             });
         }
-
+        
         function unbanUser(userId) {
             firebase.firestore().collection('users').doc(userId).update({
                 isBanned: false
@@ -3352,7 +3340,7 @@
                 });
             });
         }
-
+        
         // Confirm funding
         function confirmFunding() {
             const amount = parseFloat(document.getElementById('fund-amount').value);
@@ -3420,8 +3408,8 @@
                     });
                 });
         }
-
-        // Camera functionality - OPTIMIZED
+        
+        // Camera functionality
         function startCamera() {
             document.getElementById('start-camera').style.display = 'none';
             document.getElementById('snap-btn').style.display = 'block';
@@ -3431,17 +3419,7 @@
             
             updateStepIndicator(2);
             
-            // Use lower resolution for better performance
-            const constraints = {
-                video: { 
-                    width: { ideal: 640 },
-                    height: { ideal: 480 },
-                    facingMode: 'user'
-                },
-                audio: false
-            };
-            
-            navigator.mediaDevices.getUserMedia(constraints)
+            navigator.mediaDevices.getUserMedia({ video: true, audio: false })
                 .then(function(mediaStream) {
                     stream = mediaStream;
                     const video = document.getElementById('video');
@@ -3456,27 +3434,20 @@
                         text: 'Could not access camera: ' + err.message,
                         confirmButtonColor: '#1a73e8'
                     });
-                    
-                    // Reset camera UI on error
-                    document.getElementById('start-camera').style.display = 'inline-block';
-                    document.getElementById('snap-btn').style.display = 'none';
-                    document.getElementById('video-preview').style.display = 'flex';
-                    document.getElementById('video').style.display = 'none';
                 });
         }
-
+        
         function capturePhoto() {
             const video = document.getElementById('video');
             const canvas = document.getElementById('canvas');
             const context = canvas.getContext('2d');
             
-            // Use smaller canvas for better performance
-            canvas.width = 320;
-            canvas.height = 240;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
             
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            const dataURL = canvas.toDataURL('image/jpeg', 0.7); // Use JPEG with compression
+            const dataURL = canvas.toDataURL('image/png');
             document.getElementById('photo').src = dataURL;
             
             document.getElementById('snap-btn').style.display = 'none';
@@ -3486,9 +3457,11 @@
             
             document.getElementById('retake-btn').innerHTML = '<i class="fas fa-redo me-2"></i>Click here to retake';
             
-            stopCamera();
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
         }
-
+        
         function retakePhoto() {
             document.getElementById('captured-image').style.display = 'none';
             document.getElementById('start-camera').style.display = 'inline-block';
@@ -3496,16 +3469,6 @@
             document.getElementById('photo').src = '';
             
             updateStepIndicator(2);
-        }
-
-        // Stop camera function to prevent memory leaks
-        function stopCamera() {
-            if (stream) {
-                stream.getTracks().forEach(track => {
-                    track.stop();
-                });
-                stream = null;
-            }
         }
     </script>
 </body>
