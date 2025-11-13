@@ -19,3 +19,4 @@ const adminConfig = {
     contactEmail: "support@networkaid.com",
     contactPhone: "+1 (555) 123-4567"
 };
+
