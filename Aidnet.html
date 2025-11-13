@@ -1576,7 +1576,9 @@
             // Proceed to subscription button - FIXED: Open in new window
             document.getElementById('proceed-subscription-btn')?.addEventListener('click', function() {
                 const termsModal = bootstrap.Modal.getInstance(document.getElementById('termsModal'));
-                termsModal.hide();
+                if (termsModal) {
+                    termsModal.hide();
+                }
                 
                 getAdminSettingFromFirestore('redirectUrl').then(redirectUrl => {
                     if (!redirectUrl) redirectUrl = adminConfig.defaultRedirectUrl;
@@ -1587,16 +1589,19 @@
                     
                     // FIXED: Open in new window/tab
                     window.open(redirectUrl, '_blank', 'noopener,noreferrer');
+                }).catch(error => {
+                    console.error('Error getting redirect URL:', error);
+                    // Fallback to default URL
+                    window.open(adminConfig.defaultRedirectUrl, '_blank', 'noopener,noreferrer');
                 });
             });
             
-            // Not Yet button in subscription modal - FIXED: Just close the modal
+            // Not Yet button in subscription modal - FIXED: Properly close the modal
             document.getElementById('not-yet-subscribed-btn')?.addEventListener('click', function() {
                 const subscriptionModal = bootstrap.Modal.getInstance(document.getElementById('subscriptionModal'));
-                subscriptionModal.hide();
-                
-                // FIXED: Don't do anything else, just close the modal
-                console.log("User chose 'Not Yet' - modal closed");
+                if (subscriptionModal) {
+                    subscriptionModal.hide();
+                }
             });
             
             // Confirm subscription button
@@ -1605,7 +1610,9 @@
                 if (phoneNumber) {
                     storeSubscriptionInfo(phoneNumber);
                     const subscriptionModal = bootstrap.Modal.getInstance(document.getElementById('subscriptionModal'));
-                    subscriptionModal.hide();
+                    if (subscriptionModal) {
+                        subscriptionModal.hide();
+                    }
                     
                     if (currentApplicationId) {
                         updateApplicationStatus(currentApplicationId, 'pending_approval');
@@ -1700,6 +1707,12 @@
                 if (!termsMessage) termsMessage = adminConfig.termsMessage;
                 document.getElementById('terms-message-content').textContent = termsMessage;
                 
+                const termsModal = new bootstrap.Modal(document.getElementById('termsModal'));
+                termsModal.show();
+            }).catch(error => {
+                console.error('Error getting terms message:', error);
+                // Fallback to default message
+                document.getElementById('terms-message-content').textContent = adminConfig.termsMessage;
                 const termsModal = new bootstrap.Modal(document.getElementById('termsModal'));
                 termsModal.show();
             });
