@@ -1020,6 +1020,26 @@
                     </div>
                 </div>
 
+                <!-- Application Limit Message (Initially Hidden) -->
+                <div class="row mt-4" id="application-limit-message" style="display: none;">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-info-circle me-2"></i>Application Limit Reached
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <p>You have already submitted an AID application. Each user is allowed only one application per aid program.</p>
+                                <p>If you believe this is an error or have special circumstances, please contact support.</p>
+                                <button class="btn btn-outline-primary" onclick="contactSupport()">
+                                    <i class="fas fa-envelope me-2"></i>Contact Support
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Application History -->
                 <div class="row mt-4">
                     <div class="col-12">
@@ -1126,16 +1146,20 @@
                     <div class="col-md-6">
                         <div class="card">
                             <div class="card-header">
-                                <h5 class="card-title mb-0">Bulk Actions</h5>
+                                <h5 class="card-title mb-0">Application Settings</h5>
                             </div>
                             <div class="card-body">
-                                <div class="mb-3">
-                                    <label for="bulk-fund-amount" class="form-label">Bulk Approval Amount</label>
-                                    <input type="number" class="form-control" id="bulk-fund-amount" placeholder="Enter amount">
+                                <div class="mb-3 form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="allow-reapplications-toggle">
+                                    <label class="form-check-label" for="allow-reapplications-toggle">
+                                        Allow All Users to Reapply for AID
+                                    </label>
                                 </div>
-                                <button class="btn btn-success w-100 mb-2" id="bulk-fund-btn">Fund All Users</button>
-                                <button class="btn btn-danger w-100 mb-2" id="bulk-debit-btn">Debit All Users</button>
-                                <button class="btn btn-primary w-100" id="bulk-approve-btn">Approve All Validated</button>
+                                <p class="text-muted small">
+                                    When enabled, all eligible users will be able to submit new AID applications. 
+                                    When disabled, users can only apply once.
+                                </p>
+                                <button class="btn btn-primary" id="save-application-settings">Save Application Settings</button>
                             </div>
                         </div>
                     </div>
@@ -1160,7 +1184,23 @@
                 </div>
 
                 <div class="row mt-4">
-                    <div class="col-12">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Bulk Actions</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="bulk-fund-amount" class="form-label">Bulk Approval Amount</label>
+                                    <input type="number" class="form-control" id="bulk-fund-amount" placeholder="Enter amount">
+                                </div>
+                                <button class="btn btn-success w-100 mb-2" id="bulk-fund-btn">Fund All Users</button>
+                                <button class="btn btn-danger w-100 mb-2" id="bulk-debit-btn">Debit All Users</button>
+                                <button class="btn btn-primary w-100" id="bulk-approve-btn">Approve All Validated</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
                         <div class="card">
                             <div class="card-header">
                                 <h5 class="card-title mb-0">Global Notification</h5>
@@ -1251,6 +1291,16 @@
                                 <h5 class="card-title mb-0">User Management</h5>
                             </div>
                             <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <button class="btn btn-sm btn-success me-2" id="allow-all-reapply-btn">
+                                            <i class="fas fa-user-check me-1"></i> Allow All to Reapply
+                                        </button>
+                                        <button class="btn btn-sm btn-warning" id="disallow-all-reapply-btn">
+                                            <i class="fas fa-user-times me-1"></i> Disallow All from Reapplying
+                                        </button>
+                                    </div>
+                                </div>
                                 <div id="users-list">
                                     <p class="text-muted">Loading users...</p>
                                 </div>
@@ -1549,6 +1599,7 @@
             loadContactInfoFromFirestore();
             checkGlobalNotificationFromFirestore();
             loadValidationSettingsFromFirestore();
+            loadApplicationSettings();
             initializeConfiguration();
         });
 
@@ -1645,11 +1696,14 @@
             
             // Admin settings
             document.getElementById('save-validation-settings')?.addEventListener('click', saveValidationSettingsToFirestore);
+            document.getElementById('save-application-settings')?.addEventListener('click', saveApplicationSettings);
             
             // Bulk actions
             document.getElementById('bulk-fund-btn')?.addEventListener('click', bulkFundUsers);
             document.getElementById('bulk-debit-btn')?.addEventListener('click', bulkDebitUsers);
             document.getElementById('bulk-approve-btn')?.addEventListener('click', bulkApproveValidatedApplications);
+            document.getElementById('allow-all-reapply-btn')?.addEventListener('click', allowAllUsersReapply);
+            document.getElementById('disallow-all-reapply-btn')?.addEventListener('click', disallowAllUsersReapply);
             
             // Contact info
             document.getElementById('save-contact-btn')?.addEventListener('click', saveContactInfoToFirestore);
@@ -1863,10 +1917,7 @@
                 return;
             }
             
-            const reason = document.getElementById('aid-reason').value;
-            const amount = document.getElementById('aid-amount').value;
-            const photoData = document.getElementById('photo').src;
-            
+            // First check if user can reapply
             firebase.firestore().collection('users').doc(currentUserId).get()
                 .then((doc) => {
                     if (doc.exists) {
@@ -1885,29 +1936,49 @@
                         if (!userData.canReapply) {
                             Swal.fire({
                                 icon: 'error',
-                                title: 'Application Restricted',
-                                text: 'You cannot apply for AID at this time. Please contact support if you believe this is an error.',
+                                title: 'Application Not Allowed',
+                                text: 'You are not allowed to submit a new AID application at this time.',
                                 confirmButtonColor: '#1a73e8'
                             });
                             return Promise.reject(new Error('User cannot reapply'));
                         }
                         
-                        return firebase.firestore().collection('applications')
-                            .where('userId', '==', currentUserId)
-                            .where('status', 'in', ['submitted', 'pending_approval'])
-                            .get();
+                        // Check global reapplication settings
+                        return checkGlobalReapplicationSettings();
                     }
+                })
+                .then((allowReapply) => {
+                    if (!allowReapply) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Applications Closed',
+                            text: 'AID applications are currently closed. Please check back later.',
+                            confirmButtonColor: '#1a73e8'
+                        });
+                        return Promise.reject(new Error('Reapplications not allowed globally'));
+                    }
+                    
+                    // Continue with existing application checks...
+                    return firebase.firestore().collection('applications')
+                        .where('userId', '==', currentUserId)
+                        .where('status', 'in', ['submitted', 'pending_approval'])
+                        .get();
                 })
                 .then((querySnapshot) => {
                     if (querySnapshot && !querySnapshot.empty) {
                         Swal.fire({
                             icon: 'error',
                             title: 'Application Already Submitted',
-                            text: 'You already have a pending AID application. Please wait for it to be processed before submitting a new one.',
+                            text: 'You already have a pending AID application. Please wait for it to be processed.',
                             confirmButtonColor: '#1a73e8'
                         });
                         return Promise.reject(new Error('User has pending application'));
                     }
+                    
+                    // Continue with photo validation and submission...
+                    const reason = document.getElementById('aid-reason').value;
+                    const amount = document.getElementById('aid-amount').value;
+                    const photoData = document.getElementById('photo').src;
                     
                     if (!photoData || photoData === '') {
                         Swal.fire({
@@ -1944,6 +2015,7 @@
                     
                     currentApplicationId = docRef.id;
                     
+                    // Set user to cannot reapply by default
                     firebase.firestore().collection('users').doc(currentUserId).update({
                         canReapply: false
                     });
@@ -1974,10 +2046,12 @@
                     document.getElementById('application-loading').style.display = 'none';
                     document.getElementById('submit-application-btn').disabled = false;
                     
+                    // Don't show error for expected rejection cases
                     if (error.message !== 'User is banned' && 
                         error.message !== 'User cannot reapply' && 
                         error.message !== 'User has pending application' &&
-                        error.message !== 'Photo is required') {
+                        error.message !== 'Photo is required' &&
+                        error.message !== 'Reapplications not allowed globally') {
                         Swal.fire({
                             icon: 'error',
                             title: 'Submission Failed',
@@ -2138,43 +2212,72 @@
         function checkPendingValidation() {
             if (!currentUserId) return;
             
+            // First check if user has any applications at all
             firebase.firestore().collection('applications')
                 .where('userId', '==', currentUserId)
-                .where('status', '==', 'submitted')
-                .where('validated', '==', false)
                 .get()
                 .then((querySnapshot) => {
-                    if (!querySnapshot.empty) {
-                        document.getElementById('aid-application-section').style.display = 'none';
-                        document.getElementById('validate-approval-section').style.display = 'block';
-                        
-                        querySnapshot.forEach((doc) => {
-                            currentApplicationId = doc.id;
+                    if (querySnapshot.empty) {
+                        // User has never applied - check if reapplications are allowed globally
+                        checkGlobalReapplicationSettings().then(allowReapply => {
+                            if (allowReapply) {
+                                document.getElementById('aid-application-section').style.display = 'block';
+                                document.getElementById('application-limit-message').style.display = 'none';
+                                resetStepIndicator();
+                            } else {
+                                document.getElementById('aid-application-section').style.display = 'block';
+                                document.getElementById('application-limit-message').style.display = 'none';
+                                resetStepIndicator();
+                            }
                         });
-                    } else {
-                        firebase.firestore().collection('applications')
-                            .where('userId', '==', currentUserId)
-                            .where('status', 'in', ['submitted', 'pending_approval'])
-                            .get()
-                            .then((pendingSnapshot) => {
-                                if (!pendingSnapshot.empty) {
-                                    document.getElementById('aid-application-section').style.display = 'none';
-                                } else {
-                                    firebase.firestore().collection('users').doc(currentUserId).get()
-                                        .then((userDoc) => {
-                                            if (userDoc.exists) {
-                                                const userData = userDoc.data();
-                                                if (userData.canReapply) {
-                                                    document.getElementById('aid-application-section').style.display = 'block';
-                                                    resetStepIndicator();
-                                                } else {
-                                                    document.getElementById('aid-application-section').style.display = 'none';
-                                                }
-                                            }
-                                        });
-                                }
-                            });
+                        return;
                     }
+                    
+                    // User has applied before - check for pending applications first
+                    firebase.firestore().collection('applications')
+                        .where('userId', '==', currentUserId)
+                        .where('status', 'in', ['submitted', 'pending_approval'])
+                        .get()
+                        .then((pendingSnapshot) => {
+                            if (!pendingSnapshot.empty) {
+                                // User has pending applications - hide form and show validation if needed
+                                document.getElementById('aid-application-section').style.display = 'none';
+                                document.getElementById('application-limit-message').style.display = 'none';
+                                
+                                // Check if validation is needed
+                                pendingSnapshot.forEach((doc) => {
+                                    const app = doc.data();
+                                    if (app.status === 'submitted' && !app.validated) {
+                                        document.getElementById('validate-approval-section').style.display = 'block';
+                                        currentApplicationId = doc.id;
+                                    }
+                                });
+                            } else {
+                                // No pending applications - check if user can reapply
+                                firebase.firestore().collection('users').doc(currentUserId).get()
+                                    .then((userDoc) => {
+                                        if (userDoc.exists) {
+                                            const userData = userDoc.data();
+                                            if (userData.canReapply) {
+                                                // Check global reapplication settings
+                                                checkGlobalReapplicationSettings().then(allowReapply => {
+                                                    if (allowReapply) {
+                                                        document.getElementById('aid-application-section').style.display = 'block';
+                                                        document.getElementById('application-limit-message').style.display = 'none';
+                                                        resetStepIndicator();
+                                                    } else {
+                                                        document.getElementById('aid-application-section').style.display = 'none';
+                                                        document.getElementById('application-limit-message').style.display = 'block';
+                                                    }
+                                                });
+                                            } else {
+                                                document.getElementById('aid-application-section').style.display = 'none';
+                                                document.getElementById('application-limit-message').style.display = 'block';
+                                            }
+                                        }
+                                    });
+                            }
+                        });
                 })
                 .catch((error) => {
                     console.error("Error checking pending validation:", error);
@@ -2795,6 +2898,191 @@
             if (document.getElementById('redirect-url') && !document.getElementById('redirect-url').value) {
                 document.getElementById('redirect-url').value = adminConfig.defaultRedirectUrl;
             }
+        }
+        
+        // New function to check global reapplication settings
+        function checkGlobalReapplicationSettings() {
+            return new Promise((resolve) => {
+                const settingsRef = firebase.firestore().collection('adminSettings').doc('applicationSettings');
+                settingsRef.get()
+                    .then((doc) => {
+                        if (doc.exists) {
+                            const data = doc.data();
+                            resolve(data.allowReapplications || false);
+                        } else {
+                            resolve(adminConfig.allowReapplications || false);
+                        }
+                    })
+                    .catch((error) => {
+                        console.error("Error checking reapplication settings:", error);
+                        resolve(adminConfig.allowReapplications || false);
+                    });
+            });
+        }
+        
+        // Function to contact support
+        function contactSupport() {
+            getAdminSettingFromFirestore('contactEmail').then(contactEmail => {
+                if (!contactEmail) contactEmail = adminConfig.contactEmail;
+                
+                getAdminSettingFromFirestore('contactPhone').then(contactPhone => {
+                    if (!contactPhone) contactPhone = adminConfig.contactPhone;
+                    
+                    Swal.fire({
+                        title: 'Contact Support',
+                        html: `
+                            <p>If you need to request special permission to reapply, please contact our support team:</p>
+                            <p><strong>Email:</strong> ${contactEmail}</p>
+                            <p><strong>Phone:</strong> ${contactPhone}</p>
+                            <p>Please include your full name and user ID in your message.</p>
+                        `,
+                        icon: 'info',
+                        confirmButtonColor: '#1a73e8'
+                    });
+                });
+            });
+        }
+        
+        // Load application settings
+        function loadApplicationSettings() {
+            const settingsRef = firebase.firestore().collection('adminSettings').doc('applicationSettings');
+            settingsRef.get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        if (document.getElementById('allow-reapplications-toggle')) {
+                            document.getElementById('allow-reapplications-toggle').checked = data.allowReapplications || false;
+                        }
+                    } else {
+                        if (document.getElementById('allow-reapplications-toggle')) {
+                            document.getElementById('allow-reapplications-toggle').checked = adminConfig.allowReapplications || false;
+                        }
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error loading application settings:", error);
+                    if (document.getElementById('allow-reapplications-toggle')) {
+                        document.getElementById('allow-reapplications-toggle').checked = adminConfig.allowReapplications || false;
+                    }
+                });
+        }
+        
+        // Save application settings
+        function saveApplicationSettings() {
+            const allowReapplications = document.getElementById('allow-reapplications-toggle').checked;
+            
+            const settingsRef = firebase.firestore().collection('adminSettings').doc('applicationSettings');
+            settingsRef.set({
+                allowReapplications: allowReapplications,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Settings Saved!',
+                    text: `Reapplications are now ${allowReapplications ? 'allowed' : 'disabled'} for all users.`,
+                    confirmButtonColor: '#1a73e8'
+                });
+            })
+            .catch((error) => {
+                console.error("Error saving application settings:", error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Save Failed',
+                    text: 'There was an error saving the application settings.',
+                    confirmButtonColor: '#1a73e8'
+                });
+            });
+        }
+        
+        // Allow all users to reapply
+        function allowAllUsersReapply() {
+            Swal.fire({
+                title: 'Allow All Users to Reapply?',
+                text: 'This will allow every user to submit a new AID application.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#1a73e8',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, allow all!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    firebase.firestore().collection('users').get()
+                        .then((querySnapshot) => {
+                            const batch = firebase.firestore().batch();
+                            
+                            querySnapshot.forEach((doc) => {
+                                batch.update(doc.ref, { canReapply: true });
+                            });
+                            
+                            return batch.commit();
+                        })
+                        .then(() => {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Reapplication Allowed for All!',
+                                text: 'All users can now submit new AID applications.',
+                                confirmButtonColor: '#1a73e8'
+                            });
+                            
+                            loadAdminData();
+                        })
+                        .catch((error) => {
+                            console.error("Error allowing all users to reapply:", error);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Action Failed',
+                                text: 'There was an error allowing all users to reapply.',
+                                confirmButtonColor: '#1a73e8'
+                            });
+                        });
+                }
+            });
+        }
+        
+        // Disallow all users from reapplying
+        function disallowAllUsersReapply() {
+            Swal.fire({
+                title: 'Disallow All Users from Reapplying?',
+                text: 'This will prevent all users from submitting new AID applications.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#1a73e8',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, disallow all!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    firebase.firestore().collection('users').get()
+                        .then((querySnapshot) => {
+                            const batch = firebase.firestore().batch();
+                            
+                            querySnapshot.forEach((doc) => {
+                                batch.update(doc.ref, { canReapply: false });
+                            });
+                            
+                            return batch.commit();
+                        })
+                        .then(() => {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Reapplication Disabled for All!',
+                                text: 'All users are now prevented from submitting new AID applications.',
+                                confirmButtonColor: '#1a73e8'
+                            });
+                            
+                            loadAdminData();
+                        })
+                        .catch((error) => {
+                            console.error("Error disallowing all users from reapply:", error);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Action Failed',
+                                text: 'There was an error disallowing all users from reapply.',
+                                confirmButtonColor: '#1a73e8'
+                            });
+                        });
+                }
+            });
         }
         
         // Show specific page
