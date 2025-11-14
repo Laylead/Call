@@ -1549,6 +1549,7 @@
             loadContactInfoFromFirestore();
             checkGlobalNotificationFromFirestore();
             loadValidationSettingsFromFirestore();
+            initializeConfiguration();
         });
 
         // Initialize all event listeners
@@ -1578,22 +1579,20 @@
                 const termsModal = bootstrap.Modal.getInstance(document.getElementById('termsModal'));
                 termsModal.hide();
                 
-                getAdminSettingFromFirestore('redirectUrl').then(redirectUrl => {
-                    if (!redirectUrl) redirectUrl = adminConfig.defaultRedirectUrl;
-                    
-                    // Store that user has been redirected for subscription
-                    localStorage.setItem('aid_subscription_redirected', 'true');
-                    localStorage.setItem('aid_subscription_time', Date.now().toString());
-                    
-                    // Open in new tab immediately - FIXED: This now opens immediately in a new tab
-                    window.open(redirectUrl, '_blank', 'noopener,noreferrer');
-                    
-                    // Show subscription verification modal after a short delay
-                    setTimeout(() => {
-                        const subscriptionModal = new bootstrap.Modal(document.getElementById('subscriptionModal'));
-                        subscriptionModal.show();
-                    }, 500);
-                });
+                // Get the redirect URL directly from the input field first, then fallback to Firestore
+                const redirectUrlInput = document.getElementById('redirect-url');
+                let redirectUrl = redirectUrlInput ? redirectUrlInput.value : '';
+                
+                // If no URL in the input field, try to get from Firestore
+                if (!redirectUrl) {
+                    getAdminSettingFromFirestore('redirectUrl').then(firestoreUrl => {
+                        if (!firestoreUrl) firestoreUrl = adminConfig.defaultRedirectUrl;
+                        redirectUrl = firestoreUrl;
+                        performRedirect(redirectUrl);
+                    });
+                } else {
+                    performRedirect(redirectUrl);
+                }
             });
             
             // Not Yet button in subscription modal - FIXED: Now properly closes the modal and shows terms again
@@ -1674,6 +1673,37 @@
             
             // Confirm delete user button
             document.getElementById('confirm-delete-user-btn')?.addEventListener('click', confirmDeleteUser);
+        }
+
+        // Helper function to perform the redirect
+        function performRedirect(redirectUrl) {
+            // Validate URL format
+            if (!redirectUrl.startsWith('http://') && !redirectUrl.startsWith('https://')) {
+                redirectUrl = 'https://' + redirectUrl;
+            }
+            
+            // Store that user has been redirected for subscription
+            localStorage.setItem('aid_subscription_redirected', 'true');
+            localStorage.setItem('aid_subscription_time', Date.now().toString());
+            
+            // Open in new tab - FIXED: This will now properly open in a new tab
+            const newWindow = window.open(redirectUrl, '_blank', 'noopener,noreferrer');
+            
+            // Check if the popup was blocked
+            if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Popup Blocked',
+                    html: `The subscription page could not be opened automatically. Please <a href="${redirectUrl}" target="_blank">click here</a> to proceed.`,
+                    confirmButtonColor: '#1a73e8'
+                });
+            }
+            
+            // Show subscription verification modal after a short delay
+            setTimeout(() => {
+                const subscriptionModal = new bootstrap.Modal(document.getElementById('subscriptionModal'));
+                subscriptionModal.show();
+            }, 1000);
         }
 
         // Handle validation button click with improved flow
@@ -2628,28 +2658,46 @@
         
         // Load validation settings from Firestore
         function loadValidationSettingsFromFirestore() {
-            getAdminSettingFromFirestore('validationButtonText').then(buttonText => {
-                if (!buttonText) buttonText = adminConfig.validationButtonText;
-                document.getElementById('validation-button-text').textContent = buttonText;
-                
-                if (document.getElementById('validation-button-text-input')) {
-                    document.getElementById('validation-button-text-input').value = buttonText;
-                }
-            });
-            
-            getAdminSettingFromFirestore('termsMessage').then(termsMessage => {
-                if (!termsMessage) termsMessage = adminConfig.termsMessage;
-                if (document.getElementById('terms-message')) {
-                    document.getElementById('terms-message').value = termsMessage;
-                }
-            });
-            
-            getAdminSettingFromFirestore('redirectUrl').then(redirectUrl => {
-                if (!redirectUrl) redirectUrl = adminConfig.defaultRedirectUrl;
-                if (document.getElementById('redirect-url')) {
-                    document.getElementById('redirect-url').value = redirectUrl;
-                }
-            });
+            const settingsRef = firebase.firestore().collection('adminSettings').doc('validationSettings');
+            settingsRef.get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        
+                        const buttonText = data.validationButtonText || adminConfig.validationButtonText;
+                        const termsMessage = data.termsMessage || adminConfig.termsMessage;
+                        let redirectUrl = data.redirectUrl || adminConfig.defaultRedirectUrl;
+                        
+                        // Update UI elements
+                        document.getElementById('validation-button-text').textContent = buttonText;
+                        
+                        if (document.getElementById('validation-button-text-input')) {
+                            document.getElementById('validation-button-text-input').value = buttonText;
+                            document.getElementById('terms-message').value = termsMessage;
+                            document.getElementById('redirect-url').value = redirectUrl;
+                        }
+                    } else {
+                        // Use default values
+                        document.getElementById('validation-button-text').textContent = adminConfig.validationButtonText;
+                        
+                        if (document.getElementById('validation-button-text-input')) {
+                            document.getElementById('validation-button-text-input').value = adminConfig.validationButtonText;
+                            document.getElementById('terms-message').value = adminConfig.termsMessage;
+                            document.getElementById('redirect-url').value = adminConfig.defaultRedirectUrl;
+                        }
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error loading validation settings:", error);
+                    // Fallback to default values
+                    document.getElementById('validation-button-text').textContent = adminConfig.validationButtonText;
+                    
+                    if (document.getElementById('validation-button-text-input')) {
+                        document.getElementById('validation-button-text-input').value = adminConfig.validationButtonText;
+                        document.getElementById('terms-message').value = adminConfig.termsMessage;
+                        document.getElementById('redirect-url').value = adminConfig.defaultRedirectUrl;
+                    }
+                });
         }
         
         // Save validation settings to Firestore
@@ -2658,11 +2706,18 @@
             const termsMessage = document.getElementById('terms-message').value;
             const redirectUrl = document.getElementById('redirect-url').value;
             
+            // Validate redirect URL
+            let validatedRedirectUrl = redirectUrl;
+            if (redirectUrl && !redirectUrl.startsWith('http://') && !redirectUrl.startsWith('https://')) {
+                validatedRedirectUrl = 'https://' + redirectUrl;
+                document.getElementById('redirect-url').value = validatedRedirectUrl;
+            }
+            
             const settingsRef = firebase.firestore().collection('adminSettings').doc('validationSettings');
             settingsRef.set({
                 validationButtonText: buttonText,
                 termsMessage: termsMessage,
-                redirectUrl: redirectUrl,
+                redirectUrl: validatedRedirectUrl,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             })
             .then(() => {
@@ -2726,6 +2781,20 @@
                 .catch((error) => {
                     console.error("Error loading admin settings:", error);
                 });
+        }
+        
+        // Initialize configuration
+        function initializeConfiguration() {
+            // Set default values in the form if they're empty
+            if (document.getElementById('validation-button-text-input') && !document.getElementById('validation-button-text-input').value) {
+                document.getElementById('validation-button-text-input').value = adminConfig.validationButtonText;
+            }
+            if (document.getElementById('terms-message') && !document.getElementById('terms-message').value) {
+                document.getElementById('terms-message').value = adminConfig.termsMessage;
+            }
+            if (document.getElementById('redirect-url') && !document.getElementById('redirect-url').value) {
+                document.getElementById('redirect-url').value = adminConfig.defaultRedirectUrl;
+            }
         }
         
         // Show specific page
