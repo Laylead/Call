@@ -266,7 +266,7 @@
             text-align: center;
         }
 
-        /* Keypad */
+        /* Keypad - Only shown before login */
         .keypad-container {
             max-width: 400px;
             margin: 0 auto;
@@ -1948,8 +1948,8 @@
         </div>
     </header>
 
-    <!-- Dial Pad (First Page) -->
-    <div class="keypad-container active" id="dialPadPage">
+    <!-- Keypad - Only shown before login -->
+    <div class="keypad-container active" id="keypadPage">
         <div class="phone-number" id="phoneNumber">Enter number</div>
         <div class="keypad">
             <div class="key" data-number="1">
@@ -2038,7 +2038,7 @@
         <div class="profile-page">
             <div class="profile-header">
                 <div class="profile-header-avatar" id="profileHeaderAvatar">U</div>
-                <h2 id="profileHeaderName">User Name <i class="fas fa-check-circle verified-badge" id="profileVerifiedBadge" style="display: none;"></i></h2>
+                <h2 id="profileHeaderName">User Name</h2>
                 <p id="profileHeaderUsername">@username</p>
                 <div class="profile-bio" id="profileBio">No bio yet.</div>
                 <div class="profile-stats">
@@ -2057,7 +2057,6 @@
                 </div>
                 <div class="profile-actions">
                     <button class="profile-action-btn secondary" id="editProfileBtn">Edit Profile</button>
-                    <button class="profile-action-btn primary" id="followProfileBtn" style="display: none;">Follow</button>
                 </div>
             </div>
             <div class="profile-tabs">
@@ -2125,7 +2124,7 @@
             </div>
         </div>
         <ul class="sidebar-menu">
-            <li><a href="home.html" class="sidebar-link active"><i class="fas fa-home"></i> Home</a></li>
+            <li><a href="home.html" class="sidebar-link"><i class="fas fa-home"></i> Home</a></li>
             <li><a href="keypad.html" class="sidebar-link"><i class="fas fa-dialpad"></i> Keypad</a></li>
             <li><a href="#" class="sidebar-link" data-page="profilePage"><i class="fas fa-user"></i> Profile</a></li>
             <li><a href="#" class="sidebar-link" data-page="findFriendsPage"><i class="fas fa-user-friends"></i> Find Friends</a></li>
@@ -2142,7 +2141,7 @@
 
     <!-- Bottom Navigation -->
     <div class="bottom-nav" id="bottomNav">
-        <a href="home.html" class="nav-item active">
+        <a href="home.html" class="nav-item">
             <i class="fas fa-home"></i>
             <span>Home</span>
         </a>
@@ -2158,13 +2157,9 @@
             <i class="fas fa-address-book"></i>
             <span>Contacts</span>
         </a>
-        <a href="account.html" class="nav-item">
+        <a href="#" class="nav-item" data-page="profilePage">
             <i class="fas fa-user"></i>
-            <span>Account</span>
-        </a>
-        <a href="history.html" class="nav-item">
-            <i class="fas fa-history"></i>
-            <span>History</span>
+            <span>Profile</span>
         </a>
     </div>
 
@@ -2186,7 +2181,7 @@
                 this.state = {
                     currentUser: null,
                     isLoggedIn: false,
-                    currentPage: 'dialPadPage',
+                    currentPage: 'keypadPage',
                     phoneNumber: '',
                     isCalling: false,
                     callTimer: 0,
@@ -2346,9 +2341,7 @@
                     profilePostsCount: document.getElementById('profilePostsCount'),
                     profileFollowersCount: document.getElementById('profileFollowersCount'),
                     profileFollowingCount: document.getElementById('profileFollowingCount'),
-                    profileVerifiedBadge: document.getElementById('profileVerifiedBadge'),
                     editProfileBtn: document.getElementById('editProfileBtn'),
-                    followProfileBtn: document.getElementById('followProfileBtn'),
                     profilePostsTab: document.getElementById('profilePostsTab'),
                     profileFollowersTab: document.getElementById('profileFollowersTab'),
                     profileFollowingTab: document.getElementById('profileFollowingTab'),
@@ -2515,10 +2508,12 @@
                             await this.updateUserUI();
                             await this.loadProfileData();
                             this.hideAuthModal();
+                            this.hideKeypad();
                         } else {
                             this.state.isLoggedIn = false;
                             this.state.currentUser = null;
                             this.showAuthModal();
+                            this.showKeypad();
                         }
                         resolve();
                     });
@@ -2575,6 +2570,7 @@
                     this.showNotification('Logged Out', 'You have been successfully logged out.');
                     this.state.posts = [];
                     this.renderPosts();
+                    this.showKeypad();
                 }
             }
 
@@ -2601,6 +2597,18 @@
 
             hideAuthModal() {
                 this.elements.authModal.classList.remove('active');
+            }
+
+            showKeypad() {
+                this.elements.keypadPage.style.display = 'flex';
+                document.querySelectorAll('.page-content').forEach(page => {
+                    page.style.display = 'none';
+                });
+            }
+
+            hideKeypad() {
+                this.elements.keypadPage.style.display = 'none';
+                this.navigateToPage('homePage');
             }
 
             async updateUserUI() {
@@ -2637,19 +2645,21 @@
 
             // Navigation Methods
             navigateToPage(pageId) {
-                document.querySelectorAll('.page-content, .keypad-container').forEach(page => {
+                // Hide keypad if logged in
+                if (this.state.isLoggedIn) {
+                    this.elements.keypadPage.style.display = 'none';
+                }
+                
+                document.querySelectorAll('.page-content').forEach(page => {
                     page.classList.remove('active');
+                    page.style.display = 'none';
                 });
                 
-                document.getElementById(pageId).classList.add('active');
-                
-                document.querySelectorAll('.nav-item, .sidebar-link').forEach(item => {
-                    item.classList.remove('active');
-                });
-                
-                document.querySelectorAll(`[data-page="${pageId}"]`).forEach(item => {
-                    item.classList.add('active');
-                });
+                const targetPage = document.getElementById(pageId);
+                if (targetPage) {
+                    targetPage.classList.add('active');
+                    targetPage.style.display = 'block';
+                }
                 
                 this.state.currentPage = pageId;
                 
@@ -3043,13 +3053,6 @@
                         } else {
                             const initials = userData.name.split(' ').map(n => n[0]).join('').toUpperCase();
                             this.elements.profileHeaderAvatar.textContent = initials;
-                        }
-                        
-                        // Show verified badge if user is verified
-                        if (userData.verified) {
-                            this.elements.profileVerifiedBadge.style.display = 'inline';
-                        } else {
-                            this.elements.profileVerifiedBadge.style.display = 'none';
                         }
                         
                         // Load profile stats
