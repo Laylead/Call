@@ -1132,96 +1132,8 @@
     </div>
 
     <!-- External Configuration -->
-    <script type="text/javascript" id="configuration-script">
-        // Firebase Configuration
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY_HERE",
-            authDomain: "YOUR_PROJECT.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "YOUR_APP_ID"
-        };
-
-        // Agora Configuration
-        const agoraConfig = {
-            appId: "YOUR_AGORA_APP_ID_HERE"
-        };
-
-        // Application Settings
-        const appConfig = {
-            name: "ConnectX",
-            version: "1.0.0",
-            permissions: {
-                notifications: true,
-                microphone: true,
-                camera: true,
-                location: false
-            }
-        };
-    </script>
-
-    <!-- Agora SDK -->
-    <script type="text/javascript" id="agora-script">
-        // Agora RTC SDK initialization
-        // This would typically be loaded from Agora's CDN
-        // For now, we'll stub the functionality
-        class AgoraRTC {
-            static createClient(config) {
-                console.log("Agora client created with config:", config);
-                return {
-                    join: async (appId, channel, token, uid) => {
-                        console.log(`Joining channel: ${channel}`);
-                        return uid;
-                    },
-                    leave: () => {
-                        console.log("Leaving channel");
-                    },
-                    publish: (stream) => {
-                        console.log("Publishing stream");
-                    },
-                    unpublish: (stream) => {
-                        console.log("Unpublishing stream");
-                    },
-                    on: (event, callback) => {
-                        console.log(`Event listener added for: ${event}`);
-                    }
-                };
-            }
-            
-            static createStream(config) {
-                console.log("Agora stream created with config:", config);
-                return {
-                    init: () => {
-                        console.log("Stream initialized");
-                        return Promise.resolve();
-                    },
-                    play: (elementId) => {
-                        console.log(`Stream playing on element: ${elementId}`);
-                    }
-                };
-            }
-        }
-
-        // Agora RTM SDK initialization
-        class AgoraRTM {
-            static createInstance(appId) {
-                console.log("Agora RTM instance created with appId:", appId);
-                return {
-                    login: (credentials) => {
-                        console.log("RTM logged in");
-                        return Promise.resolve();
-                    },
-                    logout: () => {
-                        console.log("RTM logged out");
-                    },
-                    addListener: (event, callback) => {
-                        console.log(`RTM listener added for: ${event}`);
-                    }
-                };
-            }
-        }
-    </script>
+    <script src="configuration.js"></script>
+    <script src="agora.js"></script>
 
     <!-- External Scripts -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -1247,7 +1159,8 @@
                     theme: 'light',
                     agoraClient: null,
                     agoraStream: null,
-                    mediaStream: null
+                    mediaStream: null,
+                    mediaFile: null
                 };
 
                 this.init();
@@ -1255,8 +1168,13 @@
 
             async init() {
                 try {
-                    // Initialize Firebase with external configuration
-                    firebase.initializeApp(firebaseConfig);
+                    // Check if external configuration is loaded
+                    if (typeof firebaseConfig === 'undefined') {
+                        console.error('Configuration not loaded. Using demo mode.');
+                        this.setupDemoMode();
+                    } else {
+                        firebase.initializeApp(firebaseConfig);
+                    }
                     
                     this.setupDOMReferences();
                     this.setupEventListeners();
@@ -1266,6 +1184,26 @@
                     console.log('ConnectX App initialized successfully');
                 } catch (error) {
                     console.error('App initialization failed:', error);
+                    this.showNotification('Initialization Error', 'Failed to initialize app. Please refresh.');
+                }
+            }
+
+            setupDemoMode() {
+                // Demo configuration for testing
+                const demoConfig = {
+                    apiKey: "demo-api-key",
+                    authDomain: "connectx-demo.firebaseapp.com",
+                    projectId: "connectx-demo",
+                    storageBucket: "connectx-demo.appspot.com",
+                    messagingSenderId: "123456789",
+                    appId: "demo-app-id"
+                };
+                
+                try {
+                    firebase.initializeApp(demoConfig);
+                    console.log('Demo mode activated');
+                } catch (error) {
+                    console.log('Firebase not available, running in offline mode');
                 }
             }
 
@@ -1643,15 +1581,11 @@
                 
                 // Initialize Agora client for calling
                 try {
-                    this.state.agoraClient = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
-                    this.state.agoraStream = AgoraRTC.createStream({
-                        streamID: this.state.currentUser.uid,
-                        audio: true,
-                        video: false,
-                        screen: false
-                    });
-                    
-                    await this.state.agoraStream.init();
+                    if (typeof agoraManager !== 'undefined') {
+                        this.state.agoraClient = agoraManager;
+                        await agoraManager.initialize();
+                        await agoraManager.joinChannel('connectx_channel', this.state.currentUser.uid);
+                    }
                     
                     // Simulate call connection
                     setTimeout(() => {
@@ -1682,14 +1616,9 @@
                 }
                 
                 // Clean up Agora resources
-                if (this.state.agoraClient) {
-                    this.state.agoraClient.leave();
+                if (this.state.agoraClient && typeof agoraManager !== 'undefined') {
+                    await agoraManager.leaveChannel();
                     this.state.agoraClient = null;
-                }
-                
-                if (this.state.agoraStream) {
-                    this.state.agoraStream.close();
-                    this.state.agoraStream = null;
                 }
                 
                 const duration = this.state.callTimer > 0 ? 
@@ -1708,8 +1637,8 @@
                     this.showNotification('Microphone', 'Muted');
                     
                     // Mute the audio stream
-                    if (this.state.agoraStream) {
-                        this.state.agoraStream.muteAudio();
+                    if (this.state.agoraClient && typeof agoraManager !== 'undefined') {
+                        agoraManager.muteAudio();
                     }
                 } else {
                     icon.classList.remove('fa-microphone-slash');
@@ -1717,8 +1646,8 @@
                     this.showNotification('Microphone', 'Unmuted');
                     
                     // Unmute the audio stream
-                    if (this.state.agoraStream) {
-                        this.state.agoraStream.unmuteAudio();
+                    if (this.state.agoraClient && typeof agoraManager !== 'undefined') {
+                        agoraManager.unmuteAudio();
                     }
                 }
             }
@@ -1754,9 +1683,33 @@
                     this.renderPosts();
                 } catch (error) {
                     console.error('Error loading posts:', error);
-                    this.state.posts = [];
+                    // Create demo posts if Firebase is not available
+                    this.state.posts = this.createDemoPosts();
                     this.renderPosts();
                 }
+            }
+
+            createDemoPosts() {
+                return [
+                    {
+                        id: 'demo1',
+                        content: 'Welcome to ConnectX! Start connecting with your friends and family.',
+                        authorName: 'ConnectX Team',
+                        createdAt: new Date().toISOString(),
+                        likes: 15,
+                        comments: 3,
+                        shares: 2
+                    },
+                    {
+                        id: 'demo2',
+                        content: 'Just made my first call with ConnectX. The audio quality is amazing!',
+                        authorName: 'Alex Johnson',
+                        createdAt: new Date(Date.now() - 3600000).toISOString(),
+                        likes: 8,
+                        comments: 1,
+                        shares: 0
+                    }
+                ];
             }
 
             renderPosts() {
@@ -1881,7 +1834,22 @@
                     this.showNotification('Post Created', 'Your post has been published');
                     this.loadPosts();
                 } catch (error) {
-                    this.showNotification('Error', 'Failed to create post');
+                    console.error('Error creating post:', error);
+                    // Create post locally if Firebase fails
+                    const demoPost = {
+                        id: 'local_' + Date.now(),
+                        content: content,
+                        authorName: this.elements.userName.textContent,
+                        createdAt: new Date().toISOString(),
+                        likes: 0,
+                        comments: 0,
+                        shares: 0
+                    };
+                    this.state.posts.unshift(demoPost);
+                    this.renderPosts();
+                    this.elements.postInput.value = '';
+                    this.clearMediaPreview();
+                    this.showNotification('Post Created', 'Your post has been published (offline mode)');
                 }
             }
 
@@ -1900,25 +1868,45 @@
                     this.playTone(523.25, 100);
                     
                     // Update like count in Firestore
-                    const postRef = firebase.firestore().collection('posts').doc(postId);
-                    await postRef.update({
-                        likes: firebase.firestore.FieldValue.increment(1)
-                    });
-                    
-                    await firebase.firestore().collection('posts').doc(postId).collection('likes').doc(this.state.currentUser.uid).set({
-                        likedAt: new Date().toISOString()
-                    });
+                    try {
+                        const postRef = firebase.firestore().collection('posts').doc(postId);
+                        await postRef.update({
+                            likes: firebase.firestore.FieldValue.increment(1)
+                        });
+                        
+                        await firebase.firestore().collection('posts').doc(postId).collection('likes').doc(this.state.currentUser.uid).set({
+                            likedAt: new Date().toISOString()
+                        });
+                    } catch (error) {
+                        console.error('Error liking post:', error);
+                        // Update locally if Firebase fails
+                        const post = this.state.posts.find(p => p.id === postId);
+                        if (post) {
+                            post.likes = (post.likes || 0) + 1;
+                            this.renderPosts();
+                        }
+                    }
                 } else {
                     icon.classList.remove('fas');
                     icon.classList.add('far');
                     
                     // Update like count in Firestore
-                    const postRef = firebase.firestore().collection('posts').doc(postId);
-                    await postRef.update({
-                        likes: firebase.firestore.FieldValue.increment(-1)
-                    });
-                    
-                    await firebase.firestore().collection('posts').doc(postId).collection('likes').doc(this.state.currentUser.uid).delete();
+                    try {
+                        const postRef = firebase.firestore().collection('posts').doc(postId);
+                        await postRef.update({
+                            likes: firebase.firestore.FieldValue.increment(-1)
+                        });
+                        
+                        await firebase.firestore().collection('posts').doc(postId).collection('likes').doc(this.state.currentUser.uid).delete();
+                    } catch (error) {
+                        console.error('Error unliking post:', error);
+                        // Update locally if Firebase fails
+                        const post = this.state.posts.find(p => p.id === postId);
+                        if (post) {
+                            post.likes = Math.max(0, (post.likes || 0) - 1);
+                            this.renderPosts();
+                        }
+                    }
                 }
                 
                 this.loadPosts();
@@ -2025,8 +2013,11 @@
             initAudio() {
                 try {
                     this.state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                console.log('Audio context initialized');
+                return true;
                 } catch (e) {
                     console.log('Web Audio API not supported');
+                    return false;
                 }
             }
 
