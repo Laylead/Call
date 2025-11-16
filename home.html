@@ -1735,6 +1735,23 @@
             display: block;
         }
 
+        /* Other User Profile */
+        .other-user-profile .profile-actions {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .message-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+
+        .message-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .sidebar {
@@ -1939,7 +1956,7 @@
         </div>
     </div>
 
-    <!-- Profile Page -->
+    <!-- My Profile Page -->
     <div class="page" id="profilePage">
         <div class="profile-header">
             <div class="profile-avatar" id="profileAvatar">
@@ -1989,16 +2006,70 @@
             </div>
             
             <div class="tab-content" id="mediaTab">
-                <div style="text-align: center; padding: 40px 20px; color: var(--gray-color);">
-                    <i class="fas fa-image" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
-                    <p>No media yet</p>
+                <div id="userMedia">
+                    <!-- User's media will be loaded here -->
                 </div>
             </div>
             
             <div class="tab-content" id="likesTab">
-                <div style="text-align: center; padding: 40px 20px; color: var(--gray-color);">
-                    <i class="fas fa-heart" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
-                    <p>No likes yet</p>
+                <div id="userLikes">
+                    <!-- User's liked posts will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Other User Profile Page -->
+    <div class="page other-user-profile" id="otherUserProfilePage">
+        <div class="profile-header">
+            <div class="profile-avatar" id="otherProfileAvatar">
+                <div id="otherProfileAvatarInitials">U</div>
+                <img id="otherProfileAvatarImg" style="display: none;">
+            </div>
+            <h1 class="profile-name" id="otherProfileName">User Name</h1>
+            <p class="profile-username" id="otherProfileUsername">@username</p>
+            <p class="profile-bio" id="otherProfileBio">This is a bio. It can be long or short.</p>
+            
+            <div class="profile-stats">
+                <div class="stat">
+                    <span class="stat-value" id="otherPostsCount">0</span>
+                    <span class="stat-label">Posts</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value" id="otherFollowersCount">0</span>
+                    <span class="stat-label">Followers</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value" id="otherFollowingCount">0</span>
+                    <span class="stat-label">Following</span>
+                </div>
+            </div>
+            
+            <div class="profile-actions">
+                <button class="profile-btn message-btn" id="messageUserBtn">
+                    <i class="fas fa-envelope"></i> Message
+                </button>
+                <button class="profile-btn edit-profile-btn" id="followUserBtn">
+                    <i class="fas fa-user-plus"></i> Follow
+                </button>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="tabs">
+                <div class="tab active" data-tab="posts">Posts</div>
+                <div class="tab" data-tab="media">Media</div>
+            </div>
+
+            <div class="tab-content active" id="otherPostsTab">
+                <div id="otherUserPosts">
+                    <!-- Other user's posts will be loaded here -->
+                </div>
+            </div>
+            
+            <div class="tab-content" id="otherMediaTab">
+                <div id="otherUserMedia">
+                    <!-- Other user's media will be loaded here -->
                 </div>
             </div>
         </div>
@@ -2103,7 +2174,8 @@
                     recordingStartTime: null,
                     userProfile: null,
                     profilePictureFile: null,
-                    currentPage: 'homePage'
+                    currentPage: 'homePage',
+                    viewingUserId: null // For viewing other users' profiles
                 };
 
                 this.init();
@@ -2220,6 +2292,23 @@
                     followersCount: document.getElementById('followersCount'),
                     followingCount: document.getElementById('followingCount'),
                     userPosts: document.getElementById('userPosts'),
+                    userMedia: document.getElementById('userMedia'),
+                    userLikes: document.getElementById('userLikes'),
+                    // Other user profile elements
+                    otherUserProfilePage: document.getElementById('otherUserProfilePage'),
+                    otherProfileAvatar: document.getElementById('otherProfileAvatar'),
+                    otherProfileAvatarInitials: document.getElementById('otherProfileAvatarInitials'),
+                    otherProfileAvatarImg: document.getElementById('otherProfileAvatarImg'),
+                    otherProfileName: document.getElementById('otherProfileName'),
+                    otherProfileUsername: document.getElementById('otherProfileUsername'),
+                    otherProfileBio: document.getElementById('otherProfileBio'),
+                    otherPostsCount: document.getElementById('otherPostsCount'),
+                    otherFollowersCount: document.getElementById('otherFollowersCount'),
+                    otherFollowingCount: document.getElementById('otherFollowingCount'),
+                    otherUserPosts: document.getElementById('otherUserPosts'),
+                    otherUserMedia: document.getElementById('otherUserMedia'),
+                    followUserBtn: document.getElementById('followUserBtn'),
+                    messageUserBtn: document.getElementById('messageUserBtn'),
                     // Find friends elements
                     friendsSearch: document.getElementById('friendsSearch'),
                     friendsResults: document.getElementById('friendsResults'),
@@ -2258,6 +2347,10 @@
                 this.elements.saveProfileBtn.addEventListener('click', (e) => this.handleSaveProfile(e));
                 this.elements.changeAvatarBtn.addEventListener('click', () => this.elements.profilePictureInput.click());
 
+                // Other User Profile Events
+                this.elements.followUserBtn.addEventListener('click', () => this.handleFollowUser(this.state.viewingUserId, this.elements.followUserBtn));
+                this.elements.messageUserBtn.addEventListener('click', () => this.messageUser());
+
                 // Find Friends Events
                 this.elements.friendsSearch.addEventListener('input', (e) => this.handleFriendsSearch(e));
                 document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -2273,11 +2366,13 @@
                     });
                 });
 
+                // Fixed: Bottom nav doesn't open sidebar anymore
                 document.querySelectorAll('.nav-item[data-page]').forEach(item => {
                     item.addEventListener('click', (e) => {
                         e.preventDefault();
                         const page = e.currentTarget.getAttribute('data-page');
                         this.showPage(page);
+                        // Don't toggle sidebar when clicking bottom nav
                     });
                 });
 
@@ -2308,7 +2403,7 @@
             }
 
             // Page Navigation Methods
-            showPage(pageId) {
+            showPage(pageId, userId = null) {
                 // Hide all pages
                 document.querySelectorAll('.page').forEach(page => {
                     page.classList.remove('active');
@@ -2331,13 +2426,18 @@
                 document.querySelector(`.sidebar-link[data-page="${pageId}"]`)?.classList.add('active');
 
                 this.state.currentPage = pageId;
-                this.toggleSidebar();
+                
+                // Close sidebar when navigating via bottom nav
+                this.toggleSidebar(false);
 
                 // Load page-specific data
                 if (pageId === 'findFriendsPage') {
                     this.loadFindFriends();
                 } else if (pageId === 'profilePage') {
                     this.loadUserProfilePage();
+                } else if (pageId === 'otherUserProfilePage' && userId) {
+                    this.state.viewingUserId = userId;
+                    this.loadOtherUserProfile(userId);
                 }
             }
 
@@ -2410,7 +2510,8 @@
                             followers: [],
                             following: [],
                             posts: [],
-                            verified: Math.random() > 0.7 // Random verification for demo
+                            verified: Math.random() > 0.7, // Random verification for demo
+                            profilePicture: null
                         });
                     } else {
                         userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
@@ -2505,9 +2606,21 @@
             }
 
             // Sidebar Methods
-            toggleSidebar() {
-                this.elements.sidebar.classList.toggle('active');
-                this.elements.sidebarOverlay.classList.toggle('active');
+            toggleSidebar(show = null) {
+                if (show === null) {
+                    // Toggle if no parameter provided
+                    this.elements.sidebar.classList.toggle('active');
+                    this.elements.sidebarOverlay.classList.toggle('active');
+                } else {
+                    // Set specific state
+                    if (show) {
+                        this.elements.sidebar.classList.add('active');
+                        this.elements.sidebarOverlay.classList.add('active');
+                    } else {
+                        this.elements.sidebar.classList.remove('active');
+                        this.elements.sidebarOverlay.classList.remove('active');
+                    }
+                }
             }
 
             // Theme Methods
@@ -2793,9 +2906,10 @@
                         authorId: this.state.currentUser.uid,
                         authorName: this.elements.userName.textContent,
                         createdAt: new Date().toISOString(),
-                        likes: 0,
-                        comments: 0,
-                        shares: 0
+                        likes: [],
+                        comments: [],
+                        shares: 0,
+                        likedBy: [] // Track who liked the post
                     };
 
                     // Get user profile picture for the post
@@ -2805,20 +2919,35 @@
 
                     // Handle media upload if present
                     if (this.state.mediaFile) {
-                        // In a real app, you would upload to Firebase Storage
-                        // For demo, we'll use a placeholder
                         if (this.state.mediaFile.type.startsWith('image/')) {
-                            postData.imageUrl = 'https://via.placeholder.com/500x300/4361ee/ffffff?text=Post+Image';
+                            // Upload image to Firebase Storage
+                            const imageRef = firebase.storage().ref().child(`posts/${this.state.currentUser.uid}/${Date.now()}_${this.state.mediaFile.name}`);
+                            await imageRef.put(this.state.mediaFile);
+                            const imageUrl = await imageRef.getDownloadURL();
+                            postData.imageUrl = imageUrl;
                         } else if (this.state.mediaFile.type.startsWith('video/')) {
-                            postData.videoUrl = 'https://example.com/sample-video.mp4';
+                            // Upload video to Firebase Storage
+                            const videoRef = firebase.storage().ref().child(`posts/${this.state.currentUser.uid}/${Date.now()}_${this.state.mediaFile.name}`);
+                            await videoRef.put(this.state.mediaFile);
+                            const videoUrl = await videoRef.getDownloadURL();
+                            postData.videoUrl = videoUrl;
                         } else if (this.state.mediaFile.type === 'audio/wav' || this.state.mediaFile instanceof Blob) {
-                            postData.voiceUrl = 'https://example.com/sample-audio.wav';
+                            // Upload audio to Firebase Storage
+                            const audioRef = firebase.storage().ref().child(`posts/${this.state.currentUser.uid}/${Date.now()}_voice.wav`);
+                            await audioRef.put(this.state.mediaFile);
+                            const audioUrl = await audioRef.getDownloadURL();
+                            postData.voiceUrl = audioUrl;
                             postData.voiceDuration = this.elements.voiceDuration.textContent;
                         }
                     }
 
                     // Save to Firestore
-                    await firebase.firestore().collection('posts').add(postData);
+                    const postRef = await firebase.firestore().collection('posts').add(postData);
+                    
+                    // Update user's posts array
+                    await firebase.firestore().collection('users').doc(this.state.currentUser.uid).update({
+                        posts: firebase.firestore.FieldValue.arrayUnion(postRef.id)
+                    });
 
                     // Reset form and close modal
                     this.elements.postTextarea.value = '';
@@ -2850,13 +2979,14 @@
                 if (!this.state.currentUser) return;
                 
                 try {
-                    const followingSnapshot = await firebase.firestore()
+                    const userDoc = await firebase.firestore()
                         .collection('users')
                         .doc(this.state.currentUser.uid)
-                        .collection('following')
                         .get();
                     
-                    this.state.following = followingSnapshot.docs.map(doc => doc.id);
+                    if (userDoc.exists) {
+                        this.state.following = userDoc.data().following || [];
+                    }
                 } catch (error) {
                     console.error('Error loading following:', error);
                     this.state.following = [];
@@ -2934,6 +3064,16 @@
                     });
                 });
 
+                // Add event listeners to user profiles for viewing
+                this.elements.suggestedUsers.querySelectorAll('.suggested-user').forEach(userEl => {
+                    userEl.addEventListener('click', (e) => {
+                        if (!e.target.closest('.follow-btn')) {
+                            const userId = userEl.getAttribute('data-user-id');
+                            this.showPage('otherUserProfilePage', userId);
+                        }
+                    });
+                });
+
                 // Re-attach event listener to see all
                 this.elements.seeAllUsers = document.getElementById('seeAllUsers');
                 this.elements.seeAllUsers.addEventListener('click', () => {
@@ -2943,15 +3083,17 @@
 
             async loadPosts() {
                 try {
-                    let postsQuery = firebase.firestore()
+                    // Set up real-time listener for posts
+                    firebase.firestore()
                         .collection('posts')
                         .orderBy('createdAt', 'desc')
-                        .limit(20);
-
-                    const snapshot = await postsQuery.get();
-                    
-                    this.state.posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    this.renderPosts();
+                        .limit(20)
+                        .onSnapshot(snapshot => {
+                            this.state.posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                            this.renderPosts();
+                        }, error => {
+                            console.error('Error loading posts:', error);
+                        });
                 } catch (error) {
                     console.error('Error loading posts:', error);
                 }
@@ -2972,7 +3114,12 @@
                     return;
                 }
 
-                this.elements.postFeed.innerHTML = this.state.posts.map(post => `
+                this.elements.postFeed.innerHTML = this.state.posts.map(post => {
+                    const isLiked = post.likedBy && post.likedBy.includes(this.state.currentUser?.uid);
+                    const likeCount = post.likes ? post.likes.length : 0;
+                    const commentCount = post.comments ? post.comments.length : 0;
+                    
+                    return `
                     <div class="post" data-post-id="${post.id}">
                         <div class="post-header">
                             ${post.authorProfilePicture ? 
@@ -2980,11 +3127,18 @@
                                 `<div class="post-avatar">${post.authorName ? post.authorName.charAt(0).toUpperCase() : 'U'}</div>`
                             }
                             <div class="post-user-info">
-                                <h4>${post.authorName || 'Unknown User'} ${post.verified ? '<i class="fas fa-check-circle verified-badge"></i>' : ''}</h4>
+                                <h4 class="post-author-name" data-user-id="${post.authorId}">${post.authorName || 'Unknown User'} ${post.verified ? '<i class="fas fa-check-circle verified-badge"></i>' : ''}</h4>
                                 <p><i class="far fa-clock"></i> ${this.formatTime(post.createdAt)}</p>
                             </div>
                             <div class="post-options">
                                 <i class="fas fa-ellipsis-h"></i>
+                                ${post.authorId === this.state.currentUser?.uid ? `
+                                    <div class="post-menu" style="display: none; position: absolute; right: 0; top: 30px; background: var(--card-bg); border-radius: 10px; box-shadow: var(--shadow); padding: 10px; z-index: 10;">
+                                        <div class="post-menu-item delete-post" data-post-id="${post.id}" style="padding: 8px 12px; cursor: pointer; border-radius: 5px; transition: var(--transition);">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </div>
+                                    </div>
+                                ` : ''}
                             </div>
                         </div>
                         <div class="post-content">
@@ -2999,32 +3153,33 @@
                                     <div class="waveform"></div>
                                     <div class="voice-duration">${post.voiceDuration || '1:25'}</div>
                                 </div>
+                                <audio id="audio-${post.id}" src="${post.voiceUrl}" style="display: none;"></audio>
                             ` : ''}
                         </div>
                         <div class="post-stats">
-                            <span><i class="fas fa-thumbs-up"></i> ${post.likes || 0} likes</span>
-                            <span><i class="fas fa-comment"></i> ${post.comments || 0} comments</span>
+                            <span><i class="fas fa-thumbs-up"></i> ${likeCount} likes</span>
+                            <span><i class="fas fa-comment"></i> ${commentCount} comments</span>
                             <span><i class="fas fa-share"></i> ${post.shares || 0} shares</span>
                         </div>
                         <div class="post-actions-bar">
-                            <div class="post-action-btn like-btn">
-                                <i class="far fa-thumbs-up"></i>
-                                <span>Like</span>
+                            <div class="post-action-btn like-btn ${isLiked ? 'active' : ''}" data-post-id="${post.id}">
+                                <i class="${isLiked ? 'fas' : 'far'} fa-thumbs-up"></i>
+                                <span>${isLiked ? 'Liked' : 'Like'}</span>
                             </div>
-                            <div class="post-action-btn comment-btn">
+                            <div class="post-action-btn comment-btn" data-post-id="${post.id}">
                                 <i class="far fa-comment"></i>
                                 <span>Comment</span>
                             </div>
-                            <div class="post-action-btn share-btn">
+                            <div class="post-action-btn share-btn" data-post-id="${post.id}">
                                 <i class="fas fa-share"></i>
                                 <span>Share</span>
                             </div>
                         </div>
-                        <div class="comments-section" id="comments-${post.id}">
+                        <div class="comments-section" id="comments-${post.id}" style="display: none;">
                             <!-- Comments will be loaded here -->
                         </div>
                     </div>
-                `).join('');
+                `}).join('');
 
                 // Add event listeners
                 this.addPostEventListeners();
@@ -3034,8 +3189,7 @@
                 // Like buttons
                 this.elements.postFeed.querySelectorAll('.like-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => {
-                        const postElement = e.target.closest('.post');
-                        const postId = postElement.getAttribute('data-post-id');
+                        const postId = btn.getAttribute('data-post-id');
                         this.handleLikePost(postId, btn);
                     });
                 });
@@ -3043,8 +3197,7 @@
                 // Comment buttons
                 this.elements.postFeed.querySelectorAll('.comment-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => {
-                        const postElement = e.target.closest('.post');
-                        const postId = postElement.getAttribute('data-post-id');
+                        const postId = btn.getAttribute('data-post-id');
                         this.toggleComments(postId);
                     });
                 });
@@ -3052,8 +3205,7 @@
                 // Share buttons
                 this.elements.postFeed.querySelectorAll('.share-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => {
-                        const postElement = e.target.closest('.post');
-                        const postId = postElement.getAttribute('data-post-id');
+                        const postId = btn.getAttribute('data-post-id');
                         this.handleSharePost(postId);
                     });
                 });
@@ -3061,16 +3213,59 @@
                 // Voice play buttons
                 this.elements.postFeed.querySelectorAll('.play-btn').forEach(btn => {
                     btn.addEventListener('click', function() {
+                        const postId = this.closest('.post').getAttribute('data-post-id');
+                        const audioElement = document.getElementById(`audio-${postId}`);
                         const waveform = this.nextElementSibling;
-                        const isPlaying = waveform.style.animationPlayState === 'paused';
                         
-                        if (isPlaying) {
-                            waveform.style.animationPlayState = 'running';
+                        if (audioElement.paused) {
+                            audioElement.play();
                             this.innerHTML = '<i class="fas fa-pause"></i>';
+                            waveform.style.animationPlayState = 'running';
                         } else {
-                            waveform.style.animationPlayState = 'paused';
+                            audioElement.pause();
                             this.innerHTML = '<i class="fas fa-play"></i>';
+                            waveform.style.animationPlayState = 'paused';
                         }
+                    });
+                });
+
+                // Post options menu
+                this.elements.postFeed.querySelectorAll('.post-options').forEach(options => {
+                    options.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const menu = options.querySelector('.post-menu');
+                        if (menu) {
+                            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+                        }
+                    });
+                });
+
+                // Delete post
+                this.elements.postFeed.querySelectorAll('.delete-post').forEach(deleteBtn => {
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const postId = deleteBtn.getAttribute('data-post-id');
+                        this.deletePost(postId);
+                    });
+                });
+
+                // User profile clicks
+                this.elements.postFeed.querySelectorAll('.post-author-name').forEach(nameEl => {
+                    nameEl.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const userId = nameEl.getAttribute('data-user-id');
+                        if (userId === this.state.currentUser.uid) {
+                            this.showPage('profilePage');
+                        } else {
+                            this.showPage('otherUserProfilePage', userId);
+                        }
+                    });
+                });
+
+                // Close menus when clicking elsewhere
+                document.addEventListener('click', () => {
+                    this.elements.postFeed.querySelectorAll('.post-menu').forEach(menu => {
+                        menu.style.display = 'none';
                     });
                 });
             }
@@ -3085,69 +3280,56 @@
                 const isLiked = button.classList.contains('active');
                 const icon = button.querySelector('i');
                 const span = button.querySelector('span');
+                const postRef = firebase.firestore().collection('posts').doc(postId);
                 
-                if (!isLiked) {
-                    button.classList.add('active');
-                    icon.classList.remove('far');
-                    icon.classList.add('fas');
-                    span.textContent = 'Liked';
-                    
-                    // Update like count in Firestore
-                    try {
-                        const postRef = firebase.firestore().collection('posts').doc(postId);
+                try {
+                    if (!isLiked) {
+                        // Add like
                         await postRef.update({
-                            likes: firebase.firestore.FieldValue.increment(1)
+                            likes: firebase.firestore.FieldValue.arrayUnion(this.state.currentUser.uid),
+                            likedBy: firebase.firestore.FieldValue.arrayUnion(this.state.currentUser.uid)
                         });
-                    } catch (error) {
-                        console.error('Error liking post:', error);
-                    }
-                } else {
-                    button.classList.remove('active');
-                    icon.classList.remove('fas');
-                    icon.classList.add('far');
-                    span.textContent = 'Like';
-                    
-                    // Update like count in Firestore
-                    try {
-                        const postRef = firebase.firestore().collection('posts').doc(postId);
+                        
+                        button.classList.add('active');
+                        icon.classList.remove('far');
+                        icon.classList.add('fas');
+                        span.textContent = 'Liked';
+                    } else {
+                        // Remove like
                         await postRef.update({
-                            likes: firebase.firestore.FieldValue.increment(-1)
+                            likes: firebase.firestore.FieldValue.arrayRemove(this.state.currentUser.uid),
+                            likedBy: firebase.firestore.FieldValue.arrayRemove(this.state.currentUser.uid)
                         });
-                    } catch (error) {
-                        console.error('Error unliking post:', error);
+                        
+                        button.classList.remove('active');
+                        icon.classList.remove('fas');
+                        icon.classList.add('far');
+                        span.textContent = 'Like';
                     }
+                } catch (error) {
+                    console.error('Error toggling like:', error);
+                    this.showNotification('Error', 'Failed to update like');
                 }
-                
-                this.loadPosts();
             }
 
             async toggleComments(postId) {
                 const commentsSection = document.getElementById(`comments-${postId}`);
                 
-                if (commentsSection.innerHTML.trim() === '') {
+                if (commentsSection.style.display === 'none') {
                     await this.loadComments(postId);
+                    commentsSection.style.display = 'block';
                 } else {
-                    commentsSection.innerHTML = '';
+                    commentsSection.style.display = 'none';
                 }
             }
 
             async loadComments(postId) {
                 try {
-                    // For demo, create some sample comments
-                    const sampleComments = [
-                        {
-                            authorName: 'Alex Johnson',
-                            content: 'Great post! Thanks for sharing.',
-                            createdAt: new Date(Date.now() - 3600000).toISOString()
-                        },
-                        {
-                            authorName: 'Sarah Miller',
-                            content: 'I completely agree with this!',
-                            createdAt: new Date(Date.now() - 1800000).toISOString()
-                        }
-                    ];
+                    const postDoc = await firebase.firestore().collection('posts').doc(postId).get();
+                    const postData = postDoc.data();
+                    const comments = postData.comments || [];
                     
-                    this.renderComments(postId, sampleComments);
+                    this.renderComments(postId, comments);
                 } catch (error) {
                     console.error('Error loading comments:', error);
                 }
@@ -3166,9 +3348,28 @@
                                     <div class="comment-time"><i class="far fa-clock"></i> ${this.formatTime(comment.createdAt)}</div>
                                 </div>
                                 <div class="comment-text">${comment.content}</div>
+                                ${comment.replies && comment.replies.length > 0 ? `
+                                    <div class="comment-replies" style="margin-top: 10px; padding-left: 15px; border-left: 2px solid var(--primary-color);">
+                                        ${comment.replies.map(reply => `
+                                            <div class="comment" style="margin-bottom: 8px;">
+                                                <div class="comment-avatar" style="width: 30px; height: 30px; font-size: 12px;">${reply.authorName ? reply.authorName.charAt(0).toUpperCase() : 'U'}</div>
+                                                <div class="comment-content" style="padding: 8px 12px;">
+                                                    <div class="comment-header">
+                                                        <div class="comment-author">${reply.authorName || 'Unknown User'}</div>
+                                                        <div class="comment-time"><i class="far fa-clock"></i> ${this.formatTime(reply.createdAt)}</div>
+                                                    </div>
+                                                    <div class="comment-text">${reply.content}</div>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                ` : ''}
+                                <div class="add-reply" style="margin-top: 8px;">
+                                    <input type="text" class="reply-input" placeholder="Write a reply..." data-comment-id="${comment.id}" style="width: 100%; padding: 8px 12px; border: 1px solid var(--body-bg); border-radius: 15px; background: var(--body-bg); color: var(--text-color); font-size: 12px;">
+                                </div>
                             </div>
                         </div>
-                    `).join('') : ''}
+                    `).join('') : '<p style="text-align: center; color: var(--gray-color); padding: 10px 0;">No comments yet</p>'}
                     <div class="add-comment">
                         <input type="text" class="comment-input" placeholder="Write a comment..." data-post-id="${postId}">
                         <button class="send-comment" data-post-id="${postId}">
@@ -3196,22 +3397,102 @@
                         }
                     });
                 });
+
+                // Add event listeners to reply inputs
+                commentsSection.querySelectorAll('.reply-input').forEach(input => {
+                    input.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            const commentId = input.getAttribute('data-comment-id');
+                            this.addReply(postId, commentId, input.value);
+                            input.value = '';
+                        }
+                    });
+                });
             }
 
             async addComment(postId, content) {
                 if (!content.trim() || !this.state.isLoggedIn) return;
 
                 try {
-                    // Update comment count
+                    const comment = {
+                        id: Date.now().toString(),
+                        authorId: this.state.currentUser.uid,
+                        authorName: this.state.userProfile.name,
+                        content: content,
+                        createdAt: new Date().toISOString(),
+                        replies: []
+                    };
+
+                    // Add comment to post
                     await firebase.firestore().collection('posts').doc(postId).update({
-                        comments: firebase.firestore.FieldValue.increment(1)
+                        comments: firebase.firestore.FieldValue.arrayUnion(comment)
                     });
 
                     this.showNotification('Comment Added', 'Your comment has been posted');
-                    this.loadPosts();
+                    this.loadComments(postId);
                 } catch (error) {
                     console.error('Error adding comment:', error);
                     this.showNotification('Error', 'Failed to add comment');
+                }
+            }
+
+            async addReply(postId, commentId, content) {
+                if (!content.trim() || !this.state.isLoggedIn) return;
+
+                try {
+                    const reply = {
+                        id: Date.now().toString(),
+                        authorId: this.state.currentUser.uid,
+                        authorName: this.state.userProfile.name,
+                        content: content,
+                        createdAt: new Date().toISOString()
+                    };
+
+                    // Get the post
+                    const postDoc = await firebase.firestore().collection('posts').doc(postId).get();
+                    const postData = postDoc.data();
+                    const comments = postData.comments || [];
+
+                    // Find the comment and add the reply
+                    const updatedComments = comments.map(comment => {
+                        if (comment.id === commentId) {
+                            return {
+                                ...comment,
+                                replies: [...(comment.replies || []), reply]
+                            };
+                        }
+                        return comment;
+                    });
+
+                    // Update the post with the new comments
+                    await firebase.firestore().collection('posts').doc(postId).update({
+                        comments: updatedComments
+                    });
+
+                    this.showNotification('Reply Added', 'Your reply has been posted');
+                    this.loadComments(postId);
+                } catch (error) {
+                    console.error('Error adding reply:', error);
+                    this.showNotification('Error', 'Failed to add reply');
+                }
+            }
+
+            async deletePost(postId) {
+                if (!confirm('Are you sure you want to delete this post?')) return;
+
+                try {
+                    // Delete post from Firestore
+                    await firebase.firestore().collection('posts').doc(postId).delete();
+                    
+                    // Remove post from user's posts array
+                    await firebase.firestore().collection('users').doc(this.state.currentUser.uid).update({
+                        posts: firebase.firestore.FieldValue.arrayRemove(postId)
+                    });
+
+                    this.showNotification('Post Deleted', 'Your post has been deleted');
+                } catch (error) {
+                    console.error('Error deleting post:', error);
+                    this.showNotification('Error', 'Failed to delete post');
                 }
             }
 
@@ -3228,7 +3509,6 @@
                     });
 
                     this.showNotification('Post Shared', 'Post has been shared successfully');
-                    this.loadPosts();
                 } catch (error) {
                     console.error('Error sharing post:', error);
                     this.showNotification('Error', 'Failed to share post');
@@ -3243,53 +3523,84 @@
 
                 const isFollowing = button.textContent.includes('Following');
                 
-                if (!isFollowing) {
-                    button.innerHTML = '<i class="fas fa-user-check"></i> Following';
-                    button.classList.add('following');
-                    
-                    try {
-                        // Add to following
+                try {
+                    if (!isFollowing) {
+                        // Add to current user's following
                         await firebase.firestore()
                             .collection('users')
                             .doc(this.state.currentUser.uid)
-                            .collection('following')
-                            .doc(userId)
-                            .set({
-                                followedAt: new Date().toISOString()
+                            .update({
+                                following: firebase.firestore.FieldValue.arrayUnion(userId)
                             });
+                        
+                        // Add to target user's followers
+                        await firebase.firestore()
+                            .collection('users')
+                            .doc(userId)
+                            .update({
+                                followers: firebase.firestore.FieldValue.arrayUnion(this.state.currentUser.uid)
+                            });
+                        
+                        button.innerHTML = '<i class="fas fa-user-check"></i> Following';
+                        button.classList.add('following');
                         
                         this.state.following.push(userId);
                         this.showNotification('Followed', 'You are now following this user');
                         
-                        // Reload posts to show posts from followed user
-                        this.loadPosts();
-                        this.loadSuggestedUsers();
-                    } catch (error) {
-                        console.error('Error following user:', error);
-                        this.showNotification('Error', 'Failed to follow user');
-                    }
-                } else {
-                    button.innerHTML = '<i class="fas fa-user-plus"></i> Follow';
-                    button.classList.remove('following');
-                    
-                    try {
-                        // Remove from following
+                        // Update follower counts
+                        this.updateFollowerCounts();
+                    } else {
+                        // Remove from current user's following
                         await firebase.firestore()
                             .collection('users')
                             .doc(this.state.currentUser.uid)
-                            .collection('following')
+                            .update({
+                                following: firebase.firestore.FieldValue.arrayRemove(userId)
+                            });
+                        
+                        // Remove from target user's followers
+                        await firebase.firestore()
+                            .collection('users')
                             .doc(userId)
-                            .delete();
+                            .update({
+                                followers: firebase.firestore.FieldValue.arrayRemove(this.state.currentUser.uid)
+                            });
+                        
+                        button.innerHTML = '<i class="fas fa-user-plus"></i> Follow';
+                        button.classList.remove('following');
                         
                         this.state.following = this.state.following.filter(id => id !== userId);
                         this.showNotification('Unfollowed', 'You have unfollowed this user');
                         
-                        // Reload posts
-                        this.loadPosts();
-                        this.loadSuggestedUsers();
+                        // Update follower counts
+                        this.updateFollowerCounts();
+                    }
+                    
+                    // Reload posts to show/hide posts from followed user
+                    this.loadPosts();
+                    this.loadSuggestedUsers();
+                } catch (error) {
+                    console.error('Error following/unfollowing user:', error);
+                    this.showNotification('Error', 'Failed to follow user');
+                }
+            }
+
+            async updateFollowerCounts() {
+                // Update current user's follower count
+                if (this.state.currentUser) {
+                    try {
+                        const userDoc = await firebase.firestore()
+                            .collection('users')
+                            .doc(this.state.currentUser.uid)
+                            .get();
+                        
+                        if (userDoc.exists) {
+                            const userData = userDoc.data();
+                            this.elements.followersCount.textContent = userData.followers ? userData.followers.length : 0;
+                            this.elements.followingCount.textContent = userData.following ? userData.following.length : 0;
+                        }
                     } catch (error) {
-                        console.error('Error unfollowing user:', error);
-                        this.showNotification('Error', 'Failed to unfollow user');
+                        console.error('Error updating follower counts:', error);
                     }
                 }
             }
@@ -3299,11 +3610,19 @@
                 if (!this.state.currentUser) return;
 
                 try {
-                    const userDoc = await firebase.firestore().collection('users').doc(this.state.currentUser.uid).get();
-                    if (userDoc.exists) {
-                        this.state.userProfile = userDoc.data();
-                        this.updateProfileUI();
-                    }
+                    // Set up real-time listener for user profile
+                    firebase.firestore()
+                        .collection('users')
+                        .doc(this.state.currentUser.uid)
+                        .onSnapshot(doc => {
+                            if (doc.exists) {
+                                this.state.userProfile = doc.data();
+                                this.updateProfileUI();
+                                this.updateFollowerCounts();
+                            }
+                        }, error => {
+                            console.error('Error loading user profile:', error);
+                        });
                 } catch (error) {
                     console.error('Error loading user profile:', error);
                 }
@@ -3339,10 +3658,366 @@
                             this.elements.profileAvatarInitials.style.display = 'flex';
                             this.elements.profileAvatarImg.style.display = 'none';
                         }
+
+                        // Load user's posts
+                        this.loadUserPosts();
                     }
                 } catch (error) {
                     console.error('Error loading user profile page:', error);
                 }
+            }
+
+            async loadUserPosts() {
+                try {
+                    const userDoc = await firebase.firestore().collection('users').doc(this.state.currentUser.uid).get();
+                    if (userDoc.exists) {
+                        const userData = userDoc.data();
+                        const postIds = userData.posts || [];
+                        
+                        if (postIds.length === 0) {
+                            this.elements.userPosts.innerHTML = `
+                                <div style="text-align: center; padding: 40px 20px; color: var(--gray-color);">
+                                    <i class="fas fa-feather-alt" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
+                                    <p>No posts yet</p>
+                                </div>
+                            `;
+                            return;
+                        }
+                        
+                        // Fetch posts
+                        const posts = [];
+                        for (const postId of postIds) {
+                            const postDoc = await firebase.firestore().collection('posts').doc(postId).get();
+                            if (postDoc.exists) {
+                                posts.push({ id: postDoc.id, ...postDoc.data() });
+                            }
+                        }
+                        
+                        // Sort by creation date
+                        posts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                        
+                        // Render posts
+                        this.elements.userPosts.innerHTML = posts.map(post => {
+                            const isLiked = post.likedBy && post.likedBy.includes(this.state.currentUser?.uid);
+                            const likeCount = post.likes ? post.likes.length : 0;
+                            const commentCount = post.comments ? post.comments.length : 0;
+                            
+                            return `
+                            <div class="post" data-post-id="${post.id}">
+                                <div class="post-header">
+                                    ${post.authorProfilePicture ? 
+                                        `<div class="post-avatar"><img src="${post.authorProfilePicture}" alt="${post.authorName}"></div>` :
+                                        `<div class="post-avatar">${post.authorName ? post.authorName.charAt(0).toUpperCase() : 'U'}</div>`
+                                    }
+                                    <div class="post-user-info">
+                                        <h4>${post.authorName || 'Unknown User'} ${post.verified ? '<i class="fas fa-check-circle verified-badge"></i>' : ''}</h4>
+                                        <p><i class="far fa-clock"></i> ${this.formatTime(post.createdAt)}</p>
+                                    </div>
+                                    <div class="post-options">
+                                        <i class="fas fa-ellipsis-h"></i>
+                                        <div class="post-menu" style="display: none; position: absolute; right: 0; top: 30px; background: var(--card-bg); border-radius: 10px; box-shadow: var(--shadow); padding: 10px; z-index: 10;">
+                                            <div class="post-menu-item delete-post" data-post-id="${post.id}" style="padding: 8px 12px; cursor: pointer; border-radius: 5px; transition: var(--transition);">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="post-content">
+                                    <p class="post-text">${post.content || ''}</p>
+                                    ${post.imageUrl ? `<img src="${post.imageUrl}" alt="Post image" class="post-image">` : ''}
+                                    ${post.videoUrl ? `<video controls class="post-image"><source src="${post.videoUrl}" type="video/mp4"></video>` : ''}
+                                    ${post.voiceUrl ? `
+                                        <div class="voice-note">
+                                            <div class="play-btn">
+                                                <i class="fas fa-play"></i>
+                                            </div>
+                                            <div class="waveform"></div>
+                                            <div class="voice-duration">${post.voiceDuration || '1:25'}</div>
+                                        </div>
+                                        <audio id="audio-${post.id}" src="${post.voiceUrl}" style="display: none;"></audio>
+                                    ` : ''}
+                                </div>
+                                <div class="post-stats">
+                                    <span><i class="fas fa-thumbs-up"></i> ${likeCount} likes</span>
+                                    <span><i class="fas fa-comment"></i> ${commentCount} comments</span>
+                                    <span><i class="fas fa-share"></i> ${post.shares || 0} shares</span>
+                                </div>
+                                <div class="post-actions-bar">
+                                    <div class="post-action-btn like-btn ${isLiked ? 'active' : ''}" data-post-id="${post.id}">
+                                        <i class="${isLiked ? 'fas' : 'far'} fa-thumbs-up"></i>
+                                        <span>${isLiked ? 'Liked' : 'Like'}</span>
+                                    </div>
+                                    <div class="post-action-btn comment-btn" data-post-id="${post.id}">
+                                        <i class="far fa-comment"></i>
+                                        <span>Comment</span>
+                                    </div>
+                                    <div class="post-action-btn share-btn" data-post-id="${post.id}">
+                                        <i class="fas fa-share"></i>
+                                        <span>Share</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `}).join('');
+                        
+                        // Add event listeners to user posts
+                        this.addUserPostEventListeners();
+                    }
+                } catch (error) {
+                    console.error('Error loading user posts:', error);
+                }
+            }
+
+            addUserPostEventListeners() {
+                // Like buttons
+                this.elements.userPosts.querySelectorAll('.like-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const postId = btn.getAttribute('data-post-id');
+                        this.handleLikePost(postId, btn);
+                    });
+                });
+
+                // Comment buttons
+                this.elements.userPosts.querySelectorAll('.comment-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const postId = btn.getAttribute('data-post-id');
+                        this.toggleComments(postId);
+                    });
+                });
+
+                // Share buttons
+                this.elements.userPosts.querySelectorAll('.share-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const postId = btn.getAttribute('data-post-id');
+                        this.handleSharePost(postId);
+                    });
+                });
+
+                // Voice play buttons
+                this.elements.userPosts.querySelectorAll('.play-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const postId = this.closest('.post').getAttribute('data-post-id');
+                        const audioElement = document.getElementById(`audio-${postId}`);
+                        const waveform = this.nextElementSibling;
+                        
+                        if (audioElement.paused) {
+                            audioElement.play();
+                            this.innerHTML = '<i class="fas fa-pause"></i>';
+                            waveform.style.animationPlayState = 'running';
+                        } else {
+                            audioElement.pause();
+                            this.innerHTML = '<i class="fas fa-play"></i>';
+                            waveform.style.animationPlayState = 'paused';
+                        }
+                    });
+                });
+
+                // Post options menu
+                this.elements.userPosts.querySelectorAll('.post-options').forEach(options => {
+                    options.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const menu = options.querySelector('.post-menu');
+                        if (menu) {
+                            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+                        }
+                    });
+                });
+
+                // Delete post
+                this.elements.userPosts.querySelectorAll('.delete-post').forEach(deleteBtn => {
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const postId = deleteBtn.getAttribute('data-post-id');
+                        this.deletePost(postId);
+                    });
+                });
+
+                // Close menus when clicking elsewhere
+                document.addEventListener('click', () => {
+                    this.elements.userPosts.querySelectorAll('.post-menu').forEach(menu => {
+                        menu.style.display = 'none';
+                    });
+                });
+            }
+
+            async loadOtherUserProfile(userId) {
+                try {
+                    const userDoc = await firebase.firestore().collection('users').doc(userId).get();
+                    if (userDoc.exists) {
+                        const userData = userDoc.data();
+                        
+                        // Update profile page
+                        this.elements.otherProfileName.textContent = userData.name;
+                        this.elements.otherProfileUsername.textContent = `@${userData.username}`;
+                        this.elements.otherProfileBio.textContent = userData.bio || 'No bio yet';
+                        
+                        // Update stats
+                        this.elements.otherPostsCount.textContent = userData.posts ? userData.posts.length : 0;
+                        this.elements.otherFollowersCount.textContent = userData.followers ? userData.followers.length : 0;
+                        this.elements.otherFollowingCount.textContent = userData.following ? userData.following.length : 0;
+                        
+                        // Update avatar
+                        if (userData.profilePicture) {
+                            this.elements.otherProfileAvatar.innerHTML = `<img src="${userData.profilePicture}" alt="Profile Picture">`;
+                            this.elements.otherProfileAvatarInitials.style.display = 'none';
+                            this.elements.otherProfileAvatarImg.src = userData.profilePicture;
+                            this.elements.otherProfileAvatarImg.style.display = 'block';
+                        } else {
+                            const initials = userData.name.split(' ').map(n => n[0]).join('').toUpperCase();
+                            this.elements.otherProfileAvatarInitials.textContent = initials;
+                            this.elements.otherProfileAvatarInitials.style.display = 'flex';
+                            this.elements.otherProfileAvatarImg.style.display = 'none';
+                        }
+
+                        // Update follow button state
+                        const isFollowing = this.state.following.includes(userId);
+                        this.elements.followUserBtn.innerHTML = isFollowing ? 
+                            '<i class="fas fa-user-check"></i> Following' : 
+                            '<i class="fas fa-user-plus"></i> Follow';
+                        this.elements.followUserBtn.classList.toggle('following', isFollowing);
+
+                        // Load user's posts
+                        this.loadOtherUserPosts(userId);
+                    }
+                } catch (error) {
+                    console.error('Error loading other user profile:', error);
+                }
+            }
+
+            async loadOtherUserPosts(userId) {
+                try {
+                    const userDoc = await firebase.firestore().collection('users').doc(userId).get();
+                    if (userDoc.exists) {
+                        const userData = userDoc.data();
+                        const postIds = userData.posts || [];
+                        
+                        if (postIds.length === 0) {
+                            this.elements.otherUserPosts.innerHTML = `
+                                <div style="text-align: center; padding: 40px 20px; color: var(--gray-color);">
+                                    <i class="fas fa-feather-alt" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
+                                    <p>No posts yet</p>
+                                </div>
+                            `;
+                            return;
+                        }
+                        
+                        // Fetch posts
+                        const posts = [];
+                        for (const postId of postIds) {
+                            const postDoc = await firebase.firestore().collection('posts').doc(postId).get();
+                            if (postDoc.exists) {
+                                posts.push({ id: postDoc.id, ...postDoc.data() });
+                            }
+                        }
+                        
+                        // Sort by creation date
+                        posts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                        
+                        // Render posts
+                        this.elements.otherUserPosts.innerHTML = posts.map(post => {
+                            const isLiked = post.likedBy && post.likedBy.includes(this.state.currentUser?.uid);
+                            const likeCount = post.likes ? post.likes.length : 0;
+                            const commentCount = post.comments ? post.comments.length : 0;
+                            
+                            return `
+                            <div class="post" data-post-id="${post.id}">
+                                <div class="post-header">
+                                    ${post.authorProfilePicture ? 
+                                        `<div class="post-avatar"><img src="${post.authorProfilePicture}" alt="${post.authorName}"></div>` :
+                                        `<div class="post-avatar">${post.authorName ? post.authorName.charAt(0).toUpperCase() : 'U'}</div>`
+                                    }
+                                    <div class="post-user-info">
+                                        <h4>${post.authorName || 'Unknown User'} ${post.verified ? '<i class="fas fa-check-circle verified-badge"></i>' : ''}</h4>
+                                        <p><i class="far fa-clock"></i> ${this.formatTime(post.createdAt)}</p>
+                                    </div>
+                                </div>
+                                <div class="post-content">
+                                    <p class="post-text">${post.content || ''}</p>
+                                    ${post.imageUrl ? `<img src="${post.imageUrl}" alt="Post image" class="post-image">` : ''}
+                                    ${post.videoUrl ? `<video controls class="post-image"><source src="${post.videoUrl}" type="video/mp4"></video>` : ''}
+                                    ${post.voiceUrl ? `
+                                        <div class="voice-note">
+                                            <div class="play-btn">
+                                                <i class="fas fa-play"></i>
+                                            </div>
+                                            <div class="waveform"></div>
+                                            <div class="voice-duration">${post.voiceDuration || '1:25'}</div>
+                                        </div>
+                                        <audio id="audio-${post.id}" src="${post.voiceUrl}" style="display: none;"></audio>
+                                    ` : ''}
+                                </div>
+                                <div class="post-stats">
+                                    <span><i class="fas fa-thumbs-up"></i> ${likeCount} likes</span>
+                                    <span><i class="fas fa-comment"></i> ${commentCount} comments</span>
+                                    <span><i class="fas fa-share"></i> ${post.shares || 0} shares</span>
+                                </div>
+                                <div class="post-actions-bar">
+                                    <div class="post-action-btn like-btn ${isLiked ? 'active' : ''}" data-post-id="${post.id}">
+                                        <i class="${isLiked ? 'fas' : 'far'} fa-thumbs-up"></i>
+                                        <span>${isLiked ? 'Liked' : 'Like'}</span>
+                                    </div>
+                                    <div class="post-action-btn comment-btn" data-post-id="${post.id}">
+                                        <i class="far fa-comment"></i>
+                                        <span>Comment</span>
+                                    </div>
+                                    <div class="post-action-btn share-btn" data-post-id="${post.id}">
+                                        <i class="fas fa-share"></i>
+                                        <span>Share</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `}).join('');
+                        
+                        // Add event listeners to other user posts
+                        this.addOtherUserPostEventListeners();
+                    }
+                } catch (error) {
+                    console.error('Error loading other user posts:', error);
+                }
+            }
+
+            addOtherUserPostEventListeners() {
+                // Like buttons
+                this.elements.otherUserPosts.querySelectorAll('.like-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const postId = btn.getAttribute('data-post-id');
+                        this.handleLikePost(postId, btn);
+                    });
+                });
+
+                // Comment buttons
+                this.elements.otherUserPosts.querySelectorAll('.comment-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const postId = btn.getAttribute('data-post-id');
+                        this.toggleComments(postId);
+                    });
+                });
+
+                // Share buttons
+                this.elements.otherUserPosts.querySelectorAll('.share-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const postId = btn.getAttribute('data-post-id');
+                        this.handleSharePost(postId);
+                    });
+                });
+
+                // Voice play buttons
+                this.elements.otherUserPosts.querySelectorAll('.play-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const postId = this.closest('.post').getAttribute('data-post-id');
+                        const audioElement = document.getElementById(`audio-${postId}`);
+                        const waveform = this.nextElementSibling;
+                        
+                        if (audioElement.paused) {
+                            audioElement.play();
+                            this.innerHTML = '<i class="fas fa-pause"></i>';
+                            waveform.style.animationPlayState = 'running';
+                        } else {
+                            audioElement.pause();
+                            this.innerHTML = '<i class="fas fa-play"></i>';
+                            waveform.style.animationPlayState = 'paused';
+                        }
+                    });
+                });
             }
 
             showEditProfileModal() {
@@ -3372,7 +4047,7 @@
             updateUsernameChangeInfo() {
                 if (!this.state.userProfile) return;
 
-                const changesLeft = appConfig.maxUsernameChanges - (this.state.userProfile.usernameChanges || 0);
+                const changesLeft = 2 - (this.state.userProfile.usernameChanges || 0);
                 
                 if (changesLeft <= 0) {
                     this.elements.usernameChangeInfo.innerHTML = `<i class="fas fa-exclamation-triangle"></i> You've used all your username changes for this period`;
@@ -3396,7 +4071,7 @@
                     return;
                 }
 
-                if (file.size > appConfig.maxImageSize) {
+                if (file.size > 5 * 1024 * 1024) { // 5MB limit
                     this.showNotification('Error', 'Image size must be less than 5MB');
                     return;
                 }
@@ -3447,9 +4122,10 @@
 
                     // Upload profile picture if changed
                     if (this.state.profilePictureFile) {
-                        // In a real app, you would upload to Firebase Storage
-                        // For demo, we'll use a placeholder
-                        updates.profilePicture = 'https://via.placeholder.com/200x200/4361ee/ffffff?text=Profile';
+                        const imageRef = firebase.storage().ref().child(`profiles/${this.state.currentUser.uid}/profile.jpg`);
+                        await imageRef.put(this.state.profilePictureFile);
+                        const imageUrl = await imageRef.getDownloadURL();
+                        updates.profilePicture = imageUrl;
                     }
 
                     // Update Firestore
@@ -3480,7 +4156,7 @@
                 const lastChange = this.state.userProfile.lastUsernameChange;
 
                 // Check if user has changes left
-                if (changesUsed >= appConfig.maxUsernameChanges) {
+                if (changesUsed >= 2) { // 2 changes allowed
                     return false;
                 }
 
@@ -3490,9 +4166,13 @@
                 // Check if 6 months have passed since last change
                 const lastChangeDate = new Date(lastChange);
                 const sixMonthsAgo = new Date();
-                sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - appConfig.usernameChangePeriod);
+                sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
                 return lastChangeDate <= sixMonthsAgo;
+            }
+
+            messageUser() {
+                this.showNotification('Message', 'This feature will be available soon!');
             }
 
             // Find Friends Methods
@@ -3552,6 +4232,16 @@
                         e.stopPropagation();
                         const userId = btn.getAttribute('data-user-id');
                         this.handleFollowUser(userId, btn);
+                    });
+                });
+
+                // Add event listeners to user cards for viewing profiles
+                this.elements.friendsResults.querySelectorAll('.user-card').forEach(card => {
+                    card.addEventListener('click', (e) => {
+                        if (!e.target.closest('.follow-btn-small')) {
+                            const userId = card.getAttribute('data-user-id');
+                            this.showPage('otherUserProfilePage', userId);
+                        }
                     });
                 });
             }
@@ -3623,6 +4313,22 @@
                     this.elements.themeToggleSidebar.querySelector('i').classList.remove('fa-moon');
                     this.elements.themeToggleSidebar.querySelector('i').classList.add('fa-sun');
                     this.elements.themeToggleSidebar.querySelector('span').textContent = 'Light Mode';
+                }
+            }
+
+            updateProfileUI() {
+                // Update UI with current user profile data
+                if (this.state.userProfile) {
+                    this.elements.userName.textContent = this.state.userProfile.name;
+                    this.elements.userHandle.textContent = `@${this.state.userProfile.username}`;
+                    
+                    // Update avatar
+                    if (this.state.userProfile.profilePicture) {
+                        this.updateAvatarElements(this.state.userProfile.profilePicture, '');
+                    } else {
+                        const initials = this.state.userProfile.name.split(' ').map(n => n[0]).join('').toUpperCase();
+                        this.updateAvatarElements(null, initials);
+                    }
                 }
             }
         }
