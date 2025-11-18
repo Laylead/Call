@@ -8,7 +8,7 @@ const firebaseConfig = {
     messagingSenderId: "593310501630",
     appId: "1:593310501630:web:c241a05e0d7c4a810173af"
 };
-const ADMIN_UID = "admin-user-uid-here";
+const ADMIN_UID = "your-admin-uid-here";
 
 // Platform Settings
 const PLATFORM_SETTINGS = {
@@ -16,3 +16,5 @@ const PLATFORM_SETTINGS = {
     subscriptionEnabled: true,
     subscriptionPrice: 9.99
 };
+
+console.log("Configuration loaded successfully");
