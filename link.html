@@ -1643,6 +1643,15 @@
                 auth = firebase.auth();
                 db = firebase.firestore();
 
+                // Set persistence to LOCAL to keep user logged in
+                auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+                    .then(() => {
+                        console.log('Auth persistence set to LOCAL');
+                    })
+                    .catch((error) => {
+                        console.error('Error setting auth persistence:', error);
+                    });
+
                 firebaseInitialized = true;
                 console.log('Firebase initialized successfully');
                 
@@ -1670,9 +1679,10 @@
             initializeFirebase();
             setupEventListeners();
             
-            // Set up auth state listener
+            // Set up auth state listener - ONLY ONCE
             if (firebaseInitialized) {
                 auth.onAuthStateChanged(async user => {
+                    console.log('Auth state changed:', user);
                     if (user) {
                         currentUser = user;
                         await handleUserLogin(user);
@@ -1708,6 +1718,8 @@
                 loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In...';
                 
                 try {
+                    // Set persistence before signing in
+                    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
                     const userCredential = await auth.signInWithEmailAndPassword(email, password);
                     console.log('User logged in:', userCredential.user);
                     showLoginError(''); // Clear any errors
@@ -1787,6 +1799,8 @@
                 }
                 
                 try {
+                    // Set persistence before creating user
+                    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
                     const userCredential = await auth.createUserWithEmailAndPassword(email, password);
                     
                     // Update user profile with display name
@@ -1813,7 +1827,7 @@
                     document.getElementById('registerModal').style.display = 'none';
                     document.getElementById('registerForm').reset();
                     
-                    alert('Account created successfully! You are now logged in.');
+                    showNotification('Account created successfully! You are now logged in.', 'success');
                 } catch (error) {
                     console.error('Registration error:', error);
                     let errorMessage = 'Registration failed. ';
@@ -1844,6 +1858,12 @@
                 document.querySelector('.sidebar').classList.toggle('active');
             });
 
+            // Logout button
+            document.getElementById('logoutBtn').addEventListener('click', function(e) {
+                e.preventDefault();
+                auth.signOut();
+            });
+
             // Menu navigation and other event listeners
             setupMenuNavigation();
             setupOtherEventListeners();
@@ -1851,17 +1871,11 @@
 
         // Setup menu navigation
         function setupMenuNavigation() {
-            const menuItems = document.querySelectorAll('.menu-item');
-            const logoutBtn = document.getElementById('logoutBtn');
+            const menuItems = document.querySelectorAll('.menu-item[data-page]');
 
             menuItems.forEach(item => {
                 item.addEventListener('click', function(e) {
                     e.preventDefault();
-                    
-                    if (this.id === 'logoutBtn') {
-                        auth.signOut();
-                        return;
-                    }
                     
                     const page = this.getAttribute('data-page');
                     navigateToPage(page);
@@ -2033,11 +2047,21 @@
                     loadAnalyticsData();
                 });
             }
+
+            // Upgrade subscription button
+            const upgradeSubscription = document.getElementById('upgradeSubscription');
+            if (upgradeSubscription) {
+                upgradeSubscription.addEventListener('click', function() {
+                    showNotification('Subscription upgrade feature coming soon!', 'info');
+                });
+            }
         }
 
         // Handle user login
         async function handleUserLogin(user) {
             try {
+                console.log('Handling user login for:', user.email);
+                
                 // Check if user is admin
                 isAdmin = user.uid === ADMIN_UID;
                 
@@ -2064,15 +2088,19 @@
                     lastLogin: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
+                console.log('User login handling completed successfully');
+                
             } catch (error) {
                 console.error('Error during login process:', error);
                 showLoginError('Error loading user data. Please try again.');
-                await auth.signOut(); // Sign out if there's an error
+                // Don't sign out automatically - let user try to refresh
             }
         }
 
         // Handle user logout
         function handleUserLogout() {
+            console.log('Handling user logout');
+            
             // Show login page
             document.getElementById('loginPage').style.display = 'flex';
             document.getElementById('dashboard').style.display = 'none';
@@ -2087,6 +2115,7 @@
             isAdmin = false;
             userLinks = [];
             userData = {};
+            allUsers = [];
             
             // Destroy charts
             if (clickChart) {
@@ -2141,7 +2170,9 @@
                 notification.style.opacity = '0';
                 notification.style.transform = 'translateX(100%)';
                 setTimeout(() => {
-                    document.body.removeChild(notification);
+                    if (notification.parentNode) {
+                        document.body.removeChild(notification);
+                    }
                 }, 300);
             }, 5000);
         }
@@ -2218,6 +2249,24 @@
                 const userDoc = await db.collection('users').doc(currentUser.uid).get();
                 if (userDoc.exists) {
                     userData = userDoc.data();
+                    console.log('User data loaded:', userData);
+                } else {
+                    console.log('No user document found, creating one...');
+                    // Create user document if it doesn't exist
+                    await db.collection('users').doc(currentUser.uid).set({
+                        name: currentUser.displayName || currentUser.email.split('@')[0],
+                        email: currentUser.email,
+                        adsterraLink: '',
+                        subscription: {
+                            plan: 'free',
+                            status: 'inactive',
+                            expiryDate: null
+                        },
+                        isActive: true,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    userData = await db.collection('users').doc(currentUser.uid).get().then(doc => doc.data());
                 }
                 
                 // Load user links
@@ -2233,6 +2282,7 @@
                         ...doc.data()
                     });
                 });
+                console.log('User links loaded:', userLinks.length);
             } catch (error) {
                 console.error('Error loading user data:', error);
                 throw error;
@@ -2272,6 +2322,7 @@
                         subscriptionPrice: PLATFORM_SETTINGS.subscriptionPrice
                     };
                 }
+                console.log('Platform settings loaded:', platformSettings);
             } catch (error) {
                 console.error('Error loading platform settings:', error);
                 throw error;
@@ -2492,6 +2543,7 @@
                         ...doc.data()
                     });
                 });
+                console.log('All users loaded:', allUsers.length);
             } catch (error) {
                 console.error('Error loading all users:', error);
             }
@@ -2499,7 +2551,8 @@
 
         // Initialize click chart
         function initializeClickChart() {
-            const ctx = document.getElementById('clicksChart').getContext('2d');
+            const ctx = document.getElementById('clicksChart');
+            if (!ctx) return;
             
             if (clickChart) {
                 clickChart.destroy();
@@ -2555,7 +2608,8 @@
 
         // Initialize analytics chart
         function initializeAnalyticsChart() {
-            const ctx = document.getElementById('analyticsChart').getContext('2d');
+            const ctx = document.getElementById('analyticsChart');
+            if (!ctx) return;
             
             if (analyticsChart) {
                 analyticsChart.destroy();
@@ -2727,6 +2781,7 @@
                 
                 // Update form to edit mode
                 const form = document.getElementById('createLinkForm');
+                const originalSubmit = form.onsubmit;
                 form.onsubmit = async (e) => {
                     e.preventDefault();
                     try {
@@ -2738,7 +2793,8 @@
                         
                         document.getElementById('createLinkModal').style.display = 'none';
                         form.reset();
-                        loadUserData();
+                        form.onsubmit = originalSubmit;
+                        await loadUserData();
                         loadLinksData();
                         showNotification('Link updated successfully!', 'success');
                     } catch (error) {
