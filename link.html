@@ -8,6 +8,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <!-- External Configuration -->
+    <script src="configuration.js"></script>
     <style>
         :root {
             --primary: #4361ee;
@@ -613,6 +615,26 @@
             border: 1px solid var(--danger);
         }
 
+        /* Alert Messages */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert-success {
+            background-color: rgba(76, 201, 240, 0.15);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .alert-error {
+            background-color: rgba(247, 37, 133, 0.15);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
         /* Responsive */
         @media (max-width: 992px) {
             .sidebar {
@@ -671,6 +693,8 @@
                 <div class="tagline">Professional Link Management & Monetization</div>
             </div>
             
+            <div class="alert alert-error" id="loginError" style="display: none;"></div>
+            
             <form id="loginForm">
                 <div class="form-group">
                     <label for="email">Email</label>
@@ -688,6 +712,45 @@
             <div class="login-footer">
                 Don't have an account? <a href="#" id="showRegister">Sign up</a>
             </div>
+        </div>
+    </div>
+
+    <!-- Registration Modal -->
+    <div class="modal" id="registerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Create Account</div>
+                <button class="close-modal">&times;</button>
+            </div>
+            
+            <div class="alert alert-error" id="registerError" style="display: none;"></div>
+            
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="registerName">Full Name</label>
+                    <input type="text" id="registerName" class="form-control" placeholder="Enter your full name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="registerEmail">Email</label>
+                    <input type="email" id="registerEmail" class="form-control" placeholder="Enter your email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="registerPassword">Password</label>
+                    <input type="password" id="registerPassword" class="form-control" placeholder="Create a password" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="registerConfirmPassword">Confirm Password</label>
+                    <input type="password" id="registerConfirmPassword" class="form-control" placeholder="Confirm your password" required>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary close-modal">Cancel</button>
+                    <button type="submit" class="btn">Create Account</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -1223,10 +1286,13 @@
         </div>
     </div>
 
-    <!-- External Configuration -->
-    <script src="configuration.js"></script>
-
     <script>
+        // Check if configuration is loaded
+        if (typeof firebaseConfig === 'undefined') {
+            alert('Configuration not loaded. Please check configuration.js file');
+            throw new Error('Configuration not loaded');
+        }
+
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
@@ -1237,6 +1303,8 @@
         const dashboard = document.getElementById('dashboard');
         const redirectPage = document.getElementById('redirectPage');
         const loginForm = document.getElementById('loginForm');
+        const registerModal = document.getElementById('registerModal');
+        const registerForm = document.getElementById('registerForm');
         const menuItems = document.querySelectorAll('.menu-item');
         const pageContents = document.querySelectorAll('.page-content');
         const createLinkModal = document.getElementById('createLinkModal');
@@ -1259,6 +1327,9 @@
         const tokenActivationModal = document.getElementById('tokenActivationModal');
         const purchaseTokenBtn = document.getElementById('purchaseTokenBtn');
         const closeTokenModal = document.getElementById('closeTokenModal');
+        const showRegisterBtn = document.getElementById('showRegister');
+        const loginError = document.getElementById('loginError');
+        const registerError = document.getElementById('registerError');
 
         // Current User
         let currentUser = null;
@@ -1317,45 +1388,65 @@
                 try {
                     const userCredential = await auth.signInWithEmailAndPassword(email, password);
                     console.log('User logged in:', userCredential.user);
+                    loginError.style.display = 'none';
                 } catch (error) {
                     console.error('Login error:', error);
-                    alert('Login failed: ' + error.message);
+                    loginError.textContent = 'Login failed: ' + error.message;
+                    loginError.style.display = 'block';
                 }
             });
 
-            // Register link
-            document.getElementById('showRegister').addEventListener('click', function(e) {
+            // Show register modal
+            showRegisterBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                const email = prompt('Enter your email:');
-                const password = prompt('Enter your password:');
-                const name = prompt('Enter your full name:');
+                registerModal.style.display = 'flex';
+            });
+
+            // Register form
+            registerForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const name = document.getElementById('registerName').value;
+                const email = document.getElementById('registerEmail').value;
+                const password = document.getElementById('registerPassword').value;
+                const confirmPassword = document.getElementById('registerConfirmPassword').value;
                 
-                if (email && password && name) {
-                    auth.createUserWithEmailAndPassword(email, password)
-                        .then(async (userCredential) => {
-                            // Create user document in Firestore
-                            await db.collection('users').doc(userCredential.user.uid).set({
-                                name: name,
-                                email: email,
-                                adsterraLink: '',
-                                subscription: {
-                                    plan: 'free',
-                                    status: 'inactive',
-                                    expiryDate: null
-                                },
-                                tokenActivation: {
-                                    active: false,
-                                    tokenId: null,
-                                    activationDate: null,
-                                    expiryDate: null
-                                },
-                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                            });
-                            alert('Account created successfully!');
-                        })
-                        .catch(error => {
-                            alert('Registration failed: ' + error.message);
-                        });
+                if (password !== confirmPassword) {
+                    registerError.textContent = 'Passwords do not match';
+                    registerError.style.display = 'block';
+                    return;
+                }
+                
+                try {
+                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                    
+                    // Create user document in Firestore
+                    await db.collection('users').doc(userCredential.user.uid).set({
+                        name: name,
+                        email: email,
+                        adsterraLink: '',
+                        subscription: {
+                            plan: 'free',
+                            status: 'inactive',
+                            expiryDate: null
+                        },
+                        tokenActivation: {
+                            active: false,
+                            tokenId: null,
+                            activationDate: null,
+                            expiryDate: null
+                        },
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    registerError.style.display = 'none';
+                    registerModal.style.display = 'none';
+                    registerForm.reset();
+                    
+                    alert('Account created successfully!');
+                } catch (error) {
+                    console.error('Registration error:', error);
+                    registerError.textContent = 'Registration failed: ' + error.message;
+                    registerError.style.display = 'block';
                 }
             });
 
@@ -1428,6 +1519,7 @@
             closeModalBtns.forEach(btn => {
                 btn.addEventListener('click', function() {
                     createLinkModal.style.display = 'none';
+                    registerModal.style.display = 'none';
                 });
             });
 
