@@ -417,11 +417,6 @@
             color: var(--warning);
         }
 
-        .stat-icon.revenue {
-            background: rgba(99, 102, 241, 0.1);
-            color: var(--primary);
-        }
-
         .stat-icon.users {
             background: rgba(139, 92, 246, 0.1);
             color: var(--secondary);
@@ -898,6 +893,57 @@
             padding: 10px;
         }
 
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 400px;
+        }
+
+        .toast {
+            padding: 16px 20px;
+            border-radius: var(--border-radius-sm);
+            box-shadow: var(--box-shadow-lg);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: toastSlideIn 0.3s ease forwards;
+            transform: translateX(100%);
+            opacity: 0;
+        }
+
+        .toast-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .toast-error {
+            background: var(--danger);
+            color: white;
+        }
+
+        .toast-info {
+            background: var(--info);
+            color: white;
+        }
+
+        .toast-warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        @keyframes toastSlideIn {
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
         /* Responsive Design */
         @media (max-width: 1200px) {
             .sidebar {
@@ -986,6 +1032,12 @@
             .btn {
                 padding: 14px 25px;
             }
+            
+            .toast-container {
+                left: 20px;
+                right: 20px;
+                max-width: none;
+            }
         }
 
         @media (max-width: 480px) {
@@ -1054,6 +1106,9 @@
     </style>
 </head>
 <body>
+    <!-- Toast Notifications Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
     <!-- Login Page -->
     <div class="login-container" id="loginPage">
         <div class="login-card fade-in">
@@ -1247,15 +1302,6 @@
                                 </tr>
                             </tbody>
                         </table>
-                    </div>
-                </div>
-
-                <div class="card fade-in">
-                    <div class="card-header">
-                        <div class="card-title">Click Analytics</div>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="clicksChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -1602,7 +1648,6 @@
         let allUsers = [];
         let platformSettings = {};
         let userData = {};
-        let clickChart = null;
         let analyticsChart = null;
 
         // Function to initialize Firebase with error handling
@@ -1714,29 +1759,10 @@
                     showLoginError(''); // Clear any errors
                 } catch (error) {
                     console.error('Login error:', error);
-                    let errorMessage = 'Login failed. ';
-                    
-                    switch (error.code) {
-                        case 'auth/invalid-email':
-                            errorMessage += 'Invalid email address.';
-                            break;
-                        case 'auth/user-disabled':
-                            errorMessage += 'This account has been disabled.';
-                            break;
-                        case 'auth/user-not-found':
-                            errorMessage += 'No account found with this email.';
-                            break;
-                        case 'auth/wrong-password':
-                            errorMessage += 'Incorrect password.';
-                            break;
-                        case 'auth/network-request-failed':
-                            errorMessage += 'Network error. Please check your connection.';
-                            break;
-                        default:
-                            errorMessage += error.message;
-                    }
+                    let errorMessage = 'Login failed. Please check your credentials and try again.';
                     
                     showLoginError(errorMessage);
+                    showToast('Login failed. Please check your credentials.', 'error');
                 } finally {
                     // Reset button state
                     loginBtn.disabled = false;
@@ -1816,27 +1842,10 @@
                     document.getElementById('registerModal').style.display = 'none';
                     document.getElementById('registerForm').reset();
                     
-                    showNotification('Account created successfully! You are now logged in.', 'success');
+                    showToast('Account created successfully! You are now logged in.', 'success');
                 } catch (error) {
                     console.error('Registration error:', error);
-                    let errorMessage = 'Registration failed. ';
-                    
-                    switch (error.code) {
-                        case 'auth/email-already-in-use':
-                            errorMessage += 'This email is already registered.';
-                            break;
-                        case 'auth/invalid-email':
-                            errorMessage += 'Invalid email address.';
-                            break;
-                        case 'auth/operation-not-allowed':
-                            errorMessage += 'Registration is currently disabled.';
-                            break;
-                        case 'auth/weak-password':
-                            errorMessage += 'Password is too weak.';
-                            break;
-                        default:
-                            errorMessage += error.message;
-                    }
+                    let errorMessage = 'Registration failed. Please try again with a different email.';
                     
                     showRegisterError(errorMessage);
                 }
@@ -1894,7 +1903,7 @@
                     
                     // Check if user has set Adsterra link
                     if (!userData.adsterraLink) {
-                        alert('Please set your Adsterra link in Settings before creating links.');
+                        showToast('Please set your Adsterra link in Settings before creating links.', 'warning');
                         navigateToPage('settings');
                         document.getElementById('createLinkModal').style.display = 'none';
                         return;
@@ -1921,6 +1930,15 @@
                             status: 'active'
                         };
                         
+                        // Check if slug already exists
+                        if (customSlug) {
+                            const existingLinks = await db.collection('links').where('slug', '==', customSlug).get();
+                            if (!existingLinks.empty) {
+                                showToast('This custom slug is already taken. Please choose a different one.', 'error');
+                                return;
+                            }
+                        }
+                        
                         // Save to Firestore
                         await db.collection('links').add(linkData);
                         
@@ -1937,10 +1955,10 @@
                         }
                         
                         // Show success message
-                        showNotification('Link created successfully!', 'success');
+                        showToast('Link created successfully!', 'success');
                     } catch (error) {
                         console.error('Error creating link:', error);
-                        showNotification('Error creating link: ' + error.message, 'error');
+                        showToast('Error creating link. Please try again.', 'error');
                     }
                 });
             }
@@ -1971,10 +1989,10 @@
                         // Update UI
                         updateUserUI();
                         
-                        showNotification('Settings saved successfully!', 'success');
+                        showToast('Settings saved successfully!', 'success');
                     } catch (error) {
                         console.error('Error saving settings:', error);
-                        showNotification('Error saving settings: ' + error.message, 'error');
+                        showToast('Error saving settings. Please try again.', 'error');
                     }
                 });
             }
@@ -2002,10 +2020,10 @@
                         // Reload platform settings
                         await loadPlatformSettings();
                         
-                        showNotification('Admin settings saved successfully!', 'success');
+                        showToast('Admin settings saved successfully!', 'success');
                     } catch (error) {
                         console.error('Error saving admin settings:', error);
-                        showNotification('Error saving admin settings: ' + error.message, 'error');
+                        showToast('Error saving admin settings. Please try again.', 'error');
                     }
                 });
             }
@@ -2020,10 +2038,10 @@
                         });
                         
                         await loadPlatformSettings();
-                        showNotification('Subscriptions enabled for all users!', 'success');
+                        showToast('Subscriptions enabled for all users!', 'success');
                     } catch (error) {
                         console.error('Error enabling subscriptions:', error);
-                        showNotification('Error enabling subscriptions: ' + error.message, 'error');
+                        showToast('Error enabling subscriptions. Please try again.', 'error');
                     }
                 });
             }
@@ -2040,7 +2058,7 @@
             const upgradeSubscription = document.getElementById('upgradeSubscription');
             if (upgradeSubscription) {
                 upgradeSubscription.addEventListener('click', function() {
-                    showNotification('Subscription upgrade feature coming soon!', 'info');
+                    showToast('Subscription upgrade feature coming soon!', 'info');
                 });
             }
         }
@@ -2081,7 +2099,7 @@
             } catch (error) {
                 console.error('Error during login process:', error);
                 showLoginError('Error loading user data. Please try again.');
-                // Don't sign out automatically - let user try to refresh
+                showToast('Error loading user data. Please refresh the page.', 'error');
             }
         }
 
@@ -2106,10 +2124,6 @@
             allUsers = [];
             
             // Destroy charts
-            if (clickChart) {
-                clickChart.destroy();
-                clickChart = null;
-            }
             if (analyticsChart) {
                 analyticsChart.destroy();
                 analyticsChart = null;
@@ -2138,28 +2152,25 @@
             }
         }
 
-        // Show notification
-        function showNotification(message, type = 'info') {
-            // Create notification element
-            const notification = document.createElement('div');
-            notification.className = `alert alert-${type === 'error' ? 'error' : 'success'}`;
-            notification.textContent = message;
-            notification.style.position = 'fixed';
-            notification.style.top = '20px';
-            notification.style.right = '20px';
-            notification.style.zIndex = '3000';
-            notification.style.maxWidth = '400px';
-            notification.style.boxShadow = 'var(--box-shadow-lg)';
+        // Show toast notification
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i>
+                <span>${message}</span>
+            `;
             
-            document.body.appendChild(notification);
+            toastContainer.appendChild(toast);
             
             // Remove after 5 seconds
             setTimeout(() => {
-                notification.style.opacity = '0';
-                notification.style.transform = 'translateX(100%)';
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
                 setTimeout(() => {
-                    if (notification.parentNode) {
-                        document.body.removeChild(notification);
+                    if (toast.parentNode) {
+                        toastContainer.removeChild(toast);
                     }
                 }, 300);
             }, 5000);
@@ -2379,9 +2390,6 @@
                     });
                 }
             }
-            
-            // Initialize click chart
-            initializeClickChart();
         }
 
         // Load links data
@@ -2532,54 +2540,6 @@
             } catch (error) {
                 console.error('Error loading all users:', error);
             }
-        }
-
-        // Initialize click chart
-        function initializeClickChart() {
-            const ctx = document.getElementById('clicksChart');
-            if (!ctx) return;
-            
-            if (clickChart) {
-                clickChart.destroy();
-            }
-            
-            // Sample data - in a real app, you'd get this from Firebase
-            const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-            const clicksData = [65, 59, 80, 81, 56, 55];
-            
-            clickChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'Clicks',
-                            data: clicksData,
-                            borderColor: '#6366f1',
-                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                            tension: 0.4,
-                            fill: true
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                        },
-                        title: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
         }
 
         // Initialize analytics chart
@@ -2739,10 +2699,10 @@
 
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
-                showNotification('URL copied to clipboard!', 'success');
+                showToast('URL copied to clipboard!', 'success');
             }).catch(err => {
                 console.error('Failed to copy: ', err);
-                showNotification('Failed to copy URL', 'error');
+                showToast('Failed to copy URL', 'error');
             });
         }
 
@@ -2772,10 +2732,10 @@
                         form.onsubmit = originalSubmit;
                         await loadUserData();
                         loadLinksData();
-                        showNotification('Link updated successfully!', 'success');
+                        showToast('Link updated successfully!', 'success');
                     } catch (error) {
                         console.error('Error updating link:', error);
-                        showNotification('Error updating link: ' + error.message, 'error');
+                        showToast('Error updating link. Please try again.', 'error');
                     }
                 };
             }
@@ -2787,10 +2747,10 @@
                     await db.collection('links').doc(linkId).delete();
                     await loadUserData();
                     loadLinksData();
-                    showNotification('Link deleted successfully!', 'success');
+                    showToast('Link deleted successfully!', 'success');
                 } catch (error) {
                     console.error('Error deleting link:', error);
-                    showNotification('Error deleting link: ' + error.message, 'error');
+                    showToast('Error deleting link. Please try again.', 'error');
                 }
             }
         }
@@ -2803,10 +2763,10 @@
                 
                 await loadAllUsers();
                 loadUsersTable();
-                showNotification(`User ${!currentStatus ? 'banned' : 'unbanned'} successfully!`, 'success');
+                showToast(`User ${!currentStatus ? 'banned' : 'unbanned'} successfully!`, 'success');
             } catch (error) {
                 console.error('Error toggling user status:', error);
-                showNotification('Error updating user status: ' + error.message, 'error');
+                showToast('Error updating user status. Please try again.', 'error');
             }
         }
 
@@ -2822,10 +2782,10 @@
                     
                     await loadAllUsers();
                     loadUsersTable();
-                    showNotification('User deleted successfully!', 'success');
+                    showToast('User deleted successfully!', 'success');
                 } catch (error) {
                     console.error('Error deleting user:', error);
-                    showNotification('Error deleting user: ' + error.message, 'error');
+                    showToast('Error deleting user. Please try again.', 'error');
                 }
             }
         }
