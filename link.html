@@ -694,6 +694,7 @@
             </div>
             
             <div class="alert alert-error" id="loginError" style="display: none;"></div>
+            <div class="alert alert-error" id="configError" style="display: none;"></div>
             
             <form id="loginForm">
                 <div class="form-group">
@@ -706,7 +707,7 @@
                     <input type="password" id="password" class="form-control" placeholder="Enter your password" required>
                 </div>
                 
-                <button type="submit" class="btn">Sign In</button>
+                <button type="submit" class="btn" id="loginBtn">Sign In</button>
             </form>
             
             <div class="login-footer">
@@ -1287,49 +1288,11 @@
     </div>
 
     <script>
-        // Check if configuration is loaded
-        if (typeof firebaseConfig === 'undefined') {
-            document.getElementById('loginError').textContent = 'Configuration not loaded. Please check configuration.js file';
-            document.getElementById('loginError').style.display = 'block';
-            throw new Error('Configuration not loaded');
-        }
+        // Firebase and App Initialization
+        let auth, db;
+        let firebaseInitialized = false;
 
-        // Initialize Firebase
-        try {
-            // Check if Firebase is already initialized to avoid duplicate app error
-            if (!firebase.apps.length) {
-                firebase.initializeApp(firebaseConfig);
-            }
-        } catch (error) {
-            document.getElementById('loginError').textContent = 'Firebase initialization failed: ' + error.message;
-            document.getElementById('loginError').style.display = 'block';
-            console.error('Firebase initialization error:', error);
-        }
-
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-
-        // DOM Elements
-        const loginPage = document.getElementById('loginPage');
-        const dashboard = document.getElementById('dashboard');
-        const redirectPage = document.getElementById('redirectPage');
-        const loginForm = document.getElementById('loginForm');
-        const registerModal = document.getElementById('registerModal');
-        const registerForm = document.getElementById('registerForm');
-        const menuItems = document.querySelectorAll('.menu-item');
-        const pageContents = document.querySelectorAll('.page-content');
-        const createLinkModal = document.getElementById('createLinkModal');
-        const createLinkBtn = document.getElementById('createLinkBtn');
-        const createLinkBtn2 = document.getElementById('createLinkBtn2');
-        const closeModalBtns = document.querySelectorAll('.close-modal');
-        const createLinkForm = document.getElementById('createLinkForm');
-        const adminMenuItem = document.getElementById('adminMenuItem');
-        const logoutBtn = document.getElementById('logoutBtn');
-        const showRegisterBtn = document.getElementById('showRegister');
-        const loginError = document.getElementById('loginError');
-        const registerError = document.getElementById('registerError');
-
-        // Current User
+        // Global variables
         let currentUser = null;
         let isAdmin = false;
         let userLinks = [];
@@ -1338,98 +1301,183 @@
         let userTokens = [];
         let allTokens = [];
 
-        // Event Listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            // Check if user is logged in
-            auth.onAuthStateChanged(async user => {
-                if (user) {
-                    currentUser = user;
-                    isAdmin = user.uid === ADMIN_UID;
-                    
-                    // Show dashboard
-                    loginPage.style.display = 'none';
-                    dashboard.style.display = 'block';
-                    redirectPage.style.display = 'none';
-                    
-                    // Update UI based on user
-                    updateUserUI();
-                    
-                    // Load user data and platform settings
-                    await loadUserData();
-                    await loadPlatformSettings();
-                    await loadDashboardData();
-                    
-                    // Load all users and tokens if admin
-                    if (isAdmin) {
-                        await loadAllUsers();
-                        await loadAllTokens();
-                    }
-                    
-                    // Check token status for regular users
-                    if (!isAdmin) {
-                        await checkTokenStatus();
-                    }
-                } else {
-                    // Show login page
-                    loginPage.style.display = 'flex';
-                    dashboard.style.display = 'none';
-                    redirectPage.style.display = 'none';
+        // Function to initialize Firebase with error handling
+        function initializeFirebase() {
+            try {
+                // Check if configuration is loaded
+                if (typeof firebaseConfig === 'undefined') {
+                    throw new Error('Firebase configuration not found. Please check configuration.js file');
                 }
-            });
 
+                // Check if required configuration fields exist
+                const requiredFields = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+                const missingFields = requiredFields.filter(field => !firebaseConfig[field]);
+                
+                if (missingFields.length > 0) {
+                    throw new Error(`Missing required configuration fields: ${missingFields.join(', ')}`);
+                }
+
+                // Initialize Firebase
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig);
+                } else {
+                    firebase.app(); // if already initialized, use that one
+                }
+
+                // Initialize Firebase services
+                auth = firebase.auth();
+                db = firebase.firestore();
+
+                firebaseInitialized = true;
+                console.log('Firebase initialized successfully');
+                
+                // Hide any configuration errors
+                document.getElementById('configError').style.display = 'none';
+                
+            } catch (error) {
+                console.error('Firebase initialization failed:', error);
+                
+                // Show configuration error to user
+                const configError = document.getElementById('configError');
+                configError.textContent = `Configuration Error: ${error.message}`;
+                configError.style.display = 'block';
+                
+                // Disable login form
+                document.getElementById('loginBtn').disabled = true;
+                document.getElementById('loginBtn').textContent = 'System Configuration Error';
+                
+                firebaseInitialized = false;
+            }
+        }
+
+        // Initialize Firebase when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeFirebase();
+            setupEventListeners();
+            
+            // Set up auth state listener
+            if (firebaseInitialized) {
+                auth.onAuthStateChanged(async user => {
+                    if (user) {
+                        currentUser = user;
+                        await handleUserLogin(user);
+                    } else {
+                        handleUserLogout();
+                    }
+                });
+            }
+        });
+
+        // Setup all event listeners
+        function setupEventListeners() {
             // Login form
-            loginForm.addEventListener('submit', async function(e) {
+            document.getElementById('loginForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
+                
+                if (!firebaseInitialized) {
+                    showLoginError('System not properly configured. Please refresh the page or contact support.');
+                    return;
+                }
+
                 const email = document.getElementById('email').value;
                 const password = document.getElementById('password').value;
+                const loginBtn = document.getElementById('loginBtn');
+                
+                // Show loading state
+                loginBtn.disabled = true;
+                loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In...';
                 
                 try {
                     const userCredential = await auth.signInWithEmailAndPassword(email, password);
                     console.log('User logged in:', userCredential.user);
-                    loginError.style.display = 'none';
+                    showLoginError(''); // Clear any errors
                 } catch (error) {
                     console.error('Login error:', error);
-                    loginError.textContent = 'Login failed: ' + error.message;
-                    loginError.style.display = 'block';
+                    let errorMessage = 'Login failed. ';
+                    
+                    switch (error.code) {
+                        case 'auth/invalid-email':
+                            errorMessage += 'Invalid email address.';
+                            break;
+                        case 'auth/user-disabled':
+                            errorMessage += 'This account has been disabled.';
+                            break;
+                        case 'auth/user-not-found':
+                            errorMessage += 'No account found with this email.';
+                            break;
+                        case 'auth/wrong-password':
+                            errorMessage += 'Incorrect password.';
+                            break;
+                        case 'auth/network-request-failed':
+                            errorMessage += 'Network error. Please check your connection.';
+                            break;
+                        default:
+                            errorMessage += error.message;
+                    }
+                    
+                    showLoginError(errorMessage);
+                } finally {
+                    // Reset button state
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = 'Sign In';
                 }
             });
 
             // Show register modal
-            showRegisterBtn.addEventListener('click', function(e) {
+            document.getElementById('showRegister').addEventListener('click', function(e) {
                 e.preventDefault();
-                registerModal.style.display = 'flex';
+                if (!firebaseInitialized) {
+                    alert('System not properly configured. Please refresh the page or contact support.');
+                    return;
+                }
+                document.getElementById('registerModal').style.display = 'flex';
             });
 
             // Close modal buttons
-            closeModalBtns.forEach(btn => {
+            document.querySelectorAll('.close-modal').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    createLinkModal.style.display = 'none';
-                    registerModal.style.display = 'none';
+                    document.getElementById('createLinkModal').style.display = 'none';
+                    document.getElementById('registerModal').style.display = 'none';
+                    document.getElementById('tokenActivationModal').style.display = 'none';
                 });
             });
 
+            // Close token modal button
+            document.getElementById('closeTokenModal').addEventListener('click', function() {
+                document.getElementById('tokenActivationModal').style.display = 'none';
+            });
+
             // Register form
-            registerForm.addEventListener('submit', async function(e) {
+            document.getElementById('registerForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
+                
+                if (!firebaseInitialized) {
+                    showRegisterError('System not properly configured. Please refresh the page or contact support.');
+                    return;
+                }
+
                 const name = document.getElementById('registerName').value;
                 const email = document.getElementById('registerEmail').value;
                 const password = document.getElementById('registerPassword').value;
                 const confirmPassword = document.getElementById('registerConfirmPassword').value;
                 
                 if (password !== confirmPassword) {
-                    registerError.textContent = 'Passwords do not match';
-                    registerError.style.display = 'block';
+                    showRegisterError('Passwords do not match');
                     return;
                 }
                 
                 if (password.length < 6) {
-                    registerError.textContent = 'Password must be at least 6 characters long';
-                    registerError.style.display = 'block';
+                    showRegisterError('Password must be at least 6 characters long');
                     return;
                 }
                 
                 try {
                     const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                    
+                    // Update user profile with display name
+                    await userCredential.user.updateProfile({
+                        displayName: name
+                    });
                     
                     // Create user document in Firestore
                     await db.collection('users').doc(userCredential.user.uid).set({
@@ -1450,72 +1498,84 @@
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     
-                    registerError.style.display = 'none';
-                    registerModal.style.display = 'none';
-                    registerForm.reset();
+                    showRegisterError('');
+                    document.getElementById('registerModal').style.display = 'none';
+                    document.getElementById('registerForm').reset();
                     
-                    alert('Account created successfully! You can now login.');
+                    alert('Account created successfully! You are now logged in.');
                 } catch (error) {
                     console.error('Registration error:', error);
-                    registerError.textContent = 'Registration failed: ' + error.message;
-                    registerError.style.display = 'block';
+                    let errorMessage = 'Registration failed. ';
+                    
+                    switch (error.code) {
+                        case 'auth/email-already-in-use':
+                            errorMessage += 'This email is already registered.';
+                            break;
+                        case 'auth/invalid-email':
+                            errorMessage += 'Invalid email address.';
+                            break;
+                        case 'auth/operation-not-allowed':
+                            errorMessage += 'Registration is currently disabled.';
+                            break;
+                        case 'auth/weak-password':
+                            errorMessage += 'Password is too weak.';
+                            break;
+                        default:
+                            errorMessage += error.message;
+                    }
+                    
+                    showRegisterError(errorMessage);
                 }
             });
 
-            // Menu navigation
+            // Menu navigation and other event listeners
+            setupMenuNavigation();
+            setupOtherEventListeners();
+        }
+
+        // Setup menu navigation
+        function setupMenuNavigation() {
+            const menuItems = document.querySelectorAll('.menu-item');
+            const logoutBtn = document.getElementById('logoutBtn');
+
             menuItems.forEach(item => {
                 item.addEventListener('click', function(e) {
                     e.preventDefault();
                     
                     if (this.id === 'logoutBtn') {
-                        // Logout
                         auth.signOut();
                         return;
                     }
                     
                     const page = this.getAttribute('data-page');
-                    
-                    // Check token status for non-admin users
-                    if (!isAdmin && page !== 'settings' && platformSettings.enableTokenSystem) {
-                        if (!userTokens.some(token => token.status === 'active' && new Date(token.expiryDate) > new Date())) {
-                            tokenActivationModal.style.display = 'flex';
-                            return;
-                        }
-                    }
-                    
-                    // Update active menu item
-                    menuItems.forEach(i => i.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    // Show selected page
-                    pageContents.forEach(content => {
-                        content.style.display = 'none';
-                    });
-                    
-                    document.getElementById(page + 'Page').style.display = 'block';
-                    document.getElementById('pageTitle').textContent = this.querySelector('.menu-text').textContent;
-                    
-                    // Load page-specific data
-                    if (page === 'links') {
-                        loadLinksData();
-                    } else if (page === 'analytics') {
-                        loadAnalyticsData();
-                    } else if (page === 'admin') {
-                        loadAdminData();
-                    }
+                    navigateToPage(page);
                 });
             });
 
+            // Logout button
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    auth.signOut();
+                });
+            }
+        }
+
+        // Setup other event listeners
+        function setupOtherEventListeners() {
             // Create link modal buttons
+            const createLinkBtn = document.getElementById('createLinkBtn');
+            const createLinkBtn2 = document.getElementById('createLinkBtn2');
+            
             if (createLinkBtn) {
                 createLinkBtn.addEventListener('click', function() {
                     if (!isAdmin && platformSettings.enableTokenSystem) {
                         if (!userTokens.some(token => token.status === 'active' && new Date(token.expiryDate) > new Date())) {
-                            tokenActivationModal.style.display = 'flex';
+                            document.getElementById('tokenActivationModal').style.display = 'flex';
                             return;
                         }
                     }
-                    createLinkModal.style.display = 'flex';
+                    document.getElementById('createLinkModal').style.display = 'flex';
                 });
             }
             
@@ -1523,15 +1583,16 @@
                 createLinkBtn2.addEventListener('click', function() {
                     if (!isAdmin && platformSettings.enableTokenSystem) {
                         if (!userTokens.some(token => token.status === 'active' && new Date(token.expiryDate) > new Date())) {
-                            tokenActivationModal.style.display = 'flex';
+                            document.getElementById('tokenActivationModal').style.display = 'flex';
                             return;
                         }
                     }
-                    createLinkModal.style.display = 'flex';
+                    document.getElementById('createLinkModal').style.display = 'flex';
                 });
             }
 
             // Create link form
+            const createLinkForm = document.getElementById('createLinkForm');
             if (createLinkForm) {
                 createLinkForm.addEventListener('submit', async function(e) {
                     e.preventDefault();
@@ -1558,7 +1619,7 @@
                         await db.collection('links').add(linkData);
                         
                         // Close modal and reset form
-                        createLinkModal.style.display = 'none';
+                        document.getElementById('createLinkModal').style.display = 'none';
                         this.reset();
                         
                         // Reload links data
@@ -1578,16 +1639,287 @@
                 });
             }
 
+            // Settings form
+            const settingsForm = document.getElementById('settingsForm');
+            if (settingsForm) {
+                settingsForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    try {
+                        const userName = document.getElementById('userNameInput').value;
+                        const userEmail = document.getElementById('userEmailInput').value;
+                        const adsterraLink = document.getElementById('adsterraLink').value;
+                        
+                        await db.collection('users').doc(currentUser.uid).update({
+                            name: userName,
+                            adsterraLink: adsterraLink
+                        });
+                        
+                        // Update user profile
+                        await currentUser.updateProfile({
+                            displayName: userName
+                        });
+                        
+                        // Update UI
+                        updateUserUI();
+                        
+                        alert('Settings saved successfully!');
+                    } catch (error) {
+                        console.error('Error saving settings:', error);
+                        alert('Error saving settings: ' + error.message);
+                    }
+                });
+            }
+
+            // Token activation form
+            const tokenActivationForm = document.getElementById('tokenActivationForm');
+            if (tokenActivationForm) {
+                tokenActivationForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const token = document.getElementById('activationToken').value;
+                    
+                    try {
+                        // Find the token in the database
+                        const tokensSnapshot = await db.collection('tokens').where('token', '==', token).get();
+                        
+                        if (tokensSnapshot.empty) {
+                            alert('Invalid token. Please check and try again.');
+                            return;
+                        }
+                        
+                        const tokenDoc = tokensSnapshot.docs[0];
+                        const tokenData = tokenDoc.data();
+                        
+                        // Check if token is already used
+                        if (tokenData.used) {
+                            alert('This token has already been used.');
+                            return;
+                        }
+                        
+                        // Check if token is expired
+                        if (new Date() > tokenData.expiryDate.toDate()) {
+                            alert('This token has expired.');
+                            return;
+                        }
+                        
+                        // Activate the token for the user
+                        const expiryDate = new Date();
+                        expiryDate.setDate(expiryDate.getDate() + 30); // 30 days from now
+                        
+                        await db.collection('users').doc(currentUser.uid).update({
+                            tokenActivation: {
+                                active: true,
+                                tokenId: tokenDoc.id,
+                                activationDate: new Date(),
+                                expiryDate: expiryDate
+                            }
+                        });
+                        
+                        // Mark token as used
+                        await db.collection('tokens').doc(tokenDoc.id).update({
+                            used: true,
+                            usedBy: currentUser.uid,
+                            usedAt: new Date()
+                        });
+                        
+                        // Reload user data
+                        await loadUserData();
+                        await checkTokenStatus();
+                        
+                        document.getElementById('activationToken').value = '';
+                        alert('Token activated successfully! Your account is now active for 30 days.');
+                    } catch (error) {
+                        console.error('Error activating token:', error);
+                        alert('Error activating token: ' + error.message);
+                    }
+                });
+            }
+
+            // Admin settings form
+            const adminSettingsForm = document.getElementById('adminSettingsForm');
+            if (adminSettingsForm) {
+                adminSettingsForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    try {
+                        const adminAdsterraLink = document.getElementById('adminAdsterraLink').value;
+                        const enableSubscriptions = document.getElementById('enableSubscriptionsToggle').checked;
+                        const enableTokenSystem = document.getElementById('enableTokenSystemToggle').checked;
+                        const tokenPurchaseLink = document.getElementById('tokenPurchaseLink').value;
+                        const subscriptionPopupText = document.getElementById('subscriptionPopupText').value;
+                        const subscriptionButtonText = document.getElementById('subscriptionButtonText').value;
+                        const subscriptionButtonLink = document.getElementById('subscriptionButtonLink').value;
+                        
+                        await db.collection('platformSettings').doc('settings').update({
+                            adminAdsterraLink: adminAdsterraLink,
+                            subscriptionEnabled: enableSubscriptions,
+                            enableTokenSystem: enableTokenSystem,
+                            tokenPurchaseLink: tokenPurchaseLink,
+                            subscriptionPopupText: subscriptionPopupText,
+                            subscriptionButtonText: subscriptionButtonText,
+                            subscriptionButtonLink: subscriptionButtonLink
+                        });
+                        
+                        // Reload platform settings
+                        await loadPlatformSettings();
+                        
+                        alert('Admin settings saved successfully!');
+                    } catch (error) {
+                        console.error('Error saving admin settings:', error);
+                        alert('Error saving admin settings: ' + error.message);
+                    }
+                });
+            }
+
+            // Generate tokens button
+            const generateTokensBtn = document.getElementById('generateTokensBtn');
+            if (generateTokensBtn) {
+                generateTokensBtn.addEventListener('click', async function() {
+                    const tokenCount = parseInt(document.getElementById('tokenCount').value);
+                    const expiryDays = parseInt(document.getElementById('tokenExpiryDays').value);
+                    
+                    try {
+                        for (let i = 0; i < tokenCount; i++) {
+                            const token = generateRandomToken();
+                            const expiryDate = new Date();
+                            expiryDate.setDate(expiryDate.getDate() + expiryDays);
+                            
+                            await db.collection('tokens').add({
+                                token: token,
+                                used: false,
+                                usedBy: null,
+                                usedAt: null,
+                                expiryDate: expiryDate,
+                                createdAt: new Date()
+                            });
+                        }
+                        
+                        // Reload tokens
+                        await loadAllTokens();
+                        
+                        alert(`${tokenCount} tokens generated successfully!`);
+                    } catch (error) {
+                        console.error('Error generating tokens:', error);
+                        alert('Error generating tokens: ' + error.message);
+                    }
+                });
+            }
+
             // Initialize redirect page if we're on that page
             if (window.location.pathname.includes('/r/')) {
-                loginPage.style.display = 'none';
-                dashboard.style.display = 'none';
-                redirectPage.style.display = 'flex';
+                document.getElementById('loginPage').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'none';
+                document.getElementById('redirectPage').style.display = 'flex';
                 initializeRedirectPage();
             }
-        });
+        }
 
-        // Functions
+        // Handle user login
+        async function handleUserLogin(user) {
+            try {
+                // Check if user is admin
+                isAdmin = user.uid === ADMIN_UID;
+                
+                // Show dashboard
+                document.getElementById('loginPage').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                document.getElementById('redirectPage').style.display = 'none';
+                
+                // Update UI based on user
+                updateUserUI();
+                
+                // Load user data and platform settings
+                await loadUserData();
+                await loadPlatformSettings();
+                await loadDashboardData();
+                
+                // Load all users and tokens if admin
+                if (isAdmin) {
+                    await loadAllUsers();
+                    await loadAllTokens();
+                }
+                
+                // Check token status for regular users
+                if (!isAdmin) {
+                    await checkTokenStatus();
+                }
+            } catch (error) {
+                console.error('Error during login process:', error);
+                showLoginError('Error loading user data. Please try again.');
+                await auth.signOut(); // Sign out if there's an error
+            }
+        }
+
+        // Handle user logout
+        function handleUserLogout() {
+            // Show login page
+            document.getElementById('loginPage').style.display = 'flex';
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('redirectPage').style.display = 'none';
+            
+            // Clear form fields
+            document.getElementById('loginForm').reset();
+            document.getElementById('loginError').style.display = 'none';
+            
+            // Reset user data
+            currentUser = null;
+            isAdmin = false;
+            userLinks = [];
+        }
+
+        // Show login error
+        function showLoginError(message) {
+            const loginError = document.getElementById('loginError');
+            if (message) {
+                loginError.textContent = message;
+                loginError.style.display = 'block';
+            } else {
+                loginError.style.display = 'none';
+            }
+        }
+
+        // Show register error
+        function showRegisterError(message) {
+            const registerError = document.getElementById('registerError');
+            if (message) {
+                registerError.textContent = message;
+                registerError.style.display = 'block';
+            } else {
+                registerError.style.display = 'none';
+            }
+        }
+
+        // Navigation function
+        function navigateToPage(page) {
+            // Check token status for non-admin users
+            if (!isAdmin && page !== 'settings' && platformSettings.enableTokenSystem) {
+                if (!userTokens.some(token => token.status === 'active' && new Date(token.expiryDate) > new Date())) {
+                    document.getElementById('tokenActivationModal').style.display = 'flex';
+                    return;
+                }
+            }
+            
+            // Update active menu item
+            document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+            document.querySelector(`.menu-item[data-page="${page}"]`).classList.add('active');
+            
+            // Show selected page
+            document.querySelectorAll('.page-content').forEach(content => {
+                content.style.display = 'none';
+            });
+            
+            document.getElementById(page + 'Page').style.display = 'block';
+            document.getElementById('pageTitle').textContent = document.querySelector(`.menu-item[data-page="${page}"] .menu-text`).textContent;
+            
+            // Load page-specific data
+            if (page === 'links') {
+                loadLinksData();
+            } else if (page === 'analytics') {
+                loadAnalyticsData();
+            } else if (page === 'admin') {
+                loadAdminData();
+            }
+        }
+
+        // Update user UI
         function updateUserUI() {
             if (!currentUser) return;
             
@@ -1596,6 +1928,7 @@
             document.getElementById('userName').textContent = currentUser.displayName || currentUser.email.split('@')[0];
             
             // Show/hide admin menu item
+            const adminMenuItem = document.getElementById('adminMenuItem');
             if (isAdmin) {
                 adminMenuItem.style.display = 'flex';
             } else {
@@ -1603,6 +1936,7 @@
             }
         }
 
+        // Load user data
         async function loadUserData() {
             try {
                 // Load user profile
@@ -1654,14 +1988,27 @@
                 });
             } catch (error) {
                 console.error('Error loading user data:', error);
+                throw error;
             }
         }
 
+        // Load platform settings
         async function loadPlatformSettings() {
             try {
                 const settingsDoc = await db.collection('platformSettings').doc('settings').get();
                 if (settingsDoc.exists) {
                     platformSettings = settingsDoc.data();
+                    
+                    // Update admin settings form if it exists
+                    if (document.getElementById('adminAdsterraLink')) {
+                        document.getElementById('adminAdsterraLink').value = platformSettings.adminAdsterraLink || '';
+                        document.getElementById('enableSubscriptionsToggle').checked = platformSettings.subscriptionEnabled || false;
+                        document.getElementById('enableTokenSystemToggle').checked = platformSettings.enableTokenSystem || false;
+                        document.getElementById('tokenPurchaseLink').value = platformSettings.tokenPurchaseLink || '';
+                        document.getElementById('subscriptionPopupText').value = platformSettings.subscriptionPopupText || '';
+                        document.getElementById('subscriptionButtonText').value = platformSettings.subscriptionButtonText || '';
+                        document.getElementById('subscriptionButtonLink').value = platformSettings.subscriptionButtonLink || '';
+                    }
                 } else {
                     // Create default settings if they don't exist
                     await db.collection('platformSettings').doc('settings').set({
@@ -1685,9 +2032,11 @@
                 }
             } catch (error) {
                 console.error('Error loading platform settings:', error);
+                throw error;
             }
         }
 
+        // Load dashboard data
         function loadDashboardData() {
             // Update stats
             const totalClicks = userLinks.reduce((sum, link) => sum + (link.clicks || 0), 0);
@@ -1725,6 +2074,7 @@
             }
         }
 
+        // Load links data
         function loadLinksData() {
             const linksTable = document.getElementById('linksTable');
             if (!linksTable) return;
@@ -1750,6 +2100,193 @@
             });
         }
 
+        // Load analytics data
+        function loadAnalyticsData() {
+            // Update top links table
+            const topLinksTable = document.getElementById('topLinksTable');
+            if (topLinksTable) {
+                topLinksTable.innerHTML = '';
+                
+                // Sort links by clicks (descending)
+                const sortedLinks = [...userLinks].sort((a, b) => (b.clicks || 0) - (a.clicks || 0));
+                
+                sortedLinks.slice(0, 5).forEach(link => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${link.name}</td>
+                        <td>${link.clicks || 0}</td>
+                        <td>${((link.clicks || 0) / Math.max(...userLinks.map(l => l.clicks || 1)) * 100).toFixed(1)}%</td>
+                    `;
+                    topLinksTable.appendChild(row);
+                });
+            }
+        }
+
+        // Load admin data
+        function loadAdminData() {
+            loadUsersTable();
+            loadTokensTable();
+        }
+
+        // Load users table
+        function loadUsersTable() {
+            const usersTable = document.getElementById('usersTable');
+            if (!usersTable) return;
+            
+            usersTable.innerHTML = '';
+            
+            allUsers.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${user.name || 'N/A'}</td>
+                    <td>${user.email}</td>
+                    <td>${user.subscription?.plan || 'free'}</td>
+                    <td><span class="badge ${user.subscription?.status === 'active' ? 'badge-success' : 'badge-warning'}">${user.subscription?.status || 'inactive'}</span></td>
+                    <td><span class="badge ${user.tokenActivation?.active ? 'badge-success' : 'badge-danger'}">${user.tokenActivation?.active ? 'Active' : 'Inactive'}</span></td>
+                    <td>
+                        <button class="action-btn" title="Edit User" onclick="editUser('${user.id}')"><i class="fas fa-edit"></i></button>
+                        <button class="action-btn" title="Delete User" onclick="deleteUser('${user.id}')"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                usersTable.appendChild(row);
+            });
+        }
+
+        // Load tokens table
+        function loadTokensTable() {
+            const tokensTable = document.getElementById('tokensTable');
+            if (!tokensTable) return;
+            
+            tokensTable.innerHTML = '';
+            
+            allTokens.forEach(token => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${token.token}</td>
+                    <td><span class="badge ${token.used ? 'badge-warning' : 'badge-success'}">${token.used ? 'Used' : 'Available'}</span></td>
+                    <td>${formatDate(token.createdAt)}</td>
+                    <td>${token.usedBy || 'N/A'}</td>
+                    <td>${formatDate(token.expiryDate)}</td>
+                    <td>
+                        <button class="action-btn" title="Delete Token" onclick="deleteToken('${token.id}')"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                tokensTable.appendChild(row);
+            });
+        }
+
+        // Load all users (admin only)
+        async function loadAllUsers() {
+            try {
+                const usersSnapshot = await db.collection('users').get();
+                allUsers = [];
+                usersSnapshot.forEach(doc => {
+                    allUsers.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+            } catch (error) {
+                console.error('Error loading all users:', error);
+            }
+        }
+
+        // Load all tokens (admin only)
+        async function loadAllTokens() {
+            try {
+                const tokensSnapshot = await db.collection('tokens').get();
+                allTokens = [];
+                tokensSnapshot.forEach(doc => {
+                    allTokens.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+            } catch (error) {
+                console.error('Error loading all tokens:', error);
+            }
+        }
+
+        // Check token status
+        async function checkTokenStatus() {
+            try {
+                const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    
+                    if (userData.tokenActivation && userData.tokenActivation.active) {
+                        const expiryDate = userData.tokenActivation.expiryDate.toDate();
+                        const now = new Date();
+                        
+                        if (now > expiryDate) {
+                            // Token expired
+                            await db.collection('users').doc(currentUser.uid).update({
+                                'tokenActivation.active': false
+                            });
+                            
+                            showTokenStatus('expired');
+                        } else {
+                            // Token active
+                            showTokenStatus('active', expiryDate);
+                        }
+                    } else {
+                        // No active token
+                        showTokenStatus('inactive');
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking token status:', error);
+            }
+        }
+
+        // Show token status
+        function showTokenStatus(status, expiryDate = null) {
+            const tokenStatusText = document.getElementById('tokenStatusText');
+            const tokenExpiryDate = document.getElementById('tokenExpiryDate');
+            const tokenBadge = document.getElementById('tokenBadge');
+            
+            if (status === 'active') {
+                tokenStatusText.textContent = 'Token Active';
+                tokenExpiryDate.textContent = `Token expiry: ${formatDate(expiryDate)}`;
+                tokenBadge.textContent = 'Active';
+                tokenBadge.className = 'badge badge-success';
+                
+                // Hide token status warnings
+                document.querySelectorAll('.token-status').forEach(el => {
+                    el.style.display = 'none';
+                });
+            } else if (status === 'expired') {
+                tokenStatusText.textContent = 'Token Expired';
+                tokenExpiryDate.textContent = 'Token expiry: Expired';
+                tokenBadge.textContent = 'Expired';
+                tokenBadge.className = 'badge badge-danger';
+                
+                // Show token status warnings
+                document.querySelectorAll('.token-status').forEach(el => {
+                    el.style.display = 'block';
+                });
+            } else {
+                tokenStatusText.textContent = 'No Active Token';
+                tokenExpiryDate.textContent = 'Token expiry: N/A';
+                tokenBadge.textContent = 'Inactive';
+                tokenBadge.className = 'badge badge-danger';
+                
+                // Show token status warnings if token system is enabled
+                if (platformSettings.enableTokenSystem) {
+                    document.querySelectorAll('.token-status').forEach(el => {
+                        el.style.display = 'block';
+                    });
+                }
+            }
+        }
+
+        // Start subscription timer
+        function startSubscriptionTimer(expiryDate) {
+            // This would be a countdown timer implementation
+            // For now, we'll just display a static message
+            document.getElementById('renewalTimer').textContent = '15 days, 3 hours, 42 minutes';
+        }
+
         // Utility Functions
         function getInitials(name) {
             return name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U';
@@ -1757,6 +2294,10 @@
 
         function generateRandomSlug() {
             return Math.random().toString(36).substring(2, 8);
+        }
+
+        function generateRandomToken() {
+            return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         }
 
         function truncateUrl(url, maxLength = 40) {
@@ -1775,18 +2316,36 @@
             });
         }
 
-        // Add these placeholder functions for the action buttons
+        // Placeholder functions for action buttons
         function editLink(linkId) {
             alert('Edit link functionality would go here for link: ' + linkId);
         }
 
         function toggleLinkStatus(linkId, currentStatus) {
-            alert('Toggle link status functionality would go here for link: ' + linkId);
+            if (confirm(`Are you sure you want to ${currentStatus === 'active' ? 'pause' : 'activate'} this link?`)) {
+                alert('Toggle link status functionality would go here for link: ' + linkId);
+            }
         }
 
         function deleteLink(linkId) {
             if (confirm('Are you sure you want to delete this link?')) {
                 alert('Delete link functionality would go here for link: ' + linkId);
+            }
+        }
+
+        function editUser(userId) {
+            alert('Edit user functionality would go here for user: ' + userId);
+        }
+
+        function deleteUser(userId) {
+            if (confirm('Are you sure you want to delete this user?')) {
+                alert('Delete user functionality would go here for user: ' + userId);
+            }
+        }
+
+        function deleteToken(tokenId) {
+            if (confirm('Are you sure you want to delete this token?')) {
+                alert('Delete token functionality would go here for token: ' + tokenId);
             }
         }
 
