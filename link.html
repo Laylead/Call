@@ -1713,7 +1713,7 @@
             initializeFirebase();
             setupEventListeners();
             
-            // Set up auth state listener - ONLY ONCE
+            // Set up auth state listener
             if (firebaseInitialized) {
                 auth.onAuthStateChanged(async user => {
                     console.log('Auth state changed:', user);
@@ -1834,8 +1834,7 @@
                             expiryDate: null
                         },
                         isActive: true,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     
                     showRegisterError('');
@@ -2089,17 +2088,13 @@
                     await loadAllUsers();
                 }
                 
-                // Update last login
-                await db.collection('users').doc(user.uid).update({
-                    lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                
                 console.log('User login handling completed successfully');
                 
             } catch (error) {
                 console.error('Error during login process:', error);
-                showLoginError('Error loading user data. Please try again.');
                 showToast('Error loading user data. Please refresh the page.', 'error');
+                // Sign out user to prevent being stuck in error state
+                auth.signOut();
             }
         }
 
@@ -2252,7 +2247,7 @@
                 } else {
                     console.log('No user document found, creating one...');
                     // Create user document if it doesn't exist
-                    await db.collection('users').doc(currentUser.uid).set({
+                    const newUserData = {
                         name: currentUser.displayName || currentUser.email.split('@')[0],
                         email: currentUser.email,
                         adsterraLink: '',
@@ -2262,10 +2257,11 @@
                             expiryDate: null
                         },
                         isActive: true,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    userData = await db.collection('users').doc(currentUser.uid).get().then(doc => doc.data());
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    
+                    await db.collection('users').doc(currentUser.uid).set(newUserData);
+                    userData = newUserData;
                 }
                 
                 // Load user links
