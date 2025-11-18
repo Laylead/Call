@@ -694,7 +694,6 @@
             </div>
             
             <div class="alert alert-error" id="loginError" style="display: none;"></div>
-            <div class="alert alert-error" id="configError" style="display: none;"></div>
             
             <form id="loginForm">
                 <div class="form-group">
@@ -707,7 +706,7 @@
                     <input type="password" id="password" class="form-control" placeholder="Enter your password" required>
                 </div>
                 
-                <button type="submit" class="btn" id="loginBtn">Sign In</button>
+                <button type="submit" class="btn">Sign In</button>
             </form>
             
             <div class="login-footer">
@@ -739,12 +738,12 @@
                 
                 <div class="form-group">
                     <label for="registerPassword">Password</label>
-                    <input type="password" id="registerPassword" class="form-control" placeholder="Create a password (min 6 characters)" required minlength="6">
+                    <input type="password" id="registerPassword" class="form-control" placeholder="Create a password" required>
                 </div>
                 
                 <div class="form-group">
                     <label for="registerConfirmPassword">Confirm Password</label>
-                    <input type="password" id="registerConfirmPassword" class="form-control" placeholder="Confirm your password" required minlength="6">
+                    <input type="password" id="registerConfirmPassword" class="form-control" placeholder="Confirm your password" required>
                 </div>
                 
                 <div class="modal-footer">
@@ -1288,11 +1287,51 @@
     </div>
 
     <script>
-        // Firebase and App Initialization
-        let auth, db;
-        let firebaseInitialized = false;
+        // Check if configuration is loaded
+        if (typeof firebaseConfig === 'undefined') {
+            alert('Configuration not loaded. Please check configuration.js file');
+            throw new Error('Configuration not loaded');
+        }
 
-        // Global variables
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // DOM Elements
+        const loginPage = document.getElementById('loginPage');
+        const dashboard = document.getElementById('dashboard');
+        const redirectPage = document.getElementById('redirectPage');
+        const loginForm = document.getElementById('loginForm');
+        const registerModal = document.getElementById('registerModal');
+        const registerForm = document.getElementById('registerForm');
+        const menuItems = document.querySelectorAll('.menu-item');
+        const pageContents = document.querySelectorAll('.page-content');
+        const createLinkModal = document.getElementById('createLinkModal');
+        const createLinkBtn = document.getElementById('createLinkBtn');
+        const createLinkBtn2 = document.getElementById('createLinkBtn2');
+        const closeModalBtns = document.querySelectorAll('.close-modal');
+        const createLinkForm = document.getElementById('createLinkForm');
+        const adminMenuItem = document.getElementById('adminMenuItem');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const enableSubscriptionsToggle = document.getElementById('enableSubscriptionsToggle');
+        const adminSettingsForm = document.getElementById('adminSettingsForm');
+        const enableSubscriptionBtn = document.getElementById('enableSubscriptionBtn');
+        const settingsForm = document.getElementById('settingsForm');
+        const upgradeSubscriptionBtn = document.getElementById('upgradeSubscription');
+        const tokenActivationForm = document.getElementById('tokenActivationForm');
+        const buyTokenBtn = document.getElementById('buyTokenBtn');
+        const enableTokenSystemToggle = document.getElementById('enableTokenSystemToggle');
+        const generateTokensBtn = document.getElementById('generateTokensBtn');
+        const downloadTokensBtn = document.getElementById('downloadTokensBtn');
+        const tokenActivationModal = document.getElementById('tokenActivationModal');
+        const purchaseTokenBtn = document.getElementById('purchaseTokenBtn');
+        const closeTokenModal = document.getElementById('closeTokenModal');
+        const showRegisterBtn = document.getElementById('showRegister');
+        const loginError = document.getElementById('loginError');
+        const registerError = document.getElementById('registerError');
+
+        // Current User
         let currentUser = null;
         let isAdmin = false;
         let userLinks = [];
@@ -1301,183 +1340,84 @@
         let userTokens = [];
         let allTokens = [];
 
-        // Function to initialize Firebase with error handling
-        function initializeFirebase() {
-            try {
-                // Check if configuration is loaded
-                if (typeof firebaseConfig === 'undefined') {
-                    throw new Error('Firebase configuration not found. Please check configuration.js file');
-                }
-
-                // Check if required configuration fields exist
-                const requiredFields = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
-                const missingFields = requiredFields.filter(field => !firebaseConfig[field]);
-                
-                if (missingFields.length > 0) {
-                    throw new Error(`Missing required configuration fields: ${missingFields.join(', ')}`);
-                }
-
-                // Initialize Firebase
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(firebaseConfig);
-                } else {
-                    firebase.app(); // if already initialized, use that one
-                }
-
-                // Initialize Firebase services
-                auth = firebase.auth();
-                db = firebase.firestore();
-
-                firebaseInitialized = true;
-                console.log('Firebase initialized successfully');
-                
-                // Hide any configuration errors
-                document.getElementById('configError').style.display = 'none';
-                
-            } catch (error) {
-                console.error('Firebase initialization failed:', error);
-                
-                // Show configuration error to user
-                const configError = document.getElementById('configError');
-                configError.textContent = `Configuration Error: ${error.message}`;
-                configError.style.display = 'block';
-                
-                // Disable login form
-                document.getElementById('loginBtn').disabled = true;
-                document.getElementById('loginBtn').textContent = 'System Configuration Error';
-                
-                firebaseInitialized = false;
-            }
-        }
-
-        // Initialize Firebase when the page loads
+        // Event Listeners
         document.addEventListener('DOMContentLoaded', function() {
-            initializeFirebase();
-            setupEventListeners();
-            
-            // Set up auth state listener
-            if (firebaseInitialized) {
-                auth.onAuthStateChanged(async user => {
-                    if (user) {
-                        currentUser = user;
-                        await handleUserLogin(user);
-                    } else {
-                        handleUserLogout();
+            // Check if user is logged in
+            auth.onAuthStateChanged(async user => {
+                if (user) {
+                    currentUser = user;
+                    isAdmin = user.uid === ADMIN_UID;
+                    
+                    // Show dashboard
+                    loginPage.style.display = 'none';
+                    dashboard.style.display = 'block';
+                    redirectPage.style.display = 'none';
+                    
+                    // Update UI based on user
+                    updateUserUI();
+                    
+                    // Load user data and platform settings
+                    await loadUserData();
+                    await loadPlatformSettings();
+                    await loadDashboardData();
+                    
+                    // Load all users and tokens if admin
+                    if (isAdmin) {
+                        await loadAllUsers();
+                        await loadAllTokens();
                     }
-                });
-            }
-        });
-
-        // Setup all event listeners
-        function setupEventListeners() {
-            // Login form
-            document.getElementById('loginForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
-                if (!firebaseInitialized) {
-                    showLoginError('System not properly configured. Please refresh the page or contact support.');
-                    return;
+                    
+                    // Check token status for regular users
+                    if (!isAdmin) {
+                        await checkTokenStatus();
+                    }
+                } else {
+                    // Show login page
+                    loginPage.style.display = 'flex';
+                    dashboard.style.display = 'none';
+                    redirectPage.style.display = 'none';
                 }
+            });
 
+            // Login form
+            loginForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
                 const email = document.getElementById('email').value;
                 const password = document.getElementById('password').value;
-                const loginBtn = document.getElementById('loginBtn');
-                
-                // Show loading state
-                loginBtn.disabled = true;
-                loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In...';
                 
                 try {
                     const userCredential = await auth.signInWithEmailAndPassword(email, password);
                     console.log('User logged in:', userCredential.user);
-                    showLoginError(''); // Clear any errors
+                    loginError.style.display = 'none';
                 } catch (error) {
                     console.error('Login error:', error);
-                    let errorMessage = 'Login failed. ';
-                    
-                    switch (error.code) {
-                        case 'auth/invalid-email':
-                            errorMessage += 'Invalid email address.';
-                            break;
-                        case 'auth/user-disabled':
-                            errorMessage += 'This account has been disabled.';
-                            break;
-                        case 'auth/user-not-found':
-                            errorMessage += 'No account found with this email.';
-                            break;
-                        case 'auth/wrong-password':
-                            errorMessage += 'Incorrect password.';
-                            break;
-                        case 'auth/network-request-failed':
-                            errorMessage += 'Network error. Please check your connection.';
-                            break;
-                        default:
-                            errorMessage += error.message;
-                    }
-                    
-                    showLoginError(errorMessage);
-                } finally {
-                    // Reset button state
-                    loginBtn.disabled = false;
-                    loginBtn.textContent = 'Sign In';
+                    loginError.textContent = 'Login failed: ' + error.message;
+                    loginError.style.display = 'block';
                 }
             });
 
             // Show register modal
-            document.getElementById('showRegister').addEventListener('click', function(e) {
+            showRegisterBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                if (!firebaseInitialized) {
-                    alert('System not properly configured. Please refresh the page or contact support.');
-                    return;
-                }
-                document.getElementById('registerModal').style.display = 'flex';
-            });
-
-            // Close modal buttons
-            document.querySelectorAll('.close-modal').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    document.getElementById('createLinkModal').style.display = 'none';
-                    document.getElementById('registerModal').style.display = 'none';
-                    document.getElementById('tokenActivationModal').style.display = 'none';
-                });
-            });
-
-            // Close token modal button
-            document.getElementById('closeTokenModal').addEventListener('click', function() {
-                document.getElementById('tokenActivationModal').style.display = 'none';
+                registerModal.style.display = 'flex';
             });
 
             // Register form
-            document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            registerForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
-                
-                if (!firebaseInitialized) {
-                    showRegisterError('System not properly configured. Please refresh the page or contact support.');
-                    return;
-                }
-
                 const name = document.getElementById('registerName').value;
                 const email = document.getElementById('registerEmail').value;
                 const password = document.getElementById('registerPassword').value;
                 const confirmPassword = document.getElementById('registerConfirmPassword').value;
                 
                 if (password !== confirmPassword) {
-                    showRegisterError('Passwords do not match');
-                    return;
-                }
-                
-                if (password.length < 6) {
-                    showRegisterError('Password must be at least 6 characters long');
+                    registerError.textContent = 'Passwords do not match';
+                    registerError.style.display = 'block';
                     return;
                 }
                 
                 try {
                     const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-                    
-                    // Update user profile with display name
-                    await userCredential.user.updateProfile({
-                        displayName: name
-                    });
                     
                     // Create user document in Firestore
                     await db.collection('users').doc(userCredential.user.uid).set({
@@ -1498,437 +1438,340 @@
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     
-                    showRegisterError('');
-                    document.getElementById('registerModal').style.display = 'none';
-                    document.getElementById('registerForm').reset();
+                    registerError.style.display = 'none';
+                    registerModal.style.display = 'none';
+                    registerForm.reset();
                     
-                    alert('Account created successfully! You are now logged in.');
+                    alert('Account created successfully!');
                 } catch (error) {
                     console.error('Registration error:', error);
-                    let errorMessage = 'Registration failed. ';
-                    
-                    switch (error.code) {
-                        case 'auth/email-already-in-use':
-                            errorMessage += 'This email is already registered.';
-                            break;
-                        case 'auth/invalid-email':
-                            errorMessage += 'Invalid email address.';
-                            break;
-                        case 'auth/operation-not-allowed':
-                            errorMessage += 'Registration is currently disabled.';
-                            break;
-                        case 'auth/weak-password':
-                            errorMessage += 'Password is too weak.';
-                            break;
-                        default:
-                            errorMessage += error.message;
-                    }
-                    
-                    showRegisterError(errorMessage);
+                    registerError.textContent = 'Registration failed: ' + error.message;
+                    registerError.style.display = 'block';
                 }
             });
 
-            // Menu navigation and other event listeners
-            setupMenuNavigation();
-            setupOtherEventListeners();
-        }
-
-        // Setup menu navigation
-        function setupMenuNavigation() {
-            const menuItems = document.querySelectorAll('.menu-item');
-            const logoutBtn = document.getElementById('logoutBtn');
-
+            // Menu navigation
             menuItems.forEach(item => {
                 item.addEventListener('click', function(e) {
                     e.preventDefault();
                     
                     if (this.id === 'logoutBtn') {
+                        // Logout
                         auth.signOut();
                         return;
                     }
                     
                     const page = this.getAttribute('data-page');
-                    navigateToPage(page);
+                    
+                    // Check token status for non-admin users
+                    if (!isAdmin && page !== 'settings' && platformSettings.enableTokenSystem) {
+                        if (!userTokens.some(token => token.status === 'active' && new Date(token.expiryDate) > new Date())) {
+                            tokenActivationModal.style.display = 'flex';
+                            return;
+                        }
+                    }
+                    
+                    // Update active menu item
+                    menuItems.forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Show selected page
+                    pageContents.forEach(content => {
+                        content.style.display = 'none';
+                    });
+                    
+                    document.getElementById(page + 'Page').style.display = 'block';
+                    document.getElementById('pageTitle').textContent = this.querySelector('.menu-text').textContent;
+                    
+                    // Load page-specific data
+                    if (page === 'links') {
+                        loadLinksData();
+                    } else if (page === 'analytics') {
+                        loadAnalyticsData();
+                    } else if (page === 'admin') {
+                        loadAdminData();
+                    }
                 });
             });
 
-            // Logout button
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    auth.signOut();
-                });
-            }
-        }
+            // Create link modal
+            createLinkBtn.addEventListener('click', function() {
+                if (!isAdmin && platformSettings.enableTokenSystem) {
+                    if (!userTokens.some(token => token.status === 'active' && new Date(token.expiryDate) > new Date())) {
+                        tokenActivationModal.style.display = 'flex';
+                        return;
+                    }
+                }
+                createLinkModal.style.display = 'flex';
+            });
+            
+            createLinkBtn2.addEventListener('click', function() {
+                if (!isAdmin && platformSettings.enableTokenSystem) {
+                    if (!userTokens.some(token => token.status === 'active' && new Date(token.expiryDate) > new Date())) {
+                        tokenActivationModal.style.display = 'flex';
+                        return;
+                    }
+                }
+                createLinkModal.style.display = 'flex';
+            });
 
-        // Setup other event listeners
-        function setupOtherEventListeners() {
-            // Create link modal buttons
-            const createLinkBtn = document.getElementById('createLinkBtn');
-            const createLinkBtn2 = document.getElementById('createLinkBtn2');
-            
-            if (createLinkBtn) {
-                createLinkBtn.addEventListener('click', function() {
-                    if (!isAdmin && platformSettings.enableTokenSystem) {
-                        if (!userTokens.some(token => token.status === 'active' && new Date(token.expiryDate) > new Date())) {
-                            document.getElementById('tokenActivationModal').style.display = 'flex';
-                            return;
-                        }
-                    }
-                    document.getElementById('createLinkModal').style.display = 'flex';
+            // Close modal
+            closeModalBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    createLinkModal.style.display = 'none';
+                    registerModal.style.display = 'none';
                 });
-            }
-            
-            if (createLinkBtn2) {
-                createLinkBtn2.addEventListener('click', function() {
-                    if (!isAdmin && platformSettings.enableTokenSystem) {
-                        if (!userTokens.some(token => token.status === 'active' && new Date(token.expiryDate) > new Date())) {
-                            document.getElementById('tokenActivationModal').style.display = 'flex';
-                            return;
-                        }
-                    }
-                    document.getElementById('createLinkModal').style.display = 'flex';
-                });
-            }
+            });
 
             // Create link form
-            const createLinkForm = document.getElementById('createLinkForm');
-            if (createLinkForm) {
-                createLinkForm.addEventListener('submit', async function(e) {
-                    e.preventDefault();
-                    const name = document.getElementById('linkName').value;
-                    const destinationUrl = document.getElementById('destinationUrl').value;
-                    const customSlug = document.getElementById('customSlug').value;
+            createLinkForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const name = document.getElementById('linkName').value;
+                const destinationUrl = document.getElementById('destinationUrl').value;
+                const customSlug = document.getElementById('customSlug').value;
+                
+                try {
+                    const slug = customSlug || generateRandomSlug();
+                    const shortUrl = `${window.location.origin}/r/${slug}`;
                     
-                    try {
-                        const slug = customSlug || generateRandomSlug();
-                        const shortUrl = `${window.location.origin}/r/${slug}`;
-                        
-                        const linkData = {
-                            name: name,
-                            destinationUrl: destinationUrl,
-                            shortUrl: shortUrl,
-                            slug: slug,
-                            userId: currentUser.uid,
-                            clicks: 0,
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                            status: 'active'
-                        };
-                        
-                        // Save to Firestore
-                        await db.collection('links').add(linkData);
-                        
-                        // Close modal and reset form
-                        document.getElementById('createLinkModal').style.display = 'none';
-                        this.reset();
-                        
-                        // Reload links data
-                        await loadUserData();
-                        if (document.getElementById('linksPage').style.display !== 'none') {
-                            loadLinksData();
-                        } else {
-                            loadDashboardData();
-                        }
-                        
-                        // Show success message
-                        alert('Link created successfully!');
-                    } catch (error) {
-                        console.error('Error creating link:', error);
-                        alert('Error creating link: ' + error.message);
+                    const linkData = {
+                        name: name,
+                        destinationUrl: destinationUrl,
+                        shortUrl: shortUrl,
+                        slug: slug,
+                        userId: currentUser.uid,
+                        clicks: 0,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        status: 'active'
+                    };
+                    
+                    // Save to Firestore
+                    await db.collection('links').add(linkData);
+                    
+                    // Close modal and reset form
+                    createLinkModal.style.display = 'none';
+                    this.reset();
+                    
+                    // Reload links data
+                    await loadUserData();
+                    if (document.getElementById('linksPage').style.display !== 'none') {
+                        loadLinksData();
+                    } else {
+                        loadDashboardData();
                     }
-                });
-            }
+                    
+                    // Show success message
+                    alert('Link created successfully!');
+                } catch (error) {
+                    console.error('Error creating link:', error);
+                    alert('Error creating link: ' + error.message);
+                }
+            });
 
             // Settings form
-            const settingsForm = document.getElementById('settingsForm');
-            if (settingsForm) {
-                settingsForm.addEventListener('submit', async function(e) {
-                    e.preventDefault();
-                    try {
-                        const userName = document.getElementById('userNameInput').value;
-                        const userEmail = document.getElementById('userEmailInput').value;
-                        const adsterraLink = document.getElementById('adsterraLink').value;
-                        
-                        await db.collection('users').doc(currentUser.uid).update({
-                            name: userName,
-                            adsterraLink: adsterraLink
-                        });
-                        
-                        // Update user profile
-                        await currentUser.updateProfile({
-                            displayName: userName
-                        });
-                        
-                        // Update UI
-                        updateUserUI();
-                        
-                        alert('Settings saved successfully!');
-                    } catch (error) {
-                        console.error('Error saving settings:', error);
-                        alert('Error saving settings: ' + error.message);
-                    }
-                });
-            }
-
-            // Token activation form
-            const tokenActivationForm = document.getElementById('tokenActivationForm');
-            if (tokenActivationForm) {
-                tokenActivationForm.addEventListener('submit', async function(e) {
-                    e.preventDefault();
-                    const token = document.getElementById('activationToken').value;
+            settingsForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const name = document.getElementById('userNameInput').value;
+                const adsterraLink = document.getElementById('adsterraLink').value;
+                
+                try {
+                    await db.collection('users').doc(currentUser.uid).update({
+                        name: name,
+                        adsterraLink: adsterraLink
+                    });
                     
-                    try {
-                        // Find the token in the database
-                        const tokensSnapshot = await db.collection('tokens').where('token', '==', token).get();
-                        
-                        if (tokensSnapshot.empty) {
-                            alert('Invalid token. Please check and try again.');
-                            return;
-                        }
-                        
-                        const tokenDoc = tokensSnapshot.docs[0];
-                        const tokenData = tokenDoc.data();
-                        
-                        // Check if token is already used
-                        if (tokenData.used) {
-                            alert('This token has already been used.');
-                            return;
-                        }
-                        
-                        // Check if token is expired
-                        if (new Date() > tokenData.expiryDate.toDate()) {
-                            alert('This token has expired.');
-                            return;
-                        }
-                        
-                        // Activate the token for the user
-                        const expiryDate = new Date();
-                        expiryDate.setDate(expiryDate.getDate() + 30); // 30 days from now
-                        
-                        await db.collection('users').doc(currentUser.uid).update({
-                            tokenActivation: {
-                                active: true,
-                                tokenId: tokenDoc.id,
-                                activationDate: new Date(),
-                                expiryDate: expiryDate
-                            }
-                        });
-                        
-                        // Mark token as used
-                        await db.collection('tokens').doc(tokenDoc.id).update({
-                            used: true,
-                            usedBy: currentUser.uid,
-                            usedAt: new Date()
-                        });
-                        
-                        // Reload user data
-                        await loadUserData();
-                        await checkTokenStatus();
-                        
-                        document.getElementById('activationToken').value = '';
-                        alert('Token activated successfully! Your account is now active for 30 days.');
-                    } catch (error) {
-                        console.error('Error activating token:', error);
-                        alert('Error activating token: ' + error.message);
-                    }
-                });
-            }
+                    alert('Settings saved successfully!');
+                } catch (error) {
+                    console.error('Error saving settings:', error);
+                    alert('Error saving settings: ' + error.message);
+                }
+            });
 
             // Admin settings form
-            const adminSettingsForm = document.getElementById('adminSettingsForm');
-            if (adminSettingsForm) {
-                adminSettingsForm.addEventListener('submit', async function(e) {
-                    e.preventDefault();
-                    try {
-                        const adminAdsterraLink = document.getElementById('adminAdsterraLink').value;
-                        const enableSubscriptions = document.getElementById('enableSubscriptionsToggle').checked;
-                        const enableTokenSystem = document.getElementById('enableTokenSystemToggle').checked;
-                        const tokenPurchaseLink = document.getElementById('tokenPurchaseLink').value;
-                        const subscriptionPopupText = document.getElementById('subscriptionPopupText').value;
-                        const subscriptionButtonText = document.getElementById('subscriptionButtonText').value;
-                        const subscriptionButtonLink = document.getElementById('subscriptionButtonLink').value;
-                        
-                        await db.collection('platformSettings').doc('settings').update({
-                            adminAdsterraLink: adminAdsterraLink,
-                            subscriptionEnabled: enableSubscriptions,
-                            enableTokenSystem: enableTokenSystem,
-                            tokenPurchaseLink: tokenPurchaseLink,
-                            subscriptionPopupText: subscriptionPopupText,
-                            subscriptionButtonText: subscriptionButtonText,
-                            subscriptionButtonLink: subscriptionButtonLink
-                        });
-                        
-                        // Reload platform settings
-                        await loadPlatformSettings();
-                        
-                        alert('Admin settings saved successfully!');
-                    } catch (error) {
-                        console.error('Error saving admin settings:', error);
-                        alert('Error saving admin settings: ' + error.message);
+            adminSettingsForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const adminAdsterraLink = document.getElementById('adminAdsterraLink').value;
+                const subscriptionPopupText = document.getElementById('subscriptionPopupText').value;
+                const subscriptionButtonText = document.getElementById('subscriptionButtonText').value;
+                const subscriptionButtonLink = document.getElementById('subscriptionButtonLink').value;
+                const tokenPurchaseLink = document.getElementById('tokenPurchaseLink').value;
+                
+                try {
+                    await db.collection('platformSettings').doc('settings').update({
+                        adminAdsterraLink: adminAdsterraLink,
+                        subscriptionPopupText: subscriptionPopupText,
+                        subscriptionButtonText: subscriptionButtonText,
+                        subscriptionButtonLink: subscriptionButtonLink,
+                        tokenPurchaseLink: tokenPurchaseLink
+                    });
+                    
+                    alert('Admin settings saved successfully!');
+                } catch (error) {
+                    console.error('Error saving admin settings:', error);
+                    alert('Error saving admin settings: ' + error.message);
+                }
+            });
+
+            // Enable subscriptions toggle
+            enableSubscriptionsToggle.addEventListener('change', async function() {
+                try {
+                    await db.collection('platformSettings').doc('settings').update({
+                        subscriptionEnabled: this.checked
+                    });
+                    
+                    if (this.checked) {
+                        alert('Monthly subscriptions enabled for all users.');
+                    } else {
+                        alert('Monthly subscriptions disabled.');
                     }
-                });
-            }
+                } catch (error) {
+                    console.error('Error updating subscription settings:', error);
+                }
+            });
+
+            // Enable token system toggle
+            enableTokenSystemToggle.addEventListener('change', async function() {
+                try {
+                    await db.collection('platformSettings').doc('settings').update({
+                        enableTokenSystem: this.checked
+                    });
+                    
+                    if (this.checked) {
+                        alert('Token activation system enabled for all users.');
+                    } else {
+                        alert('Token activation system disabled.');
+                    }
+                } catch (error) {
+                    console.error('Error updating token system settings:', error);
+                }
+            });
+
+            // Enable subscriptions button
+            enableSubscriptionBtn.addEventListener('click', function() {
+                enableSubscriptionsToggle.checked = true;
+                enableSubscriptionsToggle.dispatchEvent(new Event('change'));
+            });
+
+            // Upgrade subscription
+            upgradeSubscriptionBtn.addEventListener('click', function() {
+                alert('Redirecting to payment portal...');
+                // In a real app, this would redirect to a payment page
+            });
+
+            // Token activation form
+            tokenActivationForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const token = document.getElementById('activationToken').value;
+                
+                try {
+                    // Check if token exists and is valid
+                    const tokenSnapshot = await db.collection('tokens')
+                        .where('token', '==', token)
+                        .where('status', '==', 'valid')
+                        .limit(1)
+                        .get();
+                    
+                    if (tokenSnapshot.empty) {
+                        alert('Invalid or already used token. Please check your token and try again.');
+                        return;
+                    }
+                    
+                    const tokenDoc = tokenSnapshot.docs[0];
+                    const tokenData = tokenDoc.data();
+                    
+                    // Calculate expiry date (30 days from now)
+                    const activationDate = new Date();
+                    const expiryDate = new Date(activationDate);
+                    expiryDate.setDate(expiryDate.getDate() + 30);
+                    
+                    // Update token status
+                    await db.collection('tokens').doc(tokenDoc.id).update({
+                        status: 'used',
+                        usedBy: currentUser.uid,
+                        usedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    // Update user token activation
+                    await db.collection('users').doc(currentUser.uid).update({
+                        tokenActivation: {
+                            active: true,
+                            tokenId: tokenDoc.id,
+                            activationDate: activationDate,
+                            expiryDate: expiryDate
+                        }
+                    });
+                    
+                    // Reload user data
+                    await loadUserData();
+                    await checkTokenStatus();
+                    
+                    // Reset form
+                    this.reset();
+                    
+                    alert('Token activated successfully! Your account is now active for 30 days.');
+                } catch (error) {
+                    console.error('Error activating token:', error);
+                    alert('Error activating token: ' + error.message);
+                }
+            });
+
+            // Buy token button
+            buyTokenBtn.addEventListener('click', function() {
+                const purchaseLink = platformSettings.tokenPurchaseLink;
+                if (purchaseLink) {
+                    window.open(purchaseLink, '_blank');
+                } else {
+                    alert('Token purchase link not set. Please contact administrator.');
+                }
+            });
 
             // Generate tokens button
-            const generateTokensBtn = document.getElementById('generateTokensBtn');
-            if (generateTokensBtn) {
-                generateTokensBtn.addEventListener('click', async function() {
-                    const tokenCount = parseInt(document.getElementById('tokenCount').value);
-                    const expiryDays = parseInt(document.getElementById('tokenExpiryDays').value);
-                    
-                    try {
-                        for (let i = 0; i < tokenCount; i++) {
-                            const token = generateRandomToken();
-                            const expiryDate = new Date();
-                            expiryDate.setDate(expiryDate.getDate() + expiryDays);
-                            
-                            await db.collection('tokens').add({
-                                token: token,
-                                used: false,
-                                usedBy: null,
-                                usedAt: null,
-                                expiryDate: expiryDate,
-                                createdAt: new Date()
-                            });
-                        }
-                        
-                        // Reload tokens
-                        await loadAllTokens();
-                        
-                        alert(`${tokenCount} tokens generated successfully!`);
-                    } catch (error) {
-                        console.error('Error generating tokens:', error);
-                        alert('Error generating tokens: ' + error.message);
-                    }
-                });
-            }
-
-            // Initialize redirect page if we're on that page
-            if (window.location.pathname.includes('/r/')) {
-                document.getElementById('loginPage').style.display = 'none';
-                document.getElementById('dashboard').style.display = 'none';
-                document.getElementById('redirectPage').style.display = 'flex';
-                initializeRedirectPage();
-            }
-        }
-
-        // Handle user login
-        async function handleUserLogin(user) {
-            try {
-                // Check if user is admin
-                isAdmin = user.uid === ADMIN_UID;
+            generateTokensBtn.addEventListener('click', async function() {
+                const tokenCount = parseInt(document.getElementById('tokenCount').value);
+                const expiryDays = parseInt(document.getElementById('tokenExpiryDays').value);
                 
-                // Show dashboard
-                document.getElementById('loginPage').style.display = 'none';
-                document.getElementById('dashboard').style.display = 'block';
-                document.getElementById('redirectPage').style.display = 'none';
-                
-                // Update UI based on user
-                updateUserUI();
-                
-                // Load user data and platform settings
-                await loadUserData();
-                await loadPlatformSettings();
-                await loadDashboardData();
-                
-                // Load all users and tokens if admin
-                if (isAdmin) {
-                    await loadAllUsers();
-                    await loadAllTokens();
-                }
-                
-                // Check token status for regular users
-                if (!isAdmin) {
-                    await checkTokenStatus();
-                }
-            } catch (error) {
-                console.error('Error during login process:', error);
-                showLoginError('Error loading user data. Please try again.');
-                await auth.signOut(); // Sign out if there's an error
-            }
-        }
-
-        // Handle user logout
-        function handleUserLogout() {
-            // Show login page
-            document.getElementById('loginPage').style.display = 'flex';
-            document.getElementById('dashboard').style.display = 'none';
-            document.getElementById('redirectPage').style.display = 'none';
-            
-            // Clear form fields
-            document.getElementById('loginForm').reset();
-            document.getElementById('loginError').style.display = 'none';
-            
-            // Reset user data
-            currentUser = null;
-            isAdmin = false;
-            userLinks = [];
-        }
-
-        // Show login error
-        function showLoginError(message) {
-            const loginError = document.getElementById('loginError');
-            if (message) {
-                loginError.textContent = message;
-                loginError.style.display = 'block';
-            } else {
-                loginError.style.display = 'none';
-            }
-        }
-
-        // Show register error
-        function showRegisterError(message) {
-            const registerError = document.getElementById('registerError');
-            if (message) {
-                registerError.textContent = message;
-                registerError.style.display = 'block';
-            } else {
-                registerError.style.display = 'none';
-            }
-        }
-
-        // Navigation function
-        function navigateToPage(page) {
-            // Check token status for non-admin users
-            if (!isAdmin && page !== 'settings' && platformSettings.enableTokenSystem) {
-                if (!userTokens.some(token => token.status === 'active' && new Date(token.expiryDate) > new Date())) {
-                    document.getElementById('tokenActivationModal').style.display = 'flex';
+                if (tokenCount < 1 || tokenCount > 1000) {
+                    alert('Please enter a valid number of tokens (1-1000)');
                     return;
                 }
-            }
-            
-            // Update active menu item
-            document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
-            document.querySelector(`.menu-item[data-page="${page}"]`).classList.add('active');
-            
-            // Show selected page
-            document.querySelectorAll('.page-content').forEach(content => {
-                content.style.display = 'none';
+                
+                try {
+                    await generateTokens(tokenCount, expiryDays);
+                    alert(`Successfully generated ${tokenCount} tokens!`);
+                    await loadAllTokens();
+                } catch (error) {
+                    console.error('Error generating tokens:', error);
+                    alert('Error generating tokens: ' + error.message);
+                }
             });
-            
-            document.getElementById(page + 'Page').style.display = 'block';
-            document.getElementById('pageTitle').textContent = document.querySelector(`.menu-item[data-page="${page}"] .menu-text`).textContent;
-            
-            // Load page-specific data
-            if (page === 'links') {
-                loadLinksData();
-            } else if (page === 'analytics') {
-                loadAnalyticsData();
-            } else if (page === 'admin') {
-                loadAdminData();
-            }
-        }
 
-        // Update user UI
+            // Download tokens button
+            downloadTokensBtn.addEventListener('click', async function() {
+                await downloadTokens();
+            });
+
+            // Token activation modal
+            purchaseTokenBtn.addEventListener('click', function() {
+                const purchaseLink = platformSettings.tokenPurchaseLink;
+                if (purchaseLink) {
+                    window.open(purchaseLink, '_blank');
+                } else {
+                    alert('Token purchase link not set. Please contact administrator.');
+                }
+            });
+
+            closeTokenModal.addEventListener('click', function() {
+                tokenActivationModal.style.display = 'none';
+            });
+        });
+
+        // Functions
         function updateUserUI() {
-            if (!currentUser) return;
-            
             // Update user info
             document.getElementById('userInitials').textContent = getInitials(currentUser.displayName || currentUser.email);
             document.getElementById('userName').textContent = currentUser.displayName || currentUser.email.split('@')[0];
             
             // Show/hide admin menu item
-            const adminMenuItem = document.getElementById('adminMenuItem');
             if (isAdmin) {
                 adminMenuItem.style.display = 'flex';
             } else {
@@ -1936,18 +1779,15 @@
             }
         }
 
-        // Load user data
         async function loadUserData() {
             try {
                 // Load user profile
                 const userDoc = await db.collection('users').doc(currentUser.uid).get();
                 if (userDoc.exists) {
                     const userData = userDoc.data();
-                    if (document.getElementById('userNameInput')) {
-                        document.getElementById('userNameInput').value = userData.name || '';
-                        document.getElementById('userEmailInput').value = currentUser.email;
-                        document.getElementById('adsterraLink').value = userData.adsterraLink || '';
-                    }
+                    document.getElementById('userNameInput').value = userData.name || '';
+                    document.getElementById('userEmailInput').value = currentUser.email;
+                    document.getElementById('adsterraLink').value = userData.adsterraLink || '';
                     
                     // Update subscription info
                     if (userData.subscription && userData.subscription.plan !== 'free') {
@@ -1988,26 +1828,24 @@
                 });
             } catch (error) {
                 console.error('Error loading user data:', error);
-                throw error;
             }
         }
 
-        // Load platform settings
         async function loadPlatformSettings() {
             try {
                 const settingsDoc = await db.collection('platformSettings').doc('settings').get();
                 if (settingsDoc.exists) {
                     platformSettings = settingsDoc.data();
                     
-                    // Update admin settings form if it exists
-                    if (document.getElementById('adminAdsterraLink')) {
+                    // Update admin form if admin
+                    if (isAdmin) {
                         document.getElementById('adminAdsterraLink').value = platformSettings.adminAdsterraLink || '';
                         document.getElementById('enableSubscriptionsToggle').checked = platformSettings.subscriptionEnabled || false;
                         document.getElementById('enableTokenSystemToggle').checked = platformSettings.enableTokenSystem || false;
-                        document.getElementById('tokenPurchaseLink').value = platformSettings.tokenPurchaseLink || '';
                         document.getElementById('subscriptionPopupText').value = platformSettings.subscriptionPopupText || '';
                         document.getElementById('subscriptionButtonText').value = platformSettings.subscriptionButtonText || '';
                         document.getElementById('subscriptionButtonLink').value = platformSettings.subscriptionButtonLink || '';
+                        document.getElementById('tokenPurchaseLink').value = platformSettings.tokenPurchaseLink || '';
                     }
                 } else {
                     // Create default settings if they don't exist
@@ -2032,11 +1870,44 @@
                 }
             } catch (error) {
                 console.error('Error loading platform settings:', error);
-                throw error;
             }
         }
 
-        // Load dashboard data
+        async function loadAllUsers() {
+            try {
+                const usersSnapshot = await db.collection('users').get();
+                allUsers = [];
+                usersSnapshot.forEach(doc => {
+                    allUsers.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        async function loadAllTokens() {
+            try {
+                const tokensSnapshot = await db.collection('tokens').orderBy('createdAt', 'desc').get();
+                allTokens = [];
+                tokensSnapshot.forEach(doc => {
+                    allTokens.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                
+                // Load tokens table if on admin page
+                if (document.getElementById('adminPage').style.display !== 'none') {
+                    loadTokensTable();
+                }
+            } catch (error) {
+                console.error('Error loading tokens:', error);
+            }
+        }
+
         function loadDashboardData() {
             // Update stats
             const totalClicks = userLinks.reduce((sum, link) => sum + (link.clicks || 0), 0);
@@ -2053,32 +1924,27 @@
             
             // Load recent links
             const recentLinksTable = document.getElementById('recentLinksTable');
-            if (recentLinksTable) {
-                recentLinksTable.innerHTML = '';
-                
-                userLinks.slice(0, 5).forEach(link => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${link.name}</td>
-                        <td>${truncateUrl(link.destinationUrl)}</td>
-                        <td>${link.clicks || 0}</td>
-                        <td><span class="badge ${link.status === 'active' ? 'badge-success' : 'badge-warning'}">${link.status}</span></td>
-                        <td>
-                            <button class="action-btn" title="Copy URL" onclick="copyToClipboard('${link.shortUrl}')"><i class="fas fa-copy"></i></button>
-                            <button class="action-btn" title="Edit" onclick="editLink('${link.id}')"><i class="fas fa-edit"></i></button>
-                            <button class="action-btn" title="${link.status === 'active' ? 'Pause' : 'Activate'}" onclick="toggleLinkStatus('${link.id}', '${link.status}')"><i class="fas ${link.status === 'active' ? 'fa-pause' : 'fa-play'}"></i></button>
-                        </td>
-                    `;
-                    recentLinksTable.appendChild(row);
-                });
-            }
+            recentLinksTable.innerHTML = '';
+            
+            userLinks.slice(0, 5).forEach(link => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${link.name}</td>
+                    <td>${truncateUrl(link.destinationUrl)}</td>
+                    <td>${link.clicks || 0}</td>
+                    <td><span class="badge ${link.status === 'active' ? 'badge-success' : 'badge-warning'}">${link.status}</span></td>
+                    <td>
+                        <button class="action-btn" title="Copy URL" onclick="copyToClipboard('${link.shortUrl}')"><i class="fas fa-copy"></i></button>
+                        <button class="action-btn" title="Edit" onclick="editLink('${link.id}')"><i class="fas fa-edit"></i></button>
+                        <button class="action-btn" title="${link.status === 'active' ? 'Pause' : 'Activate'}" onclick="toggleLinkStatus('${link.id}', '${link.status}')"><i class="fas ${link.status === 'active' ? 'fa-pause' : 'fa-play'}"></i></button>
+                    </td>
+                `;
+                recentLinksTable.appendChild(row);
+            });
         }
 
-        // Load links data
         function loadLinksData() {
             const linksTable = document.getElementById('linksTable');
-            if (!linksTable) return;
-            
             linksTable.innerHTML = '';
             
             userLinks.forEach(link => {
@@ -2100,191 +1966,152 @@
             });
         }
 
-        // Load analytics data
         function loadAnalyticsData() {
-            // Update top links table
+            // In a real app, this would load actual analytics data from Firestore
             const topLinksTable = document.getElementById('topLinksTable');
-            if (topLinksTable) {
-                topLinksTable.innerHTML = '';
-                
-                // Sort links by clicks (descending)
-                const sortedLinks = [...userLinks].sort((a, b) => (b.clicks || 0) - (a.clicks || 0));
-                
-                sortedLinks.slice(0, 5).forEach(link => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${link.name}</td>
-                        <td>${link.clicks || 0}</td>
-                        <td>${((link.clicks || 0) / Math.max(...userLinks.map(l => l.clicks || 1)) * 100).toFixed(1)}%</td>
-                    `;
-                    topLinksTable.appendChild(row);
-                });
-            }
-        }
-
-        // Load admin data
-        function loadAdminData() {
-            loadUsersTable();
-            loadTokensTable();
-        }
-
-        // Load users table
-        function loadUsersTable() {
-            const usersTable = document.getElementById('usersTable');
-            if (!usersTable) return;
+            topLinksTable.innerHTML = '';
             
+            // Sort links by clicks (descending) and take top 5
+            const topLinks = [...userLinks].sort((a, b) => (b.clicks || 0) - (a.clicks || 0)).slice(0, 5);
+            
+            topLinks.forEach(link => {
+                const row = document.createElement('tr');
+                const conversionRate = ((link.clicks / 1000) * 100).toFixed(1); // Fake conversion rate
+                
+                row.innerHTML = `
+                    <td>${link.name}</td>
+                    <td>${link.clicks || 0}</td>
+                    <td>${conversionRate}%</td>
+                `;
+                topLinksTable.appendChild(row);
+            });
+        }
+
+        function loadAdminData() {
+            const usersTable = document.getElementById('usersTable');
             usersTable.innerHTML = '';
             
             allUsers.forEach(user => {
                 const row = document.createElement('tr');
+                const tokenStatus = user.tokenActivation && user.tokenActivation.active ? 
+                    (new Date(user.tokenActivation.expiryDate) > new Date() ? 'Active' : 'Expired') : 'No Token';
+                
                 row.innerHTML = `
-                    <td>${user.name || 'N/A'}</td>
+                    <td>${user.name}</td>
                     <td>${user.email}</td>
                     <td>${user.subscription?.plan || 'free'}</td>
-                    <td><span class="badge ${user.subscription?.status === 'active' ? 'badge-success' : 'badge-warning'}">${user.subscription?.status || 'inactive'}</span></td>
-                    <td><span class="badge ${user.tokenActivation?.active ? 'badge-success' : 'badge-danger'}">${user.tokenActivation?.active ? 'Active' : 'Inactive'}</span></td>
+                    <td><span class="badge ${user.status === 'active' ? 'badge-success' : 'badge-danger'}">${user.status || 'active'}</span></td>
+                    <td><span class="badge ${tokenStatus === 'Active' ? 'badge-success' : tokenStatus === 'Expired' ? 'badge-warning' : 'badge-danger'}">${tokenStatus}</span></td>
                     <td>
-                        <button class="action-btn" title="Edit User" onclick="editUser('${user.id}')"><i class="fas fa-edit"></i></button>
-                        <button class="action-btn" title="Delete User" onclick="deleteUser('${user.id}')"><i class="fas fa-trash"></i></button>
+                        <button class="action-btn" title="View Details" onclick="viewUserDetails('${user.id}')"><i class="fas fa-eye"></i></button>
+                        <button class="action-btn" title="${user.status === 'active' ? 'Suspend' : 'Activate'}" onclick="toggleUserStatus('${user.id}', '${user.status}')"><i class="fas ${user.status === 'active' ? 'fa-ban' : 'fa-check'}"></i></button>
+                        <button class="action-btn" title="Delete" onclick="deleteUser('${user.id}')"><i class="fas fa-trash"></i></button>
                     </td>
                 `;
                 usersTable.appendChild(row);
             });
+            
+            // Load tokens table
+            loadTokensTable();
         }
 
-        // Load tokens table
         function loadTokensTable() {
             const tokensTable = document.getElementById('tokensTable');
-            if (!tokensTable) return;
-            
             tokensTable.innerHTML = '';
             
             allTokens.forEach(token => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${token.token}</td>
-                    <td><span class="badge ${token.used ? 'badge-warning' : 'badge-success'}">${token.used ? 'Used' : 'Available'}</span></td>
+                    <td><span class="badge ${token.status === 'valid' ? 'badge-success' : 'badge-danger'}">${token.status}</span></td>
                     <td>${formatDate(token.createdAt)}</td>
                     <td>${token.usedBy || 'N/A'}</td>
-                    <td>${formatDate(token.expiryDate)}</td>
+                    <td>${token.expiryDate ? formatDate(token.expiryDate) : 'N/A'}</td>
                     <td>
-                        <button class="action-btn" title="Delete Token" onclick="deleteToken('${token.id}')"><i class="fas fa-trash"></i></button>
+                        <button class="action-btn" title="Delete" onclick="deleteToken('${token.id}')"><i class="fas fa-trash"></i></button>
                     </td>
                 `;
                 tokensTable.appendChild(row);
             });
         }
 
-        // Load all users (admin only)
-        async function loadAllUsers() {
-            try {
-                const usersSnapshot = await db.collection('users').get();
-                allUsers = [];
-                usersSnapshot.forEach(doc => {
-                    allUsers.push({
-                        id: doc.id,
-                        ...doc.data()
-                    });
-                });
-            } catch (error) {
-                console.error('Error loading all users:', error);
-            }
-        }
-
-        // Load all tokens (admin only)
-        async function loadAllTokens() {
-            try {
-                const tokensSnapshot = await db.collection('tokens').get();
-                allTokens = [];
-                tokensSnapshot.forEach(doc => {
-                    allTokens.push({
-                        id: doc.id,
-                        ...doc.data()
-                    });
-                });
-            } catch (error) {
-                console.error('Error loading all tokens:', error);
-            }
-        }
-
-        // Check token status
         async function checkTokenStatus() {
-            try {
-                const userDoc = await db.collection('users').doc(currentUser.uid).get();
-                if (userDoc.exists) {
-                    const userData = userDoc.data();
-                    
-                    if (userData.tokenActivation && userData.tokenActivation.active) {
-                        const expiryDate = userData.tokenActivation.expiryDate.toDate();
-                        const now = new Date();
-                        
-                        if (now > expiryDate) {
-                            // Token expired
-                            await db.collection('users').doc(currentUser.uid).update({
-                                'tokenActivation.active': false
-                            });
-                            
-                            showTokenStatus('expired');
-                        } else {
-                            // Token active
-                            showTokenStatus('active', expiryDate);
-                        }
-                    } else {
-                        // No active token
-                        showTokenStatus('inactive');
-                    }
-                }
-            } catch (error) {
-                console.error('Error checking token status:', error);
-            }
-        }
-
-        // Show token status
-        function showTokenStatus(status, expiryDate = null) {
-            const tokenStatusText = document.getElementById('tokenStatusText');
-            const tokenExpiryDate = document.getElementById('tokenExpiryDate');
-            const tokenBadge = document.getElementById('tokenBadge');
+            if (isAdmin) return;
             
-            if (status === 'active') {
-                tokenStatusText.textContent = 'Token Active';
-                tokenExpiryDate.textContent = `Token expiry: ${formatDate(expiryDate)}`;
-                tokenBadge.textContent = 'Active';
-                tokenBadge.className = 'badge badge-success';
+            const hasValidToken = userTokens.some(token => 
+                token.status === 'active' && new Date(token.expiryDate) > new Date()
+            );
+            
+            const tokenStatusElements = document.querySelectorAll('.token-status');
+            tokenStatusElements.forEach(el => {
+                el.style.display = hasValidToken ? 'none' : 'block';
+            });
+            
+            // Update token info in settings
+            if (userTokens.length > 0) {
+                const token = userTokens[0];
+                const isActive = token.status === 'active' && new Date(token.expiryDate) > new Date();
                 
-                // Hide token status warnings
-                document.querySelectorAll('.token-status').forEach(el => {
-                    el.style.display = 'none';
-                });
-            } else if (status === 'expired') {
-                tokenStatusText.textContent = 'Token Expired';
-                tokenExpiryDate.textContent = 'Token expiry: Expired';
-                tokenBadge.textContent = 'Expired';
-                tokenBadge.className = 'badge badge-danger';
-                
-                // Show token status warnings
-                document.querySelectorAll('.token-status').forEach(el => {
-                    el.style.display = 'block';
-                });
+                document.getElementById('tokenStatusText').textContent = isActive ? 'Token Active' : 'Token Expired';
+                document.getElementById('tokenExpiryDate').textContent = `Token expiry: ${formatDate(token.expiryDate)}`;
+                document.getElementById('tokenBadge').textContent = isActive ? 'Active' : 'Expired';
+                document.getElementById('tokenBadge').className = isActive ? 'badge badge-success' : 'badge badge-danger';
             } else {
-                tokenStatusText.textContent = 'No Active Token';
-                tokenExpiryDate.textContent = 'Token expiry: N/A';
-                tokenBadge.textContent = 'Inactive';
-                tokenBadge.className = 'badge badge-danger';
-                
-                // Show token status warnings if token system is enabled
-                if (platformSettings.enableTokenSystem) {
-                    document.querySelectorAll('.token-status').forEach(el => {
-                        el.style.display = 'block';
-                    });
-                }
+                document.getElementById('tokenStatusText').textContent = 'No Active Token';
+                document.getElementById('tokenExpiryDate').textContent = 'Token expiry: N/A';
+                document.getElementById('tokenBadge').textContent = 'Inactive';
+                document.getElementById('tokenBadge').className = 'badge badge-danger';
             }
         }
 
-        // Start subscription timer
-        function startSubscriptionTimer(expiryDate) {
-            // This would be a countdown timer implementation
-            // For now, we'll just display a static message
-            document.getElementById('renewalTimer').textContent = '15 days, 3 hours, 42 minutes';
+        async function generateTokens(count, expiryDays) {
+            const tokens = [];
+            
+            for (let i = 0; i < count; i++) {
+                const token = generateRandomToken();
+                const expiryDate = new Date();
+                expiryDate.setDate(expiryDate.getDate() + expiryDays);
+                
+                tokens.push({
+                    token: token,
+                    status: 'valid',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    expiryDate: expiryDate
+                });
+            }
+            
+            // Batch write to Firestore
+            const batch = db.batch();
+            tokens.forEach(token => {
+                const ref = db.collection('tokens').doc();
+                batch.set(ref, token);
+            });
+            
+            await batch.commit();
+        }
+
+        async function downloadTokens() {
+            const validTokens = allTokens.filter(token => token.status === 'valid');
+            
+            if (validTokens.length === 0) {
+                alert('No valid tokens to download.');
+                return;
+            }
+            
+            let csvContent = "Token,Expiry Date\n";
+            validTokens.forEach(token => {
+                csvContent += `${token.token},${formatDate(token.expiryDate)}\n`;
+            });
+            
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `tokens_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         }
 
         // Utility Functions
@@ -2297,7 +2124,12 @@
         }
 
         function generateRandomToken() {
-            return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let token = '';
+            for (let i = 0; i < 12; i++) {
+                token += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return token;
         }
 
         function truncateUrl(url, maxLength = 40) {
@@ -2316,41 +2148,104 @@
             });
         }
 
-        // Placeholder functions for action buttons
-        function editLink(linkId) {
-            alert('Edit link functionality would go here for link: ' + linkId);
+        function startSubscriptionTimer(expiryDate) {
+            // This would calculate the time until subscription expiry
+            // For demo purposes, we'll just show a static message
+            document.getElementById('renewalTimer').textContent = '15 days, 3 hours, 42 minutes';
         }
 
-        function toggleLinkStatus(linkId, currentStatus) {
-            if (confirm(`Are you sure you want to ${currentStatus === 'active' ? 'pause' : 'activate'} this link?`)) {
-                alert('Toggle link status functionality would go here for link: ' + linkId);
+        // Link Management Functions
+        async function toggleLinkStatus(linkId, currentStatus) {
+            try {
+                const newStatus = currentStatus === 'active' ? 'paused' : 'active';
+                await db.collection('links').doc(linkId).update({
+                    status: newStatus
+                });
+                
+                // Update local data
+                const linkIndex = userLinks.findIndex(link => link.id === linkId);
+                if (linkIndex !== -1) {
+                    userLinks[linkIndex].status = newStatus;
+                }
+                
+                // Reload data
+                if (document.getElementById('linksPage').style.display !== 'none') {
+                    loadLinksData();
+                } else {
+                    loadDashboardData();
+                }
+                
+                alert(`Link ${newStatus === 'active' ? 'activated' : 'paused'} successfully!`);
+            } catch (error) {
+                console.error('Error updating link status:', error);
+                alert('Error updating link status: ' + error.message);
             }
         }
 
-        function deleteLink(linkId) {
+        async function deleteLink(linkId) {
             if (confirm('Are you sure you want to delete this link?')) {
-                alert('Delete link functionality would go here for link: ' + linkId);
+                try {
+                    await db.collection('links').doc(linkId).delete();
+                    
+                    // Update local data
+                    userLinks = userLinks.filter(link => link.id !== linkId);
+                    
+                    // Reload data
+                    if (document.getElementById('linksPage').style.display !== 'none') {
+                        loadLinksData();
+                    } else {
+                        loadDashboardData();
+                    }
+                    
+                    alert('Link deleted successfully!');
+                } catch (error) {
+                    console.error('Error deleting link:', error);
+                    alert('Error deleting link: ' + error.message);
+                }
             }
         }
 
-        function editUser(userId) {
-            alert('Edit user functionality would go here for user: ' + userId);
-        }
-
-        function deleteUser(userId) {
-            if (confirm('Are you sure you want to delete this user?')) {
-                alert('Delete user functionality would go here for user: ' + userId);
+        // Admin Functions
+        async function toggleUserStatus(userId, currentStatus) {
+            try {
+                const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
+                await db.collection('users').doc(userId).update({
+                    status: newStatus
+                });
+                
+                // Update local data
+                const userIndex = allUsers.findIndex(user => user.id === userId);
+                if (userIndex !== -1) {
+                    allUsers[userIndex].status = newStatus;
+                }
+                
+                // Reload admin data
+                loadAdminData();
+                
+                alert(`User ${newStatus === 'active' ? 'activated' : 'suspended'} successfully!`);
+            } catch (error) {
+                console.error('Error updating user status:', error);
+                alert('Error updating user status: ' + error.message);
             }
         }
 
-        function deleteToken(tokenId) {
+        async function deleteToken(tokenId) {
             if (confirm('Are you sure you want to delete this token?')) {
-                alert('Delete token functionality would go here for token: ' + tokenId);
+                try {
+                    await db.collection('tokens').doc(tokenId).delete();
+                    await loadAllTokens();
+                    alert('Token deleted successfully!');
+                } catch (error) {
+                    console.error('Error deleting token:', error);
+                    alert('Error deleting token: ' + error.message);
+                }
             }
         }
 
         // Redirect Page Logic
         function initializeRedirectPage() {
+            // This would be called when someone visits a redirect link
+            // For now, we'll simulate it
             let countdown = 5;
             const timerElement = document.querySelector('.timer');
             const buttonsContainer = document.getElementById('buttonsContainer');
@@ -2358,33 +2253,57 @@
             
             const timerInterval = setInterval(() => {
                 countdown--;
-                if (timerElement) timerElement.textContent = countdown;
+                timerElement.textContent = countdown;
                 
                 if (countdown <= 0) {
                     clearInterval(timerInterval);
-                    if (timerElement) timerElement.style.display = 'none';
-                    if (loader) loader.style.display = 'none';
-                    if (buttonsContainer) buttonsContainer.style.display = 'flex';
-                    const timerLabel = document.querySelector('.timer-label');
-                    if (timerLabel) timerLabel.textContent = 'Ready to Access';
+                    timerElement.style.display = 'none';
+                    loader.style.display = 'none';
+                    buttonsContainer.style.display = 'flex';
+                    document.querySelector('.timer-label').textContent = 'Ready to Access';
                 }
             }, 1000);
             
-            // Add event listeners to buttons
-            const accessBtn1 = document.getElementById('accessBtn1');
-            const accessBtn2 = document.getElementById('accessBtn2');
+            // Button click tracking and redirect logic
+            let clickCount = 0;
+            const adminAdsterraLink = platformSettings.adminAdsterraLink || PLATFORM_SETTINGS.adminAdsterraLink;
             
-            if (accessBtn1) {
-                accessBtn1.addEventListener('click', function() {
-                    window.open(platformSettings.adminAdsterraLink || PLATFORM_SETTINGS.adminAdsterraLink, '_blank');
-                });
+            // In a real implementation, we would get the user's Adsterra link from the link data
+            const userAdsterraLink = "https://user-adsterra-link.com"; // This would come from the link's user data
+            const realLink = "https://destination-website.com"; // This would come from the link data
+            
+            async function handleButtonClick() {
+                clickCount++;
+                
+                // Track click in Firestore
+                // This would update the link's click count and determine which Adsterra link to use
+                
+                // Alternate between user and admin Adsterra links
+                if (clickCount % 2 === 1) {
+                    // Odd clicks: user's Adsterra link
+                    window.open(userAdsterraLink, '_blank');
+                } else {
+                    // Even clicks: admin's Adsterra link
+                    window.open(adminAdsterraLink, '_blank');
+                    
+                    // After showing Adsterra, redirect to real link
+                    setTimeout(() => {
+                        window.location.href = realLink;
+                    }, 1000);
+                }
             }
             
-            if (accessBtn2) {
-                accessBtn2.addEventListener('click', function() {
-                    window.open(platformSettings.adminAdsterraLink || PLATFORM_SETTINGS.adminAdsterraLink, '_blank');
-                });
-            }
+            // Add event listeners to both buttons
+            document.getElementById('accessBtn1').addEventListener('click', handleButtonClick);
+            document.getElementById('accessBtn2').addEventListener('click', handleButtonClick);
+        }
+
+        // Initialize redirect page if we're on that page
+        if (window.location.pathname.includes('/r/')) {
+            loginPage.style.display = 'none';
+            dashboard.style.display = 'none';
+            redirectPage.style.display = 'flex';
+            initializeRedirectPage();
         }
     </script>
 </body>
