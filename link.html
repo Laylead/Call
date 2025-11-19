@@ -1689,6 +1689,17 @@
                 firebaseInitialized = true;
                 console.log('Firebase initialized successfully');
                 
+                // Set up auth state listener AFTER Firebase is initialized
+                auth.onAuthStateChanged(async user => {
+                    console.log('Auth state changed:', user);
+                    if (user) {
+                        currentUser = user;
+                        await handleUserLogin(user);
+                    } else {
+                        handleUserLogout();
+                    }
+                });
+                
                 // Hide any configuration errors
                 document.getElementById('configError').style.display = 'none';
                 
@@ -1712,19 +1723,6 @@
         document.addEventListener('DOMContentLoaded', function() {
             initializeFirebase();
             setupEventListeners();
-            
-            // Set up auth state listener
-            if (firebaseInitialized) {
-                auth.onAuthStateChanged(async user => {
-                    console.log('Auth state changed:', user);
-                    if (user) {
-                        currentUser = user;
-                        await handleUserLogin(user);
-                    } else {
-                        handleUserLogout();
-                    }
-                });
-            }
 
             // Check if we're on a redirect page
             if (window.location.pathname.includes('/r/')) {
@@ -2290,16 +2288,21 @@
             }
         }
 
-        // Load user data
+        // Load user data - FIXED VERSION
         async function loadUserData() {
             try {
+                if (!currentUser) {
+                    console.error('No current user found while loading user data');
+                    throw new Error('No current user');
+                }
+
                 // Load user profile
                 const userDoc = await db.collection('users').doc(currentUser.uid).get();
                 if (userDoc.exists) {
                     userData = userDoc.data();
                     console.log('User data loaded:', userData);
                 } else {
-                    console.log('No user document found, creating one...');
+                    console.log('No user document found, creating one.');
                     // Create user document if it doesn't exist
                     const newUserData = {
                         name: currentUser.displayName || currentUser.email.split('@')[0],
@@ -2319,7 +2322,7 @@
                     userData = newUserData;
                 }
                 
-                // Load user links
+                // Load user links - FIXED: Changed .doc.data() to ...doc.data()
                 const linksSnapshot = await db.collection('links')
                     .where('userId', '==', currentUser.uid)
                     .orderBy('createdAt', 'desc')
@@ -2329,12 +2332,13 @@
                 linksSnapshot.forEach(doc => {
                     userLinks.push({
                         id: doc.id,
-                        ...doc.data()
+                        ...doc.data() // ✅ FIXED: Changed .doc.data() to ...doc.data()
                     });
                 });
                 console.log('User links loaded:', userLinks.length);
             } catch (error) {
                 console.error('Error loading user data:', error);
+                showToast('Error loading user data. Please refresh the page.', 'error');
                 throw error;
             }
         }
@@ -2492,7 +2496,7 @@
             }
         }
 
-        // Load analytics data
+        // Load analytics data - FIXED VERSION
         function loadAnalyticsData() {
             // Update top links table
             const topLinksTable = document.getElementById('topLinksTable');
@@ -2509,15 +2513,17 @@
                         </tr>
                     `;
                 } else {
-                    // Sort links by clicks (descending)
+                    // Sort links by clicks (descending) - FIXED: Changed .userLinks to [...userLinks]
                     const sortedLinks = [...userLinks].sort((a, b) => (b.clicks || 0) - (a.clicks || 0));
+                    const maxClicks = Math.max(...userLinks.map(l => l.clicks || 1));
                     
                     sortedLinks.slice(0, 5).forEach(link => {
+                        const percentage = ((link.clicks || 0) / maxClicks) * 100;
                         const row = document.createElement('tr');
                         row.innerHTML = `
                             <td>${link.name}</td>
                             <td>${link.clicks || 0}</td>
-                            <td>${((link.clicks || 0) / Math.max(...userLinks.map(l => l.clicks || 1)) * 100).toFixed(1)}%</td>
+                            <td>${percentage.toFixed(1)}%</td>
                         `;
                         topLinksTable.appendChild(row);
                     });
