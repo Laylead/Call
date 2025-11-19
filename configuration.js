@@ -16,5 +16,3 @@ const PLATFORM_SETTINGS = {
     subscriptionEnabled: true,
     subscriptionPrice: 9.99
 };
-
-console.log("Configuration loaded successfully");
