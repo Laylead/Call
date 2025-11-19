@@ -1650,21 +1650,6 @@
         let userData = {};
         let analyticsChart = null;
 
-        // Fallback constants if configuration.js is missing
-        if (typeof ADMIN_UID === 'undefined') {
-            const ADMIN_UID = "default-admin-uid";
-            console.warn('ADMIN_UID not defined, using default');
-        }
-
-        if (typeof PLATFORM_SETTINGS === 'undefined') {
-            const PLATFORM_SETTINGS = {
-                adminAdsterraLink: "https://default-adsterra-link.com",
-                subscriptionEnabled: false,
-                subscriptionPrice: 9.99
-            };
-            console.warn('PLATFORM_SETTINGS not defined, using defaults');
-        }
-
         // Function to initialize Firebase with error handling
         function initializeFirebase() {
             try {
@@ -1767,7 +1752,7 @@
                 loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In...';
                 
                 try {
-                    const userCredential = await debugLogin(email, password);
+                    const userCredential = await auth.signInWithEmailAndPassword(email, password);
                     console.log('User logged in:', userCredential.user);
                     showLoginError(''); // Clear any errors
                 } catch (error) {
@@ -1857,7 +1842,8 @@
                             expiryDate: null
                         },
                         isActive: true,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     
                     showRegisterError('');
@@ -1865,6 +1851,13 @@
                     document.getElementById('registerForm').reset();
                     
                     showToast('Account created successfully! You are now logged in.', 'success');
+                    
+                    // Set the first user as admin (for testing)
+                    if (typeof ADMIN_UID === 'undefined' || !ADMIN_UID) {
+                        // You can set the first user as admin or manually set ADMIN_UID in configuration.js
+                        console.log('First user created. Set this UID as ADMIN_UID in configuration.js:', userCredential.user.uid);
+                    }
+                    
                 } catch (error) {
                     console.error('Registration error:', error);
                     let errorMessage = 'Registration failed. Please try again with a different email.';
@@ -1875,6 +1868,8 @@
                         errorMessage = 'Invalid email address.';
                     } else if (error.code === 'auth/weak-password') {
                         errorMessage = 'Password is too weak.';
+                    } else if (error.code === 'auth/network-request-failed') {
+                        errorMessage = 'Network error. Please check your connection.';
                     }
                     
                     showRegisterError(errorMessage);
@@ -1889,7 +1884,11 @@
             // Logout button
             document.getElementById('logoutBtn').addEventListener('click', function(e) {
                 e.preventDefault();
-                auth.signOut();
+                auth.signOut().then(() => {
+                    console.log('User signed out successfully');
+                }).catch((error) => {
+                    console.error('Sign out error:', error);
+                });
             });
 
             // Menu navigation and other event listeners
@@ -1917,13 +1916,17 @@
             const createLinkBtn = document.getElementById('createLinkBtn');
             const createLinkBtn2 = document.getElementById('createLinkBtn2');
             
-            [createLinkBtn, createLinkBtn2].forEach(btn => {
-                if (btn) {
-                    btn.addEventListener('click', function() {
-                        document.getElementById('createLinkModal').style.display = 'flex';
-                    });
-                }
-            });
+            if (createLinkBtn) {
+                createLinkBtn.addEventListener('click', function() {
+                    document.getElementById('createLinkModal').style.display = 'flex';
+                });
+            }
+            
+            if (createLinkBtn2) {
+                createLinkBtn2.addEventListener('click', function() {
+                    document.getElementById('createLinkModal').style.display = 'flex';
+                });
+            }
 
             // Create link form
             const createLinkForm = document.getElementById('createLinkForm');
@@ -1995,7 +1998,8 @@
                         
                         await db.collection('users').doc(currentUser.uid).update({
                             name: userName,
-                            adsterraLink: adsterraLink
+                            adsterraLink: adsterraLink,
+                            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
                         });
                         
                         // Update user profile
@@ -2030,13 +2034,14 @@
                         const subscriptionButtonText = document.getElementById('subscriptionButtonText').value;
                         const subscriptionButtonLink = document.getElementById('subscriptionButtonLink').value;
                         
-                        await db.collection('platformSettings').doc('settings').update({
+                        await db.collection('platformSettings').doc('settings').set({
                             adminAdsterraLink: adminAdsterraLink,
                             subscriptionEnabled: enableSubscriptions,
                             subscriptionPopupText: subscriptionPopupText,
                             subscriptionButtonText: subscriptionButtonText,
-                            subscriptionButtonLink: subscriptionButtonLink
-                        });
+                            subscriptionButtonLink: subscriptionButtonLink,
+                            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
                         
                         // Reload platform settings
                         await loadPlatformSettings();
@@ -2054,9 +2059,10 @@
             if (enableSubscriptionBtn) {
                 enableSubscriptionBtn.addEventListener('click', async function() {
                     try {
-                        await db.collection('platformSettings').doc('settings').update({
-                            subscriptionEnabled: true
-                        });
+                        await db.collection('platformSettings').doc('settings').set({
+                            subscriptionEnabled: true,
+                            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
                         
                         await loadPlatformSettings();
                         showToast('Subscriptions enabled for all users!', 'success');
@@ -2089,8 +2095,18 @@
             try {
                 console.log('Handling user login for:', user.email);
                 
-                // Check if user is admin
-                isAdmin = user.uid === ADMIN_UID;
+                // Check if user is admin - with safe fallback
+                if (typeof ADMIN_UID !== 'undefined' && ADMIN_UID) {
+                    isAdmin = user.uid === ADMIN_UID;
+                } else {
+                    isAdmin = false;
+                    console.warn('ADMIN_UID not configured. Admin features disabled.');
+                }
+                
+                // Update last login time
+                await db.collection('users').doc(user.uid).set({
+                    lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
                 
                 // Show dashboard
                 document.getElementById('loginPage').style.display = 'none';
@@ -2115,6 +2131,9 @@
             } catch (error) {
                 console.error('Error during login process:', error);
                 showToast('Error loading user data. Please refresh the page.', 'error');
+                
+                // Log user out if there's an error loading data
+                auth.signOut();
             }
         }
 
@@ -2142,27 +2161,6 @@
             if (analyticsChart) {
                 analyticsChart.destroy();
                 analyticsChart = null;
-            }
-        }
-
-        // Debug login function
-        async function debugLogin(email, password) {
-            console.log('=== LOGIN DEBUG ===');
-            console.log('Firebase initialized:', firebaseInitialized);
-            console.log('Email:', email);
-            
-            try {
-                console.log('Attempting sign in...');
-                const userCredential = await auth.signInWithEmailAndPassword(email, password);
-                console.log('Login successful:', userCredential.user);
-                return userCredential;
-            } catch (error) {
-                console.error('Login error details:', {
-                    code: error.code,
-                    message: error.message,
-                    fullError: error
-                });
-                throw error;
             }
         }
 
@@ -2256,23 +2254,38 @@
             
             // Show/hide admin menu item
             const adminMenuItem = document.getElementById('adminMenuItem');
-            if (isAdmin) {
-                adminMenuItem.style.display = 'flex';
-            } else {
-                adminMenuItem.style.display = 'none';
+            if (adminMenuItem) {
+                if (isAdmin) {
+                    adminMenuItem.style.display = 'flex';
+                } else {
+                    adminMenuItem.style.display = 'none';
+                }
             }
             
             // Update subscription info
             if (userData.subscription) {
-                document.getElementById('subscriptionPlan').textContent = userData.subscription.plan === 'free' ? 'Free Plan' : 'Premium Plan';
-                document.getElementById('subscriptionStatus').textContent = userData.subscription.status === 'active' ? 
-                    `Active until ${formatDate(userData.subscription.expiryDate)}` : 'No active subscription';
-                document.getElementById('subscriptionBadge').textContent = userData.subscription.plan === 'free' ? 'Free' : 'Premium';
-                document.getElementById('subscriptionBadge').className = `badge ${userData.subscription.plan === 'free' ? 'badge-warning' : 'badge-success'}`;
+                const subscriptionPlan = document.getElementById('subscriptionPlan');
+                const subscriptionStatus = document.getElementById('subscriptionStatus');
+                const subscriptionBadge = document.getElementById('subscriptionBadge');
+                
+                if (subscriptionPlan) {
+                    subscriptionPlan.textContent = userData.subscription.plan === 'free' ? 'Free Plan' : 'Premium Plan';
+                }
+                if (subscriptionStatus) {
+                    subscriptionStatus.textContent = userData.subscription.status === 'active' ? 
+                        `Active until ${formatDate(userData.subscription.expiryDate)}` : 'No active subscription';
+                }
+                if (subscriptionBadge) {
+                    subscriptionBadge.textContent = userData.subscription.plan === 'free' ? 'Free' : 'Premium';
+                    subscriptionBadge.className = `badge ${userData.subscription.plan === 'free' ? 'badge-warning' : 'badge-success'}`;
+                }
                 
                 if (userData.subscription.status === 'active' && platformSettings.subscriptionEnabled) {
-                    document.getElementById('subscriptionTimer').style.display = 'block';
-                    startSubscriptionTimer(userData.subscription.expiryDate);
+                    const subscriptionTimer = document.getElementById('subscriptionTimer');
+                    if (subscriptionTimer) {
+                        subscriptionTimer.style.display = 'block';
+                        startSubscriptionTimer(userData.subscription.expiryDate);
+                    }
                 }
             }
         }
@@ -2298,7 +2311,8 @@
                             expiryDate: null
                         },
                         isActive: true,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
                     };
                     
                     await db.collection('users').doc(currentUser.uid).set(newUserData);
@@ -2342,21 +2356,19 @@
                     }
                 } else {
                     // Create default settings if they don't exist
-                    await db.collection('platformSettings').doc('settings').set({
-                        adminAdsterraLink: PLATFORM_SETTINGS.adminAdsterraLink,
-                        subscriptionEnabled: PLATFORM_SETTINGS.subscriptionEnabled,
-                        subscriptionPrice: PLATFORM_SETTINGS.subscriptionPrice,
+                    const defaultSettings = {
+                        adminAdsterraLink: typeof PLATFORM_SETTINGS !== 'undefined' ? PLATFORM_SETTINGS.adminAdsterraLink : 'https://example.com',
+                        subscriptionEnabled: typeof PLATFORM_SETTINGS !== 'undefined' ? PLATFORM_SETTINGS.subscriptionEnabled : false,
+                        subscriptionPrice: typeof PLATFORM_SETTINGS !== 'undefined' ? PLATFORM_SETTINGS.subscriptionPrice : 9.99,
                         subscriptionPopupText: 'Your subscription has expired. Please renew to continue using our services.',
                         subscriptionButtonText: 'Renew Subscription',
                         subscriptionButtonLink: 'https://payment-portal.com',
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    
-                    platformSettings = {
-                        adminAdsterraLink: PLATFORM_SETTINGS.adminAdsterraLink,
-                        subscriptionEnabled: PLATFORM_SETTINGS.subscriptionEnabled,
-                        subscriptionPrice: PLATFORM_SETTINGS.subscriptionPrice
                     };
+                    
+                    await db.collection('platformSettings').doc('settings').set(defaultSettings);
+                    
+                    platformSettings = defaultSettings;
                 }
                 console.log('Platform settings loaded:', platformSettings);
             } catch (error) {
@@ -2625,7 +2637,10 @@
         function startSubscriptionTimer(expiryDate) {
             // This would be a countdown timer implementation
             // For now, we'll just display a static message
-            document.getElementById('renewalTimer').textContent = '15 days, 3 hours, 42 minutes';
+            const renewalTimer = document.getElementById('renewalTimer');
+            if (renewalTimer) {
+                renewalTimer.textContent = '15 days, 3 hours, 42 minutes';
+            }
         }
 
         // Handle redirect page
