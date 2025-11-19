@@ -1652,12 +1652,12 @@
 
         // Fallback constants if configuration.js is missing
         if (typeof ADMIN_UID === 'undefined') {
-            var ADMIN_UID = "default-admin-uid";
+            const ADMIN_UID = "default-admin-uid";
             console.warn('ADMIN_UID not defined, using default');
         }
 
         if (typeof PLATFORM_SETTINGS === 'undefined') {
-            var PLATFORM_SETTINGS = {
+            const PLATFORM_SETTINGS = {
                 adminAdsterraLink: "https://default-adsterra-link.com",
                 subscriptionEnabled: false,
                 subscriptionPrice: 9.99
@@ -1846,8 +1846,8 @@
                         displayName: name
                     });
                     
-                    // Create user document in Firestore with proper structure
-                    const userData = {
+                    // Create user document in Firestore
+                    await db.collection('users').doc(userCredential.user.uid).set({
                         name: name,
                         email: email,
                         adsterraLink: '',
@@ -1857,11 +1857,8 @@
                             expiryDate: null
                         },
                         isActive: true,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-                    };
-                    
-                    await db.collection('users').doc(userCredential.user.uid).set(userData);
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
                     
                     showRegisterError('');
                     document.getElementById('registerModal').style.display = 'none';
@@ -2094,7 +2091,6 @@
                 
                 // Check if user is admin
                 isAdmin = user.uid === ADMIN_UID;
-                console.log('Is admin:', isAdmin, 'Admin UID:', ADMIN_UID, 'User UID:', user.uid);
                 
                 // Show dashboard
                 document.getElementById('loginPage').style.display = 'none';
@@ -2118,7 +2114,7 @@
                 
             } catch (error) {
                 console.error('Error during login process:', error);
-                showToast('Error loading user data: ' + error.message, 'error');
+                showToast('Error loading user data. Please refresh the page.', 'error');
             }
         }
 
@@ -2281,21 +2277,14 @@
             }
         }
 
-        // Load user data - FIXED VERSION
+        // Load user data
         async function loadUserData() {
             try {
-                console.log('Loading user data for:', currentUser.uid);
-                
                 // Load user profile
                 const userDoc = await db.collection('users').doc(currentUser.uid).get();
                 if (userDoc.exists) {
                     userData = userDoc.data();
                     console.log('User data loaded:', userData);
-                    
-                    // Update last login time
-                    await db.collection('users').doc(currentUser.uid).update({
-                        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-                    });
                 } else {
                     console.log('No user document found, creating one...');
                     // Create user document if it doesn't exist
@@ -2309,13 +2298,11 @@
                             expiryDate: null
                         },
                         isActive: true,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     };
                     
                     await db.collection('users').doc(currentUser.uid).set(newUserData);
                     userData = newUserData;
-                    console.log('New user document created');
                 }
                 
                 // Load user links
@@ -2354,9 +2341,8 @@
                         document.getElementById('subscriptionButtonLink').value = platformSettings.subscriptionButtonLink || '';
                     }
                 } else {
-                    console.log('No platform settings found, creating default settings...');
                     // Create default settings if they don't exist
-                    const defaultSettings = {
+                    await db.collection('platformSettings').doc('settings').set({
                         adminAdsterraLink: PLATFORM_SETTINGS.adminAdsterraLink,
                         subscriptionEnabled: PLATFORM_SETTINGS.subscriptionEnabled,
                         subscriptionPrice: PLATFORM_SETTINGS.subscriptionPrice,
@@ -2364,12 +2350,13 @@
                         subscriptionButtonText: 'Renew Subscription',
                         subscriptionButtonLink: 'https://payment-portal.com',
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    platformSettings = {
+                        adminAdsterraLink: PLATFORM_SETTINGS.adminAdsterraLink,
+                        subscriptionEnabled: PLATFORM_SETTINGS.subscriptionEnabled,
+                        subscriptionPrice: PLATFORM_SETTINGS.subscriptionPrice
                     };
-                    
-                    await db.collection('platformSettings').doc('settings').set(defaultSettings);
-                    
-                    platformSettings = defaultSettings;
-                    console.log('Default platform settings created');
                 }
                 console.log('Platform settings loaded:', platformSettings);
             } catch (error) {
@@ -2534,7 +2521,7 @@
             loadUsersTable();
         }
 
-        // Load users table - FIXED VERSION
+        // Load users table
         function loadUsersTable() {
             const usersTable = document.getElementById('usersTable');
             if (!usersTable) return;
@@ -2575,10 +2562,9 @@
             }
         }
 
-        // Load all users (admin only) - FIXED VERSION
+        // Load all users (admin only)
         async function loadAllUsers() {
             try {
-                console.log('Loading all users...');
                 const usersSnapshot = await db.collection('users').get();
                 allUsers = [];
                 usersSnapshot.forEach(doc => {
@@ -2588,14 +2574,8 @@
                     });
                 });
                 console.log('All users loaded:', allUsers.length);
-                
-                // Update the users table if we're on the admin page
-                if (document.getElementById('adminPage').style.display !== 'none') {
-                    loadUsersTable();
-                }
             } catch (error) {
                 console.error('Error loading all users:', error);
-                showToast('Error loading users: ' + error.message, 'error');
             }
         }
 
@@ -2835,19 +2815,17 @@
         }
 
         async function toggleUserStatus(userId, currentStatus) {
-            if (confirm(`Are you sure you want to ${currentStatus ? 'ban' : 'unban'} this user?`)) {
-                try {
-                    await db.collection('users').doc(userId).update({
-                        isActive: !currentStatus
-                    });
-                    
-                    await loadAllUsers();
-                    loadUsersTable();
-                    showToast(`User ${!currentStatus ? 'banned' : 'unbanned'} successfully!`, 'success');
-                } catch (error) {
-                    console.error('Error toggling user status:', error);
-                    showToast('Error updating user status. Please try again.', 'error');
-                }
+            try {
+                await db.collection('users').doc(userId).update({
+                    isActive: !currentStatus
+                });
+                
+                await loadAllUsers();
+                loadUsersTable();
+                showToast(`User ${!currentStatus ? 'banned' : 'unbanned'} successfully!`, 'success');
+            } catch (error) {
+                console.error('Error toggling user status:', error);
+                showToast('Error updating user status. Please try again.', 'error');
             }
         }
 
