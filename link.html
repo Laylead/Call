@@ -1650,44 +1650,55 @@
         let userData = {};
         let analyticsChart = null;
 
-        // Function to initialize Firebase with enhanced error handling
+        // Fallback constants if configuration.js is missing
+        if (typeof ADMIN_UID === 'undefined') {
+            const ADMIN_UID = "default-admin-uid";
+            console.warn('ADMIN_UID not defined, using default');
+        }
+
+        if (typeof PLATFORM_SETTINGS === 'undefined') {
+            const PLATFORM_SETTINGS = {
+                adminAdsterraLink: "https://default-adsterra-link.com",
+                subscriptionEnabled: false,
+                subscriptionPrice: 9.99
+            };
+            console.warn('PLATFORM_SETTINGS not defined, using defaults');
+        }
+
+        // Function to initialize Firebase with error handling
         function initializeFirebase() {
             try {
-                console.log('Initializing Firebase...');
-                
                 // Check if configuration is loaded
                 if (typeof firebaseConfig === 'undefined') {
                     throw new Error('Firebase configuration not found. Please check configuration.js file');
                 }
 
-                // Check if required configuration fields exist and are not empty
+                // Check if required configuration fields exist
                 const requiredFields = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
-                const missingFields = requiredFields.filter(field => !firebaseConfig[field] || firebaseConfig[field].includes('your-'));
+                const missingFields = requiredFields.filter(field => !firebaseConfig[field]);
                 
                 if (missingFields.length > 0) {
-                    throw new Error(`Missing or invalid Firebase configuration fields: ${missingFields.join(', ')}. Please update configuration.js with your actual Firebase project details.`);
+                    throw new Error(`Missing required configuration fields: ${missingFields.join(', ')}`);
                 }
 
                 // Initialize Firebase
                 if (!firebase.apps.length) {
                     firebase.initializeApp(firebaseConfig);
-                    console.log('Firebase app initialized');
                 } else {
                     firebase.app(); // if already initialized, use that one
-                    console.log('Using existing Firebase app');
                 }
 
                 // Initialize Firebase services
                 auth = firebase.auth();
                 db = firebase.firestore();
 
-                // Enable offline persistence
-                db.enablePersistence()
+                // Set persistence to LOCAL to keep user logged in
+                auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
                     .then(() => {
-                        console.log('Firestore persistence enabled');
+                        console.log('Auth persistence set to LOCAL');
                     })
-                    .catch((err) => {
-                        console.warn('Firestore persistence not enabled:', err);
+                    .catch((error) => {
+                        console.error('Error setting auth persistence:', error);
                     });
 
                 firebaseInitialized = true;
@@ -1706,7 +1717,7 @@
                 
                 // Disable login form
                 document.getElementById('loginBtn').disabled = true;
-                document.getElementById('loginBtn').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Configuration Error';
+                document.getElementById('loginBtn').textContent = 'System Configuration Error';
                 
                 firebaseInitialized = false;
             }
@@ -1714,14 +1725,13 @@
 
         // Initialize Firebase when the page loads
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, initializing Firebase...');
             initializeFirebase();
             setupEventListeners();
             
             // Set up auth state listener
             if (firebaseInitialized) {
                 auth.onAuthStateChanged(async user => {
-                    console.log('Auth state changed:', user ? `User: ${user.email}` : 'No user');
+                    console.log('Auth state changed:', user);
                     if (user) {
                         currentUser = user;
                         await handleUserLogin(user);
@@ -1757,9 +1767,8 @@
                 loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In...';
                 
                 try {
-                    console.log('Attempting login for:', email);
-                    const userCredential = await auth.signInWithEmailAndPassword(email, password);
-                    console.log('User logged in successfully:', userCredential.user.email);
+                    const userCredential = await debugLogin(email, password);
+                    console.log('User logged in:', userCredential.user);
                     showLoginError(''); // Clear any errors
                 } catch (error) {
                     console.error('Login error:', error);
@@ -1774,7 +1783,7 @@
                     } else if (error.code === 'auth/wrong-password') {
                         errorMessage = 'Incorrect password.';
                     } else if (error.code === 'auth/network-request-failed') {
-                        errorMessage = 'Network error. Please check your internet connection.';
+                        errorMessage = 'Network error. Please check your connection.';
                     }
                     
                     showLoginError(errorMessage);
@@ -1829,12 +1838,7 @@
                     return;
                 }
                 
-                const registerBtn = this.querySelector('button[type="submit"]');
-                registerBtn.disabled = true;
-                registerBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
-                
                 try {
-                    console.log('Creating account for:', email);
                     const userCredential = await auth.createUserWithEmailAndPassword(email, password);
                     
                     // Update user profile with display name
@@ -1856,7 +1860,6 @@
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     
-                    console.log('User account created successfully');
                     showRegisterError('');
                     document.getElementById('registerModal').style.display = 'none';
                     document.getElementById('registerForm').reset();
@@ -1871,15 +1874,10 @@
                     } else if (error.code === 'auth/invalid-email') {
                         errorMessage = 'Invalid email address.';
                     } else if (error.code === 'auth/weak-password') {
-                        errorMessage = 'Password is too weak. Please use a stronger password.';
-                    } else if (error.code === 'auth/network-request-failed') {
-                        errorMessage = 'Network error. Please check your internet connection.';
+                        errorMessage = 'Password is too weak.';
                     }
                     
                     showRegisterError(errorMessage);
-                } finally {
-                    registerBtn.disabled = false;
-                    registerBtn.innerHTML = 'Create Account';
                 }
             });
 
@@ -1891,7 +1889,6 @@
             // Logout button
             document.getElementById('logoutBtn').addEventListener('click', function(e) {
                 e.preventDefault();
-                console.log('Logging out user...');
                 auth.signOut();
             });
 
@@ -1946,10 +1943,6 @@
                     const destinationUrl = document.getElementById('destinationUrl').value;
                     const customSlug = document.getElementById('customSlug').value;
                     
-                    const submitBtn = this.querySelector('button[type="submit"]');
-                    submitBtn.disabled = true;
-                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Link...';
-                    
                     try {
                         const slug = customSlug || await generateUniqueSlug();
                         const shortUrl = `${window.location.origin}/r/${slug}`;
@@ -1987,9 +1980,6 @@
                     } catch (error) {
                         console.error('Error creating link:', error);
                         showToast('Error creating link. Please try again.', 'error');
-                    } finally {
-                        submitBtn.disabled = false;
-                        submitBtn.innerHTML = 'Create Link';
                     }
                 });
             }
@@ -1999,10 +1989,6 @@
             if (settingsForm) {
                 settingsForm.addEventListener('submit', async function(e) {
                     e.preventDefault();
-                    const submitBtn = this.querySelector('button[type="submit"]');
-                    submitBtn.disabled = true;
-                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-                    
                     try {
                         const userName = document.getElementById('userNameInput').value;
                         const adsterraLink = document.getElementById('adsterraLink').value;
@@ -2028,9 +2014,6 @@
                     } catch (error) {
                         console.error('Error saving settings:', error);
                         showToast('Error saving settings. Please try again.', 'error');
-                    } finally {
-                        submitBtn.disabled = false;
-                        submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
                     }
                 });
             }
@@ -2040,10 +2023,6 @@
             if (adminSettingsForm) {
                 adminSettingsForm.addEventListener('submit', async function(e) {
                     e.preventDefault();
-                    const submitBtn = this.querySelector('button[type="submit"]');
-                    submitBtn.disabled = true;
-                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-                    
                     try {
                         const adminAdsterraLink = document.getElementById('adminAdsterraLink').value;
                         const enableSubscriptions = document.getElementById('enableSubscriptionsToggle').checked;
@@ -2066,9 +2045,6 @@
                     } catch (error) {
                         console.error('Error saving admin settings:', error);
                         showToast('Error saving admin settings. Please try again.', 'error');
-                    } finally {
-                        submitBtn.disabled = false;
-                        submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Settings';
                     }
                 });
             }
@@ -2077,9 +2053,6 @@
             const enableSubscriptionBtn = document.getElementById('enableSubscriptionBtn');
             if (enableSubscriptionBtn) {
                 enableSubscriptionBtn.addEventListener('click', async function() {
-                    this.disabled = true;
-                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enabling...';
-                    
                     try {
                         await db.collection('platformSettings').doc('settings').update({
                             subscriptionEnabled: true
@@ -2090,9 +2063,6 @@
                     } catch (error) {
                         console.error('Error enabling subscriptions:', error);
                         showToast('Error enabling subscriptions. Please try again.', 'error');
-                    } finally {
-                        this.disabled = false;
-                        this.innerHTML = '<i class="fas fa-cog"></i> Enable Subscriptions';
                     }
                 });
             }
@@ -2121,7 +2091,6 @@
                 
                 // Check if user is admin
                 isAdmin = user.uid === ADMIN_UID;
-                console.log('User is admin:', isAdmin);
                 
                 // Show dashboard
                 document.getElementById('loginPage').style.display = 'none';
@@ -2146,9 +2115,6 @@
             } catch (error) {
                 console.error('Error during login process:', error);
                 showToast('Error loading user data. Please refresh the page.', 'error');
-                
-                // Sign out user to prevent being stuck in error state
-                await auth.signOut();
             }
         }
 
@@ -2176,6 +2142,27 @@
             if (analyticsChart) {
                 analyticsChart.destroy();
                 analyticsChart = null;
+            }
+        }
+
+        // Debug login function
+        async function debugLogin(email, password) {
+            console.log('=== LOGIN DEBUG ===');
+            console.log('Firebase initialized:', firebaseInitialized);
+            console.log('Email:', email);
+            
+            try {
+                console.log('Attempting sign in...');
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                console.log('Login successful:', userCredential.user);
+                return userCredential;
+            } catch (error) {
+                console.error('Login error details:', {
+                    code: error.code,
+                    message: error.message,
+                    fullError: error
+                });
+                throw error;
             }
         }
 
@@ -2290,17 +2277,14 @@
             }
         }
 
-        // Load user data with enhanced error handling
+        // Load user data
         async function loadUserData() {
             try {
-                console.log('Loading user data for:', currentUser.uid);
-                
                 // Load user profile
                 const userDoc = await db.collection('users').doc(currentUser.uid).get();
-                
                 if (userDoc.exists) {
                     userData = userDoc.data();
-                    console.log('User data loaded successfully:', userData);
+                    console.log('User data loaded:', userData);
                 } else {
                     console.log('No user document found, creating one...');
                     // Create user document if it doesn't exist
@@ -2319,11 +2303,9 @@
                     
                     await db.collection('users').doc(currentUser.uid).set(newUserData);
                     userData = newUserData;
-                    console.log('New user document created successfully');
                 }
                 
                 // Load user links
-                console.log('Loading user links...');
                 const linksSnapshot = await db.collection('links')
                     .where('userId', '==', currentUser.uid)
                     .orderBy('createdAt', 'desc')
@@ -2336,33 +2318,19 @@
                         ...doc.data()
                     });
                 });
-                console.log('User links loaded successfully:', userLinks.length, 'links found');
-                
+                console.log('User links loaded:', userLinks.length);
             } catch (error) {
                 console.error('Error loading user data:', error);
-                
-                // More specific error messages
-                if (error.code === 'permission-denied') {
-                    throw new Error('Permission denied. Please check your Firebase security rules.');
-                } else if (error.code === 'not-found') {
-                    throw new Error('Database not found. Please check your Firebase configuration.');
-                } else if (error.code === 'unavailable') {
-                    throw new Error('Network unavailable. Please check your internet connection.');
-                } else {
-                    throw new Error(`Failed to load user data: ${error.message}`);
-                }
+                throw error;
             }
         }
 
         // Load platform settings
         async function loadPlatformSettings() {
             try {
-                console.log('Loading platform settings...');
                 const settingsDoc = await db.collection('platformSettings').doc('settings').get();
-                
                 if (settingsDoc.exists) {
                     platformSettings = settingsDoc.data();
-                    console.log('Platform settings loaded successfully:', platformSettings);
                     
                     // Update admin settings form if it exists
                     if (document.getElementById('adminAdsterraLink')) {
@@ -2373,9 +2341,8 @@
                         document.getElementById('subscriptionButtonLink').value = platformSettings.subscriptionButtonLink || '';
                     }
                 } else {
-                    console.log('No platform settings found, creating default settings...');
                     // Create default settings if they don't exist
-                    const defaultSettings = {
+                    await db.collection('platformSettings').doc('settings').set({
                         adminAdsterraLink: PLATFORM_SETTINGS.adminAdsterraLink,
                         subscriptionEnabled: PLATFORM_SETTINGS.subscriptionEnabled,
                         subscriptionPrice: PLATFORM_SETTINGS.subscriptionPrice,
@@ -2383,118 +2350,52 @@
                         subscriptionButtonText: 'Renew Subscription',
                         subscriptionButtonLink: 'https://payment-portal.com',
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    };
+                    });
                     
-                    await db.collection('platformSettings').doc('settings').set(defaultSettings);
-                    platformSettings = defaultSettings;
-                    console.log('Default platform settings created successfully');
-                }
-                
-            } catch (error) {
-                console.error('Error loading platform settings:', error);
-                
-                if (error.code === 'permission-denied') {
-                    console.warn('Permission denied for platform settings. This is normal for non-admin users.');
-                    // Set default platform settings for non-admin users
                     platformSettings = {
                         adminAdsterraLink: PLATFORM_SETTINGS.adminAdsterraLink,
                         subscriptionEnabled: PLATFORM_SETTINGS.subscriptionEnabled,
                         subscriptionPrice: PLATFORM_SETTINGS.subscriptionPrice
                     };
-                } else {
-                    throw error;
                 }
+                console.log('Platform settings loaded:', platformSettings);
+            } catch (error) {
+                console.error('Error loading platform settings:', error);
+                throw error;
             }
         }
 
         // Load dashboard data
         async function loadDashboardData() {
-            try {
-                // Update stats
-                const totalClicks = userLinks.reduce((sum, link) => sum + (link.clicks || 0), 0);
-                
-                document.getElementById('totalClicks').textContent = totalClicks.toLocaleString();
-                document.getElementById('totalLinks').textContent = userLinks.length;
-                
-                // Load total users count (admin only)
-                if (isAdmin) {
-                    document.getElementById('totalUsers').textContent = allUsers.length;
-                } else {
-                    document.getElementById('totalUsers').textContent = 'N/A';
-                }
-                
-                // Load recent links
-                const recentLinksTable = document.getElementById('recentLinksTable');
-                if (recentLinksTable) {
-                    recentLinksTable.innerHTML = '';
-                    
-                    if (userLinks.length === 0) {
-                        recentLinksTable.innerHTML = `
-                            <tr>
-                                <td colspan="5" style="text-align: center; padding: 40px; color: var(--gray);">
-                                    <i class="fas fa-link" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.5;"></i>
-                                    No links created yet. Create your first link to get started!
-                                </td>
-                            </tr>
-                        `;
-                    } else {
-                        userLinks.slice(0, 5).forEach(link => {
-                            const row = document.createElement('tr');
-                            row.innerHTML = `
-                                <td>${link.name}</td>
-                                <td>
-                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                        <span>${link.shortUrl}</span>
-                                        <button class="action-btn" title="Copy URL" onclick="copyToClipboard('${link.shortUrl}')">
-                                            <i class="fas fa-copy"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                                <td>${link.clicks || 0}</td>
-                                <td><span class="badge ${link.status === 'active' ? 'badge-success' : 'badge-warning'}">${link.status}</span></td>
-                                <td>
-                                    <div class="action-buttons">
-                                        <button class="action-btn" title="Copy URL" onclick="copyToClipboard('${link.shortUrl}')">
-                                            <i class="fas fa-copy"></i>
-                                        </button>
-                                        <button class="action-btn" title="Edit" onclick="editLink('${link.id}')">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="action-btn delete" title="Delete" onclick="deleteLink('${link.id}')">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            `;
-                            recentLinksTable.appendChild(row);
-                        });
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading dashboard data:', error);
-                throw error;
+            // Update stats
+            const totalClicks = userLinks.reduce((sum, link) => sum + (link.clicks || 0), 0);
+            
+            document.getElementById('totalClicks').textContent = totalClicks.toLocaleString();
+            document.getElementById('totalLinks').textContent = userLinks.length;
+            
+            // Load total users count (admin only)
+            if (isAdmin) {
+                document.getElementById('totalUsers').textContent = allUsers.length;
+            } else {
+                document.getElementById('totalUsers').textContent = 'N/A';
             }
-        }
-
-        // Load links data
-        function loadLinksData() {
-            try {
-                const linksTable = document.getElementById('linksTable');
-                if (!linksTable) return;
-                
-                linksTable.innerHTML = '';
+            
+            // Load recent links
+            const recentLinksTable = document.getElementById('recentLinksTable');
+            if (recentLinksTable) {
+                recentLinksTable.innerHTML = '';
                 
                 if (userLinks.length === 0) {
-                    linksTable.innerHTML = `
+                    recentLinksTable.innerHTML = `
                         <tr>
-                            <td colspan="6" style="text-align: center; padding: 40px; color: var(--gray);">
+                            <td colspan="5" style="text-align: center; padding: 40px; color: var(--gray);">
                                 <i class="fas fa-link" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.5;"></i>
                                 No links created yet. Create your first link to get started!
                             </td>
                         </tr>
                     `;
                 } else {
-                    userLinks.forEach(link => {
+                    userLinks.slice(0, 5).forEach(link => {
                         const row = document.createElement('tr');
                         row.innerHTML = `
                             <td>${link.name}</td>
@@ -2506,9 +2407,8 @@
                                     </button>
                                 </div>
                             </td>
-                            <td>${truncateUrl(link.destinationUrl, 40)}</td>
                             <td>${link.clicks || 0}</td>
-                            <td>${formatDate(link.createdAt)}</td>
+                            <td><span class="badge ${link.status === 'active' ? 'badge-success' : 'badge-warning'}">${link.status}</span></td>
                             <td>
                                 <div class="action-buttons">
                                     <button class="action-btn" title="Copy URL" onclick="copyToClipboard('${link.shortUrl}')">
@@ -2523,116 +2423,148 @@
                                 </div>
                             </td>
                         `;
-                        linksTable.appendChild(row);
+                        recentLinksTable.appendChild(row);
                     });
                 }
-            } catch (error) {
-                console.error('Error loading links data:', error);
-                showToast('Error loading links data', 'error');
+            }
+        }
+
+        // Load links data
+        function loadLinksData() {
+            const linksTable = document.getElementById('linksTable');
+            if (!linksTable) return;
+            
+            linksTable.innerHTML = '';
+            
+            if (userLinks.length === 0) {
+                linksTable.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 40px; color: var(--gray);">
+                            <i class="fas fa-link" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.5;"></i>
+                            No links created yet. Create your first link to get started!
+                        </td>
+                    </tr>
+                `;
+            } else {
+                userLinks.forEach(link => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${link.name}</td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span>${link.shortUrl}</span>
+                                <button class="action-btn" title="Copy URL" onclick="copyToClipboard('${link.shortUrl}')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </td>
+                        <td>${truncateUrl(link.destinationUrl, 40)}</td>
+                        <td>${link.clicks || 0}</td>
+                        <td>${formatDate(link.createdAt)}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="action-btn" title="Copy URL" onclick="copyToClipboard('${link.shortUrl}')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                                <button class="action-btn" title="Edit" onclick="editLink('${link.id}')">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="action-btn delete" title="Delete" onclick="deleteLink('${link.id}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    linksTable.appendChild(row);
+                });
             }
         }
 
         // Load analytics data
         function loadAnalyticsData() {
-            try {
-                // Update top links table
-                const topLinksTable = document.getElementById('topLinksTable');
-                if (topLinksTable) {
-                    topLinksTable.innerHTML = '';
-                    
-                    if (userLinks.length === 0) {
-                        topLinksTable.innerHTML = `
-                            <tr>
-                                <td colspan="3" style="text-align: center; padding: 40px; color: var(--gray);">
-                                    <i class="fas fa-chart-bar" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.5;"></i>
-                                    No analytics data available yet.
-                                </td>
-                            </tr>
-                        `;
-                    } else {
-                        // Sort links by clicks (descending)
-                        const sortedLinks = [...userLinks].sort((a, b) => (b.clicks || 0) - (a.clicks || 0));
-                        
-                        sortedLinks.slice(0, 5).forEach(link => {
-                            const row = document.createElement('tr');
-                            row.innerHTML = `
-                                <td>${link.name}</td>
-                                <td>${link.clicks || 0}</td>
-                                <td>${((link.clicks || 0) / Math.max(...userLinks.map(l => l.clicks || 1)) * 100).toFixed(1)}%</td>
-                            `;
-                            topLinksTable.appendChild(row);
-                        });
-                    }
-                }
+            // Update top links table
+            const topLinksTable = document.getElementById('topLinksTable');
+            if (topLinksTable) {
+                topLinksTable.innerHTML = '';
                 
-                // Initialize analytics chart
-                initializeAnalyticsChart();
-            } catch (error) {
-                console.error('Error loading analytics data:', error);
-                showToast('Error loading analytics data', 'error');
-            }
-        }
-
-        // Load admin data
-        function loadAdminData() {
-            try {
-                loadUsersTable();
-            } catch (error) {
-                console.error('Error loading admin data:', error);
-                showToast('Error loading admin data', 'error');
-            }
-        }
-
-        // Load users table
-        function loadUsersTable() {
-            try {
-                const usersTable = document.getElementById('usersTable');
-                if (!usersTable) return;
-                
-                usersTable.innerHTML = '';
-                
-                if (allUsers.length === 0) {
-                    usersTable.innerHTML = `
+                if (userLinks.length === 0) {
+                    topLinksTable.innerHTML = `
                         <tr>
-                            <td colspan="6" style="text-align: center; padding: 40px; color: var(--gray);">
-                                <i class="fas fa-users" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.5;"></i>
-                                No users found.
+                            <td colspan="3" style="text-align: center; padding: 40px; color: var(--gray);">
+                                <i class="fas fa-chart-bar" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.5;"></i>
+                                No analytics data available yet.
                             </td>
                         </tr>
                     `;
                 } else {
-                    allUsers.forEach(user => {
+                    // Sort links by clicks (descending)
+                    const sortedLinks = [...userLinks].sort((a, b) => (b.clicks || 0) - (a.clicks || 0));
+                    
+                    sortedLinks.slice(0, 5).forEach(link => {
                         const row = document.createElement('tr');
                         row.innerHTML = `
-                            <td>${user.name || 'N/A'}</td>
-                            <td>${user.email}</td>
-                            <td>${user.subscription?.plan || 'free'}</td>
-                            <td><span class="badge ${user.isActive ? 'badge-success' : 'badge-danger'}">${user.isActive ? 'Active' : 'Banned'}</span></td>
-                            <td>${user.adsterraLink ? '✓ Set' : '✗ Not Set'}</td>
-                            <td>
-                                <div class="action-buttons">
-                                    <button class="action-btn" title="${user.isActive ? 'Ban User' : 'Unban User'}" onclick="toggleUserStatus('${user.id}', ${user.isActive})">
-                                        <i class="fas ${user.isActive ? 'fa-ban' : 'fa-check'}"></i>
-                                    </button>
-                                    <button class="action-btn delete" title="Delete User" onclick="deleteUser('${user.id}')">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </td>
+                            <td>${link.name}</td>
+                            <td>${link.clicks || 0}</td>
+                            <td>${((link.clicks || 0) / Math.max(...userLinks.map(l => l.clicks || 1)) * 100).toFixed(1)}%</td>
                         `;
-                        usersTable.appendChild(row);
+                        topLinksTable.appendChild(row);
                     });
                 }
-            } catch (error) {
-                console.error('Error loading users table:', error);
-                showToast('Error loading users table', 'error');
+            }
+            
+            // Initialize analytics chart
+            initializeAnalyticsChart();
+        }
+
+        // Load admin data
+        function loadAdminData() {
+            loadUsersTable();
+        }
+
+        // Load users table
+        function loadUsersTable() {
+            const usersTable = document.getElementById('usersTable');
+            if (!usersTable) return;
+            
+            usersTable.innerHTML = '';
+            
+            if (allUsers.length === 0) {
+                usersTable.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 40px; color: var(--gray);">
+                            <i class="fas fa-users" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.5;"></i>
+                            No users found.
+                        </td>
+                    </tr>
+                `;
+            } else {
+                allUsers.forEach(user => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${user.name || 'N/A'}</td>
+                        <td>${user.email}</td>
+                        <td>${user.subscription?.plan || 'free'}</td>
+                        <td><span class="badge ${user.isActive ? 'badge-success' : 'badge-danger'}">${user.isActive ? 'Active' : 'Banned'}</span></td>
+                        <td>${user.adsterraLink ? '✓ Set' : '✗ Not Set'}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="action-btn" title="${user.isActive ? 'Ban User' : 'Unban User'}" onclick="toggleUserStatus('${user.id}', ${user.isActive})">
+                                    <i class="fas ${user.isActive ? 'fa-ban' : 'fa-check'}"></i>
+                                </button>
+                                <button class="action-btn delete" title="Delete User" onclick="deleteUser('${user.id}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    usersTable.appendChild(row);
+                });
             }
         }
 
         // Load all users (admin only)
         async function loadAllUsers() {
             try {
-                console.log('Loading all users (admin)...');
                 const usersSnapshot = await db.collection('users').get();
                 allUsers = [];
                 usersSnapshot.forEach(doc => {
@@ -2641,61 +2573,52 @@
                         ...doc.data()
                     });
                 });
-                console.log('All users loaded successfully:', allUsers.length, 'users found');
+                console.log('All users loaded:', allUsers.length);
             } catch (error) {
                 console.error('Error loading all users:', error);
-                if (error.code === 'permission-denied') {
-                    console.warn('Permission denied to load all users. User may not be admin.');
-                } else {
-                    throw error;
-                }
             }
         }
 
         // Initialize analytics chart
         function initializeAnalyticsChart() {
-            try {
-                const ctx = document.getElementById('analyticsChart');
-                if (!ctx) return;
-                
-                if (analyticsChart) {
-                    analyticsChart.destroy();
-                }
-                
-                // Sample data - in a real app, you'd get this from Firebase
-                const labels = Array.from({length: 30}, (_, i) => `Day ${i + 1}`);
-                const clicksData = Array.from({length: 30}, () => Math.floor(Math.random() * 100) + 20);
-                
-                analyticsChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Daily Clicks',
-                            data: clicksData,
-                            backgroundColor: 'rgba(99, 102, 241, 0.7)',
-                            borderColor: '#6366f1',
-                            borderWidth: 1
-                        }]
+            const ctx = document.getElementById('analyticsChart');
+            if (!ctx) return;
+            
+            if (analyticsChart) {
+                analyticsChart.destroy();
+            }
+            
+            // Sample data - in a real app, you'd get this from Firebase
+            const labels = Array.from({length: 30}, (_, i) => `Day ${i + 1}`);
+            const clicksData = Array.from({length: 30}, () => Math.floor(Math.random() * 100) + 20);
+            
+            analyticsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Daily Clicks',
+                        data: clicksData,
+                        backgroundColor: 'rgba(99, 102, 241, 0.7)',
+                        borderColor: '#6366f1',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'top',
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true
-                            }
+                    scales: {
+                        y: {
+                            beginAtZero: true
                         }
                     }
-                });
-            } catch (error) {
-                console.error('Error initializing analytics chart:', error);
-            }
+                }
+            });
         }
 
         // Start subscription timer
@@ -2856,10 +2779,6 @@
                 const originalSubmit = form.onsubmit;
                 form.onsubmit = async (e) => {
                     e.preventDefault();
-                    const submitBtn = form.querySelector('button[type="submit"]');
-                    submitBtn.disabled = true;
-                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
-                    
                     try {
                         await db.collection('links').doc(linkId).update({
                             name: document.getElementById('linkName').value,
@@ -2876,9 +2795,6 @@
                     } catch (error) {
                         console.error('Error updating link:', error);
                         showToast('Error updating link. Please try again.', 'error');
-                    } finally {
-                        submitBtn.disabled = false;
-                        submitBtn.innerHTML = 'Update Link';
                     }
                 };
             }
@@ -2899,19 +2815,17 @@
         }
 
         async function toggleUserStatus(userId, currentStatus) {
-            if (confirm(`Are you sure you want to ${currentStatus ? 'ban' : 'unban'} this user?`)) {
-                try {
-                    await db.collection('users').doc(userId).update({
-                        isActive: !currentStatus
-                    });
-                    
-                    await loadAllUsers();
-                    loadUsersTable();
-                    showToast(`User ${!currentStatus ? 'banned' : 'unbanned'} successfully!`, 'success');
-                } catch (error) {
-                    console.error('Error toggling user status:', error);
-                    showToast('Error updating user status. Please try again.', 'error');
-                }
+            try {
+                await db.collection('users').doc(userId).update({
+                    isActive: !currentStatus
+                });
+                
+                await loadAllUsers();
+                loadUsersTable();
+                showToast(`User ${!currentStatus ? 'banned' : 'unbanned'} successfully!`, 'success');
+            } catch (error) {
+                console.error('Error toggling user status:', error);
+                showToast('Error updating user status. Please try again.', 'error');
             }
         }
 
