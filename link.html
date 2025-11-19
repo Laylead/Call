@@ -1677,6 +1677,15 @@
                 auth = firebase.auth();
                 db = firebase.firestore();
 
+                // Set persistence to LOCAL to keep user logged in
+                auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+                    .then(() => {
+                        console.log('Auth persistence set to LOCAL');
+                    })
+                    .catch((error) => {
+                        console.error('Error setting auth persistence:', error);
+                    });
+
                 firebaseInitialized = true;
                 console.log('Firebase initialized successfully');
                 
@@ -1749,6 +1758,16 @@
                 } catch (error) {
                     console.error('Login error:', error);
                     let errorMessage = 'Login failed. Please check your credentials and try again.';
+                    
+                    if (error.code === 'auth/invalid-email') {
+                        errorMessage = 'Invalid email address.';
+                    } else if (error.code === 'auth/user-disabled') {
+                        errorMessage = 'This user has been disabled.';
+                    } else if (error.code === 'auth/user-not-found') {
+                        errorMessage = 'No user found with this email.';
+                    } else if (error.code === 'auth/wrong-password') {
+                        errorMessage = 'Incorrect password.';
+                    }
                     
                     showLoginError(errorMessage);
                     showToast('Login failed. Please check your credentials.', 'error');
@@ -1833,6 +1852,14 @@
                     console.error('Registration error:', error);
                     let errorMessage = 'Registration failed. Please try again with a different email.';
                     
+                    if (error.code === 'auth/email-already-in-use') {
+                        errorMessage = 'This email is already registered.';
+                    } else if (error.code === 'auth/invalid-email') {
+                        errorMessage = 'Invalid email address.';
+                    } else if (error.code === 'auth/weak-password') {
+                        errorMessage = 'Password is too weak.';
+                    }
+                    
                     showRegisterError(errorMessage);
                 }
             });
@@ -1900,7 +1927,7 @@
                     const customSlug = document.getElementById('customSlug').value;
                     
                     try {
-                        const slug = customSlug || generateRandomSlug();
+                        const slug = customSlug || await generateUniqueSlug();
                         const shortUrl = `${window.location.origin}/r/${slug}`;
                         
                         const linkData = {
@@ -1915,15 +1942,6 @@
                             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                             status: 'active'
                         };
-                        
-                        // Check if slug already exists
-                        if (customSlug) {
-                            const existingLinks = await db.collection('links').where('slug', '==', customSlug).get();
-                            if (!existingLinks.empty) {
-                                showToast('This custom slug is already taken. Please choose a different one.', 'error');
-                                return;
-                            }
-                        }
                         
                         // Save to Firestore
                         await db.collection('links').add(linkData);
@@ -2080,8 +2098,6 @@
             } catch (error) {
                 console.error('Error during login process:', error);
                 showToast('Error loading user data. Please refresh the page.', 'error');
-                // Sign out user to prevent being stuck in error state
-                auth.signOut();
             }
         }
 
@@ -2190,8 +2206,8 @@
             if (!currentUser) return;
             
             // Update user info
-            document.getElementById('userInitials').textContent = getInitials(userData.name || currentUser.email);
-            document.getElementById('userName').textContent = userData.name || currentUser.email.split('@')[0];
+            document.getElementById('userInitials').textContent = getInitials(userData.name || currentUser.displayName || currentUser.email);
+            document.getElementById('userName').textContent = userData.name || currentUser.displayName || currentUser.email.split('@')[0];
             
             // Update settings form
             if (document.getElementById('userNameInput')) {
@@ -2660,6 +2676,28 @@
         // Utility Functions
         function getInitials(name) {
             return name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U';
+        }
+
+        async function generateUniqueSlug() {
+            let slug = generateRandomSlug();
+            let exists = true;
+            let attempts = 0;
+            
+            while (exists && attempts < 5) {
+                const snapshot = await db.collection('links').where('slug', '==', slug).get();
+                exists = !snapshot.empty;
+                if (exists) {
+                    slug = generateRandomSlug();
+                    attempts++;
+                }
+            }
+            
+            if (exists) {
+                // If we still have a duplicate after 5 attempts, append a timestamp
+                slug += '-' + Date.now().toString(36);
+            }
+            
+            return slug;
         }
 
         function generateRandomSlug() {
