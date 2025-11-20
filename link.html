@@ -3,82 +3,87 @@
 <head>
   <meta charset="UTF-8">
   <title>Admin Dashboard</title>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.5.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore.js";
-    import { firebaseConfig, adminUID } from './configuration.js';
-
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    // DOM Elements
-    const loginDiv = document.getElementById('loginDiv');
-    const dashboardDiv = document.getElementById('dashboardDiv');
-    const loginForm = document.getElementById('loginForm');
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    const userDataDiv = document.getElementById('userData');
-    const errorDiv = document.getElementById('error');
-
-    // Login form submit
-    loginForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      errorDiv.textContent = '';
-      try {
-        const userCredential = await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
-        const user = userCredential.user;
-
-        if (user.uid === adminUID) {
-          // Fetch user data from Firestore
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            userDataDiv.textContent = JSON.stringify(userDoc.data(), null, 2);
-          } else {
-            userDataDiv.textContent = 'No data found for admin.';
-          }
-
-          loginDiv.style.display = 'none';
-          dashboardDiv.style.display = 'block';
-        } else {
-          errorDiv.textContent = 'Access denied: Not admin.';
-        }
-
-      } catch (err) {
-        errorDiv.textContent = 'Login failed: ' + err.message;
-      }
-    });
-
-    // Auto check auth state
-    onAuthStateChanged(auth, async (user) => {
-      if (user && user.uid === adminUID) {
-        loginDiv.style.display = 'none';
-        dashboardDiv.style.display = 'block';
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        userDataDiv.textContent = userDoc.exists() ? JSON.stringify(userDoc.data(), null, 2) : 'No data found';
-      } else {
-        loginDiv.style.display = 'block';
-        dashboardDiv.style.display = 'none';
-      }
-    });
-  </script>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore.js"></script>
+  <!-- External configuration -->
+  <script src="./configuration.js"></script>
 </head>
 <body>
   <div id="loginDiv">
     <h2>Admin Login</h2>
-    <form id="loginForm">
-      <input type="email" id="email" placeholder="Email" required><br><br>
-      <input type="password" id="password" placeholder="Password" required><br><br>
-      <button type="submit">Login</button>
-    </form>
+    <input type="email" id="email" placeholder="Email" required><br><br>
+    <input type="password" id="password" placeholder="Password" required><br><br>
+    <button id="loginBtn">Login</button>
     <div id="error" style="color:red;"></div>
   </div>
 
   <div id="dashboardDiv" style="display:none;">
     <h2>Admin Dashboard</h2>
     <pre id="userData"></pre>
+    <button id="logoutBtn">Logout</button>
   </div>
+
+  <script>
+    // Initialize Firebase
+    const app = firebase.initializeApp(window.firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const loginDiv = document.getElementById('loginDiv');
+    const dashboardDiv = document.getElementById('dashboardDiv');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const userDataDiv = document.getElementById('userData');
+    const errorDiv = document.getElementById('error');
+
+    // Login button click
+    loginBtn.addEventListener('click', () => {
+      const email = emailInput.value;
+      const password = passwordInput.value;
+      errorDiv.textContent = '';
+
+      auth.signInWithEmailAndPassword(email, password)
+        .then(async (cred) => {
+          const user = cred.user;
+          if (user.uid === window.adminUID) {
+            // Fetch user data
+            const docRef = db.collection('users').doc(user.uid);
+            const docSnap = await docRef.get();
+            userDataDiv.textContent = docSnap.exists ? JSON.stringify(docSnap.data(), null, 2) : 'No data found';
+            loginDiv.style.display = 'none';
+            dashboardDiv.style.display = 'block';
+          } else {
+            errorDiv.textContent = 'Access denied: Not admin';
+            auth.signOut();
+          }
+        })
+        .catch(err => errorDiv.textContent = 'Login failed: ' + err.message);
+    });
+
+    // Logout button click
+    logoutBtn.addEventListener('click', () => {
+      auth.signOut();
+      loginDiv.style.display = 'block';
+      dashboardDiv.style.display = 'none';
+    });
+
+    // Auto auth state check
+    auth.onAuthStateChanged(async (user) => {
+      if (user && user.uid === window.adminUID) {
+        loginDiv.style.display = 'none';
+        dashboardDiv.style.display = 'block';
+        const docRef = db.collection('users').doc(user.uid);
+        const docSnap = await docRef.get();
+        userDataDiv.textContent = docSnap.exists ? JSON.stringify(docSnap.data(), null, 2) : 'No data found';
+      } else {
+        loginDiv.style.display = 'block';
+        dashboardDiv.style.display = 'none';
+      }
+    });
+  </script>
 </body>
 </html>
