@@ -3,363 +3,2261 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LinkMonetize Pro | Debug Mode</title>
+    <title>LinkMonetize Pro | Professional Link Management</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="configuration.js"></script>
     <style>
         :root {
             --primary: #6366f1;
-            --danger: #ef4444;
+            --primary-dark: #4f46e5;
+            --primary-light: #a5b4fc;
+            --secondary: #8b5cf6;
             --success: #10b981;
+            --danger: #ef4444;
             --warning: #f59e0b;
+            --info: #3b82f6;
+            --light: #f8fafc;
+            --dark: #1e293b;
+            --gray: #64748b;
+            --light-gray: #e2e8f0;
+            --white: #ffffff;
+            --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --border-radius: 16px;
+            --border-radius-sm: 8px;
+            --box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            --box-shadow-lg: 0 25px 50px rgba(0, 0, 0, 0.15);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        
-        .debug-panel {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            background: rgba(0,0,0,0.9);
-            color: white;
-            padding: 15px;
-            border-radius: 8px;
-            font-family: monospace;
-            font-size: 12px;
-            z-index: 10000;
-            max-width: 500px;
-            max-height: 400px;
-            overflow-y: auto;
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        
-        .debug-log {
-            margin: 5px 0;
-            padding: 3px;
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: var(--dark);
+            min-height: 100vh;
+            line-height: 1.6;
+            overflow-x: hidden;
         }
-        
-        .debug-error { color: #ff6b6b; }
-        .debug-success { color: #51cf66; }
-        .debug-warning { color: #ffd43b; }
-        .debug-info { color: #339af0; }
-        
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Login Page */
         .login-container {
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--gradient);
             padding: 20px;
+            position: relative;
+            overflow: hidden;
         }
-        
+
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: float 20s infinite linear;
+        }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(-50px, -50px) rotate(360deg); }
+        }
+
         .login-card {
-            background: white;
-            padding: 40px;
-            border-radius: 16px;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
-            max-width: 400px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow-lg);
             width: 100%;
+            max-width: 480px;
+            padding: 50px 40px;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transform: translateY(0);
+            transition: var(--transition-slow);
         }
-        
-        .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            width: 100%;
-            margin: 10px 0;
+
+        .login-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
         }
-        
+
+        .logo {
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .logo h1 {
+            font-size: 2.8rem;
+            font-weight: 800;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+            margin-bottom: 10px;
+        }
+
+        .logo .tagline {
+            color: var(--gray);
+            font-size: 1.1rem;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+            text-align: left;
+            position: relative;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 0.95rem;
+        }
+
         .form-control {
             width: 100%;
-            padding: 12px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            margin: 8px 0;
+            padding: 16px 20px;
+            border: 2px solid var(--light-gray);
+            border-radius: var(--border-radius-sm);
+            font-size: 1rem;
+            transition: var(--transition);
+            background: var(--white);
+            font-weight: 500;
         }
-        
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: var(--gradient);
+            color: var(--white);
+            border: none;
+            border-radius: var(--border-radius-sm);
+            padding: 16px 32px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: center;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: var(--transition);
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:active {
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--gray);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, var(--warning) 0%, #d97706 100%);
+        }
+
+        .login-footer {
+            margin-top: 30px;
+            color: var(--gray);
+            font-size: 0.95rem;
+        }
+
+        .login-footer a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .login-footer a:hover {
+            color: var(--primary-dark);
+        }
+
+        /* Dashboard */
+        .dashboard {
+            display: none;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            box-shadow: var(--box-shadow);
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            transition: var(--transition);
+            z-index: 1000;
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .sidebar-header {
+            padding: 30px 25px;
+            border-bottom: 1px solid var(--light-gray);
+            background: var(--gradient);
+            color: white;
+        }
+
+        .sidebar-header .logo h1 {
+            background: none;
+            -webkit-text-fill-color: white;
+            font-size: 1.8rem;
+        }
+
+        .sidebar-header .tagline {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .sidebar-menu {
+            padding: 25px 0;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 16px 25px;
+            color: var(--dark);
+            text-decoration: none;
+            transition: var(--transition);
+            border-left: 4px solid transparent;
+            margin: 5px 15px;
+            border-radius: var(--border-radius-sm);
+            font-weight: 500;
+        }
+
+        .menu-item:hover {
+            background: rgba(99, 102, 241, 0.08);
+            color: var(--primary);
+            transform: translateX(5px);
+        }
+
+        .menu-item.active {
+            background: rgba(99, 102, 241, 0.12);
+            color: var(--primary);
+            border-left-color: var(--primary);
+            font-weight: 600;
+        }
+
+        .menu-item i {
+            margin-right: 15px;
+            font-size: 1.2rem;
+            width: 24px;
+            text-align: center;
+        }
+
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 30px;
+            transition: var(--transition);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            padding: 25px 30px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--gradient);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 30px;
+            display: flex;
+            align-items: center;
+            transition: var(--transition);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--box-shadow-lg);
+        }
+
+        .stat-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 25px;
+            font-size: 1.8rem;
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+        }
+
+        .stat-icon.clicks {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .stat-icon.links {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .stat-icon.users {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--secondary);
+        }
+
+        .stat-info h3 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-info p {
+            color: var(--gray);
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--box-shadow-lg);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            border-radius: var(--border-radius-sm);
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--white);
+            border-radius: var(--border-radius-sm);
+            overflow: hidden;
+        }
+
+        .table th, .table td {
+            padding: 16px 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        .table th {
+            background: rgba(99, 102, 241, 0.05);
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .table tbody tr {
+            transition: var(--transition);
+        }
+
+        .table tbody tr:hover {
+            background: rgba(99, 102, 241, 0.04);
+            transform: translateX(5px);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+        }
+
+        .badge-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+        }
+
+        .badge-info {
+            background: rgba(99, 102, 241, 0.15);
+            color: var(--primary);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.9rem;
+        }
+
+        .action-btn:hover {
+            background: var(--primary);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .action-btn.delete {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        .action-btn.delete:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .form-col {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            padding: 20px;
+            background: rgba(99, 102, 241, 0.05);
+            border-radius: var(--border-radius-sm);
+        }
+
+        .toggle-label {
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 30px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--light-gray);
+            transition: var(--transition);
+            border-radius: 34px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: var(--transition);
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        input:checked + .toggle-slider {
+            background: var(--gradient);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(30px);
+        }
+
+        /* Chart Container */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
+        }
+
+        /* Redirect Page */
+        .redirect-container {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            background: var(--gradient);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .redirect-container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: float 20s infinite linear;
+        }
+
+        .redirect-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow-lg);
+            width: 100%;
+            max-width: 600px;
+            padding: 50px 40px;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .timer-container {
+            margin: 40px 0;
+            padding: 40px;
+            background: rgba(99, 102, 241, 0.05);
+            border-radius: var(--border-radius);
+            border: 2px dashed rgba(99, 102, 241, 0.2);
+        }
+
+        .timer {
+            font-size: 4.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .timer-label {
+            color: var(--gray);
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+
+        .buttons-container {
+            display: none;
+            margin-top: 40px;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--primary);
+            color: var(--white);
+        }
+
+        .loader {
+            display: inline-block;
+            width: 80px;
+            height: 80px;
+            margin: 20px auto;
+        }
+
+        .loader:after {
+            content: " ";
+            display: block;
+            width: 64px;
+            height: 64px;
+            margin: 8px;
+            border-radius: 50%;
+            border: 6px solid var(--primary);
+            border-color: var(--primary) transparent var(--primary) transparent;
+            animation: loader 1.2s linear infinite;
+        }
+
+        @keyframes loader {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow-lg);
+            width: 100%;
+            max-width: 500px;
+            padding: 40px;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transform: scale(0.9);
+            opacity: 0;
+            animation: modalAppear 0.3s ease forwards;
+        }
+
+        @keyframes modalAppear {
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray);
+            transition: var(--transition);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-modal:hover {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        /* Token Activation */
+        .token-status {
+            padding: 20px;
+            border-radius: var(--border-radius-sm);
+            margin-bottom: 25px;
+            text-align: center;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .token-status.active {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .token-status.expired {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        /* Alert Messages */
         .alert {
-            padding: 12px;
-            border-radius: 8px;
-            margin: 10px 0;
+            padding: 16px 20px;
+            border-radius: var(--border-radius-sm);
+            margin-bottom: 25px;
+            display: none;
+            font-weight: 500;
+            border-left: 4px solid;
         }
-        
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border-left-color: var(--success);
+        }
+
         .alert-error {
             background: rgba(239, 68, 68, 0.1);
-            color: #ef4444;
-            border-left: 4px solid #ef4444;
+            color: var(--danger);
+            border-left-color: var(--danger);
+        }
+
+        /* Mobile Menu Button */
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--dark);
+            cursor: pointer;
+            padding: 10px;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 400px;
+        }
+
+        .toast {
+            padding: 16px 20px;
+            border-radius: var(--border-radius-sm);
+            box-shadow: var(--box-shadow-lg);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: toastSlideIn 0.3s ease forwards;
+            transform: translateX(100%);
+            opacity: 0;
+        }
+
+        .toast-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .toast-error {
+            background: var(--danger);
+            color: white;
+        }
+
+        .toast-info {
+            background: var(--info);
+            color: white;
+        }
+
+        .toast-warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        @keyframes toastSlideIn {
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .sidebar {
+                width: 250px;
+            }
+            .main-content {
+                margin-left: 250px;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .sidebar {
+                width: 80px;
+                transform: translateX(0);
+            }
+            
+            .sidebar .menu-text {
+                display: none;
+            }
+            
+            .main-content {
+                margin-left: 80px;
+            }
+            
+            .stats-container {
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            }
+            
+            .sidebar-header .logo h1 {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-btn {
+                display: block;
+            }
+            
+            .sidebar {
+                transform: translateX(-100%);
+                width: 280px;
+            }
+            
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+                padding: 20px;
+            }
+            
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 20px;
+                padding: 20px;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .stat-card {
+                padding: 25px;
+            }
+            
+            .stat-icon {
+                width: 60px;
+                height: 60px;
+                font-size: 1.5rem;
+            }
+            
+            .card {
+                padding: 25px;
+            }
+            
+            .table-responsive {
+                font-size: 0.9rem;
+            }
+            
+            .btn {
+                padding: 14px 25px;
+            }
+            
+            .toast-container {
+                left: 20px;
+                right: 20px;
+                max-width: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 40px 25px;
+            }
+            
+            .redirect-card {
+                padding: 40px 25px;
+            }
+            
+            .modal-content {
+                padding: 30px 25px;
+            }
+            
+            .header h2 {
+                font-size: 1.5rem;
+            }
+            
+            .stat-info h3 {
+                font-size: 1.8rem;
+            }
+            
+            .timer {
+                font-size: 3.5rem;
+            }
+        }
+
+        /* Animation Classes */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .slide-in-left {
+            animation: slideInLeft 0.5s ease-out;
+        }
+
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-50px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-dark);
         }
     </style>
 </head>
 <body>
-    <!-- Debug Panel -->
-    <div class="debug-panel" id="debugPanel">
-        <div style="margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #444; padding-bottom: 5px;">
-            🔍 Debug Console
-        </div>
-        <div id="debugLogs"></div>
-    </div>
+    <!-- Toast Notifications Container -->
+    <div class="toast-container" id="toastContainer"></div>
 
     <!-- Login Page -->
     <div class="login-container" id="loginPage">
-        <div class="login-card">
-            <h1 style="text-align: center; margin-bottom: 30px;">LinkMonetize Pro</h1>
+        <div class="login-card fade-in">
+            <div class="logo">
+                <h1>LinkMonetize Pro</h1>
+                <div class="tagline">Professional Link Management & Monetization</div>
+            </div>
             
-            <div class="alert alert-error" id="configError" style="display: none;"></div>
             <div class="alert alert-error" id="loginError" style="display: none;"></div>
+            <div class="alert alert-error" id="configError" style="display: none;"></div>
             
             <form id="loginForm">
-                <input type="email" id="email" class="form-control" placeholder="Email" value="test@example.com" required>
-                <input type="password" id="password" class="form-control" placeholder="Password" value="password123" required>
-                <button type="submit" class="btn" id="loginBtn">Sign In</button>
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" class="form-control" placeholder="Enter your email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" class="form-control" placeholder="Enter your password" required>
+                </div>
+                
+                <button type="submit" class="btn" id="loginBtn">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Sign In
+                </button>
             </form>
             
-            <button class="btn" onclick="runTests()" style="background: #f59e0b;">Run Diagnostic Tests</button>
-            <button class="btn" onclick="checkFirebaseConfig()" style="background: #339af0;">Check Firebase Config</button>
+            <div class="login-footer">
+                Don't have an account? <a href="#" id="showRegister">Create one now</a>
+            </div>
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="configuration.js"></script>
-    
-    <script>
-        // Debug logging system
-        function debugLog(message, type = 'info') {
-            const debugLogs = document.getElementById('debugLogs');
-            const logEntry = document.createElement('div');
-            logEntry.className = `debug-log debug-${type}`;
-            logEntry.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
-            debugLogs.appendChild(logEntry);
-            console.log(`[DEBUG] ${message}`);
+    <!-- Registration Modal -->
+    <div class="modal" id="registerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Create Your Account</div>
+                <button class="close-modal">&times;</button>
+            </div>
             
-            // Keep only last 50 logs
-            const logs = debugLogs.getElementsByClassName('debug-log');
-            if (logs.length > 50) {
-                debugLogs.removeChild(logs[0]);
-            }
+            <div class="alert alert-error" id="registerError" style="display: none;"></div>
             
-            // Auto-scroll to bottom
-            debugLogs.scrollTop = debugLogs.scrollHeight;
-        }
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="registerName">Full Name</label>
+                    <input type="text" id="registerName" class="form-control" placeholder="Enter your full name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="registerEmail">Email Address</label>
+                    <input type="email" id="registerEmail" class="form-control" placeholder="Enter your email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="registerPassword">Password</label>
+                    <input type="password" id="registerPassword" class="form-control" placeholder="Create a password (min 6 characters)" required minlength="6">
+                </div>
+                
+                <div class="form-group">
+                    <label for="registerConfirmPassword">Confirm Password</label>
+                    <input type="password" id="registerConfirmPassword" class="form-control" placeholder="Confirm your password" required minlength="6">
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary close-modal">Cancel</button>
+                    <button type="submit" class="btn">Create Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-        // Global variables
+    <!-- Dashboard -->
+    <div class="dashboard" id="dashboard">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <h1>LMP</h1>
+                    <div class="tagline">LinkMonetize Pro</div>
+                </div>
+            </div>
+            
+            <div class="sidebar-menu">
+                <a href="#" class="menu-item active" data-page="overview">
+                    <i class="fas fa-chart-line"></i>
+                    <span class="menu-text">Dashboard</span>
+                </a>
+                <a href="#" class="menu-item" data-page="links">
+                    <i class="fas fa-link"></i>
+                    <span class="menu-text">My Links</span>
+                </a>
+                <a href="#" class="menu-item" data-page="analytics">
+                    <i class="fas fa-chart-bar"></i>
+                    <span class="menu-text">Analytics</span>
+                </a>
+                <a href="#" class="menu-item" data-page="settings">
+                    <i class="fas fa-cog"></i>
+                    <span class="menu-text">Settings</span>
+                </a>
+                <a href="#" class="menu-item" data-page="admin" id="adminMenuItem" style="display: none;">
+                    <i class="fas fa-user-shield"></i>
+                    <span class="menu-text">Admin Panel</span>
+                </a>
+                <a href="#" class="menu-item" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span class="menu-text">Logout</span>
+                </a>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="header">
+                <button class="mobile-menu-btn" id="mobileMenuBtn">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h2 id="pageTitle">Dashboard Overview</h2>
+                <div class="user-info">
+                    <div class="user-avatar" id="userInitials">JD</div>
+                    <div>
+                        <div id="userName">John Doe</div>
+                        <div id="userPlan" class="badge badge-success">Premium</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Overview Page -->
+            <div class="page-content" id="overviewPage">
+                <div class="stats-container">
+                    <div class="stat-card slide-in-left" style="animation-delay: 0.1s;">
+                        <div class="stat-icon clicks">
+                            <i class="fas fa-mouse-pointer"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="totalClicks">0</h3>
+                            <p>Total Clicks</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card slide-in-left" style="animation-delay: 0.2s;">
+                        <div class="stat-icon links">
+                            <i class="fas fa-link"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="totalLinks">0</h3>
+                            <p>Active Links</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card slide-in-left" style="animation-delay: 0.3s;">
+                        <div class="stat-icon users">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="totalUsers">0</h3>
+                            <p>Platform Users</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card fade-in">
+                    <div class="card-header">
+                        <div class="card-title">Recent Links</div>
+                        <button class="btn" id="createLinkBtn">
+                            <i class="fas fa-plus"></i>
+                            Create New Link
+                        </button>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Short URL</th>
+                                    <th>Clicks</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentLinksTable">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; padding: 40px; color: var(--gray);">
+                                        <i class="fas fa-link" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.5;"></i>
+                                        No links created yet. Create your first link to get started!
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Links Page -->
+            <div class="page-content" id="linksPage" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">My Links</div>
+                        <button class="btn" id="createLinkBtn2">
+                            <i class="fas fa-plus"></i>
+                            Create New Link
+                        </button>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Short URL</th>
+                                    <th>Destination URL</th>
+                                    <th>Clicks</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="linksTable">
+                                <tr>
+                                    <td colspan="6" style="text-align: center; padding: 40px; color: var(--gray);">
+                                        <i class="fas fa-link" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.5;"></i>
+                                        No links created yet. Create your first link to get started!
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Analytics Page -->
+            <div class="page-content" id="analyticsPage" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Link Performance</div>
+                        <div>
+                            <select class="form-control" id="analyticsPeriod" style="width: auto; display: inline-block;">
+                                <option value="7">Last 7 days</option>
+                                <option value="30" selected>Last 30 days</option>
+                                <option value="90">Last 90 days</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <canvas id="analyticsChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Top Performing Links</div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Clicks</th>
+                                    <th>Conversion Rate</th>
+                                </tr>
+                            </thead>
+                            <tbody id="topLinksTable">
+                                <tr>
+                                    <td colspan="3" style="text-align: center; padding: 40px; color: var(--gray);">
+                                        <i class="fas fa-chart-bar" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.5;"></i>
+                                        No analytics data available yet.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Settings Page -->
+            <div class="page-content" id="settingsPage" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Account Settings</div>
+                    </div>
+                    
+                    <form id="settingsForm">
+                        <div class="form-row">
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="userNameInput">Full Name</label>
+                                    <input type="text" id="userNameInput" class="form-control" placeholder="Enter your full name">
+                                </div>
+                            </div>
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="userEmailInput">Email Address</label>
+                                    <input type="email" id="userEmailInput" class="form-control" placeholder="Enter your email" readonly>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="adsterraLink">Your Adsterra Link</label>
+                            <input type="url" id="adsterraLink" class="form-control" placeholder="https://your-adsterra-link.com">
+                            <small style="color: var(--gray); margin-top: 8px; display: block;">
+                                <i class="fas fa-info-circle"></i> This link will be used for monetization of your shortened URLs.
+                            </small>
+                        </div>
+                        
+                        <div class="toggle-container">
+                            <div class="toggle-label">
+                                <i class="fas fa-bell"></i>
+                                Enable Email Notifications
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="emailNotifications" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <button type="submit" class="btn">
+                            <i class="fas fa-save"></i>
+                            Save Changes
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Link Modal -->
+    <div class="modal" id="createLinkModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Create New Link</div>
+                <button class="close-modal">&times;</button>
+            </div>
+            
+            <form id="createLinkForm">
+                <div class="form-group">
+                    <label for="linkName">Link Name</label>
+                    <input type="text" id="linkName" class="form-control" placeholder="My Awesome Link" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="destinationUrl">Destination URL</label>
+                    <input type="url" id="destinationUrl" class="form-control" placeholder="https://example.com" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="customSlug">Custom Slug (Optional)</label>
+                    <input type="text" id="customSlug" class="form-control" placeholder="my-custom-link">
+                    <small style="color: var(--gray); margin-top: 8px; display: block;">
+                        <i class="fas fa-info-circle"></i> Leave blank to generate automatically
+                    </small>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary close-modal">Cancel</button>
+                    <button type="submit" class="btn">Create Link</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Firebase and App Initialization
         let auth, db;
         let firebaseInitialized = false;
 
-        // Test functions
-        function runTests() {
-            debugLog('=== STARTING DIAGNOSTIC TESTS ===', 'warning');
-            
-            // Test 1: Check if configuration.js is loaded
-            if (typeof firebaseConfig === 'undefined') {
-                debugLog('❌ FAIL: firebaseConfig is undefined', 'error');
-                showConfigError('Firebase configuration not found. Check configuration.js file.');
-                return;
-            } else {
-                debugLog('✅ PASS: firebaseConfig found', 'success');
-            }
+        // Global variables
+        let currentUser = null;
+        let isAdmin = false;
+        let userLinks = [];
+        let userData = {};
+        let analyticsChart = null;
 
-            // Test 2: Check required Firebase config fields
-            const requiredFields = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
-            const missingFields = requiredFields.filter(field => !firebaseConfig[field]);
-            
-            if (missingFields.length > 0) {
-                debugLog(`❌ FAIL: Missing config fields: ${missingFields.join(', ')}`, 'error');
-                showConfigError(`Missing configuration: ${missingFields.join(', ')}`);
-                return;
-            } else {
-                debugLog('✅ PASS: All required Firebase config fields present', 'success');
-            }
-
-            // Test 3: Check if Firebase SDKs are loaded
-            if (typeof firebase === 'undefined') {
-                debugLog('❌ FAIL: Firebase SDK not loaded', 'error');
-                return;
-            } else {
-                debugLog('✅ PASS: Firebase SDK loaded', 'success');
-            }
-
-            // Test 4: Try to initialize Firebase
-            try {
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(firebaseConfig);
-                    debugLog('✅ PASS: Firebase initialized successfully', 'success');
-                } else {
-                    firebase.app();
-                    debugLog('✅ PASS: Firebase already initialized', 'success');
-                }
-                
-                // Initialize services
-                auth = firebase.auth();
-                db = firebase.firestore();
-                firebaseInitialized = true;
-                
-                debugLog('✅ PASS: Firebase Auth and Firestore services initialized', 'success');
-                
-            } catch (error) {
-                debugLog(`❌ FAIL: Firebase initialization error: ${error.message}`, 'error');
-                showConfigError(`Firebase init error: ${error.message}`);
-                return;
-            }
-
-            // Test 5: Test Firestore connection
-            testFirestoreConnection();
-            
-            debugLog('=== DIAGNOSTIC TESTS COMPLETED ===', 'warning');
-        }
-
-        function testFirestoreConnection() {
-            debugLog('Testing Firestore connection...', 'info');
-            
-            // Try to read from a test collection
-            db.collection('test').limit(1).get()
-                .then(() => {
-                    debugLog('✅ PASS: Firestore connection successful', 'success');
-                })
-                .catch(error => {
-                    debugLog(`❌ FAIL: Firestore connection failed: ${error.message}`, 'error');
-                    debugLog('This could be due to:', 'warning');
-                    debugLog('1. Incorrect projectId in firebaseConfig', 'warning');
-                    debugLog('2. Firestore not enabled in Firebase console', 'warning');
-                    debugLog('3. Firestore rules blocking access', 'warning');
-                });
-        }
-
-        function checkFirebaseConfig() {
-            debugLog('=== CHECKING FIREBASE CONFIG ===', 'warning');
-            
-            if (typeof firebaseConfig === 'undefined') {
-                debugLog('❌ firebaseConfig is undefined', 'error');
-                return;
-            }
-            
-            debugLog('Current Firebase Configuration:', 'info');
-            debugLog(`apiKey: ${firebaseConfig.apiKey ? '✅ Set' : '❌ Missing'}`, 
-                    firebaseConfig.apiKey ? 'success' : 'error');
-            debugLog(`authDomain: ${firebaseConfig.authDomain ? '✅ ' + firebaseConfig.authDomain : '❌ Missing'}`, 
-                    firebaseConfig.authDomain ? 'success' : 'error');
-            debugLog(`projectId: ${firebaseConfig.projectId ? '✅ ' + firebaseConfig.projectId : '❌ Missing'}`, 
-                    firebaseConfig.projectId ? 'success' : 'error');
-            debugLog(`storageBucket: ${firebaseConfig.storageBucket ? '✅ Set' : '❌ Missing'}`, 
-                    firebaseConfig.storageBucket ? 'success' : 'error');
-            debugLog(`messagingSenderId: ${firebaseConfig.messagingSenderId ? '✅ Set' : '❌ Missing'}`, 
-                    firebaseConfig.messagingSenderId ? 'success' : 'error');
-            debugLog(`appId: ${firebaseConfig.appId ? '✅ Set' : '❌ Missing'}`, 
-                    firebaseConfig.appId ? 'success' : 'error');
-            
-            // Check for common configuration issues
-            if (firebaseConfig.apiKey && firebaseConfig.apiKey.includes('YOUR_API')) {
-                debugLog('❌ WARNING: apiKey appears to be a placeholder', 'error');
-            }
-            if (firebaseConfig.projectId && firebaseConfig.projectId.includes('YOUR_PROJECT')) {
-                debugLog('❌ WARNING: projectId appears to be a placeholder', 'error');
-            }
-        }
-
-        function showConfigError(message) {
-            const configError = document.getElementById('configError');
-            configError.textContent = message;
-            configError.style.display = 'block';
-        }
-
-        function showLoginError(message) {
-            const loginError = document.getElementById('loginError');
-            loginError.textContent = message;
-            loginError.style.display = 'block';
-        }
-
-        // Initialize Firebase
+        // Function to initialize Firebase with error handling
         function initializeFirebase() {
-            debugLog('Initializing Firebase...', 'info');
-            
             try {
+                console.log('🔥 Initializing Firebase...');
+                
+                // Check if configuration is loaded
                 if (typeof firebaseConfig === 'undefined') {
-                    throw new Error('Firebase configuration not found');
+                    throw new Error('Firebase configuration not found. Please check configuration.js file');
+                }
+
+                // Check if required configuration fields exist
+                const requiredFields = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+                const missingFields = requiredFields.filter(field => !firebaseConfig[field]);
+                
+                if (missingFields.length > 0) {
+                    throw new Error(`Missing required configuration fields: ${missingFields.join(', ')}`);
+                }
+
+                // Check for placeholder values
+                if (firebaseConfig.apiKey.includes('YOUR_API') || firebaseConfig.projectId.includes('YOUR_PROJECT')) {
+                    throw new Error('Please replace placeholder values in configuration.js with your actual Firebase config');
                 }
 
                 // Initialize Firebase
                 if (!firebase.apps.length) {
                     firebase.initializeApp(firebaseConfig);
+                    console.log('✅ Firebase app initialized');
+                } else {
+                    firebase.app();
+                    console.log('✅ Firebase app already initialized');
                 }
 
+                // Initialize Firebase services
                 auth = firebase.auth();
                 db = firebase.firestore();
-                firebaseInitialized = true;
+                
+                // Enable offline persistence
+                db.enablePersistence()
+                    .then(() => console.log('✅ Firestore persistence enabled'))
+                    .catch(err => console.log('❌ Firestore persistence error:', err));
 
-                debugLog('Firebase initialized successfully', 'success');
+                firebaseInitialized = true;
+                console.log('✅ Firebase services initialized successfully');
                 
                 // Set up auth state listener
-                auth.onAuthStateChanged(user => {
+                auth.onAuthStateChanged(async user => {
+                    console.log('🔐 Auth state changed:', user ? user.email : 'No user');
                     if (user) {
-                        debugLog(`User signed in: ${user.email}`, 'success');
-                        // Here you would typically show the dashboard
+                        currentUser = user;
+                        await handleUserLogin(user);
                     } else {
-                        debugLog('User signed out', 'info');
+                        handleUserLogout();
                     }
                 });
-
+                
+                // Hide any configuration errors
+                document.getElementById('configError').style.display = 'none';
+                
             } catch (error) {
-                debugLog(`Firebase initialization failed: ${error.message}`, 'error');
-                showConfigError(`Configuration Error: ${error.message}`);
+                console.error('❌ Firebase initialization failed:', error);
+                
+                // Show configuration error to user
+                const configError = document.getElementById('configError');
+                configError.textContent = `Configuration Error: ${error.message}`;
+                configError.style.display = 'block';
+                
+                // Disable login form
+                document.getElementById('loginBtn').disabled = true;
+                document.getElementById('loginBtn').textContent = 'System Configuration Error';
+                
+                firebaseInitialized = false;
             }
         }
 
-        // Setup event listeners
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            if (!firebaseInitialized) {
-                showLoginError('Firebase not initialized. Please run diagnostic tests first.');
-                return;
-            }
+        // Initialize Firebase when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📄 DOM loaded, initializing Firebase...');
+            initializeFirebase();
+            setupEventListeners();
+        });
 
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            
-            debugLog(`Attempting login with email: ${email}`, 'info');
-
-            try {
-                const userCredential = await auth.signInWithEmailAndPassword(email, password);
-                debugLog('✅ Login successful!', 'success');
-                showLoginError('');
-                // Here you would redirect to dashboard
-            } catch (error) {
-                debugLog(`❌ Login failed: ${error.message}`, 'error');
-                let errorMessage = 'Login failed. ';
+        // Setup all event listeners
+        function setupEventListeners() {
+            // Login form
+            document.getElementById('loginForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
                 
-                switch (error.code) {
-                    case 'auth/invalid-email':
-                        errorMessage += 'Invalid email address.';
-                        break;
-                    case 'auth/user-disabled':
-                        errorMessage += 'This account has been disabled.';
-                        break;
-                    case 'auth/user-not-found':
-                        errorMessage += 'No account found with this email.';
-                        break;
-                    case 'auth/wrong-password':
-                        errorMessage += 'Incorrect password.';
-                        break;
-                    case 'auth/network-request-failed':
-                        errorMessage += 'Network error. Check your connection.';
-                        break;
-                    default:
-                        errorMessage += error.message;
+                if (!firebaseInitialized) {
+                    showLoginError('System not properly configured. Please refresh the page or contact support.');
+                    return;
+                }
+
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                const loginBtn = document.getElementById('loginBtn');
+                
+                // Show loading state
+                loginBtn.disabled = true;
+                loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In...';
+                
+                try {
+                    const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                    console.log('✅ User logged in:', userCredential.user.email);
+                    showLoginError(''); // Clear any errors
+                } catch (error) {
+                    console.error('❌ Login error:', error);
+                    let errorMessage = 'Login failed. Please check your credentials and try again.';
+                    
+                    if (error.code === 'auth/invalid-email') {
+                        errorMessage = 'Invalid email address.';
+                    } else if (error.code === 'auth/user-disabled') {
+                        errorMessage = 'This user has been disabled.';
+                    } else if (error.code === 'auth/user-not-found') {
+                        errorMessage = 'No user found with this email.';
+                    } else if (error.code === 'auth/wrong-password') {
+                        errorMessage = 'Incorrect password.';
+                    } else if (error.code === 'auth/network-request-failed') {
+                        errorMessage = 'Network error. Please check your connection.';
+                    }
+                    
+                    showLoginError(errorMessage);
+                    showToast('Login failed. Please check your credentials.', 'error');
+                } finally {
+                    // Reset button state
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
+                }
+            });
+
+            // Show register modal
+            document.getElementById('showRegister').addEventListener('click', function(e) {
+                e.preventDefault();
+                if (!firebaseInitialized) {
+                    alert('System not properly configured. Please refresh the page or contact support.');
+                    return;
+                }
+                document.getElementById('registerModal').style.display = 'flex';
+            });
+
+            // Close modal buttons
+            document.querySelectorAll('.close-modal').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.modal').forEach(modal => {
+                        modal.style.display = 'none';
+                    });
+                });
+            });
+
+            // Register form
+            document.getElementById('registerForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                if (!firebaseInitialized) {
+                    showRegisterError('System not properly configured. Please refresh the page or contact support.');
+                    return;
+                }
+
+                const name = document.getElementById('registerName').value;
+                const email = document.getElementById('registerEmail').value;
+                const password = document.getElementById('registerPassword').value;
+                const confirmPassword = document.getElementById('registerConfirmPassword').value;
+                
+                if (password !== confirmPassword) {
+                    showRegisterError('Passwords do not match');
+                    return;
                 }
                 
-                showLoginError(errorMessage);
+                if (password.length < 6) {
+                    showRegisterError('Password must be at least 6 characters long');
+                    return;
+                }
+                
+                try {
+                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                    
+                    // Update user profile with display name
+                    await userCredential.user.updateProfile({
+                        displayName: name
+                    });
+                    
+                    // Create user document in Firestore
+                    await db.collection('users').doc(userCredential.user.uid).set({
+                        name: name,
+                        email: email,
+                        adsterraLink: '',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    showRegisterError('');
+                    document.getElementById('registerModal').style.display = 'none';
+                    document.getElementById('registerForm').reset();
+                    
+                    showToast('Account created successfully! You are now logged in.', 'success');
+                    
+                } catch (error) {
+                    console.error('❌ Registration error:', error);
+                    let errorMessage = 'Registration failed. Please try again with a different email.';
+                    
+                    if (error.code === 'auth/email-already-in-use') {
+                        errorMessage = 'This email is already registered.';
+                    } else if (error.code === 'auth/invalid-email') {
+                        errorMessage = 'Invalid email address.';
+                    } else if (error.code === 'auth/weak-password') {
+                        errorMessage = 'Password is too weak.';
+                    } else if (error.code === 'auth/network-request-failed') {
+                        errorMessage = 'Network error. Please check your connection.';
+                    }
+                    
+                    showRegisterError(errorMessage);
+                }
+            });
+
+            // Mobile menu button
+            document.getElementById('mobileMenuBtn').addEventListener('click', function() {
+                document.querySelector('.sidebar').classList.toggle('active');
+            });
+
+            // Logout button
+            document.getElementById('logoutBtn').addEventListener('click', function(e) {
+                e.preventDefault();
+                auth.signOut().then(() => {
+                    console.log('✅ User signed out successfully');
+                }).catch((error) => {
+                    console.error('❌ Sign out error:', error);
+                });
+            });
+
+            // Menu navigation
+            setupMenuNavigation();
+            
+            // Create link modal buttons
+            document.getElementById('createLinkBtn').addEventListener('click', function() {
+                document.getElementById('createLinkModal').style.display = 'flex';
+            });
+            
+            document.getElementById('createLinkBtn2').addEventListener('click', function() {
+                document.getElementById('createLinkModal').style.display = 'flex';
+            });
+
+            // Create link form
+            document.getElementById('createLinkForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                if (!firebaseInitialized || !db || !auth) {
+                    showToast('System not ready yet. Please wait a moment and try again.', 'error');
+                    return;
+                }
+
+                const name = document.getElementById('linkName').value;
+                const destinationUrl = document.getElementById('destinationUrl').value;
+                const customSlug = document.getElementById('customSlug').value;
+                
+                try {
+                    const slug = customSlug || await generateUniqueSlug();
+                    const shortUrl = `${window.location.origin}/r/${slug}`;
+                    
+                    const linkData = {
+                        name: name,
+                        destinationUrl: destinationUrl,
+                        shortUrl: shortUrl,
+                        slug: slug,
+                        userId: currentUser.uid,
+                        clicks: 0,
+                        uniqueClicks: 0,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        status: 'active'
+                    };
+                    
+                    // Save to Firestore
+                    await db.collection('links').add(linkData);
+                    
+                    // Close modal and reset form
+                    document.getElementById('createLinkModal').style.display = 'none';
+                    this.reset();
+                    
+                    // Reload links data
+                    await loadUserData();
+                    if (document.getElementById('linksPage').style.display !== 'none') {
+                        loadLinksData();
+                    } else {
+                        loadDashboardData();
+                    }
+                    
+                    // Show success message
+                    showToast('Link created successfully!', 'success');
+                } catch (error) {
+                    console.error('❌ Error creating link:', error);
+                    showToast('Error creating link. Please try again.', 'error');
+                }
+            });
+
+            // Settings form
+            document.getElementById('settingsForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                try {
+                    const userName = document.getElementById('userNameInput').value;
+                    const adsterraLink = document.getElementById('adsterraLink').value;
+                    
+                    await db.collection('users').doc(currentUser.uid).update({
+                        name: userName,
+                        adsterraLink: adsterraLink,
+                        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    // Update user profile
+                    await currentUser.updateProfile({
+                        displayName: userName
+                    });
+                    
+                    // Update local user data
+                    userData.name = userName;
+                    userData.adsterraLink = adsterraLink;
+                    
+                    // Update UI
+                    updateUserUI();
+                    
+                    showToast('Settings saved successfully!', 'success');
+                } catch (error) {
+                    console.error('❌ Error saving settings:', error);
+                    showToast('Error saving settings. Please try again.', 'error');
+                }
+            });
+        }
+
+        // Setup menu navigation
+        function setupMenuNavigation() {
+            const menuItems = document.querySelectorAll('.menu-item[data-page]');
+
+            menuItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    const page = this.getAttribute('data-page');
+                    navigateToPage(page);
+                });
+            });
+        }
+
+        // Handle user login
+        async function handleUserLogin(user) {
+            try {
+                console.log('👤 Handling user login for:', user.email);
+                
+                // Show dashboard
+                document.getElementById('loginPage').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                
+                // Update UI based on user
+                updateUserUI();
+                
+                // Load user data
+                await loadUserData();
+                await loadDashboardData();
+                
+                console.log('✅ User login handling completed successfully');
+                
+            } catch (error) {
+                console.error('❌ Error during login process:', error);
+                showToast('Error loading user data. Please refresh the page.', 'error');
             }
-        });
+        }
 
-        // Initialize when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            debugLog('Page loaded, checking configuration...', 'info');
-            initializeFirebase();
-        });
+        // Handle user logout
+        function handleUserLogout() {
+            console.log('👤 Handling user logout');
+            
+            // Show login page
+            document.getElementById('loginPage').style.display = 'flex';
+            document.getElementById('dashboard').style.display = 'none';
+            
+            // Clear form fields
+            document.getElementById('loginForm').reset();
+            document.getElementById('loginError').style.display = 'none';
+            
+            // Reset user data
+            currentUser = null;
+            userLinks = [];
+            userData = {};
+        }
 
-        // Export functions to global scope for button clicks
-        window.runTests = runTests;
-        window.checkFirebaseConfig = checkFirebaseConfig;
+        // Show login error
+        function showLoginError(message) {
+            const loginError = document.getElementById('loginError');
+            if (message) {
+                loginError.textContent = message;
+                loginError.style.display = 'block';
+            } else {
+                loginError.style.display = 'none';
+            }
+        }
+
+        // Show register error
+        function showRegisterError(message) {
+            const registerError = document.getElementById('registerError');
+            if (message) {
+                registerError.textContent = message;
+                registerError.style.display = 'block';
+            } else {
+                registerError.style.display = 'none';
+            }
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i>
+                <span>${message}</span>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            // Remove after 5 seconds
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toastContainer.removeChild(toast);
+                    }
+                }, 300);
+            }, 5000);
+        }
+
+        // Navigation function
+        function navigateToPage(page) {
+            // Close mobile menu
+            document.querySelector('.sidebar').classList.remove('active');
+            
+            // Update active menu item
+            document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+            document.querySelector(`.menu-item[data-page="${page}"]`).classList.add('active');
+            
+            // Show selected page
+            document.querySelectorAll('.page-content').forEach(content => {
+                content.style.display = 'none';
+            });
+            
+            document.getElementById(page + 'Page').style.display = 'block';
+            document.getElementById('pageTitle').textContent = document.querySelector(`.menu-item[data-page="${page}"] .menu-text`).textContent;
+            
+            // Load page-specific data
+            if (page === 'links') {
+                loadLinksData();
+            } else if (page === 'analytics') {
+                loadAnalyticsData();
+            }
+        }
+
+        // Update user UI
+        function updateUserUI() {
+            if (!currentUser) return;
+            
+            // Update user info
+            document.getElementById('userInitials').textContent = getInitials(userData.name || currentUser.displayName || currentUser.email);
+            document.getElementById('userName').textContent = userData.name || currentUser.displayName || currentUser.email.split('@')[0];
+            
+            // Update settings form
+            document.getElementById('userNameInput').value = userData.name || '';
+            document.getElementById('userEmailInput').value = currentUser.email;
+            document.getElementById('adsterraLink').value = userData.adsterraLink || '';
+        }
+
+        // Load user data
+        async function loadUserData() {
+            try {
+                if (!currentUser) {
+                    console.error('❌ No current user found while loading user data');
+                    throw new Error('No current user');
+                }
+
+                // Load user profile
+                const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                if (userDoc.exists) {
+                    userData = userDoc.data();
+                    console.log('✅ User data loaded:', userData);
+                } else {
+                    console.log('ℹ️ No user document found, creating one.');
+                    // Create user document if it doesn't exist
+                    const newUserData = {
+                        name: currentUser.displayName || currentUser.email.split('@')[0],
+                        email: currentUser.email,
+                        adsterraLink: '',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    
+                    await db.collection('users').doc(currentUser.uid).set(newUserData);
+                    userData = newUserData;
+                }
+                
+                // Load user links
+                const linksSnapshot = await db.collection('links')
+                    .where('userId', '==', currentUser.uid)
+                    .orderBy('createdAt', 'desc')
+                    .get();
+                
+                userLinks = [];
+                linksSnapshot.forEach(doc => {
+                    userLinks.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                console.log(`✅ User links loaded: ${userLinks.length} links`);
+            } catch (error) {
+                console.error('❌ Error loading user data:', error);
+                showToast('Error loading user data. Please refresh the page.', 'error');
+                throw error;
+            }
+        }
+
+        // Load dashboard data
+        async function loadDashboardData() {
+            // Update stats
+            const totalClicks = userLinks.reduce((sum, link) => sum + (link.clicks || 0), 0);
+            
+            document.getElementById('totalClicks').textContent = totalClicks.toLocaleString();
+            document.getElementById('totalLinks').textContent = userLinks.length;
+            document.getElementById('totalUsers').textContent = '1'; // Simple count for now
+            
+            // Load recent links
+            const recentLinksTable = document.getElementById('recentLinksTable');
+            if (recentLinksTable) {
+                recentLinksTable.innerHTML = '';
+                
+                if (userLinks.length === 0) {
+                    recentLinksTable.innerHTML = `
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 40px; color: var(--gray);">
+                                <i class="fas fa-link" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.5;"></i>
+                                No links created yet. Create your first link to get started!
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    userLinks.slice(0, 5).forEach(link => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${link.name}</td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span>${link.shortUrl}</span>
+                                    <button class="action-btn" title="Copy URL" onclick="copyToClipboard('${link.shortUrl}')">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td>${link.clicks || 0}</td>
+                            <td><span class="badge ${link.status === 'active' ? 'badge-success' : 'badge-warning'}">${link.status}</span></td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="action-btn" title="Copy URL" onclick="copyToClipboard('${link.shortUrl}')">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                    <button class="action-btn delete" title="Delete" onclick="deleteLink('${link.id}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        `;
+                        recentLinksTable.appendChild(row);
+                    });
+                }
+            }
+        }
+
+        // Load links data
+        function loadLinksData() {
+            const linksTable = document.getElementById('linksTable');
+            if (!linksTable) return;
+            
+            linksTable.innerHTML = '';
+            
+            if (userLinks.length === 0) {
+                linksTable.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 40px; color: var(--gray);">
+                            <i class="fas fa-link" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.5;"></i>
+                            No links created yet. Create your first link to get started!
+                        </td>
+                    </tr>
+                `;
+            } else {
+                userLinks.forEach(link => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${link.name}</td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span>${link.shortUrl}</span>
+                                <button class="action-btn" title="Copy URL" onclick="copyToClipboard('${link.shortUrl}')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </td>
+                        <td>${truncateUrl(link.destinationUrl, 40)}</td>
+                        <td>${link.clicks || 0}</td>
+                        <td>${formatDate(link.createdAt)}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="action-btn" title="Copy URL" onclick="copyToClipboard('${link.shortUrl}')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                                <button class="action-btn delete" title="Delete" onclick="deleteLink('${link.id}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    linksTable.appendChild(row);
+                });
+            }
+        }
+
+        // Load analytics data - FIXED VERSION
+        function loadAnalyticsData() {
+            // Update top links table
+            const topLinksTable = document.getElementById('topLinksTable');
+            if (topLinksTable) {
+                topLinksTable.innerHTML = '';
+                
+                if (!userLinks || userLinks.length === 0) {
+                    topLinksTable.innerHTML = `
+                        <tr>
+                            <td colspan="3" style="text-align: center; padding: 40px; color: var(--gray);">
+                                <i class="fas fa-chart-bar" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.5;"></i>
+                                No analytics data available yet.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                // Correct: shallow copy and sort by clicks (descending)
+                const sortedLinks = [...userLinks].sort(
+                    (a, b) => (b.clicks || 0) - (a.clicks || 0)
+                );
+
+                // Show top 10 links
+                sortedLinks.slice(0, 10).forEach(link => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${link.name}</td>
+                        <td>${link.clicks || 0}</td>
+                        <td>${
+                            link.uniqueClicks
+                                ? ((link.uniqueClicks / (link.clicks || 1)) * 100).toFixed(1) + '%'
+                                : '0%'
+                        }</td>
+                    `;
+                    topLinksTable.appendChild(row);
+                });
+            }
+            
+            // Initialize analytics chart
+            initializeAnalyticsChart();
+        }
+
+        // Initialize analytics chart
+        function initializeAnalyticsChart() {
+            const ctx = document.getElementById('analyticsChart');
+            if (!ctx) return;
+            
+            if (analyticsChart) {
+                analyticsChart.destroy();
+            }
+            
+            // Sample data
+            const labels = Array.from({length: 30}, (_, i) => `Day ${i + 1}`);
+            const clicksData = Array.from({length: 30}, () => Math.floor(Math.random() * 100) + 20);
+            
+            analyticsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Daily Clicks',
+                        data: clicksData,
+                        backgroundColor: 'rgba(99, 102, 241, 0.7)',
+                        borderColor: '#6366f1',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Utility Functions
+        function getInitials(name) {
+            return name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U';
+        }
+
+        async function generateUniqueSlug() {
+            let slug = generateRandomSlug();
+            let exists = true;
+            let attempts = 0;
+            
+            while (exists && attempts < 5) {
+                const snapshot = await db.collection('links').where('slug', '==', slug).get();
+                exists = !snapshot.empty;
+                if (exists) {
+                    slug = generateRandomSlug();
+                    attempts++;
+                }
+            }
+            
+            if (exists) {
+                slug += '-' + Date.now().toString(36);
+            }
+            
+            return slug;
+        }
+
+        function generateRandomSlug() {
+            return Math.random().toString(36).substring(2, 8);
+        }
+
+        function truncateUrl(url, maxLength = 40) {
+            return url.length > maxLength ? url.substring(0, maxLength) + '...' : url;
+        }
+
+        function formatDate(timestamp) {
+            if (!timestamp) return 'N/A';
+            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('URL copied to clipboard!', 'success');
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                showToast('Failed to copy URL', 'error');
+            });
+        }
+
+        // Action functions
+        async function deleteLink(linkId) {
+            if (confirm('Are you sure you want to delete this link? This action cannot be undone.')) {
+                try {
+                    await db.collection('links').doc(linkId).delete();
+                    await loadUserData();
+                    loadLinksData();
+                    showToast('Link deleted successfully!', 'success');
+                } catch (error) {
+                    console.error('Error deleting link:', error);
+                    showToast('Error deleting link. Please try again.', 'error');
+                }
+            }
+        }
+
+        // Make functions globally available
+        window.copyToClipboard = copyToClipboard;
+        window.deleteLink = deleteLink;
     </script>
 </body>
 </html>
