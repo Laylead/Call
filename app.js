@@ -1,4 +1,3 @@
-// app.js
 // Firebase and App Initialization
 let auth, db;
 let firebaseInitialized = false;
@@ -6,7 +5,6 @@ let firebaseInitialized = false;
 // Global variables
 let currentUser = null;
 let userLinks = [];
-let platformSettings = {};
 let userData = {};
 let analyticsChart = null;
 
@@ -450,9 +448,8 @@ async function handleUserLogin(user) {
         // Update UI based on user
         updateUserUI();
         
-        // Load user data and platform settings
+        // Load user data
         await loadUserData();
-        await loadPlatformSettings();
         await loadDashboardData();
         
         console.log('✅ User login handling completed successfully');
@@ -592,14 +589,6 @@ function updateUserUI() {
             subscriptionBadge.textContent = userData.subscription.plan === 'free' ? 'Free' : 'Premium';
             subscriptionBadge.className = `badge ${userData.subscription.plan === 'free' ? 'badge-warning' : 'badge-success'}`;
         }
-        
-        if (userData.subscription.status === 'active' && platformSettings.subscriptionEnabled) {
-            const subscriptionTimer = document.getElementById('subscriptionTimer');
-            if (subscriptionTimer) {
-                subscriptionTimer.style.display = 'block';
-                startSubscriptionTimer(userData.subscription.expiryDate);
-            }
-        }
     }
 }
 
@@ -656,36 +645,6 @@ async function loadUserData() {
     } catch (error) {
         console.error('❌ Error loading user data:', error);
         showToast('Error loading user data. Please refresh the page.', 'error');
-        throw error;
-    }
-}
-
-// Load platform settings
-async function loadPlatformSettings() {
-    try {
-        ensureFirebaseReady();
-        const settingsDoc = await db.collection('platformSettings').doc('settings').get();
-        if (settingsDoc.exists) {
-            platformSettings = settingsDoc.data();
-        } else {
-            // Create default settings if they don't exist
-            const defaultSettings = {
-                adminAdsterraLink: typeof PLATFORM_SETTINGS !== 'undefined' ? PLATFORM_SETTINGS.adminAdsterraLink : 'https://example.com',
-                subscriptionEnabled: typeof PLATFORM_SETTINGS !== 'undefined' ? PLATFORM_SETTINGS.subscriptionEnabled : false,
-                subscriptionPrice: typeof PLATFORM_SETTINGS !== 'undefined' ? PLATFORM_SETTINGS.subscriptionPrice : 9.99,
-                subscriptionPopupText: typeof PLATFORM_SETTINGS !== 'undefined' ? PLATFORM_SETTINGS.subscriptionPopupText : 'Your subscription has expired. Please renew to continue using our services.',
-                subscriptionButtonText: typeof PLATFORM_SETTINGS !== 'undefined' ? PLATFORM_SETTINGS.subscriptionButtonText : 'Renew Subscription',
-                subscriptionButtonLink: typeof PLATFORM_SETTINGS !== 'undefined' ? PLATFORM_SETTINGS.subscriptionButtonLink : 'https://payment-portal.com',
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            };
-            
-            await db.collection('platformSettings').doc('settings').set(defaultSettings);
-            
-            platformSettings = defaultSettings;
-        }
-        console.log('✅ Platform settings loaded:', platformSettings);
-    } catch (error) {
-        console.error('❌ Error loading platform settings:', error);
         throw error;
     }
 }
@@ -799,7 +758,7 @@ function loadLinksData() {
     }
 }
 
-// Load analytics data - FIXED VERSION
+// Load analytics data
 function loadAnalyticsData() {
     // Update top links table
     const topLinksTable = document.getElementById('topLinksTable');
@@ -885,16 +844,6 @@ function initializeAnalyticsChart() {
     });
 }
 
-// Start subscription timer
-function startSubscriptionTimer(expiryDate) {
-    // This would be a countdown timer implementation
-    // For now, we'll just display a static message
-    const renewalTimer = document.getElementById('renewalTimer');
-    if (renewalTimer) {
-        renewalTimer.textContent = '15 days, 3 hours, 42 minutes';
-    }
-}
-
 // Handle redirect page
 async function handleRedirectPage() {
     const slug = window.location.pathname.split('/r/')[1];
@@ -934,13 +883,8 @@ function initializeRedirectLogic(linkData, linkId) {
     const buttonsContainer = document.getElementById('buttonsContainer');
     const loader = document.querySelector('.loader');
     
-    // Determine which Adsterra link to use based on click rotation
-    const clickCount = linkData.clicks || 0;
-    const useUserAdsterra = (clickCount % 2 === 0); // Even clicks use user's Adsterra, odd use admin's
-    
-    const adsterraLink = useUserAdsterra ? 
-        (linkData.userAdsterraLink || platformSettings.adminAdsterraLink) : 
-        platformSettings.adminAdsterraLink;
+    // Use the user's Adsterra link
+    const adsterraLink = linkData.userAdsterraLink || PLATFORM_SETTINGS.defaultAdsterraLink;
     
     const timerInterval = setInterval(() => {
         countdown--;
