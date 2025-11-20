@@ -1,106 +1,365 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Admin Dashboard</title>
-
-<!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore.js"></script>
-
-<!-- External config -->
-<script src="./configuration.js"></script>
-
-<style>
-  body { font-family: Arial; margin: 20px; }
-  #dashboardDiv { display: none; }
-  pre { background: #f0f0f0; padding: 10px; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkMonetize Pro | Debug Mode</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+        
+        .debug-panel {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 10000;
+            max-width: 500px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .debug-log {
+            margin: 5px 0;
+            padding: 3px;
+        }
+        
+        .debug-error { color: #ff6b6b; }
+        .debug-success { color: #51cf66; }
+        .debug-warning { color: #ffd43b; }
+        .debug-info { color: #339af0; }
+        
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        
+        .login-card {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            max-width: 400px;
+            width: 100%;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            margin: 8px 0;
+        }
+        
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border-left: 4px solid #ef4444;
+        }
+    </style>
 </head>
 <body>
+    <!-- Debug Panel -->
+    <div class="debug-panel" id="debugPanel">
+        <div style="margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #444; padding-bottom: 5px;">
+            🔍 Debug Console
+        </div>
+        <div id="debugLogs"></div>
+    </div>
 
-<div id="loginDiv">
-  <h2>Admin Login</h2>
-  <input type="email" id="email" placeholder="Email"><br><br>
-  <input type="password" id="password" placeholder="Password"><br><br>
-  <button id="loginBtn">Login</button>
-  <div id="error" style="color:red; margin-top:10px;"></div>
-</div>
+    <!-- Login Page -->
+    <div class="login-container" id="loginPage">
+        <div class="login-card">
+            <h1 style="text-align: center; margin-bottom: 30px;">LinkMonetize Pro</h1>
+            
+            <div class="alert alert-error" id="configError" style="display: none;"></div>
+            <div class="alert alert-error" id="loginError" style="display: none;"></div>
+            
+            <form id="loginForm">
+                <input type="email" id="email" class="form-control" placeholder="Email" value="test@example.com" required>
+                <input type="password" id="password" class="form-control" placeholder="Password" value="password123" required>
+                <button type="submit" class="btn" id="loginBtn">Sign In</button>
+            </form>
+            
+            <button class="btn" onclick="runTests()" style="background: #f59e0b;">Run Diagnostic Tests</button>
+            <button class="btn" onclick="checkFirebaseConfig()" style="background: #339af0;">Check Firebase Config</button>
+        </div>
+    </div>
 
-<div id="dashboardDiv">
-  <h2>Admin Dashboard</h2>
-  <button id="logoutBtn">Logout</button>
-  <h3>All Users:</h3>
-  <div id="usersList"></div>
-</div>
-
-<script>
-  // Initialize Firebase
-  const app = firebase.initializeApp(window.firebaseConfig);
-  const auth = firebase.auth();
-  const db = firebase.firestore();
-
-  const loginDiv = document.getElementById('loginDiv');
-  const dashboardDiv = document.getElementById('dashboardDiv');
-  const loginBtn = document.getElementById('loginBtn');
-  const logoutBtn = document.getElementById('logoutBtn');
-  const emailInput = document.getElementById('email');
-  const passwordInput = document.getElementById('password');
-  const errorDiv = document.getElementById('error');
-  const usersList = document.getElementById('usersList');
-
-  // Login button
-  loginBtn.addEventListener('click', () => {
-    const email = emailInput.value;
-    const password = passwordInput.value;
-    errorDiv.textContent = '';
-
-    auth.signInWithEmailAndPassword(email, password)
-      .then(async (cred) => {
-        const user = cred.user;
-        if (user.uid !== window.adminUID) {
-          errorDiv.textContent = 'Access denied: Not admin';
-          auth.signOut();
-          return;
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="configuration.js"></script>
+    
+    <script>
+        // Debug logging system
+        function debugLog(message, type = 'info') {
+            const debugLogs = document.getElementById('debugLogs');
+            const logEntry = document.createElement('div');
+            logEntry.className = `debug-log debug-${type}`;
+            logEntry.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            debugLogs.appendChild(logEntry);
+            console.log(`[DEBUG] ${message}`);
+            
+            // Keep only last 50 logs
+            const logs = debugLogs.getElementsByClassName('debug-log');
+            if (logs.length > 50) {
+                debugLogs.removeChild(logs[0]);
+            }
+            
+            // Auto-scroll to bottom
+            debugLogs.scrollTop = debugLogs.scrollHeight;
         }
-        loginDiv.style.display = 'none';
-        dashboardDiv.style.display = 'block';
-        loadUsers();
-      })
-      .catch(err => errorDiv.textContent = 'Login failed: ' + err.message);
-  });
 
-  // Logout button
-  logoutBtn.addEventListener('click', () => {
-    auth.signOut();
-  });
+        // Global variables
+        let auth, db;
+        let firebaseInitialized = false;
 
-  // Auto-check auth state
-  auth.onAuthStateChanged(user => {
-    if (user && user.uid === window.adminUID) {
-      loginDiv.style.display = 'none';
-      dashboardDiv.style.display = 'block';
-      loadUsers();
-    } else {
-      loginDiv.style.display = 'block';
-      dashboardDiv.style.display = 'none';
-    }
-  });
+        // Test functions
+        function runTests() {
+            debugLog('=== STARTING DIAGNOSTIC TESTS ===', 'warning');
+            
+            // Test 1: Check if configuration.js is loaded
+            if (typeof firebaseConfig === 'undefined') {
+                debugLog('❌ FAIL: firebaseConfig is undefined', 'error');
+                showConfigError('Firebase configuration not found. Check configuration.js file.');
+                return;
+            } else {
+                debugLog('✅ PASS: firebaseConfig found', 'success');
+            }
 
-  // Load all users from Firestore in real-time
-  function loadUsers() {
-    usersList.innerHTML = 'Loading users...';
-    db.collection('users').onSnapshot(snapshot => {
-      let html = '';
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        html += `<pre>${doc.id}: ${JSON.stringify(data, null, 2)}</pre>`;
-      });
-      usersList.innerHTML = html || 'No users found';
-    });
-  }
-</script>
+            // Test 2: Check required Firebase config fields
+            const requiredFields = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+            const missingFields = requiredFields.filter(field => !firebaseConfig[field]);
+            
+            if (missingFields.length > 0) {
+                debugLog(`❌ FAIL: Missing config fields: ${missingFields.join(', ')}`, 'error');
+                showConfigError(`Missing configuration: ${missingFields.join(', ')}`);
+                return;
+            } else {
+                debugLog('✅ PASS: All required Firebase config fields present', 'success');
+            }
 
+            // Test 3: Check if Firebase SDKs are loaded
+            if (typeof firebase === 'undefined') {
+                debugLog('❌ FAIL: Firebase SDK not loaded', 'error');
+                return;
+            } else {
+                debugLog('✅ PASS: Firebase SDK loaded', 'success');
+            }
+
+            // Test 4: Try to initialize Firebase
+            try {
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig);
+                    debugLog('✅ PASS: Firebase initialized successfully', 'success');
+                } else {
+                    firebase.app();
+                    debugLog('✅ PASS: Firebase already initialized', 'success');
+                }
+                
+                // Initialize services
+                auth = firebase.auth();
+                db = firebase.firestore();
+                firebaseInitialized = true;
+                
+                debugLog('✅ PASS: Firebase Auth and Firestore services initialized', 'success');
+                
+            } catch (error) {
+                debugLog(`❌ FAIL: Firebase initialization error: ${error.message}`, 'error');
+                showConfigError(`Firebase init error: ${error.message}`);
+                return;
+            }
+
+            // Test 5: Test Firestore connection
+            testFirestoreConnection();
+            
+            debugLog('=== DIAGNOSTIC TESTS COMPLETED ===', 'warning');
+        }
+
+        function testFirestoreConnection() {
+            debugLog('Testing Firestore connection...', 'info');
+            
+            // Try to read from a test collection
+            db.collection('test').limit(1).get()
+                .then(() => {
+                    debugLog('✅ PASS: Firestore connection successful', 'success');
+                })
+                .catch(error => {
+                    debugLog(`❌ FAIL: Firestore connection failed: ${error.message}`, 'error');
+                    debugLog('This could be due to:', 'warning');
+                    debugLog('1. Incorrect projectId in firebaseConfig', 'warning');
+                    debugLog('2. Firestore not enabled in Firebase console', 'warning');
+                    debugLog('3. Firestore rules blocking access', 'warning');
+                });
+        }
+
+        function checkFirebaseConfig() {
+            debugLog('=== CHECKING FIREBASE CONFIG ===', 'warning');
+            
+            if (typeof firebaseConfig === 'undefined') {
+                debugLog('❌ firebaseConfig is undefined', 'error');
+                return;
+            }
+            
+            debugLog('Current Firebase Configuration:', 'info');
+            debugLog(`apiKey: ${firebaseConfig.apiKey ? '✅ Set' : '❌ Missing'}`, 
+                    firebaseConfig.apiKey ? 'success' : 'error');
+            debugLog(`authDomain: ${firebaseConfig.authDomain ? '✅ ' + firebaseConfig.authDomain : '❌ Missing'}`, 
+                    firebaseConfig.authDomain ? 'success' : 'error');
+            debugLog(`projectId: ${firebaseConfig.projectId ? '✅ ' + firebaseConfig.projectId : '❌ Missing'}`, 
+                    firebaseConfig.projectId ? 'success' : 'error');
+            debugLog(`storageBucket: ${firebaseConfig.storageBucket ? '✅ Set' : '❌ Missing'}`, 
+                    firebaseConfig.storageBucket ? 'success' : 'error');
+            debugLog(`messagingSenderId: ${firebaseConfig.messagingSenderId ? '✅ Set' : '❌ Missing'}`, 
+                    firebaseConfig.messagingSenderId ? 'success' : 'error');
+            debugLog(`appId: ${firebaseConfig.appId ? '✅ Set' : '❌ Missing'}`, 
+                    firebaseConfig.appId ? 'success' : 'error');
+            
+            // Check for common configuration issues
+            if (firebaseConfig.apiKey && firebaseConfig.apiKey.includes('YOUR_API')) {
+                debugLog('❌ WARNING: apiKey appears to be a placeholder', 'error');
+            }
+            if (firebaseConfig.projectId && firebaseConfig.projectId.includes('YOUR_PROJECT')) {
+                debugLog('❌ WARNING: projectId appears to be a placeholder', 'error');
+            }
+        }
+
+        function showConfigError(message) {
+            const configError = document.getElementById('configError');
+            configError.textContent = message;
+            configError.style.display = 'block';
+        }
+
+        function showLoginError(message) {
+            const loginError = document.getElementById('loginError');
+            loginError.textContent = message;
+            loginError.style.display = 'block';
+        }
+
+        // Initialize Firebase
+        function initializeFirebase() {
+            debugLog('Initializing Firebase...', 'info');
+            
+            try {
+                if (typeof firebaseConfig === 'undefined') {
+                    throw new Error('Firebase configuration not found');
+                }
+
+                // Initialize Firebase
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig);
+                }
+
+                auth = firebase.auth();
+                db = firebase.firestore();
+                firebaseInitialized = true;
+
+                debugLog('Firebase initialized successfully', 'success');
+                
+                // Set up auth state listener
+                auth.onAuthStateChanged(user => {
+                    if (user) {
+                        debugLog(`User signed in: ${user.email}`, 'success');
+                        // Here you would typically show the dashboard
+                    } else {
+                        debugLog('User signed out', 'info');
+                    }
+                });
+
+            } catch (error) {
+                debugLog(`Firebase initialization failed: ${error.message}`, 'error');
+                showConfigError(`Configuration Error: ${error.message}`);
+            }
+        }
+
+        // Setup event listeners
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!firebaseInitialized) {
+                showLoginError('Firebase not initialized. Please run diagnostic tests first.');
+                return;
+            }
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            debugLog(`Attempting login with email: ${email}`, 'info');
+
+            try {
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                debugLog('✅ Login successful!', 'success');
+                showLoginError('');
+                // Here you would redirect to dashboard
+            } catch (error) {
+                debugLog(`❌ Login failed: ${error.message}`, 'error');
+                let errorMessage = 'Login failed. ';
+                
+                switch (error.code) {
+                    case 'auth/invalid-email':
+                        errorMessage += 'Invalid email address.';
+                        break;
+                    case 'auth/user-disabled':
+                        errorMessage += 'This account has been disabled.';
+                        break;
+                    case 'auth/user-not-found':
+                        errorMessage += 'No account found with this email.';
+                        break;
+                    case 'auth/wrong-password':
+                        errorMessage += 'Incorrect password.';
+                        break;
+                    case 'auth/network-request-failed':
+                        errorMessage += 'Network error. Check your connection.';
+                        break;
+                    default:
+                        errorMessage += error.message;
+                }
+                
+                showLoginError(errorMessage);
+            }
+        });
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            debugLog('Page loaded, checking configuration...', 'info');
+            initializeFirebase();
+        });
+
+        // Export functions to global scope for button clicks
+        window.runTests = runTests;
+        window.checkFirebaseConfig = checkFirebaseConfig;
+    </script>
 </body>
 </html>
