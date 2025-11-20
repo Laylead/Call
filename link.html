@@ -1650,6 +1650,13 @@
         let userData = {};
         let analyticsChart = null;
 
+        // Helper function to ensure Firebase is ready
+        function ensureFirebaseReady() {
+            if (!firebaseInitialized || !db || !auth) {
+                throw new Error('Firebase not initialized yet.');
+            }
+        }
+
         // Function to initialize Firebase with error handling
         function initializeFirebase() {
             try {
@@ -1689,6 +1696,14 @@
                 firebaseInitialized = true;
                 console.log('Firebase initialized successfully');
                 
+                // If we're on a redirect path, handle it now (Firebase is ready)
+                if (window.location.pathname.includes('/r/')) {
+                    handleRedirectPage().catch(err => {
+                        console.error('Redirect page handling error:', err);
+                        // optionally show a user-friendly error/toast
+                    });
+                }
+                
                 // Set up auth state listener AFTER Firebase is initialized
                 auth.onAuthStateChanged(async user => {
                     console.log('Auth state changed:', user);
@@ -1701,19 +1716,27 @@
                 });
                 
                 // Hide any configuration errors
-                document.getElementById('configError').style.display = 'none';
+                const configError = document.getElementById('configError');
+                if (configError) {
+                    configError.style.display = 'none';
+                }
                 
             } catch (error) {
                 console.error('Firebase initialization failed:', error);
                 
                 // Show configuration error to user
                 const configError = document.getElementById('configError');
-                configError.textContent = `Configuration Error: ${error.message}`;
-                configError.style.display = 'block';
+                if (configError) {
+                    configError.textContent = `Configuration Error: ${error.message}`;
+                    configError.style.display = 'block';
+                }
                 
                 // Disable login form
-                document.getElementById('loginBtn').disabled = true;
-                document.getElementById('loginBtn').textContent = 'System Configuration Error';
+                const loginBtn = document.getElementById('loginBtn');
+                if (loginBtn) {
+                    loginBtn.disabled = true;
+                    loginBtn.textContent = 'System Configuration Error';
+                }
                 
                 firebaseInitialized = false;
             }
@@ -1723,70 +1746,71 @@
         document.addEventListener('DOMContentLoaded', function() {
             initializeFirebase();
             setupEventListeners();
-
-            // Check if we're on a redirect page
-            if (window.location.pathname.includes('/r/')) {
-                handleRedirectPage();
-            }
         });
 
         // Setup all event listeners
         function setupEventListeners() {
             // Login form
-            document.getElementById('loginForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
-                if (!firebaseInitialized) {
-                    showLoginError('System not properly configured. Please refresh the page or contact support.');
-                    return;
-                }
-
-                const email = document.getElementById('email').value;
-                const password = document.getElementById('password').value;
-                const loginBtn = document.getElementById('loginBtn');
-                
-                // Show loading state
-                loginBtn.disabled = true;
-                loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In...';
-                
-                try {
-                    const userCredential = await auth.signInWithEmailAndPassword(email, password);
-                    console.log('User logged in:', userCredential.user);
-                    showLoginError(''); // Clear any errors
-                } catch (error) {
-                    console.error('Login error:', error);
-                    let errorMessage = 'Login failed. Please check your credentials and try again.';
+            const loginForm = document.getElementById('loginForm');
+            if (loginForm) {
+                loginForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
                     
-                    if (error.code === 'auth/invalid-email') {
-                        errorMessage = 'Invalid email address.';
-                    } else if (error.code === 'auth/user-disabled') {
-                        errorMessage = 'This user has been disabled.';
-                    } else if (error.code === 'auth/user-not-found') {
-                        errorMessage = 'No user found with this email.';
-                    } else if (error.code === 'auth/wrong-password') {
-                        errorMessage = 'Incorrect password.';
-                    } else if (error.code === 'auth/network-request-failed') {
-                        errorMessage = 'Network error. Please check your connection.';
+                    if (!firebaseInitialized) {
+                        showLoginError('System not properly configured. Please refresh the page or contact support.');
+                        return;
                     }
+
+                    const email = document.getElementById('email').value;
+                    const password = document.getElementById('password').value;
+                    const loginBtn = document.getElementById('loginBtn');
                     
-                    showLoginError(errorMessage);
-                    showToast('Login failed. Please check your credentials.', 'error');
-                } finally {
-                    // Reset button state
-                    loginBtn.disabled = false;
-                    loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
-                }
-            });
+                    // Show loading state
+                    loginBtn.disabled = true;
+                    loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In...';
+                    
+                    try {
+                        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                        console.log('User logged in:', userCredential.user);
+                        showLoginError(''); // Clear any errors
+                    } catch (error) {
+                        console.error('Login error:', error);
+                        let errorMessage = 'Login failed. Please check your credentials and try again.';
+                        
+                        if (error.code === 'auth/invalid-email') {
+                            errorMessage = 'Invalid email address.';
+                        } else if (error.code === 'auth/user-disabled') {
+                            errorMessage = 'This user has been disabled.';
+                        } else if (error.code === 'auth/user-not-found') {
+                            errorMessage = 'No user found with this email.';
+                        } else if (error.code === 'auth/wrong-password') {
+                            errorMessage = 'Incorrect password.';
+                        } else if (error.code === 'auth/network-request-failed') {
+                            errorMessage = 'Network error. Please check your connection.';
+                        }
+                        
+                        showLoginError(errorMessage);
+                        showToast('Login failed. Please check your credentials.', 'error');
+                    } finally {
+                        // Reset button state
+                        loginBtn.disabled = false;
+                        loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
+                    }
+                });
+            }
 
             // Show register modal
-            document.getElementById('showRegister').addEventListener('click', function(e) {
-                e.preventDefault();
-                if (!firebaseInitialized) {
-                    alert('System not properly configured. Please refresh the page or contact support.');
-                    return;
-                }
-                document.getElementById('registerModal').style.display = 'flex';
-            });
+            const showRegister = document.getElementById('showRegister');
+            if (showRegister) {
+                showRegister.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (!firebaseInitialized) {
+                        alert('System not properly configured. Please refresh the page or contact support.');
+                        return;
+                    }
+                    document.getElementById('registerModal').style.display = 'flex';
+                });
+            }
 
             // Close modal buttons
             document.querySelectorAll('.close-modal').forEach(btn => {
@@ -1798,96 +1822,105 @@
             });
 
             // Register form
-            document.getElementById('registerForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
-                if (!firebaseInitialized) {
-                    showRegisterError('System not properly configured. Please refresh the page or contact support.');
-                    return;
-                }
+            const registerForm = document.getElementById('registerForm');
+            if (registerForm) {
+                registerForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    if (!firebaseInitialized) {
+                        showRegisterError('System not properly configured. Please refresh the page or contact support.');
+                        return;
+                    }
 
-                const name = document.getElementById('registerName').value;
-                const email = document.getElementById('registerEmail').value;
-                const password = document.getElementById('registerPassword').value;
-                const confirmPassword = document.getElementById('registerConfirmPassword').value;
-                
-                if (password !== confirmPassword) {
-                    showRegisterError('Passwords do not match');
-                    return;
-                }
-                
-                if (password.length < 6) {
-                    showRegisterError('Password must be at least 6 characters long');
-                    return;
-                }
-                
-                try {
-                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                    const name = document.getElementById('registerName').value;
+                    const email = document.getElementById('registerEmail').value;
+                    const password = document.getElementById('registerPassword').value;
+                    const confirmPassword = document.getElementById('registerConfirmPassword').value;
                     
-                    // Update user profile with display name
-                    await userCredential.user.updateProfile({
-                        displayName: name
-                    });
-                    
-                    // Create user document in Firestore
-                    await db.collection('users').doc(userCredential.user.uid).set({
-                        name: name,
-                        email: email,
-                        adsterraLink: '',
-                        subscription: {
-                            plan: 'free',
-                            status: 'inactive',
-                            expiryDate: null
-                        },
-                        isActive: true,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    
-                    showRegisterError('');
-                    document.getElementById('registerModal').style.display = 'none';
-                    document.getElementById('registerForm').reset();
-                    
-                    showToast('Account created successfully! You are now logged in.', 'success');
-                    
-                    // Set the first user as admin (for testing)
-                    if (typeof ADMIN_UID === 'undefined' || !ADMIN_UID) {
-                        // You can set the first user as admin or manually set ADMIN_UID in configuration.js
-                        console.log('First user created. Set this UID as ADMIN_UID in configuration.js:', userCredential.user.uid);
+                    if (password !== confirmPassword) {
+                        showRegisterError('Passwords do not match');
+                        return;
                     }
                     
-                } catch (error) {
-                    console.error('Registration error:', error);
-                    let errorMessage = 'Registration failed. Please try again with a different email.';
-                    
-                    if (error.code === 'auth/email-already-in-use') {
-                        errorMessage = 'This email is already registered.';
-                    } else if (error.code === 'auth/invalid-email') {
-                        errorMessage = 'Invalid email address.';
-                    } else if (error.code === 'auth/weak-password') {
-                        errorMessage = 'Password is too weak.';
-                    } else if (error.code === 'auth/network-request-failed') {
-                        errorMessage = 'Network error. Please check your connection.';
+                    if (password.length < 6) {
+                        showRegisterError('Password must be at least 6 characters long');
+                        return;
                     }
                     
-                    showRegisterError(errorMessage);
-                }
-            });
+                    try {
+                        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                        
+                        // Update user profile with display name
+                        await userCredential.user.updateProfile({
+                            displayName: name
+                        });
+                        
+                        // Create user document in Firestore
+                        await db.collection('users').doc(userCredential.user.uid).set({
+                            name: name,
+                            email: email,
+                            adsterraLink: '',
+                            subscription: {
+                                plan: 'free',
+                                status: 'inactive',
+                                expiryDate: null
+                            },
+                            isActive: true,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        
+                        showRegisterError('');
+                        document.getElementById('registerModal').style.display = 'none';
+                        document.getElementById('registerForm').reset();
+                        
+                        showToast('Account created successfully! You are now logged in.', 'success');
+                        
+                        // Set the first user as admin (for testing)
+                        if (typeof ADMIN_UID === 'undefined' || !ADMIN_UID) {
+                            // You can set the first user as admin or manually set ADMIN_UID in configuration.js
+                            console.log('First user created. Set this UID as ADMIN_UID in configuration.js:', userCredential.user.uid);
+                        }
+                        
+                    } catch (error) {
+                        console.error('Registration error:', error);
+                        let errorMessage = 'Registration failed. Please try again with a different email.';
+                        
+                        if (error.code === 'auth/email-already-in-use') {
+                            errorMessage = 'This email is already registered.';
+                        } else if (error.code === 'auth/invalid-email') {
+                            errorMessage = 'Invalid email address.';
+                        } else if (error.code === 'auth/weak-password') {
+                            errorMessage = 'Password is too weak.';
+                        } else if (error.code === 'auth/network-request-failed') {
+                            errorMessage = 'Network error. Please check your connection.';
+                        }
+                        
+                        showRegisterError(errorMessage);
+                    }
+                });
+            }
 
             // Mobile menu button
-            document.getElementById('mobileMenuBtn').addEventListener('click', function() {
-                document.querySelector('.sidebar').classList.toggle('active');
-            });
+            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+            if (mobileMenuBtn) {
+                mobileMenuBtn.addEventListener('click', function() {
+                    document.querySelector('.sidebar').classList.toggle('active');
+                });
+            }
 
             // Logout button
-            document.getElementById('logoutBtn').addEventListener('click', function(e) {
-                e.preventDefault();
-                auth.signOut().then(() => {
-                    console.log('User signed out successfully');
-                }).catch((error) => {
-                    console.error('Sign out error:', error);
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    auth.signOut().then(() => {
+                        console.log('User signed out successfully');
+                    }).catch((error) => {
+                        console.error('Sign out error:', error);
+                    });
                 });
-            });
+            }
 
             // Menu navigation and other event listeners
             setupMenuNavigation();
@@ -1932,6 +1965,12 @@
                 createLinkForm.addEventListener('submit', async function(e) {
                     e.preventDefault();
                     
+                    // Check if Firebase is ready
+                    if (!firebaseInitialized || !db || !auth) {
+                        showToast('System not ready yet. Please wait a moment and try again.', 'error');
+                        return;
+                    }
+
                     // Check if user has set Adsterra link
                     if (!userData.adsterraLink) {
                         showToast('Please set your Adsterra link in Settings before creating links.', 'warning');
@@ -1990,6 +2029,13 @@
             if (settingsForm) {
                 settingsForm.addEventListener('submit', async function(e) {
                     e.preventDefault();
+                    
+                    // Check if Firebase is ready
+                    if (!firebaseInitialized || !db || !auth) {
+                        showToast('System not ready yet. Please wait a moment and try again.', 'error');
+                        return;
+                    }
+                    
                     try {
                         const userName = document.getElementById('userNameInput').value;
                         const adsterraLink = document.getElementById('adsterraLink').value;
@@ -2025,6 +2071,13 @@
             if (adminSettingsForm) {
                 adminSettingsForm.addEventListener('submit', async function(e) {
                     e.preventDefault();
+                    
+                    // Check if Firebase is ready
+                    if (!firebaseInitialized || !db || !auth) {
+                        showToast('System not ready yet. Please wait a moment and try again.', 'error');
+                        return;
+                    }
+                    
                     try {
                         const adminAdsterraLink = document.getElementById('adminAdsterraLink').value;
                         const enableSubscriptions = document.getElementById('enableSubscriptionsToggle').checked;
@@ -2056,6 +2109,12 @@
             const enableSubscriptionBtn = document.getElementById('enableSubscriptionBtn');
             if (enableSubscriptionBtn) {
                 enableSubscriptionBtn.addEventListener('click', async function() {
+                    // Check if Firebase is ready
+                    if (!firebaseInitialized || !db || !auth) {
+                        showToast('System not ready yet. Please wait a moment and try again.', 'error');
+                        return;
+                    }
+                    
                     try {
                         await db.collection('platformSettings').doc('settings').set({
                             subscriptionEnabled: true,
@@ -2092,6 +2151,12 @@
         async function handleUserLogin(user) {
             try {
                 console.log('Handling user login for:', user.email);
+                
+                // Check if Firebase is ready
+                if (!firebaseInitialized || !db || !auth) {
+                    showToast('System not ready yet. Please wait a moment and try again.', 'error');
+                    return;
+                }
                 
                 // Check if user is admin - with safe fallback
                 if (typeof ADMIN_UID !== 'undefined' && ADMIN_UID) {
@@ -2145,8 +2210,15 @@
             document.getElementById('redirectPage').style.display = 'none';
             
             // Clear form fields
-            document.getElementById('loginForm').reset();
-            document.getElementById('loginError').style.display = 'none';
+            const loginForm = document.getElementById('loginForm');
+            if (loginForm) {
+                loginForm.reset();
+            }
+            
+            const loginError = document.getElementById('loginError');
+            if (loginError) {
+                loginError.style.display = 'none';
+            }
             
             // Reset user data
             currentUser = null;
@@ -2165,28 +2237,34 @@
         // Show login error
         function showLoginError(message) {
             const loginError = document.getElementById('loginError');
-            if (message) {
-                loginError.textContent = message;
-                loginError.style.display = 'block';
-            } else {
-                loginError.style.display = 'none';
+            if (loginError) {
+                if (message) {
+                    loginError.textContent = message;
+                    loginError.style.display = 'block';
+                } else {
+                    loginError.style.display = 'none';
+                }
             }
         }
 
         // Show register error
         function showRegisterError(message) {
             const registerError = document.getElementById('registerError');
-            if (message) {
-                registerError.textContent = message;
-                registerError.style.display = 'block';
-            } else {
-                registerError.style.display = 'none';
+            if (registerError) {
+                if (message) {
+                    registerError.textContent = message;
+                    registerError.style.display = 'block';
+                } else {
+                    registerError.style.display = 'none';
+                }
             }
         }
 
         // Show toast notification
         function showToast(message, type = 'info') {
             const toastContainer = document.getElementById('toastContainer');
+            if (!toastContainer) return;
+            
             const toast = document.createElement('div');
             toast.className = `toast toast-${type}`;
             toast.innerHTML = `
@@ -2215,15 +2293,26 @@
             
             // Update active menu item
             document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
-            document.querySelector(`.menu-item[data-page="${page}"]`).classList.add('active');
+            const activeMenuItem = document.querySelector(`.menu-item[data-page="${page}"]`);
+            if (activeMenuItem) {
+                activeMenuItem.classList.add('active');
+            }
             
             // Show selected page
             document.querySelectorAll('.page-content').forEach(content => {
                 content.style.display = 'none';
             });
             
-            document.getElementById(page + 'Page').style.display = 'block';
-            document.getElementById('pageTitle').textContent = document.querySelector(`.menu-item[data-page="${page}"] .menu-text`).textContent;
+            const pageElement = document.getElementById(page + 'Page');
+            if (pageElement) {
+                pageElement.style.display = 'block';
+            }
+            
+            const pageTitle = document.getElementById('pageTitle');
+            const menuText = activeMenuItem ? activeMenuItem.querySelector('.menu-text').textContent : page;
+            if (pageTitle) {
+                pageTitle.textContent = menuText;
+            }
             
             // Load page-specific data
             if (page === 'links') {
@@ -2240,8 +2329,14 @@
             if (!currentUser) return;
             
             // Update user info
-            document.getElementById('userInitials').textContent = getInitials(userData.name || currentUser.displayName || currentUser.email);
-            document.getElementById('userName').textContent = userData.name || currentUser.displayName || currentUser.email.split('@')[0];
+            const userInitials = document.getElementById('userInitials');
+            const userName = document.getElementById('userName');
+            if (userInitials) {
+                userInitials.textContent = getInitials(userData.name || currentUser.displayName || currentUser.email);
+            }
+            if (userName) {
+                userName.textContent = userData.name || currentUser.displayName || currentUser.email.split('@')[0];
+            }
             
             // Update settings form
             if (document.getElementById('userNameInput')) {
@@ -2296,6 +2391,11 @@
                     throw new Error('No current user');
                 }
 
+                // Check if Firebase is ready
+                if (!firebaseInitialized || !db || !auth) {
+                    throw new Error('Firebase not ready');
+                }
+
                 // Load user profile
                 const userDoc = await db.collection('users').doc(currentUser.uid).get();
                 if (userDoc.exists) {
@@ -2332,7 +2432,7 @@
                 linksSnapshot.forEach(doc => {
                     userLinks.push({
                         id: doc.id,
-                        ...doc.data() // ✅ FIXED: Changed .doc.data() to ...doc.data()
+                        ...doc.data()
                     });
                 });
                 console.log('User links loaded:', userLinks.length);
@@ -2346,6 +2446,11 @@
         // Load platform settings
         async function loadPlatformSettings() {
             try {
+                // Check if Firebase is ready
+                if (!firebaseInitialized || !db || !auth) {
+                    throw new Error('Firebase not ready');
+                }
+
                 const settingsDoc = await db.collection('platformSettings').doc('settings').get();
                 if (settingsDoc.exists) {
                     platformSettings = settingsDoc.data();
@@ -2386,14 +2491,18 @@
             // Update stats
             const totalClicks = userLinks.reduce((sum, link) => sum + (link.clicks || 0), 0);
             
-            document.getElementById('totalClicks').textContent = totalClicks.toLocaleString();
-            document.getElementById('totalLinks').textContent = userLinks.length;
+            const totalClicksElement = document.getElementById('totalClicks');
+            const totalLinksElement = document.getElementById('totalLinks');
+            const totalUsersElement = document.getElementById('totalUsers');
+            
+            if (totalClicksElement) totalClicksElement.textContent = totalClicks.toLocaleString();
+            if (totalLinksElement) totalLinksElement.textContent = userLinks.length;
             
             // Load total users count (admin only)
             if (isAdmin) {
-                document.getElementById('totalUsers').textContent = allUsers.length;
+                if (totalUsersElement) totalUsersElement.textContent = allUsers.length;
             } else {
-                document.getElementById('totalUsers').textContent = 'N/A';
+                if (totalUsersElement) totalUsersElement.textContent = 'N/A';
             }
             
             // Load recent links
@@ -2498,12 +2607,12 @@
 
         // Load analytics data - FIXED VERSION
         function loadAnalyticsData() {
-            // Update top links table
+            // Update top links table - FIXED: Now correctly sorts by clicks and shows conversion rate
             const topLinksTable = document.getElementById('topLinksTable');
             if (topLinksTable) {
                 topLinksTable.innerHTML = '';
                 
-                if (userLinks.length === 0) {
+                if (!userLinks || userLinks.length === 0) {
                     topLinksTable.innerHTML = `
                         <tr>
                             <td colspan="3" style="text-align: center; padding: 40px; color: var(--gray);">
@@ -2512,26 +2621,36 @@
                             </td>
                         </tr>
                     `;
-                } else {
-                    // Sort links by clicks (descending) - FIXED: Changed .userLinks to [...userLinks]
-                    const sortedLinks = [...userLinks].sort((a, b) => (b.clicks || 0) - (a.clicks || 0));
-                    const maxClicks = Math.max(...userLinks.map(l => l.clicks || 1));
-                    
-                    sortedLinks.slice(0, 5).forEach(link => {
-                        const percentage = ((link.clicks || 0) / maxClicks) * 100;
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${link.name}</td>
-                            <td>${link.clicks || 0}</td>
-                            <td>${percentage.toFixed(1)}%</td>
-                        `;
-                        topLinksTable.appendChild(row);
-                    });
+                    return;
                 }
+
+                // Correct: shallow copy and sort by clicks (descending)
+                const sortedLinks = [...userLinks].sort(
+                    (a, b) => (b.clicks || 0) - (a.clicks || 0)
+                );
+
+                // Show top 10 links
+                sortedLinks.slice(0, 10).forEach(link => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${link.name}</td>
+                        <td>${link.clicks || 0}</td>
+                        <td>${
+                            link.uniqueClicks
+                                ? ((link.uniqueClicks / (link.clicks || 1)) * 100).toFixed(1) + '%'
+                                : '0%'
+                        }</td>
+                    `;
+                    topLinksTable.appendChild(row);
+                });
             }
-            
-            // Initialize analytics chart
-            initializeAnalyticsChart();
+
+            // Keep or update chart logic if present
+            if (!analyticsChart) {
+                initializeAnalyticsChart();
+            } else {
+                // optional: update analyticsChart data from userLinks
+            }
         }
 
         // Load admin data
@@ -2583,6 +2702,11 @@
         // Load all users (admin only)
         async function loadAllUsers() {
             try {
+                // Check if Firebase is ready
+                if (!firebaseInitialized || !db || !auth) {
+                    throw new Error('Firebase not ready');
+                }
+
                 const usersSnapshot = await db.collection('users').get();
                 allUsers = [];
                 usersSnapshot.forEach(doc => {
@@ -2651,6 +2775,13 @@
 
         // Handle redirect page
         async function handleRedirectPage() {
+            // Check if Firebase is ready
+            if (!firebaseInitialized || !db || !auth) {
+                console.error('Firebase not ready for redirect page');
+                window.location.href = '/';
+                return;
+            }
+
             const slug = window.location.pathname.split('/r/')[1];
             if (!slug) return;
             
@@ -2738,6 +2869,11 @@
         }
 
         async function generateUniqueSlug() {
+            // Check if Firebase is ready
+            if (!firebaseInitialized || !db || !auth) {
+                throw new Error('Firebase not ready');
+            }
+
             let slug = generateRandomSlug();
             let exists = true;
             let attempts = 0;
