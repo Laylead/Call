@@ -1,89 +1,106 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Admin Dashboard</title>
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore.js"></script>
-  <!-- External configuration -->
-  <script src="./configuration.js"></script>
+<meta charset="UTF-8">
+<title>Admin Dashboard</title>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore.js"></script>
+
+<!-- External config -->
+<script src="./configuration.js"></script>
+
+<style>
+  body { font-family: Arial; margin: 20px; }
+  #dashboardDiv { display: none; }
+  pre { background: #f0f0f0; padding: 10px; }
+</style>
 </head>
 <body>
-  <div id="loginDiv">
-    <h2>Admin Login</h2>
-    <input type="email" id="email" placeholder="Email" required><br><br>
-    <input type="password" id="password" placeholder="Password" required><br><br>
-    <button id="loginBtn">Login</button>
-    <div id="error" style="color:red;"></div>
-  </div>
 
-  <div id="dashboardDiv" style="display:none;">
-    <h2>Admin Dashboard</h2>
-    <pre id="userData"></pre>
-    <button id="logoutBtn">Logout</button>
-  </div>
+<div id="loginDiv">
+  <h2>Admin Login</h2>
+  <input type="email" id="email" placeholder="Email"><br><br>
+  <input type="password" id="password" placeholder="Password"><br><br>
+  <button id="loginBtn">Login</button>
+  <div id="error" style="color:red; margin-top:10px;"></div>
+</div>
 
-  <script>
-    // Initialize Firebase
-    const app = firebase.initializeApp(window.firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+<div id="dashboardDiv">
+  <h2>Admin Dashboard</h2>
+  <button id="logoutBtn">Logout</button>
+  <h3>All Users:</h3>
+  <div id="usersList"></div>
+</div>
 
-    const loginDiv = document.getElementById('loginDiv');
-    const dashboardDiv = document.getElementById('dashboardDiv');
-    const loginBtn = document.getElementById('loginBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    const userDataDiv = document.getElementById('userData');
-    const errorDiv = document.getElementById('error');
+<script>
+  // Initialize Firebase
+  const app = firebase.initializeApp(window.firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
 
-    // Login button click
-    loginBtn.addEventListener('click', () => {
-      const email = emailInput.value;
-      const password = passwordInput.value;
-      errorDiv.textContent = '';
+  const loginDiv = document.getElementById('loginDiv');
+  const dashboardDiv = document.getElementById('dashboardDiv');
+  const loginBtn = document.getElementById('loginBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const emailInput = document.getElementById('email');
+  const passwordInput = document.getElementById('password');
+  const errorDiv = document.getElementById('error');
+  const usersList = document.getElementById('usersList');
 
-      auth.signInWithEmailAndPassword(email, password)
-        .then(async (cred) => {
-          const user = cred.user;
-          if (user.uid === window.adminUID) {
-            // Fetch user data
-            const docRef = db.collection('users').doc(user.uid);
-            const docSnap = await docRef.get();
-            userDataDiv.textContent = docSnap.exists ? JSON.stringify(docSnap.data(), null, 2) : 'No data found';
-            loginDiv.style.display = 'none';
-            dashboardDiv.style.display = 'block';
-          } else {
-            errorDiv.textContent = 'Access denied: Not admin';
-            auth.signOut();
-          }
-        })
-        .catch(err => errorDiv.textContent = 'Login failed: ' + err.message);
-    });
+  // Login button
+  loginBtn.addEventListener('click', () => {
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    errorDiv.textContent = '';
 
-    // Logout button click
-    logoutBtn.addEventListener('click', () => {
-      auth.signOut();
-      loginDiv.style.display = 'block';
-      dashboardDiv.style.display = 'none';
-    });
-
-    // Auto auth state check
-    auth.onAuthStateChanged(async (user) => {
-      if (user && user.uid === window.adminUID) {
+    auth.signInWithEmailAndPassword(email, password)
+      .then(async (cred) => {
+        const user = cred.user;
+        if (user.uid !== window.adminUID) {
+          errorDiv.textContent = 'Access denied: Not admin';
+          auth.signOut();
+          return;
+        }
         loginDiv.style.display = 'none';
         dashboardDiv.style.display = 'block';
-        const docRef = db.collection('users').doc(user.uid);
-        const docSnap = await docRef.get();
-        userDataDiv.textContent = docSnap.exists ? JSON.stringify(docSnap.data(), null, 2) : 'No data found';
-      } else {
-        loginDiv.style.display = 'block';
-        dashboardDiv.style.display = 'none';
-      }
+        loadUsers();
+      })
+      .catch(err => errorDiv.textContent = 'Login failed: ' + err.message);
+  });
+
+  // Logout button
+  logoutBtn.addEventListener('click', () => {
+    auth.signOut();
+  });
+
+  // Auto-check auth state
+  auth.onAuthStateChanged(user => {
+    if (user && user.uid === window.adminUID) {
+      loginDiv.style.display = 'none';
+      dashboardDiv.style.display = 'block';
+      loadUsers();
+    } else {
+      loginDiv.style.display = 'block';
+      dashboardDiv.style.display = 'none';
+    }
+  });
+
+  // Load all users from Firestore in real-time
+  function loadUsers() {
+    usersList.innerHTML = 'Loading users...';
+    db.collection('users').onSnapshot(snapshot => {
+      let html = '';
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        html += `<pre>${doc.id}: ${JSON.stringify(data, null, 2)}</pre>`;
+      });
+      usersList.innerHTML = html || 'No users found';
     });
-  </script>
+  }
+</script>
+
 </body>
 </html>
