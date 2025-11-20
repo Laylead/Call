@@ -8,12 +8,3 @@ const firebaseConfig = {
     messagingSenderId: "593310501630",
     appId: "1:593310501630:web:c241a05e0d7c4a810173af"
 };
-
-const ADMIN_UID = "Ec3zKCImxhMNkP8beN5MgXu1DnA2";
-
-// Platform Settings
-const PLATFORM_SETTINGS = {
-    adminAdsterraLink: "https://www.adsterra.com",
-    subscriptionEnabled: true,
-    subscriptionPrice: 9.99
-};
