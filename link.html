@@ -9,7 +9,10 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <!-- External Firebase configuration -->
     <script src="configuration.js"></script>
+    
     <style>
         :root {
             --primary: #6366f1;
@@ -415,11 +418,6 @@
         .stat-icon.links {
             background: rgba(245, 158, 11, 0.1);
             color: var(--warning);
-        }
-
-        .stat-icon.users {
-            background: rgba(139, 92, 246, 0.1);
-            color: var(--secondary);
         }
 
         .stat-info h3 {
@@ -1078,80 +1076,135 @@
         ::-webkit-scrollbar-thumb:hover {
             background: var(--primary-dark);
         }
+
+        /* Auth Tabs */
+        .tabs {
+            display: flex;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 20px 0;
+            box-shadow: var(--box-shadow);
+        }
+        
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            flex: 1;
+            font-weight: 500;
+        }
+        
+        .tab:hover {
+            background: rgba(99, 102, 241, 0.1);
+        }
+        
+        .tab.active {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
     <!-- Toast Notifications Container -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- Login Page -->
-    <div class="login-container" id="loginPage">
+    <!-- Auth Screen -->
+    <div id="auth-screen" class="login-container">
         <div class="login-card fade-in">
             <div class="logo">
                 <h1>LinkMonetize Pro</h1>
                 <div class="tagline">Professional Link Management & Monetization</div>
             </div>
             
-            <div class="alert alert-error" id="loginError" style="display: none;"></div>
-            <div class="alert alert-error" id="configError" style="display: none;"></div>
+            <div class="tabs">
+                <div id="to-login" class="tab active">Login</div>
+                <div id="to-register" class="tab">Register</div>
+            </div>
             
-            <form id="loginForm">
-                <div class="form-group">
-                    <label for="email">Email Address</label>
-                    <input type="email" id="email" class="form-control" placeholder="Enter your email" required>
-                </div>
+            <div id="login-form">
+                <div class="alert alert-error" id="loginError" style="display: none;"></div>
                 
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" class="form-control" placeholder="Enter your password" required>
-                </div>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" class="form-control" placeholder="Enter your email" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" class="form-control" placeholder="Enter your password" required>
+                    </div>
+                    
+                    <button type="submit" class="btn" id="loginBtn">
+                        <i class="fas fa-sign-in-alt"></i>
+                        Sign In
+                    </button>
+                </form>
                 
-                <button type="submit" class="btn" id="loginBtn">
-                    <i class="fas fa-sign-in-alt"></i>
-                    Sign In
-                </button>
-            </form>
+                <div class="login-footer">
+                    <a href="#" id="showPasswordReset">Forgot your password?</a>
+                </div>
+            </div>
             
-            <div class="login-footer">
-                Don't have an account? <a href="#" id="showRegister">Create one now</a>
+            <div id="register-form" class="hidden">
+                <div class="alert alert-error" id="registerError" style="display: none;"></div>
+                
+                <form id="registerForm">
+                    <div class="form-group">
+                        <label for="registerName">Full Name</label>
+                        <input type="text" id="registerName" class="form-control" placeholder="Enter your full name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="registerEmail">Email Address</label>
+                        <input type="email" id="registerEmail" class="form-control" placeholder="Enter your email" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="registerPassword">Password</label>
+                        <input type="password" id="registerPassword" class="form-control" placeholder="Create a password (min 6 characters)" required minlength="6">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="registerConfirmPassword">Confirm Password</label>
+                        <input type="password" id="registerConfirmPassword" class="form-control" placeholder="Confirm your password" required minlength="6">
+                    </div>
+                    
+                    <button type="submit" class="btn">
+                        <i class="fas fa-user-plus"></i>
+                        Create Account
+                    </button>
+                </form>
             </div>
         </div>
     </div>
 
-    <!-- Registration Modal -->
-    <div class="modal" id="registerModal">
+    <!-- Password Reset Modal -->
+    <div class="modal" id="passwordResetModal">
         <div class="modal-content">
             <div class="modal-header">
-                <div class="modal-title">Create Your Account</div>
+                <div class="modal-title">Reset Password</div>
                 <button class="close-modal">&times;</button>
             </div>
             
-            <div class="alert alert-error" id="registerError" style="display: none;"></div>
+            <div class="alert alert-error" id="resetError" style="display: none;"></div>
+            <div class="alert alert-success" id="resetSuccess" style="display: none;"></div>
             
-            <form id="registerForm">
+            <form id="passwordResetForm">
                 <div class="form-group">
-                    <label for="registerName">Full Name</label>
-                    <input type="text" id="registerName" class="form-control" placeholder="Enter your full name" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="registerEmail">Email Address</label>
-                    <input type="email" id="registerEmail" class="form-control" placeholder="Enter your email" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="registerPassword">Password</label>
-                    <input type="password" id="registerPassword" class="form-control" placeholder="Create a password (min 6 characters)" required minlength="6">
-                </div>
-                
-                <div class="form-group">
-                    <label for="registerConfirmPassword">Confirm Password</label>
-                    <input type="password" id="registerConfirmPassword" class="form-control" placeholder="Confirm your password" required minlength="6">
+                    <label for="resetEmail">Email Address</label>
+                    <input type="email" id="resetEmail" class="form-control" placeholder="Enter your email" required>
                 </div>
                 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary close-modal">Cancel</button>
-                    <button type="submit" class="btn">Create Account</button>
+                    <button type="submit" class="btn">Send Reset Link</button>
                 </div>
             </form>
         </div>
@@ -1226,16 +1279,6 @@
                         <div class="stat-info">
                             <h3 id="totalLinks">0</h3>
                             <p>Active Links</p>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card slide-in-left" style="animation-delay: 0.3s;">
-                        <div class="stat-icon users">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3 id="totalUsers">0</h3>
-                            <p>Platform Users</p>
                         </div>
                     </div>
                 </div>
@@ -1403,35 +1446,6 @@
                         </button>
                     </form>
                 </div>
-                
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Subscription Plan</div>
-                    </div>
-                    
-                    <div id="subscriptionInfo">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-                            <div>
-                                <h3 style="margin-bottom: 8px;" id="subscriptionPlan">Free Plan</h3>
-                                <p style="color: var(--gray);" id="subscriptionStatus">No active subscription</p>
-                            </div>
-                            <div class="badge badge-warning" id="subscriptionBadge">
-                                <i class="fas fa-crown"></i>
-                                Free
-                            </div>
-                        </div>
-                        
-                        <div id="subscriptionTimer" style="background: rgba(99, 102, 241, 0.05); padding: 25px; border-radius: var(--border-radius-sm); margin-bottom: 25px; display: none;">
-                            <h4 style="margin-bottom: 15px; text-align: center;">Time until renewal</h4>
-                            <div class="timer" style="font-size: 2rem; color: var(--primary); text-align: center;" id="renewalTimer">15 days, 3 hours, 42 minutes</div>
-                        </div>
-                        
-                        <button class="btn btn-secondary" id="upgradeSubscription">
-                            <i class="fas fa-rocket"></i>
-                            Upgrade to Premium
-                        </button>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -1515,6 +1529,870 @@
         </div>
     </div>
 
+    <!-- External admin panel functionality -->
     <script src="app.js"></script>
+
+    <script>
+        // Firebase and App Initialization
+        let auth, db;
+        let currentUser = null;
+        let userData = {};
+        let userLinks = [];
+        let platformSettings = {};
+        let analyticsChart = null;
+
+        // Initialize Firebase
+        function initializeFirebase() {
+            try {
+                // Initialize Firebase from external configuration.js
+                firebase.initializeApp(firebaseConfig);
+                auth = firebase.auth();
+                db = firebase.firestore();
+                
+                console.log('Firebase initialized successfully');
+                
+                // Set up auth state listener
+                auth.onAuthStateChanged(user => {
+                    if (user) {
+                        currentUser = user;
+                        handleUserLogin(user);
+                    } else {
+                        handleUserLogout();
+                    }
+                });
+                
+            } catch (error) {
+                console.error('Firebase initialization failed:', error);
+                showToast('System configuration error. Please refresh the page.', 'error');
+            }
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Auth form toggles
+            document.getElementById('to-login').addEventListener('click', () => switchForms('login'));
+            document.getElementById('to-register').addEventListener('click', () => switchForms('register'));
+            
+            // Login form
+            document.getElementById('loginForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                await login();
+            });
+            
+            // Register form
+            document.getElementById('registerForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                await register();
+            });
+            
+            // Password reset
+            document.getElementById('showPasswordReset').addEventListener('click', function(e) {
+                e.preventDefault();
+                document.getElementById('passwordResetModal').style.display = 'flex';
+            });
+            
+            // Password reset form
+            document.getElementById('passwordResetForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                await sendPasswordReset();
+            });
+            
+            // Close modal buttons
+            document.querySelectorAll('.close-modal').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.modal').forEach(modal => {
+                        modal.style.display = 'none';
+                    });
+                });
+            });
+            
+            // Logout button
+            document.getElementById('logoutBtn').addEventListener('click', function(e) {
+                e.preventDefault();
+                logout();
+            });
+            
+            // Mobile menu button
+            document.getElementById('mobileMenuBtn').addEventListener('click', function() {
+                document.querySelector('.sidebar').classList.toggle('active');
+            });
+            
+            // Menu navigation
+            setupMenuNavigation();
+            
+            // Create link modal buttons
+            document.getElementById('createLinkBtn').addEventListener('click', function() {
+                document.getElementById('createLinkModal').style.display = 'flex';
+            });
+            
+            document.getElementById('createLinkBtn2').addEventListener('click', function() {
+                document.getElementById('createLinkModal').style.display = 'flex';
+            });
+
+            // Create link form
+            document.getElementById('createLinkForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                await createLink();
+            });
+
+            // Settings form
+            document.getElementById('settingsForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                await saveSettings();
+            });
+
+            // Analytics period change
+            document.getElementById('analyticsPeriod').addEventListener('change', function() {
+                loadAnalyticsData();
+            });
+        }
+
+        // Switch between login and register forms
+        function switchForms(mode) {
+            document.getElementById('to-login').classList.toggle('active', mode === 'login');
+            document.getElementById('to-register').classList.toggle('active', mode === 'register');
+            document.getElementById('login-form').classList.toggle('hidden', mode !== 'login');
+            document.getElementById('register-form').classList.toggle('hidden', mode !== 'register');
+        }
+
+        // Login function
+        async function login() {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('loginBtn');
+            
+            // Show loading state
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In...';
+            hideError('loginError');
+            
+            try {
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                console.log('User logged in:', userCredential.user.email);
+                showError('loginError', '', false);
+            } catch (error) {
+                console.error('Login error:', error);
+                let errorMessage = 'Login failed. Please check your credentials.';
+                
+                if (error.code === 'auth/invalid-email') {
+                    errorMessage = 'Invalid email address.';
+                } else if (error.code === 'auth/user-disabled') {
+                    errorMessage = 'This user has been disabled.';
+                } else if (error.code === 'auth/user-not-found') {
+                    errorMessage = 'No user found with this email.';
+                } else if (error.code === 'auth/wrong-password') {
+                    errorMessage = 'Incorrect password.';
+                } else if (error.code === 'auth/network-request-failed') {
+                    errorMessage = 'Network error. Please check your connection.';
+                }
+                
+                showError('loginError', errorMessage, true);
+            } finally {
+                // Reset button state
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
+            }
+        }
+
+        // Registration function
+        async function register() {
+            const name = document.getElementById('registerName').value.trim();
+            const email = document.getElementById('registerEmail').value.trim();
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('registerConfirmPassword').value;
+            
+            hideError('registerError');
+            
+            if (!name) {
+                showError('registerError', 'Please enter your full name', true);
+                return;
+            }
+            
+            if (!validateEmail(email)) {
+                showError('registerError', 'Please enter a valid email address', true);
+                return;
+            }
+            
+            if (password.length < 6) {
+                showError('registerError', 'Password must be at least 6 characters', true);
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                showError('registerError', 'Passwords do not match', true);
+                return;
+            }
+            
+            try {
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                
+                // Update user profile with display name
+                await userCredential.user.updateProfile({
+                    displayName: name
+                });
+                
+                // Create user document in Firestore
+                await db.collection('users').doc(userCredential.user.uid).set({
+                    name: name,
+                    email: email,
+                    adsterraLink: '',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                showError('registerError', '', false);
+                switchForms('login');
+                showToast('Account created successfully! You can now login.', 'success');
+                
+            } catch (error) {
+                console.error('Registration error:', error);
+                let errorMessage = 'Registration failed. Please try again.';
+                
+                if (error.code === 'auth/email-already-in-use') {
+                    errorMessage = 'This email is already registered.';
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMessage = 'Invalid email address.';
+                } else if (error.code === 'auth/weak-password') {
+                    errorMessage = 'Password is too weak.';
+                } else if (error.code === 'auth/network-request-failed') {
+                    errorMessage = 'Network error. Please check your connection.';
+                }
+                
+                showError('registerError', errorMessage, true);
+            }
+        }
+
+        // Send password reset
+        async function sendPasswordReset() {
+            const email = document.getElementById('resetEmail').value.trim();
+            const resetError = document.getElementById('resetError');
+            const resetSuccess = document.getElementById('resetSuccess');
+            
+            resetError.style.display = 'none';
+            resetSuccess.style.display = 'none';
+            
+            if (!email || !validateEmail(email)) {
+                resetError.textContent = 'Please enter a valid email address';
+                resetError.style.display = 'block';
+                return;
+            }
+            
+            try {
+                await auth.sendPasswordResetEmail(email);
+                resetSuccess.textContent = 'Password reset email sent! Check your inbox.';
+                resetSuccess.style.display = 'block';
+                document.getElementById('passwordResetForm').reset();
+            } catch (error) {
+                resetError.textContent = 'Error: ' + error.message;
+                resetError.style.display = 'block';
+            }
+        }
+
+        // Logout function
+        function logout() {
+            auth.signOut();
+        }
+
+        // Handle user login
+        async function handleUserLogin(user) {
+            try {
+                // Update last login time
+                await db.collection('users').doc(user.uid).set({
+                    lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+                
+                // Show dashboard
+                document.getElementById('auth-screen').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                document.getElementById('redirectPage').style.display = 'none';
+                
+                // Update UI based on user
+                await loadUserData();
+                await loadPlatformSettings();
+                updateUserUI();
+                await loadDashboardData();
+                
+                console.log('User login handling completed successfully');
+                
+            } catch (error) {
+                console.error('Error during login process:', error);
+                showToast('Error loading user data. Please refresh the page.', 'error');
+            }
+        }
+
+        // Handle user logout
+        function handleUserLogout() {
+            // Show login page
+            document.getElementById('auth-screen').style.display = 'flex';
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('redirectPage').style.display = 'none';
+            
+            // Clear form fields
+            document.getElementById('loginForm').reset();
+            document.getElementById('registerForm').reset();
+            hideError('loginError');
+            hideError('registerError');
+            
+            // Reset user data
+            currentUser = null;
+            userData = {};
+            userLinks = [];
+            
+            // Destroy charts
+            if (analyticsChart) {
+                analyticsChart.destroy();
+                analyticsChart = null;
+            }
+        }
+
+        // Load user data
+        async function loadUserData() {
+            try {
+                if (!currentUser) return;
+
+                // Load user profile
+                const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                if (userDoc.exists) {
+                    userData = userDoc.data();
+                    console.log('User data loaded:', userData);
+                } else {
+                    // Create user document if it doesn't exist
+                    const newUserData = {
+                        name: currentUser.displayName || currentUser.email.split('@')[0],
+                        email: currentUser.email,
+                        adsterraLink: '',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    
+                    await db.collection('users').doc(currentUser.uid).set(newUserData);
+                    userData = newUserData;
+                }
+                
+                // Load user links
+                const linksSnapshot = await db.collection('links')
+                    .where('userId', '==', currentUser.uid)
+                    .orderBy('createdAt', 'desc')
+                    .get();
+                
+                userLinks = [];
+                linksSnapshot.forEach(doc => {
+                    userLinks.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                console.log(`User links loaded: ${userLinks.length} links`);
+            } catch (error) {
+                console.error('Error loading user data:', error);
+                throw error;
+            }
+        }
+
+        // Load platform settings
+        async function loadPlatformSettings() {
+            try {
+                const settingsDoc = await db.collection('platformSettings').doc('settings').get();
+                if (settingsDoc.exists) {
+                    platformSettings = settingsDoc.data();
+                } else {
+                    // Create default settings if they don't exist
+                    const defaultSettings = {
+                        subscriptionEnabled: false,
+                        subscriptionPrice: 9.99,
+                        subscriptionPopupText: 'Your subscription has expired. Please renew to continue using our services.',
+                        subscriptionButtonText: 'Renew Subscription',
+                        subscriptionButtonLink: 'https://payment-portal.com',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    
+                    await db.collection('platformSettings').doc('settings').set(defaultSettings);
+                    platformSettings = defaultSettings;
+                }
+                console.log('Platform settings loaded:', platformSettings);
+            } catch (error) {
+                console.error('Error loading platform settings:', error);
+            }
+        }
+
+        // Update user UI
+        function updateUserUI() {
+            if (!currentUser) return;
+            
+            // Update user info
+            document.getElementById('userInitials').textContent = getInitials(userData.name || currentUser.displayName || currentUser.email);
+            document.getElementById('userName').textContent = userData.name || currentUser.displayName || currentUser.email.split('@')[0];
+            
+            // Update settings form
+            document.getElementById('userNameInput').value = userData.name || '';
+            document.getElementById('userEmailInput').value = currentUser.email;
+            document.getElementById('adsterraLink').value = userData.adsterraLink || '';
+        }
+
+        // Setup menu navigation
+        function setupMenuNavigation() {
+            const menuItems = document.querySelectorAll('.menu-item[data-page]');
+
+            menuItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Update active menu item
+                    document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const page = this.getAttribute('data-page');
+                    navigateToPage(page);
+                });
+            });
+        }
+
+        // Navigate to page
+        function navigateToPage(page) {
+            // Close mobile menu
+            document.querySelector('.sidebar').classList.remove('active');
+            
+            // Show selected page
+            document.querySelectorAll('.page-content').forEach(content => {
+                content.style.display = 'none';
+            });
+            
+            document.getElementById(page + 'Page').style.display = 'block';
+            document.getElementById('pageTitle').textContent = document.querySelector(`.menu-item[data-page="${page}"] .menu-text`).textContent;
+            
+            // Load page-specific data
+            if (page === 'links') {
+                loadLinksData();
+            } else if (page === 'analytics') {
+                loadAnalyticsData();
+            }
+        }
+
+        // Load dashboard data
+        async function loadDashboardData() {
+            // Update stats
+            const totalClicks = userLinks.reduce((sum, link) => sum + (link.clicks || 0), 0);
+            
+            document.getElementById('totalClicks').textContent = totalClicks.toLocaleString();
+            document.getElementById('totalLinks').textContent = userLinks.length;
+            
+            // Load recent links
+            const recentLinksTable = document.getElementById('recentLinksTable');
+            if (recentLinksTable) {
+                recentLinksTable.innerHTML = '';
+                
+                if (userLinks.length === 0) {
+                    recentLinksTable.innerHTML = `
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 40px; color: var(--gray);">
+                                <i class="fas fa-link" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.5;"></i>
+                                No links created yet. Create your first link to get started!
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    userLinks.slice(0, 5).forEach(link => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${link.name}</td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span>${link.shortUrl}</span>
+                                    <button class="action-btn" title="Copy URL" onclick="copyToClipboard('${link.shortUrl}')">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td>${link.clicks || 0}</td>
+                            <td><span class="badge ${link.status === 'active' ? 'badge-success' : 'badge-warning'}">${link.status}</span></td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="action-btn" title="Copy URL" onclick="copyToClipboard('${link.shortUrl}')">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                    <button class="action-btn" title="Edit" onclick="editLink('${link.id}')">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="action-btn delete" title="Delete" onclick="deleteLink('${link.id}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        `;
+                        recentLinksTable.appendChild(row);
+                    });
+                }
+            }
+        }
+
+        // Load links data
+        function loadLinksData() {
+            const linksTable = document.getElementById('linksTable');
+            if (!linksTable) return;
+            
+            linksTable.innerHTML = '';
+            
+            if (userLinks.length === 0) {
+                linksTable.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 40px; color: var(--gray);">
+                            <i class="fas fa-link" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.5;"></i>
+                            No links created yet. Create your first link to get started!
+                        </td>
+                    </tr>
+                `;
+            } else {
+                userLinks.forEach(link => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${link.name}</td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span>${link.shortUrl}</span>
+                                <button class="action-btn" title="Copy URL" onclick="copyToClipboard('${link.shortUrl}')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </td>
+                        <td>${truncateUrl(link.destinationUrl, 40)}</td>
+                        <td>${link.clicks || 0}</td>
+                        <td>${formatDate(link.createdAt)}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="action-btn" title="Copy URL" onclick="copyToClipboard('${link.shortUrl}')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                                <button class="action-btn" title="Edit" onclick="editLink('${link.id}')">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="action-btn delete" title="Delete" onclick="deleteLink('${link.id}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    linksTable.appendChild(row);
+                });
+            }
+        }
+
+        // Load analytics data
+        function loadAnalyticsData() {
+            // Update top links table
+            const topLinksTable = document.getElementById('topLinksTable');
+            if (topLinksTable) {
+                topLinksTable.innerHTML = '';
+                
+                if (!userLinks || userLinks.length === 0) {
+                    topLinksTable.innerHTML = `
+                        <tr>
+                            <td colspan="3" style="text-align: center; padding: 40px; color: var(--gray);">
+                                <i class="fas fa-chart-bar" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.5;"></i>
+                                No analytics data available yet.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                // Sort by clicks (descending)
+                const sortedLinks = [...userLinks].sort(
+                    (a, b) => (b.clicks || 0) - (a.clicks || 0)
+                );
+
+                // Show top 10 links
+                sortedLinks.slice(0, 10).forEach(link => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${link.name}</td>
+                        <td>${link.clicks || 0}</td>
+                        <td>${
+                            link.uniqueClicks
+                                ? ((link.uniqueClicks / (link.clicks || 1)) * 100).toFixed(1) + '%'
+                                : '0%'
+                        }</td>
+                    `;
+                    topLinksTable.appendChild(row);
+                });
+            }
+            
+            // Initialize analytics chart
+            initializeAnalyticsChart();
+        }
+
+        // Initialize analytics chart
+        function initializeAnalyticsChart() {
+            const ctx = document.getElementById('analyticsChart');
+            if (!ctx) return;
+            
+            if (analyticsChart) {
+                analyticsChart.destroy();
+            }
+            
+            // Sample data
+            const labels = Array.from({length: 30}, (_, i) => `Day ${i + 1}`);
+            const clicksData = Array.from({length: 30}, () => Math.floor(Math.random() * 100) + 20);
+            
+            analyticsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Daily Clicks',
+                        data: clicksData,
+                        backgroundColor: 'rgba(99, 102, 241, 0.7)',
+                        borderColor: '#6366f1',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create link function
+        async function createLink() {
+            const name = document.getElementById('linkName').value;
+            const destinationUrl = document.getElementById('destinationUrl').value;
+            const customSlug = document.getElementById('customSlug').value;
+            
+            try {
+                const slug = customSlug || await generateUniqueSlug();
+                const shortUrl = `${window.location.origin}/r/${slug}`;
+                
+                const linkData = {
+                    name: name,
+                    destinationUrl: destinationUrl,
+                    shortUrl: shortUrl,
+                    slug: slug,
+                    userId: currentUser.uid,
+                    userAdsterraLink: userData.adsterraLink,
+                    clicks: 0,
+                    uniqueClicks: 0,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    status: 'active'
+                };
+                
+                // Save to Firestore
+                await db.collection('links').add(linkData);
+                
+                // Close modal and reset form
+                document.getElementById('createLinkModal').style.display = 'none';
+                document.getElementById('createLinkForm').reset();
+                
+                // Reload links data
+                await loadUserData();
+                if (document.getElementById('linksPage').style.display !== 'none') {
+                    loadLinksData();
+                } else {
+                    loadDashboardData();
+                }
+                
+                // Show success message
+                showToast('Link created successfully!', 'success');
+            } catch (error) {
+                console.error('Error creating link:', error);
+                showToast('Error creating link. Please try again.', 'error');
+            }
+        }
+
+        // Save settings
+        async function saveSettings() {
+            try {
+                const userName = document.getElementById('userNameInput').value;
+                const adsterraLink = document.getElementById('adsterraLink').value;
+                
+                await db.collection('users').doc(currentUser.uid).update({
+                    name: userName,
+                    adsterraLink: adsterraLink,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // Update user profile
+                await currentUser.updateProfile({
+                    displayName: userName
+                });
+                
+                // Update local user data
+                userData.name = userName;
+                userData.adsterraLink = adsterraLink;
+                
+                // Update UI
+                updateUserUI();
+                
+                showToast('Settings saved successfully!', 'success');
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                showToast('Error saving settings. Please try again.', 'error');
+            }
+        }
+
+        // Utility Functions
+        function validateEmail(email) {
+            const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+            return re.test(String(email).toLowerCase());
+        }
+
+        function showError(elementId, message, show = true) {
+            const element = document.getElementById(elementId);
+            if (show) {
+                element.textContent = message;
+                element.style.display = 'block';
+            } else {
+                element.style.display = 'none';
+            }
+        }
+
+        function hideError(elementId) {
+            document.getElementById(elementId).style.display = 'none';
+        }
+
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i>
+                <span>${message}</span>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            // Remove after 5 seconds
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toastContainer.removeChild(toast);
+                    }
+                }, 300);
+            }, 5000);
+        }
+
+        function getInitials(name) {
+            return name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U';
+        }
+
+        async function generateUniqueSlug() {
+            let slug = generateRandomSlug();
+            let exists = true;
+            let attempts = 0;
+            
+            while (exists && attempts < 5) {
+                const snapshot = await db.collection('links').where('slug', '==', slug).get();
+                exists = !snapshot.empty;
+                if (exists) {
+                    slug = generateRandomSlug();
+                    attempts++;
+                }
+            }
+            
+            if (exists) {
+                slug += '-' + Date.now().toString(36);
+            }
+            
+            return slug;
+        }
+
+        function generateRandomSlug() {
+            return Math.random().toString(36).substring(2, 8);
+        }
+
+        function truncateUrl(url, maxLength = 40) {
+            return url.length > maxLength ? url.substring(0, maxLength) + '...' : url;
+        }
+
+        function formatDate(timestamp) {
+            if (!timestamp) return 'N/A';
+            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('URL copied to clipboard!', 'success');
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                showToast('Failed to copy URL', 'error');
+            });
+        }
+
+        // Action functions
+        function editLink(linkId) {
+            const link = userLinks.find(l => l.id === linkId);
+            if (link) {
+                document.getElementById('linkName').value = link.name;
+                document.getElementById('destinationUrl').value = link.destinationUrl;
+                document.getElementById('customSlug').value = link.slug;
+                document.getElementById('createLinkModal').style.display = 'flex';
+                
+                // Update form to edit mode
+                const form = document.getElementById('createLinkForm');
+                const originalSubmit = form.onsubmit;
+                form.onsubmit = async (e) => {
+                    e.preventDefault();
+                    try {
+                        await db.collection('links').doc(linkId).update({
+                            name: document.getElementById('linkName').value,
+                            destinationUrl: document.getElementById('destinationUrl').value,
+                            slug: document.getElementById('customSlug').value || link.slug
+                        });
+                        
+                        document.getElementById('createLinkModal').style.display = 'none';
+                        form.reset();
+                        form.onsubmit = originalSubmit;
+                        await loadUserData();
+                        loadLinksData();
+                        showToast('Link updated successfully!', 'success');
+                    } catch (error) {
+                        console.error('Error updating link:', error);
+                        showToast('Error updating link. Please try again.', 'error');
+                    }
+                };
+            }
+        }
+
+        async function deleteLink(linkId) {
+            if (confirm('Are you sure you want to delete this link? This action cannot be undone.')) {
+                try {
+                    await db.collection('links').doc(linkId).delete();
+                    await loadUserData();
+                    loadLinksData();
+                    showToast('Link deleted successfully!', 'success');
+                } catch (error) {
+                    console.error('Error deleting link:', error);
+                    showToast('Error deleting link. Please try again.', 'error');
+                }
+            }
+        }
+
+        // Make functions globally available
+        window.copyToClipboard = copyToClipboard;
+        window.editLink = editLink;
+        window.deleteLink = deleteLink;
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeFirebase();
+            setupEventListeners();
+        });
+    </script>
 </body>
 </html>
