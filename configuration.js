@@ -1,13 +1,29 @@
-// Firebase Configuration
-const firebaseConfig = {
-    apiKey: "AIzaSyBlh428ba5aSFt6x2pPkVjeEk5D6AbIU7Y",
-    authDomain: "kheemz-fb9b6.firebaseapp.com",
-    databaseURL: "https://kheemz-fb9b6-default-rtdb.firebaseio.com",
-    projectId: "kheemz-fb9b6",
-    storageBucket: "kheemz-fb9b6.appspot.com",
-    messagingSenderId: "593310501630",
-    appId: "1:593310501630:web:c241a05e0d7c4a810173af"
+// Configuration for LinkMonetize Pro
+const CONFIG = {
+    // Admin Adsterra link
+    adminAdsterraLink: "https://your-admin-adsterra-link.com",
+    
+    // Enable/disable monthly subscriptions for all users
+    enableMonthlySubscriptions: false,
+    
+    // Account lock settings
+    lockAccount: false,
+    lockMessage: "Your account has been temporarily locked. Please contact our support team for assistance.",
+    lockButtonText: "Contact Support",
+    lockButtonLink: "https://yoursite.com/support",
+    
+    // Subscription settings
+    subscriptionButtonText: "Renew Now",
+    subscriptionButtonLink: "https://yoursite.com/pricing",
+    
+    // Firebase configuration
+    firebaseConfig: {
+        apiKey: "AIzaSyBlh428ba5aSFt6x2pPkVjeEk5D6AbIU7Y",
+        authDomain: "kheemz-fb9b6.firebaseapp.com",
+        databaseURL: "https://kheemz-fb9b6-default-rtdb.firebaseio.com",
+        projectId: "kheemz-fb9b6",
+        storageBucket: "kheemz-fb9b6.appspot.com",
+        messagingSenderId: "593310501630",
+        appId: "1:593310501630:web:c241a05e0d7c4a810173af"
+    }
 };
-
-window.firebaseConfig = firebaseConfig;
-window.CONFIG = CONFIG;
