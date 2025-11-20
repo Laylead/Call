@@ -534,6 +534,11 @@
             color: var(--primary);
         }
 
+        .badge-secondary {
+            background: rgba(100, 116, 139, 0.15);
+            color: var(--gray);
+        }
+
         .action-buttons {
             display: flex;
             gap: 8px;
@@ -567,6 +572,26 @@
 
         .action-btn.delete:hover {
             background: var(--danger);
+            color: white;
+        }
+
+        .action-btn.success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .action-btn.success:hover {
+            background: var(--success);
+            color: white;
+        }
+
+        .action-btn.warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .action-btn.warning:hover {
+            background: var(--warning);
             color: white;
         }
 
@@ -1486,13 +1511,14 @@
                                     <th>Email</th>
                                     <th>Plan</th>
                                     <th>Status</th>
+                                    <th>Role</th>
                                     <th>Adsterra Link</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="usersTable">
                                 <tr>
-                                    <td colspan="6" style="text-align: center; padding: 40px; color: var(--gray);">
+                                    <td colspan="7" style="text-align: center; padding: 40px; color: var(--gray);">
                                         <i class="fas fa-users" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.5;"></i>
                                         No users found.
                                     </td>
@@ -1676,7 +1702,7 @@
                 }
 
                 // Check for placeholder values
-                if (firebaseConfig.apiKey.includes('YOUR_API') || firebaseConfig.projectId.includes('YOUR_PROJECT')) {
+                if (firebaseConfig.apiKey.includes('your-') || firebaseConfig.projectId.includes('your-')) {
                     throw new Error('Please replace placeholder values in configuration.js with your actual Firebase config');
                 }
 
@@ -1700,31 +1726,6 @@
 
                 firebaseInitialized = true;
                 console.log('✅ Firebase services initialized successfully');
-                
-                // If we're on a redirect path, handle it now (Firebase is ready)
-                if (window.location.pathname.includes('/r/')) {
-                    handleRedirectPage().catch(err => {
-                        console.error('Redirect page handling error:', err);
-                        // Show user-friendly error
-                        const redirectPage = document.getElementById('redirectPage');
-                        if (redirectPage) {
-                            redirectPage.innerHTML = `
-                                <div class="redirect-card">
-                                    <div class="logo">
-                                        <h1>ACCESS PORTAL</h1>
-                                        <div class="tagline">Professional Content Delivery</div>
-                                    </div>
-                                    <h2>System Error</h2>
-                                    <p>We're experiencing technical difficulties. Please try again later.</p>
-                                    <button class="btn" onclick="window.location.href='/'">
-                                        <i class="fas fa-home"></i>
-                                        Return to Home
-                                    </button>
-                                </div>
-                            `;
-                        }
-                    });
-                }
                 
                 // Set up auth state listener
                 auth.onAuthStateChanged(async user => {
@@ -1753,6 +1754,53 @@
                 document.getElementById('loginBtn').textContent = 'System Configuration Error';
                 
                 firebaseInitialized = false;
+            }
+        }
+
+        // Function to check if user is admin
+        async function checkUserAdminStatus(user) {
+            try {
+                ensureFirebaseReady();
+                
+                // Method 1: Check against predefined ADMIN_UIDS array
+                if (typeof ADMIN_UIDS !== 'undefined' && Array.isArray(ADMIN_UIDS) && ADMIN_UIDS.length > 0) {
+                    if (ADMIN_UIDS.includes(user.uid)) {
+                        console.log('✅ User is admin (UID match)');
+                        return true;
+                    }
+                }
+                
+                // Method 2: Check user document for admin role
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    if (userData.role === 'admin' || userData.isAdmin === true) {
+                        console.log('✅ User is admin (role-based)');
+                        return true;
+                    }
+                }
+                
+                // Method 3: First user becomes admin (fallback)
+                const usersSnapshot = await db.collection('users').get();
+                if (usersSnapshot.empty) {
+                    console.log('✅ First user, granting admin privileges');
+                    
+                    // Set admin role for first user
+                    await db.collection('users').doc(user.uid).set({
+                        role: 'admin',
+                        isAdmin: true,
+                        adminSince: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                    
+                    return true;
+                }
+                
+                console.log('❌ User is not admin');
+                return false;
+                
+            } catch (error) {
+                console.error('❌ Error checking admin status:', error);
+                return false;
             }
         }
 
@@ -1863,8 +1911,23 @@
                         displayName: name
                     });
                     
+                    // Check if this is the first user (should be admin)
+                    const usersSnapshot = await db.collection('users').get();
+                    const isFirstUser = usersSnapshot.empty;
+                    
+                    // Determine if user should be admin
+                    let isAdminUser = false;
+                    
+                    // Check if user UID is in predefined admin UIDs
+                    if (typeof ADMIN_UIDS !== 'undefined' && Array.isArray(ADMIN_UIDS) && ADMIN_UIDS.length > 0) {
+                        isAdminUser = ADMIN_UIDS.includes(userCredential.user.uid);
+                    } else if (isFirstUser) {
+                        // If no predefined admins, first user becomes admin
+                        isAdminUser = true;
+                    }
+                    
                     // Create user document in Firestore
-                    await db.collection('users').doc(userCredential.user.uid).set({
+                    const userData = {
                         name: name,
                         email: email,
                         adsterraLink: '',
@@ -1873,16 +1936,24 @@
                             status: 'inactive',
                             expiryDate: null
                         },
+                        role: isAdminUser ? 'admin' : 'user',
+                        isAdmin: isAdminUser,
                         isActive: true,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                         lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-                    });
+                    };
+                    
+                    await db.collection('users').doc(userCredential.user.uid).set(userData);
                     
                     showRegisterError('');
                     document.getElementById('registerModal').style.display = 'none';
                     document.getElementById('registerForm').reset();
                     
-                    showToast('Account created successfully! You are now logged in.', 'success');
+                    if (isAdminUser) {
+                        showToast('Admin account created successfully! You are now logged in.', 'success');
+                    } else {
+                        showToast('Account created successfully! You are now logged in.', 'success');
+                    }
                     
                 } catch (error) {
                     console.error('❌ Registration error:', error);
@@ -1929,6 +2000,12 @@
             menuItems.forEach(item => {
                 item.addEventListener('click', function(e) {
                     e.preventDefault();
+                    
+                    // Check admin access for admin page
+                    if (this.getAttribute('data-page') === 'admin' && !isAdmin) {
+                        showToast('Access denied. Admin privileges required.', 'error');
+                        return;
+                    }
                     
                     const page = this.getAttribute('data-page');
                     navigateToPage(page);
@@ -2130,13 +2207,8 @@
             try {
                 console.log('👤 Handling user login for:', user.email);
                 
-                // Check if user is admin - with safe fallback
-                if (typeof ADMIN_UID !== 'undefined' && ADMIN_UID) {
-                    isAdmin = user.uid === ADMIN_UID;
-                } else {
-                    isAdmin = false;
-                    console.warn('ADMIN_UID not configured. Admin features disabled.');
-                }
+                // Check if user is admin
+                isAdmin = await checkUserAdminStatus(user);
                 
                 // Update last login time
                 await db.collection('users').doc(user.uid).set({
@@ -2159,6 +2231,9 @@
                 // Load all users if admin
                 if (isAdmin) {
                     await loadAllUsers();
+                    showToast('Welcome back, Administrator!', 'success');
+                } else {
+                    showToast('Welcome back!', 'success');
                 }
                 
                 console.log('✅ User login handling completed successfully');
@@ -2350,6 +2425,8 @@
                             status: 'inactive',
                             expiryDate: null
                         },
+                        role: 'user',
+                        isAdmin: false,
                         isActive: true,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                         lastLogin: firebase.firestore.FieldValue.serverTimestamp()
@@ -2389,11 +2466,13 @@
                     platformSettings = settingsDoc.data();
                     
                     // Update admin settings form if it exists
-                    document.getElementById('adminAdsterraLink').value = platformSettings.adminAdsterraLink || '';
-                    document.getElementById('enableSubscriptionsToggle').checked = platformSettings.subscriptionEnabled || false;
-                    document.getElementById('subscriptionPopupText').value = platformSettings.subscriptionPopupText || '';
-                    document.getElementById('subscriptionButtonText').value = platformSettings.subscriptionButtonText || '';
-                    document.getElementById('subscriptionButtonLink').value = platformSettings.subscriptionButtonLink || '';
+                    if (document.getElementById('adminAdsterraLink')) {
+                        document.getElementById('adminAdsterraLink').value = platformSettings.adminAdsterraLink || '';
+                        document.getElementById('enableSubscriptionsToggle').checked = platformSettings.subscriptionEnabled || false;
+                        document.getElementById('subscriptionPopupText').value = platformSettings.subscriptionPopupText || '';
+                        document.getElementById('subscriptionButtonText').value = platformSettings.subscriptionButtonText || '';
+                        document.getElementById('subscriptionButtonLink').value = platformSettings.subscriptionButtonLink || '';
+                    }
                 } else {
                     // Create default settings if they don't exist
                     const defaultSettings = {
@@ -2532,7 +2611,7 @@
             }
         }
 
-        // Load analytics data
+        // Load analytics data - FIXED VERSION
         function loadAnalyticsData() {
             // Update top links table
             const topLinksTable = document.getElementById('topLinksTable');
@@ -2551,7 +2630,7 @@
                     return;
                 }
 
-                // Sort by clicks (descending)
+                // Correct: shallow copy and sort by clicks (descending)
                 const sortedLinks = [...userLinks].sort(
                     (a, b) => (b.clicks || 0) - (a.clicks || 0)
                 );
@@ -2591,7 +2670,7 @@
             if (allUsers.length === 0) {
                 usersTable.innerHTML = `
                     <tr>
-                        <td colspan="6" style="text-align: center; padding: 40px; color: var(--gray);">
+                        <td colspan="7" style="text-align: center; padding: 40px; color: var(--gray);">
                             <i class="fas fa-users" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.5;"></i>
                             No users found.
                         </td>
@@ -2604,16 +2683,40 @@
                         <td>${user.name || 'N/A'}</td>
                         <td>${user.email}</td>
                         <td>${user.subscription?.plan || 'free'}</td>
-                        <td><span class="badge ${user.isActive ? 'badge-success' : 'badge-danger'}">${user.isActive ? 'Active' : 'Banned'}</span></td>
+                        <td>
+                            <span class="badge ${user.isActive ? 'badge-success' : 'badge-danger'}">
+                                ${user.isActive ? 'Active' : 'Banned'}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge ${user.isAdmin ? 'badge-info' : 'badge-secondary'}">
+                                ${user.isAdmin ? 'Admin' : 'User'}
+                            </span>
+                        </td>
                         <td>${user.adsterraLink ? '✓ Set' : '✗ Not Set'}</td>
                         <td>
                             <div class="action-buttons">
-                                <button class="action-btn" title="${user.isActive ? 'Ban User' : 'Unban User'}" onclick="toggleUserStatus('${user.id}', ${user.isActive})">
+                                ${user.isAdmin ? 
+                                    `<button class="action-btn warning" title="Demote to User" onclick="demoteAdmin('${user.id}')">
+                                        <i class="fas fa-user-minus"></i>
+                                    </button>` :
+                                    `<button class="action-btn success" title="Promote to Admin" onclick="promoteToAdmin('${user.id}')">
+                                        <i class="fas fa-user-plus"></i>
+                                    </button>`
+                                }
+                                <button class="action-btn ${user.isActive ? 'warning' : 'success'}" 
+                                        title="${user.isActive ? 'Ban User' : 'Unban User'}" 
+                                        onclick="toggleUserStatus('${user.id}', ${user.isActive})">
                                     <i class="fas ${user.isActive ? 'fa-ban' : 'fa-check'}"></i>
                                 </button>
-                                <button class="action-btn delete" title="Delete User" onclick="deleteUser('${user.id}')">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                                ${user.id !== currentUser.uid ? 
+                                    `<button class="action-btn delete" title="Delete User" onclick="deleteUser('${user.id}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>` :
+                                    `<button class="action-btn" title="Current User" disabled>
+                                        <i class="fas fa-user"></i>
+                                    </button>`
+                                }
                             </div>
                         </td>
                     `;
@@ -2836,6 +2939,62 @@
             });
         }
 
+        // Admin-only function to promote user to admin
+        async function promoteToAdmin(userId) {
+            if (!isAdmin) {
+                showToast('Admin privileges required.', 'error');
+                return;
+            }
+            
+            try {
+                ensureFirebaseReady();
+                await db.collection('users').doc(userId).update({
+                    role: 'admin',
+                    isAdmin: true,
+                    promotedBy: currentUser.uid,
+                    promotedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                await loadAllUsers();
+                loadUsersTable();
+                showToast('User promoted to admin successfully!', 'success');
+            } catch (error) {
+                console.error('❌ Error promoting user:', error);
+                showToast('Error promoting user. Please try again.', 'error');
+            }
+        }
+
+        // Admin-only function to demote admin
+        async function demoteAdmin(userId) {
+            if (!isAdmin) {
+                showToast('Admin privileges required.', 'error');
+                return;
+            }
+            
+            // Prevent self-demotion
+            if (userId === currentUser.uid) {
+                showToast('You cannot demote yourself.', 'error');
+                return;
+            }
+            
+            try {
+                ensureFirebaseReady();
+                await db.collection('users').doc(userId).update({
+                    role: 'user',
+                    isAdmin: false,
+                    demotedBy: currentUser.uid,
+                    demotedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                await loadAllUsers();
+                loadUsersTable();
+                showToast('Admin demoted to user successfully!', 'success');
+            } catch (error) {
+                console.error('❌ Error demoting admin:', error);
+                showToast('Error demoting admin. Please try again.', 'error');
+            }
+        }
+
         // Action functions
         function editLink(linkId) {
             const link = userLinks.find(l => l.id === linkId);
@@ -2930,6 +3089,8 @@
         window.deleteLink = deleteLink;
         window.toggleUserStatus = toggleUserStatus;
         window.deleteUser = deleteUser;
+        window.promoteToAdmin = promoteToAdmin;
+        window.demoteAdmin = demoteAdmin;
     </script>
 </body>
 </html>
