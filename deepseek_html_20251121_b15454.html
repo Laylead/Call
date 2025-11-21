@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Access Portal | LinkMonetize Pro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="configuration.js"></script>
+    <style>
+        :root {
+            --primary: #6C63FF;
+            --primary-dark: #5A52D5;
+            --primary-light: #8B85FF;
+            --secondary: #FF6584;
+            --success: #36D1DC;
+            --danger: #FF4B4B;
+            --warning: #FFB74D;
+            --info: #42A5F5;
+            --light: #F8F9FF;
+            --dark: #2D2B55;
+            --gray: #8C8CA1;
+            --light-gray: #E6E6F0;
+            --border-radius: 16px;
+            --border-radius-sm: 8px;
+            --box-shadow: 0 10px 30px rgba(108, 99, 255, 0.15);
+            --box-shadow-lg: 0 20px 50px rgba(108, 99, 255, 0.2);
+            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            --gradient: linear-gradient(135deg, var(--primary), var(--secondary));
+            --gradient-light: linear-gradient(135deg, var(--primary-light), #FF8E9E);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--light);
+            color: var(--dark);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Redirect Page Styles */
+        .redirect-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--gradient);
+            padding: 20px;
+        }
+
+        .redirect-card {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow-lg);
+            width: 100%;
+            max-width: 600px;
+            padding: 50px 40px;
+            text-align: center;
+        }
+
+        .redirect-logo {
+            margin-bottom: 30px;
+        }
+
+        .redirect-logo i {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+
+        .redirect-logo h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .tagline {
+            color: var(--gray);
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-top: 8px;
+        }
+
+        .timer-container {
+            margin: 40px 0;
+            padding: 30px;
+            background-color: #f9f9f9;
+            border-radius: 15px;
+            border: 1px solid #eee;
+        }
+
+        .timer {
+            font-size: 4.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin: 25px 0;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 2px 10px rgba(108, 99, 255, 0.2);
+        }
+
+        .timer-label {
+            color: var(--gray);
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-top: 15px;
+            font-weight: 600;
+        }
+
+        .redirect-buttons {
+            display: none;
+            margin-top: 40px;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .redirect-btn {
+            background: var(--gradient);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius-sm);
+            padding: 18px 35px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+            flex: 1;
+            min-width: 220px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            box-shadow: 0 5px 15px rgba(108, 99, 255, 0.3);
+        }
+
+        .redirect-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(108, 99, 255, 0.4);
+        }
+
+        .loader {
+            display: inline-block;
+            width: 60px;
+            height: 60px;
+            margin: 25px auto;
+        }
+
+        .loader:after {
+            content: " ";
+            display: block;
+            width: 48px;
+            height: 48px;
+            margin: 8px;
+            border-radius: 50%;
+            border: 5px solid var(--primary);
+            border-color: var(--primary) transparent var(--primary) transparent;
+            animation: loader 1.2s linear infinite;
+        }
+
+        @keyframes loader {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status-message {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: var(--border-radius-sm);
+            font-weight: 600;
+            display: none;
+        }
+
+        .status-success {
+            background-color: rgba(54, 209, 220, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(54, 209, 220, 0.2);
+        }
+
+        .status-error {
+            background-color: rgba(255, 75, 75, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(255, 75, 75, 0.2);
+        }
+
+        .content-description {
+            color: var(--gray);
+            font-size: 1.1rem;
+            line-height: 1.7;
+            margin: 25px 0;
+        }
+
+        .security-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(108, 99, 255, 0.1);
+            color: var(--primary);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin: 15px 0;
+        }
+
+        @media (max-width: 768px) {
+            .redirect-card {
+                padding: 40px 25px;
+            }
+            
+            .timer {
+                font-size: 3.5rem;
+            }
+            
+            .redirect-btn {
+                padding: 16px 25px;
+                font-size: 1rem;
+                min-width: 100%;
+            }
+            
+            .redirect-buttons {
+                gap: 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .redirect-card {
+                padding: 30px 20px;
+            }
+            
+            .timer {
+                font-size: 3rem;
+            }
+            
+            .timer-container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Redirect Page -->
+    <div class="redirect-container">
+        <div class="redirect-card">
+            <div class="redirect-logo">
+                <i class="fas fa-shield-alt"></i>
+                <h1>SECURE ACCESS PORTAL</h1>
+                <div class="tagline">Professional Content Delivery System</div>
+            </div>
+            
+            <div class="security-badge">
+                <i class="fas fa-lock"></i>
+                <span>Secure Connection Established</span>
+            </div>
+            
+            <h2 style="margin: 20px 0 15px 0; color: var(--dark);">Your Content Is Ready</h2>
+            
+            <p class="content-description">
+                Thank you for your interest. We're preparing your exclusive content for immediate access. 
+                Please wait a moment while we complete the security verification process.
+            </p>
+            
+            <div class="timer-container">
+                <div class="loader" id="redirectLoader"></div>
+                <div class="timer" id="redirectTimer">5</div>
+                <div class="timer-label">Seconds Until Access</div>
+            </div>
+            
+            <div id="statusMessage" class="status-message"></div>
+            
+            <div class="redirect-buttons" id="redirectButtonsContainer">
+                <button class="redirect-btn" id="redirectBtn1">
+                    <i class="fas fa-external-link-alt"></i> Access Website Now
+                </button>
+                <button class="redirect-btn" id="redirectBtn2">
+                    <i class="fas fa-arrow-right"></i> Continue to Website
+                </button>
+            </div>
+
+            <div style="margin-top: 30px; padding: 15px; background: rgba(0,0,0,0.03); border-radius: 10px;">
+                <p style="color: var(--gray); font-size: 0.85rem; margin: 0;">
+                    <i class="fas fa-info-circle"></i> 
+                    This secure portal ensures safe and reliable access to your requested content.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Initialize Firebase
+        firebase.initializeApp(CONFIG.firebaseConfig);
+        const db = firebase.firestore();
+
+        // DOM Elements
+        const redirectLoader = document.getElementById('redirectLoader');
+        const redirectTimer = document.getElementById('redirectTimer');
+        const redirectButtonsContainer = document.getElementById('redirectButtonsContainer');
+        const redirectBtn1 = document.getElementById('redirectBtn1');
+        const redirectBtn2 = document.getElementById('redirectBtn2');
+        const statusMessage = document.getElementById('statusMessage');
+
+        // Global variables
+        let currentLinkId = null;
+        let currentLinkData = null;
+        let clickCount = 0;
+        let isFirstClick = true;
+        let adminAdsterraLink = CONFIG.adminAdsterraLink || 'https://adsterra.com';
+
+        // Check if we're on a redirect page
+        const urlParams = new URLSearchParams(window.location.search);
+        const linkId = urlParams.get('l');
+        
+        if (linkId) {
+            // We're on a redirect page - load the link data
+            currentLinkId = linkId;
+            loadLinkForRedirect(linkId);
+        } else {
+            // Not a redirect URL - show error
+            showStatusMessage('Invalid access link. Please check the URL and try again.', 'error');
+        }
+
+        // Redirect buttons event listeners
+        redirectBtn1.addEventListener('click', handleRedirectClick);
+        redirectBtn2.addEventListener('click', handleRedirectClick);
+
+        function loadLinkForRedirect(linkId) {
+            // Show loading state
+            statusMessage.style.display = 'none';
+            
+            // Load link data from Firestore
+            db.collection('links').doc(linkId).get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        currentLinkData = doc.data();
+                        
+                        // Update link clicks in Firestore
+                        db.collection('links').doc(linkId).update({
+                            clicks: firebase.firestore.FieldValue.increment(1),
+                            lastAccessed: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        
+                        // Start the redirect timer
+                        startRedirectTimer();
+                    } else {
+                        // Link not found
+                        showStatusMessage('The requested content link was not found or has been removed.', 'error');
+                        redirectLoader.style.display = 'none';
+                        redirectTimer.style.display = 'none';
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error loading link:", error);
+                    showStatusMessage('Unable to load content. Please try again later.', 'error');
+                    redirectLoader.style.display = 'none';
+                    redirectTimer.style.display = 'none';
+                });
+        }
+
+        function startRedirectTimer() {
+            let countdown = 5;
+            const timerInterval = setInterval(() => {
+                countdown--;
+                redirectTimer.textContent = countdown;
+                
+                if (countdown <= 0) {
+                    clearInterval(timerInterval);
+                    redirectTimer.style.display = 'none';
+                    redirectLoader.style.display = 'none';
+                    redirectButtonsContainer.style.display = 'flex';
+                    document.querySelector('.timer-label').textContent = 'Ready for Immediate Access';
+                    showStatusMessage('Security verification complete. You may now access the content.', 'success');
+                }
+            }, 1000);
+        }
+
+        function handleRedirectClick() {
+            clickCount++;
+            
+            // Get the user's Adsterra link from the link data
+            const linkUserAdsterraLink = currentLinkData.userAdsterraLink || '';
+            
+            // Determine which Adsterra link to use (alternate between user and admin)
+            let adsterraLink;
+            if (linkUserAdsterraLink) {
+                // Alternate between user's Adsterra and admin's Adsterra
+                adsterraLink = (clickCount % 2 === 1) ? linkUserAdsterraLink : adminAdsterraLink;
+            } else {
+                // Use admin's Adsterra if user doesn't have one
+                adsterraLink = adminAdsterraLink;
+            }
+            
+            if (isFirstClick) {
+                // First click - open Adsterra link in new window
+                window.open(adsterraLink, '_blank');
+                
+                // Update Firestore to track Adsterra clicks
+                db.collection('links').doc(currentLinkId).update({
+                    adsterraClicks: firebase.firestore.FieldValue.increment(1)
+                });
+                
+                showStatusMessage('Please complete the verification step to access your content', 'success');
+                isFirstClick = false;
+                
+                // Update button text for second click
+                redirectBtn1.innerHTML = '<i class="fas fa-check-circle"></i> Continue to Content';
+                redirectBtn2.innerHTML = '<i class="fas fa-arrow-right"></i> Access Now';
+            } else {
+                // Second click - redirect to real link
+                if (currentLinkData && currentLinkData.destination) {
+                    // Add a small delay for better UX
+                    showStatusMessage('Redirecting to your content...', 'success');
+                    setTimeout(() => {
+                        window.location.href = currentLinkData.destination;
+                    }, 1000);
+                } else {
+                    showStatusMessage('Error: Destination content not available', 'error');
+                }
+            }
+        }
+
+        function showStatusMessage(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = 'status-message';
+            statusMessage.classList.add(`status-${type}`);
+            statusMessage.style.display = 'block';
+        }
+
+        // Initialize the redirect page
+        document.addEventListener('DOMContentLoaded', () => {
+            // Page is already set up for redirect
+            console.log('Redirect page initialized');
+        });
+    </script>
+</body>
+</html>
