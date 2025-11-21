@@ -1073,6 +1073,11 @@
         .header-spacing {
             margin-top: 20px;
         }
+
+        /* Small charts for analytics */
+        .small-chart {
+            height: 280px !important;
+        }
     </style>
 </head>
 <body>
@@ -1359,7 +1364,7 @@
             <div id="analyticsPage" class="page-content">
                 <!-- Analytics Grid with proper spacing -->
                 <div class="analytics-grid">
-                    <div class="chart-card">
+                    <div class="chart-card small-chart">
                         <div class="card-header">
                             <h3>Clicks Over Time</h3>
                         </div>
@@ -1367,7 +1372,7 @@
                             <canvas id="clicksOverTimeChart"></canvas>
                         </div>
                     </div>
-                    <div class="chart-card">
+                    <div class="chart-card small-chart">
                         <div class="card-header">
                             <h3>Geographic Distribution</h3>
                         </div>
@@ -1375,7 +1380,7 @@
                             <canvas id="geoChart"></canvas>
                         </div>
                     </div>
-                    <div class="chart-card">
+                    <div class="chart-card small-chart">
                         <div class="card-header">
                             <h3>Device Types</h3>
                         </div>
@@ -1383,7 +1388,7 @@
                             <canvas id="deviceChart"></canvas>
                         </div>
                     </div>
-                    <div class="chart-card">
+                    <div class="chart-card small-chart">
                         <div class="card-header">
                             <h3>Referral Sources</h3>
                         </div>
@@ -1646,6 +1651,9 @@
         let currentLinkId = null;
         let clickCount = 0;
         let currentLinkData = null;
+        let userAdsterraLink = '';
+        let adminAdsterraLink = CONFIG.adminAdsterraLink || 'https://adsterra.com';
+        let isFirstClick = true;
 
         // Page configurations for header updates
         const pageConfigs = {
@@ -1940,6 +1948,7 @@
                 .then((doc) => {
                     if (doc.exists) {
                         userData = doc.data();
+                        userAdsterraLink = userData.adsterraLink || '';
                         updateUserInfo(currentUser);
                         
                         // Check if monthly subscriptions are enabled
@@ -2144,6 +2153,7 @@
                 // Update user data
                 userData.adsterraLink = adsterraLink;
                 userData.name = name;
+                userAdsterraLink = adsterraLink;
                 updateUserInfo(currentUser);
             })
             .catch((error) => {
@@ -2382,17 +2392,19 @@
 
         function calculateGeographicDistribution(links) {
             // Sample geographic distribution (in a real app, this would come from Firestore)
+            // Using smaller values to prevent overlapping
             return {
                 labels: ['USA', 'UK', 'Canada', 'Australia', 'Other'],
-                data: [40, 20, 15, 10, 15]
+                data: [35, 18, 12, 8, 27]
             };
         }
 
         function calculateDeviceTypes(links) {
             // Sample device distribution (in a real app, this would come from Firestore)
+            // Using smaller values to prevent overlapping
             return {
                 labels: ['Mobile', 'Desktop', 'Tablet'],
-                data: [60, 30, 10]
+                data: [55, 35, 10]
             };
         }
 
@@ -2400,7 +2412,7 @@
             // Sample referral sources (in a real app, this would come from Firestore)
             return {
                 labels: ['Direct', 'Social Media', 'Search', 'Email', 'Other'],
-                data: [45, 30, 60, 25, 15]
+                data: [40, 25, 50, 20, 15]
             };
         }
 
@@ -2463,7 +2475,18 @@
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    }
                 }
             });
         }
@@ -2491,7 +2514,18 @@
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    }
                 }
             });
         }
@@ -2546,17 +2580,17 @@
             
             const geoData = {
                 labels: ['USA', 'UK', 'Canada', 'Australia', 'Other'],
-                data: [40, 20, 15, 10, 15]
+                data: [35, 18, 12, 8, 27]
             };
             
             const deviceData = {
                 labels: ['Mobile', 'Desktop', 'Tablet'],
-                data: [60, 30, 10]
+                data: [55, 35, 10]
             };
             
             const referralData = {
                 labels: ['Direct', 'Social Media', 'Search', 'Email', 'Other'],
-                data: [45, 30, 60, 25, 15]
+                data: [40, 25, 50, 20, 15]
             };
             
             updateClicksOverTimeChart(clicksData);
@@ -2614,20 +2648,25 @@
         function handleRedirectClick() {
             clickCount++;
             
-            // Get user's Adsterra link or use admin's
+            // Determine which Adsterra link to use
             let adsterraLink;
-            if (userData && userData.adsterraLink) {
+            if (userAdsterraLink) {
                 // Alternate between user's Adsterra and admin's Adsterra
-                adsterraLink = (clickCount % 2 === 1) ? userData.adsterraLink : CONFIG.adminAdsterraLink;
+                adsterraLink = (clickCount % 2 === 1) ? userAdsterraLink : adminAdsterraLink;
             } else {
                 // Use admin's Adsterra if user doesn't have one
-                adsterraLink = CONFIG.adminAdsterraLink;
+                adsterraLink = adminAdsterraLink;
             }
             
-            if (clickCount === 1) {
+            if (isFirstClick) {
                 // First click - open Adsterra link in new window
                 window.open(adsterraLink, '_blank');
                 showToast('Please complete the ad to access your content', 'success');
+                isFirstClick = false;
+                
+                // Update button text for second click
+                document.getElementById('redirectBtn1').textContent = 'Continue to Content';
+                document.getElementById('redirectBtn2').textContent = 'Access Now';
             } else {
                 // Second click - redirect to real link
                 if (currentLinkData && currentLinkData.destination) {
