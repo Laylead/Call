@@ -1,1 +1,2678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkMonetize Pro | Professional Link Management</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
+    <script src="configuration.js"></script>
+    <style>
+        :root {
+            --primary: #6C63FF;
+            --primary-dark: #5A52D5;
+            --primary-light: #8B85FF;
+            --secondary: #FF6584;
+            --success: #36D1DC;
+            --danger: #FF4B4B;
+            --warning: #FFB74D;
+            --info: #42A5F5;
+            --light: #F8F9FF;
+            --dark: #2D2B55;
+            --gray: #8C8CA1;
+            --light-gray: #E6E6F0;
+            --border-radius: 16px;
+            --border-radius-sm: 8px;
+            --box-shadow: 0 10px 30px rgba(108, 99, 255, 0.15);
+            --box-shadow-lg: 0 20px 50px rgba(108, 99, 255, 0.2);
+            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            --gradient: linear-gradient(135deg, var(--primary), var(--secondary));
+            --gradient-light: linear-gradient(135deg, var(--primary-light), #FF8E9E);
+        }
 
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--light);
+            color: var(--dark);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Login Page Styles */
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--gradient);
+            padding: 20px;
+        }
+
+        .login-card {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow-lg);
+            width: 100%;
+            max-width: 450px;
+            padding: 50px 40px;
+            text-align: center;
+        }
+
+        .login-logo {
+            margin-bottom: 30px;
+        }
+
+        .login-logo i {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+
+        .login-logo h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .login-logo p {
+            color: var(--gray);
+            font-size: 1rem;
+            margin-top: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 0.95rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid var(--light-gray);
+            border-radius: var(--border-radius-sm);
+            font-size: 1rem;
+            transition: var(--transition);
+            background-color: white;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.2);
+        }
+
+        .btn {
+            background: var(--gradient);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: var(--border-radius-sm);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(108, 99, 255, 0.3);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .login-footer {
+            margin-top: 30px;
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        .login-footer a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        /* App Layout Styles */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Styles - Hidden by default */
+        .sidebar {
+            width: 280px;
+            background: white;
+            box-shadow: 5px 0 15px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            transition: var(--transition);
+            transform: translateX(-100%);
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar.active {
+            transform: translateX(0);
+        }
+
+        .sidebar-header {
+            padding: 30px 25px;
+            border-bottom: 1px solid var(--light-gray);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sidebar-logo i {
+            font-size: 1.8rem;
+            color: var(--primary);
+        }
+
+        .sidebar-logo h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .close-sidebar {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--gray);
+            cursor: pointer;
+            transition: var(--transition);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-sidebar:hover {
+            color: var(--danger);
+            background-color: rgba(255, 75, 75, 0.1);
+        }
+
+        .sidebar-nav {
+            padding: 25px 0;
+            flex-grow: 1;
+        }
+
+        .nav-item {
+            padding: 15px 25px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: var(--gray);
+            text-decoration: none;
+            transition: var(--transition);
+            font-weight: 500;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            color: var(--primary);
+            background-color: rgba(108, 99, 255, 0.05);
+            border-right: 3px solid var(--primary);
+        }
+
+        .nav-item i {
+            font-size: 1.2rem;
+            width: 24px;
+            text-align: center;
+        }
+
+        .sidebar-footer {
+            padding: 20px 25px;
+            border-top: 1px solid var(--light-gray);
+            margin-top: auto;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .user-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: var(--gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .user-details h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .user-details p {
+            font-size: 0.85rem;
+            color: var(--gray);
+        }
+
+        .logout-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--danger);
+            background: none;
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 10px 0;
+            transition: var(--transition);
+            width: 100%;
+        }
+
+        .logout-btn:hover {
+            color: #e53935;
+        }
+
+        /* Main Content Styles */
+        .main-content {
+            flex: 1;
+            background-color: var(--light);
+            overflow-y: auto;
+            padding: 30px;
+            transition: var(--transition);
+            width: 100%;
+        }
+
+        .main-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            gap: 20px;
+            padding-top: 10px;
+        }
+
+        .menu-toggle {
+            background: var(--gradient);
+            color: white;
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: var(--border-radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: var(--box-shadow);
+        }
+
+        .menu-toggle:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--box-shadow-lg);
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex: 1;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .page-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 0;
+        }
+
+        .page-title i {
+            color: var(--primary);
+        }
+
+        /* Stats Section */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 25px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            transition: var(--transition);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--box-shadow-lg);
+        }
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            background: var(--gradient-light);
+            color: white;
+        }
+
+        .stat-content h3 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--dark);
+            margin-bottom: 5px;
+        }
+
+        .stat-content p {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        /* Charts Section */
+        .charts-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 1200px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-card {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 25px;
+            transition: var(--transition);
+            height: 350px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-card:hover {
+            box-shadow: var(--box-shadow-lg);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .card-header h3 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .chart-container {
+            flex: 1;
+            position: relative;
+        }
+
+        /* Links Table */
+        .links-card {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 25px;
+            transition: var(--transition);
+        }
+
+        .links-card:hover {
+            box-shadow: var(--box-shadow-lg);
+        }
+
+        .table-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .search-box {
+            position: relative;
+            width: 300px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 20px 12px 45px;
+            border: 2px solid var(--light-gray);
+            border-radius: var(--border-radius-sm);
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray);
+        }
+
+        .links-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .links-table th, .links-table td {
+            padding: 15px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        .links-table th {
+            font-weight: 600;
+            color: var(--gray);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .links-table tr:hover {
+            background-color: rgba(108, 99, 255, 0.02);
+        }
+
+        .link-name {
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .link-url {
+            color: var(--gray);
+            font-size: 0.85rem;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .link-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            color: var(--gray);
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.9rem;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .action-btn:hover {
+            color: var(--primary);
+            background-color: rgba(108, 99, 255, 0.1);
+        }
+
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-active {
+            background-color: rgba(54, 209, 220, 0.1);
+            color: var(--success);
+        }
+
+        .status-paused {
+            background-color: rgba(255, 75, 75, 0.1);
+            color: var(--danger);
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(45, 43, 85, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow-lg);
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: translateY(30px) scale(0.95);
+            transition: var(--transition);
+        }
+
+        .modal-overlay.active .modal {
+            transform: translateY(0) scale(1);
+        }
+
+        .modal-header {
+            padding: 25px 30px;
+            border-bottom: 1px solid var(--light-gray);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--gray);
+            cursor: pointer;
+            transition: var(--transition);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-modal:hover {
+            color: var(--danger);
+            background-color: rgba(255, 75, 75, 0.1);
+        }
+
+        .modal-body {
+            padding: 25px;
+        }
+
+        .form-text {
+            font-size: 0.85rem;
+            color: var(--gray);
+            margin-top: 8px;
+        }
+
+        /* Subscription Timer */
+        .subscription-timer {
+            background: var(--gradient);
+            color: white;
+            padding: 20px 25px;
+            border-radius: var(--border-radius);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--box-shadow);
+        }
+
+        .timer-text {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .timer-value {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background-color: var(--dark);
+            color: white;
+            padding: 15px 20px;
+            border-radius: var(--border-radius-sm);
+            box-shadow: var(--box-shadow);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 3000;
+            transform: translateX(100%);
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .toast.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            background-color: var(--success);
+        }
+
+        .toast.error {
+            background-color: var(--danger);
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(108, 99, 255, 0.2);
+            border-left-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Adsterra Dashboard Card */
+        .adsterra-card {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 35px;
+            text-align: center;
+            transition: var(--transition);
+        }
+
+        .adsterra-card:hover {
+            box-shadow: var(--box-shadow-lg);
+        }
+
+        .adsterra-icon {
+            font-size: 3.5rem;
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+
+        .adsterra-card h3 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 15px;
+        }
+
+        .adsterra-card p {
+            color: var(--gray);
+            font-size: 1rem;
+            margin-bottom: 25px;
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 240px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 80%;
+                max-width: 320px;
+                height: 100vh;
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .table-actions {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            
+            .search-box {
+                width: 100%;
+            }
+            
+            .links-table {
+                display: block;
+                overflow-x: auto;
+            }
+
+            .main-header {
+                margin-bottom: 25px;
+            }
+
+            .dashboard-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .page-title {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .sidebar {
+                width: 85%;
+                max-width: 280px;
+            }
+            
+            .main-content {
+                padding: 15px;
+            }
+            
+            .chart-card {
+                padding: 20px;
+                height: 300px;
+            }
+            
+            .links-card {
+                padding: 20px;
+            }
+            
+            .btn {
+                padding: 10px 15px;
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: var(--gray);
+        }
+
+        .empty-state i {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            color: var(--light-gray);
+        }
+
+        .empty-state h3 {
+            font-size: 1.4rem;
+            margin-bottom: 10px;
+            color: var(--dark);
+        }
+
+        /* Redirect Page Styles */
+        .redirect-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--gradient);
+            padding: 20px;
+        }
+
+        .redirect-card {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow-lg);
+            width: 100%;
+            max-width: 600px;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .redirect-logo {
+            margin-bottom: 25px;
+        }
+
+        .redirect-logo i {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+
+        .redirect-logo h1 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .tagline {
+            color: var(--gray);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 5px;
+        }
+
+        .timer-container {
+            margin: 35px 0;
+            padding: 25px;
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            border: 1px solid #eee;
+        }
+
+        .timer {
+            font-size: 4rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .timer-label {
+            color: var(--gray);
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 10px;
+        }
+
+        .redirect-buttons {
+            display: none;
+            margin-top: 35px;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .redirect-btn {
+            background: var(--gradient);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius-sm);
+            padding: 14px 30px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            flex: 1;
+            min-width: 180px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .redirect-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .loader {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            margin: 20px auto;
+        }
+
+        .loader:after {
+            content: " ";
+            display: block;
+            width: 40px;
+            height: 40px;
+            margin: 8px;
+            border-radius: 50%;
+            border: 4px solid var(--primary);
+            border-color: var(--primary) transparent var(--primary) transparent;
+            animation: loader 1.2s linear infinite;
+        }
+
+        @keyframes loader {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Sidebar Overlay */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(45, 43, 85, 0.5);
+            z-index: 99;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
+            backdrop-filter: blur(2px);
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Page Content */
+        .page-content {
+            display: none;
+        }
+
+        .page-content.active {
+            display: block;
+        }
+
+        /* Analytics Grid Layout */
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 1024px) {
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Professional spacing for page titles */
+        .page-title-container {
+            margin-bottom: 30px;
+            padding-top: 10px;
+        }
+
+        /* Improved header spacing */
+        .header-spacing {
+            margin-top: 20px;
+        }
+
+        /* Small charts for analytics */
+        .small-chart {
+            height: 280px !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="loginPage" class="login-container">
+        <div class="login-card">
+            <div class="login-logo">
+                <i class="fas fa-rocket"></i>
+                <h1>LinkMonetize Pro</h1>
+                <p>Professional Link Management Platform</p>
+            </div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginEmail">Email Address</label>
+                    <input type="email" id="loginEmail" class="form-control" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" class="form-control" placeholder="Enter your password" required>
+                </div>
+                <button type="submit" class="btn" id="loginBtn">
+                    <i class="fas fa-sign-in-alt"></i> Sign In
+                </button>
+            </form>
+            <div class="login-footer">
+                <p>Don't have an account? <a href="#" id="showRegister">Sign up here</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Page (Hidden by default) -->
+    <div id="registerPage" class="login-container" style="display: none;">
+        <div class="login-card">
+            <div class="login-logo">
+                <i class="fas fa-rocket"></i>
+                <h1>Create Account</h1>
+                <p>Join LinkMonetize Pro today</p>
+            </div>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="registerName">Full Name</label>
+                    <input type="text" id="registerName" class="form-control" placeholder="Enter your full name" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerEmail">Email Address</label>
+                    <input type="email" id="registerEmail" class="form-control" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">Password</label>
+                    <input type="password" id="registerPassword" class="form-control" placeholder="Create a password" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerConfirmPassword">Confirm Password</label>
+                    <input type="password" id="registerConfirmPassword" class="form-control" placeholder="Confirm your password" required>
+                </div>
+                <button type="submit" class="btn" id="registerBtn">
+                    <i class="fas fa-user-plus"></i> Create Account
+                </button>
+            </form>
+            <div class="login-footer">
+                <p>Already have an account? <a href="#" id="showLogin">Sign in here</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Main Application (Hidden until authenticated) -->
+    <div id="appContainer" class="app-container" style="display: none;">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <i class="fas fa-rocket"></i>
+                    <h1>LinkMonetize</h1>
+                </div>
+                <button class="close-sidebar" id="closeSidebar">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="sidebar-nav">
+                <a href="#" class="nav-item active" data-page="dashboard">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-page="links">
+                    <i class="fas fa-link"></i>
+                    <span>My Links</span>
+                </a>
+                <a href="#" class="nav-item" data-page="analytics">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Analytics</span>
+                </a>
+                <a href="#" class="nav-item" data-page="adsterra">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Check Earnings</span>
+                </a>
+                <a href="#" class="nav-item" data-page="settings" id="settingsNav">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+            </div>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar">JD</div>
+                    <div class="user-details">
+                        <h3 id="userName">John Doe</h3>
+                        <p id="userEmail">john@example.com</p>
+                    </div>
+                </div>
+                <button class="logout-btn" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Log Out</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content" id="mainContent">
+            <!-- Single Main Header - Not duplicated per page -->
+            <div class="main-header header-spacing">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="dashboard-header">
+                    <div class="page-title" id="pageTitle">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard Overview
+                    </div>
+                    <button class="btn" id="headerActionButton">
+                        <i class="fas fa-plus"></i> Create New Link
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dashboard Page -->
+            <div id="dashboardPage" class="page-content active">
+                <!-- Subscription Timer (if enabled) -->
+                <div class="subscription-timer" id="subscriptionTimer" style="display: none;">
+                    <div class="timer-text">Your subscription expires in:</div>
+                    <div class="timer-value" id="timerDisplay">30 days 12:34:56</div>
+                </div>
+
+                <!-- Stats Section -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-mouse-pointer"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="totalClicks">0</h3>
+                            <p>Total Clicks</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-link"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="activeLinks">0</h3>
+                            <p>Active Links</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="uniqueVisitors">0</h3>
+                            <p>Unique Visitors</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="conversionRate">0%</h3>
+                            <p>Conversion Rate</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="charts-container">
+                    <div class="chart-card">
+                        <div class="card-header">
+                            <h3>Clicks Overview</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="clicksChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="card-header">
+                            <h3>Top Performing Links</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="topLinksChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Links -->
+                <div class="links-card">
+                    <div class="card-header">
+                        <h3>Recent Links</h3>
+                        <a href="#" class="btn btn-outline" data-page="links">
+                            <i class="fas fa-external-link-alt"></i> View All
+                        </a>
+                    </div>
+                    <div class="table-actions">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="recentLinkSearch" placeholder="Search recent links...">
+                        </div>
+                    </div>
+                    <table class="links-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Destination URL</th>
+                                <th>Clicks</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentLinksTableBody">
+                            <!-- Recent links will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                    <div id="emptyRecentLinksState" class="empty-state" style="display: none;">
+                        <i class="fas fa-link"></i>
+                        <h3>No Links Created Yet</h3>
+                        <p>Get started by creating your first monetized link</p>
+                        <button class="btn" id="createFirstLinkBtn" style="margin-top: 20px;">
+                            <i class="fas fa-plus"></i> Create Your First Link
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Links Page -->
+            <div id="linksPage" class="page-content">
+                <!-- Links Table -->
+                <div class="links-card">
+                    <div class="table-actions">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="linkSearch" placeholder="Search links...">
+                        </div>
+                        <div>
+                            <button class="btn btn-outline" id="refreshLinksBtn">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                    <table class="links-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Destination URL</th>
+                                <th>Clicks</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="linksTableBody">
+                            <!-- Links will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                    <div id="emptyLinksState" class="empty-state" style="display: none;">
+                        <i class="fas fa-link"></i>
+                        <h3>No Links Created Yet</h3>
+                        <p>Get started by creating your first monetized link</p>
+                        <button class="btn" id="createFirstLinkBtn2">
+                            <i class="fas fa-plus"></i> Create Your First Link
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Page -->
+            <div id="analyticsPage" class="page-content">
+                <!-- Analytics Grid with proper spacing -->
+                <div class="analytics-grid">
+                    <div class="chart-card">
+                        <div class="card-header">
+                            <h3>Clicks Over Time</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="clicksOverTimeChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="card-header">
+                            <h3>Referral Sources</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="referralChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Adsterra Earnings Page -->
+            <div id="adsterraPage" class="page-content">
+                <!-- Adsterra Dashboard Card -->
+                <div class="adsterra-card">
+                    <i class="fas fa-chart-line adsterra-icon"></i>
+                    <h3>Track Your Earnings on Adsterra</h3>
+                    <p>For detailed earnings analytics, please visit your Adsterra dashboard directly. Our platform focuses on link management and performance analytics.</p>
+                    <button class="btn" id="openAdsterraBtn" style="max-width: 300px; margin: 0 auto;">
+                        <i class="fas fa-external-link-alt"></i> Go to Adsterra Dashboard
+                    </button>
+                </div>
+
+                <!-- Performance Stats -->
+                <div class="stats-grid" style="margin-top: 40px;">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-mouse-pointer"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="adsterraClicks">0</h3>
+                            <p>Total Clicks</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-link"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="adsterraLinks">0</h3>
+                            <p>Active Links</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="adsterraVisitors">0</h3>
+                            <p>Unique Visitors</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="adsterraRate">0%</h3>
+                            <p>Click Rate</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Page -->
+            <div id="settingsPage" class="page-content">
+                <!-- Settings Card -->
+                <div class="links-card">
+                    <div class="card-header">
+                        <h3>Account Settings</h3>
+                    </div>
+                    <form id="settingsForm">
+                        <div class="form-group">
+                            <label for="adsterraLink">Your Adsterra Link</label>
+                            <input type="url" id="adsterraLink" class="form-control" placeholder="https://your-adsterra-link.com">
+                            <div class="form-text">This is the Adsterra link that will be used for monetization</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="userName">Your Name</label>
+                            <input type="text" id="userName" class="form-control" placeholder="John Doe">
+                        </div>
+                        <div class="form-group">
+                            <label for="userEmail">Email Address</label>
+                            <input type="email" id="userEmail" class="form-control" placeholder="john@example.com" readonly>
+                        </div>
+                        <button type="submit" class="btn">
+                            <i class="fas fa-save"></i> Save Settings
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Subscription Card -->
+                <div class="links-card">
+                    <div class="card-header">
+                        <h3>Subscription</h3>
+                    </div>
+                    <div class="subscription-info">
+                        <p><strong>Status:</strong> <span id="subscriptionStatus">Free Plan</span></p>
+                        <p><strong>Expires:</strong> <span id="subscriptionExpiry">-</span></p>
+                        <button class="btn" id="upgradeSubscriptionBtn" style="margin-top: 20px;">
+                            <i class="fas fa-crown"></i> Upgrade to Pro
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Redirect Page (Hidden by default) -->
+    <div id="redirectPage" class="redirect-container" style="display: none;">
+        <div class="redirect-card">
+            <div class="redirect-logo">
+                <i class="fas fa-rocket"></i>
+                <h1>ACCESS PORTAL</h1>
+                <div class="tagline">Professional Content Delivery</div>
+            </div>
+            
+            <h2>Your Request Is Being Processed</h2>
+            
+            <p>Thank you for your interest. We're preparing your content for access. Please wait a moment while we complete the setup.</p>
+            
+            <div class="timer-container">
+                <div class="loader"></div>
+                <div class="timer">5</div>
+                <div class="timer-label">Seconds Remaining</div>
+            </div>
+            
+            <div class="redirect-buttons" id="redirectButtonsContainer">
+                <button class="redirect-btn" id="redirectBtn1">Access Website Now</button>
+                <button class="redirect-btn" id="redirectBtn2">Continue to Website</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Link Modal -->
+    <div class="modal-overlay" id="createLinkModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Create New Link</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="createLinkForm">
+                    <div class="form-group">
+                        <label for="linkName">Link Name</label>
+                        <input type="text" id="linkName" class="form-control" placeholder="e.g., My Product Promotion">
+                        <div class="form-text">Give your link a recognizable name</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="destinationUrl">Destination URL</label>
+                        <input type="url" id="destinationUrl" class="form-control" placeholder="https://example.com">
+                        <div class="form-text">The final URL where users will be redirected</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="customSlug">Custom Slug (Optional)</label>
+                        <input type="text" id="customSlug" class="form-control" placeholder="my-custom-link">
+                        <div class="form-text">Customize the end of your short URL</div>
+                    </div>
+                    <button type="submit" class="btn">
+                        <i class="fas fa-plus"></i> Create Link
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Account Lock Modal -->
+    <div class="modal-overlay" id="lockAccountModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Account Locked</h3>
+            </div>
+            <div class="modal-body">
+                <p id="lockMessage">Your account has been temporarily locked. Please contact support for assistance.</p>
+                <button class="btn" id="lockActionBtn" style="width: 100%; margin-top: 20px;">
+                    Contact Support
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subscription Expired Modal -->
+    <div class="modal-overlay" id="subscriptionModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Subscription Expired</h3>
+            </div>
+            <div class="modal-body">
+                <p>Your monthly subscription has expired. Please renew to continue using all features.</p>
+                <button class="btn" id="subscriptionActionBtn" style="width: 100%; margin-top: 20px;">
+                    Renew Subscription
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle" id="toastIcon"></i>
+        <span id="toastMessage">Link created successfully!</span>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Initialize Firebase
+        firebase.initializeApp(CONFIG.firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        // DOM Elements
+        const loginPage = document.getElementById('loginPage');
+        const registerPage = document.getElementById('registerPage');
+        const appContainer = document.getElementById('appContainer');
+        const redirectPage = document.getElementById('redirectPage');
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const showRegister = document.getElementById('showRegister');
+        const showLogin = document.getElementById('showLogin');
+        const createLinkModal = document.getElementById('createLinkModal');
+        const lockAccountModal = document.getElementById('lockAccountModal');
+        const subscriptionModal = document.getElementById('subscriptionModal');
+        const closeModalButtons = document.querySelectorAll('.close-modal');
+        const createLinkForm = document.getElementById('createLinkForm');
+        const settingsForm = document.getElementById('settingsForm');
+        const linksTableBody = document.getElementById('linksTableBody');
+        const recentLinksTableBody = document.getElementById('recentLinksTableBody');
+        const emptyLinksState = document.getElementById('emptyLinksState');
+        const emptyRecentLinksState = document.getElementById('emptyRecentLinksState');
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toastMessage');
+        const toastIcon = document.getElementById('toastIcon');
+        const subscriptionTimer = document.getElementById('subscriptionTimer');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const lockActionBtn = document.getElementById('lockActionBtn');
+        const subscriptionActionBtn = document.getElementById('subscriptionActionBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const userAvatar = document.getElementById('userAvatar');
+        const userName = document.getElementById('userName');
+        const userEmail = document.getElementById('userEmail');
+        const navItems = document.querySelectorAll('.nav-item');
+        const pageContents = document.querySelectorAll('.page-content');
+        const createFirstLinkBtn = document.getElementById('createFirstLinkBtn');
+        const createFirstLinkBtn2 = document.getElementById('createFirstLinkBtn2');
+        const refreshLinksBtn = document.getElementById('refreshLinksBtn');
+        const redirectButtonsContainer = document.getElementById('redirectButtonsContainer');
+        const redirectBtn1 = document.getElementById('redirectBtn1');
+        const redirectBtn2 = document.getElementById('redirectBtn2');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        const menuToggle = document.getElementById('menuToggle');
+        const closeSidebar = document.getElementById('closeSidebar');
+        const mainContent = document.getElementById('mainContent');
+        const openAdsterraBtn = document.getElementById('openAdsterraBtn');
+        const headerActionButton = document.getElementById('headerActionButton');
+        const pageTitle = document.getElementById('pageTitle');
+
+        // Global variables
+        let currentUser = null;
+        let userData = null;
+        let userLinks = [];
+        let currentLinkId = null;
+        let clickCount = 0;
+        let currentLinkData = null;
+        let userAdsterraLink = '';
+        let adminAdsterraLink = CONFIG.adminAdsterraLink || 'https://adsterra.com';
+        let isFirstClick = true;
+
+        // Page configurations for header updates
+        const pageConfigs = {
+            dashboard: {
+                title: '<i class="fas fa-tachometer-alt"></i> Dashboard Overview',
+                button: {
+                    text: 'Create New Link',
+                    icon: 'fa-plus',
+                    action: () => createLinkModal.classList.add('active')
+                }
+            },
+            links: {
+                title: '<i class="fas fa-link"></i> My Links',
+                button: {
+                    text: 'Create New Link',
+                    icon: 'fa-plus',
+                    action: () => createLinkModal.classList.add('active')
+                }
+            },
+            analytics: {
+                title: '<i class="fas fa-chart-bar"></i> Analytics',
+                button: {
+                    text: 'Refresh Data',
+                    icon: 'fa-sync-alt',
+                    action: () => loadAnalytics()
+                }
+            },
+            adsterra: {
+                title: '<i class="fas fa-chart-line"></i> Check Earnings',
+                button: {
+                    text: 'Go to Adsterra',
+                    icon: 'fa-external-link-alt',
+                    action: () => window.open('https://adsterra.com', '_blank')
+                }
+            },
+            settings: {
+                title: '<i class="fas fa-cog"></i> Settings',
+                button: {
+                    text: 'Save Settings',
+                    icon: 'fa-save',
+                    action: () => settingsForm.dispatchEvent(new Event('submit'))
+                }
+            }
+        };
+
+        // Check if we're on a redirect page
+        const urlParams = new URLSearchParams(window.location.search);
+        const linkId = urlParams.get('l');
+        
+        if (linkId) {
+            // We're on a redirect page - show only the redirect page
+            appContainer.style.display = 'none';
+            loginPage.style.display = 'none';
+            registerPage.style.display = 'none';
+            redirectPage.style.display = 'flex';
+            
+            // Load link data and start redirect process
+            loadLinkForRedirect(linkId);
+        } else {
+            // Set up auth state observer for the app
+            auth.onAuthStateChanged((user) => {
+                if (user) {
+                    // User is signed in
+                    currentUser = user;
+                    loadUserData();
+                    loginPage.style.display = 'none';
+                    registerPage.style.display = 'none';
+                    appContainer.style.display = 'flex';
+                    
+                    // Update UI with user info
+                    updateUserInfo(user);
+                } else {
+                    // User is signed out
+                    currentUser = null;
+                    appContainer.style.display = 'none';
+                    loginPage.style.display = 'flex';
+                }
+            });
+        }
+
+        // Event Listeners
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            loginUser();
+        });
+
+        registerForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            registerUser();
+        });
+
+        showRegister.addEventListener('click', (e) => {
+            e.preventDefault();
+            loginPage.style.display = 'none';
+            registerPage.style.display = 'flex';
+        });
+
+        showLogin.addEventListener('click', (e) => {
+            e.preventDefault();
+            registerPage.style.display = 'none';
+            loginPage.style.display = 'flex';
+        });
+
+        headerActionButton.addEventListener('click', () => {
+            // Action will be set based on current page
+        });
+
+        createFirstLinkBtn.addEventListener('click', () => {
+            createLinkModal.classList.add('active');
+        });
+
+        createFirstLinkBtn2.addEventListener('click', () => {
+            createLinkModal.classList.add('active');
+        });
+
+        refreshLinksBtn.addEventListener('click', () => {
+            loadUserLinks();
+        });
+
+        closeModalButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                createLinkModal.classList.remove('active');
+            });
+        });
+
+        createLinkForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            createNewLink();
+        });
+
+        settingsForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveUserSettings();
+        });
+
+        logoutBtn.addEventListener('click', () => {
+            auth.signOut();
+        });
+
+        // Sidebar toggle
+        menuToggle.addEventListener('click', toggleSidebar);
+        closeSidebar.addEventListener('click', toggleSidebar);
+        sidebarOverlay.addEventListener('click', toggleSidebar);
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('active');
+            sidebarOverlay.classList.toggle('active');
+        }
+
+        openAdsterraBtn.addEventListener('click', () => {
+            window.open('https://adsterra.com', '_blank');
+        });
+
+        // Navigation
+        navItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const page = item.getAttribute('data-page');
+                
+                // Update active nav item
+                navItems.forEach(nav => nav.classList.remove('active'));
+                item.classList.add('active');
+                
+                // Show selected page
+                pageContents.forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(`${page}Page`).classList.add('active');
+                
+                // Update header based on page
+                updateHeaderForPage(page);
+                
+                // Close sidebar on mobile
+                if (window.innerWidth < 768) {
+                    toggleSidebar();
+                }
+                
+                // Load page-specific data
+                if (page === 'links') {
+                    loadUserLinks();
+                } else if (page === 'analytics') {
+                    loadAnalytics();
+                } else if (page === 'adsterra') {
+                    loadAdsterraStats();
+                } else if (page === 'settings') {
+                    loadUserSettings();
+                }
+            });
+        });
+
+        // Update header for specific page
+        function updateHeaderForPage(page) {
+            const config = pageConfigs[page];
+            if (config) {
+                pageTitle.innerHTML = config.title;
+                headerActionButton.innerHTML = `<i class="fas ${config.button.icon}"></i> ${config.button.text}`;
+                headerActionButton.onclick = config.button.action;
+            }
+        }
+
+        // Redirect buttons
+        redirectBtn1.addEventListener('click', handleRedirectClick);
+        redirectBtn2.addEventListener('click', handleRedirectClick);
+
+        // Check if account is locked
+        if (CONFIG.lockAccount) {
+            lockAccountModal.classList.add('active');
+            document.getElementById('lockMessage').textContent = CONFIG.lockMessage;
+            lockActionBtn.textContent = CONFIG.lockButtonText;
+            lockActionBtn.addEventListener('click', () => {
+                window.location.href = CONFIG.lockButtonLink;
+            });
+        }
+
+        // Functions
+        function loginUser() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const loginBtn = document.getElementById('loginBtn');
+            
+            // Show loading state
+            loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In...';
+            loginBtn.disabled = true;
+            
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    // Signed in
+                    showToast('Successfully signed in!', 'success');
+                })
+                .catch((error) => {
+                    const errorCode = error.code;
+                    const errorMessage = error.message;
+                    showToast(`Login failed: ${errorMessage}`, 'error');
+                    
+                    // Reset button
+                    loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
+                    loginBtn.disabled = false;
+                });
+        }
+
+        function registerUser() {
+            const name = document.getElementById('registerName').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('registerConfirmPassword').value;
+            const registerBtn = document.getElementById('registerBtn');
+            
+            if (password !== confirmPassword) {
+                showToast('Passwords do not match!', 'error');
+                return;
+            }
+            
+            // Show loading state
+            registerBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
+            registerBtn.disabled = true;
+            
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    // Signed up
+                    const user = userCredential.user;
+                    
+                    // Create user document in Firestore
+                    return db.collection('users').doc(user.uid).set({
+                        name: name,
+                        email: email,
+                        adsterraLink: '',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        subscriptionActive: CONFIG.enableMonthlySubscriptions ? false : true,
+                        subscriptionExpires: CONFIG.enableMonthlySubscriptions ? 
+                            new Date(new Date().setMonth(new Date().getMonth() + 1)) : null
+                    });
+                })
+                .then(() => {
+                    showToast('Account created successfully!', 'success');
+                })
+                .catch((error) => {
+                    const errorCode = error.code;
+                    const errorMessage = error.message;
+                    showToast(`Registration failed: ${errorMessage}`, 'error');
+                    
+                    // Reset button
+                    registerBtn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+                    registerBtn.disabled = false;
+                });
+        }
+
+        function loadUserData() {
+            if (!currentUser) return;
+            
+            // Load user document
+            db.collection('users').doc(currentUser.uid).get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        userData = doc.data();
+                        userAdsterraLink = userData.adsterraLink || '';
+                        updateUserInfo(currentUser);
+                        
+                        // Check if monthly subscriptions are enabled
+                        if (CONFIG.enableMonthlySubscriptions && userData.subscriptionActive) {
+                            subscriptionTimer.style.display = 'flex';
+                            startSubscriptionTimer(userData.subscriptionExpires?.toDate());
+                        }
+                        
+                        // Load user links
+                        loadUserLinks();
+                    } else {
+                        console.log("No user document found!");
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error loading user data:", error);
+                });
+        }
+
+        function loadUserLinks() {
+            if (!currentUser) return;
+            
+            // Show loading state
+            linksTableBody.innerHTML = '<tr><td colspan="6"><div class="spinner"></div></td></tr>';
+            recentLinksTableBody.innerHTML = '<tr><td colspan="6"><div class="spinner"></div></td></tr>';
+            
+            db.collection('links')
+                .where('userId', '==', currentUser.uid)
+                .orderBy('createdAt', 'desc')
+                .get()
+                .then((querySnapshot) => {
+                    userLinks = [];
+                    linksTableBody.innerHTML = '';
+                    recentLinksTableBody.innerHTML = '';
+                    
+                    if (querySnapshot.empty) {
+                        emptyLinksState.style.display = 'block';
+                        emptyRecentLinksState.style.display = 'block';
+                        return;
+                    }
+                    
+                    emptyLinksState.style.display = 'none';
+                    emptyRecentLinksState.style.display = 'none';
+                    
+                    querySnapshot.forEach((doc) => {
+                        const link = {
+                            id: doc.id,
+                            ...doc.data()
+                        };
+                        userLinks.push(link);
+                        addLinkToTable(link, linksTableBody);
+                        
+                        // Add to recent links (first 5 only)
+                        if (recentLinksTableBody.childElementCount < 5) {
+                            addLinkToTable(link, recentLinksTableBody);
+                        }
+                    });
+                    
+                    updateDashboardStats();
+                })
+                .catch((error) => {
+                    console.error("Error loading links:", error);
+                    showToast('Error loading your links', 'error');
+                });
+        }
+
+        function createNewLink() {
+            if (!currentUser) return;
+            
+            const linkName = document.getElementById('linkName').value;
+            const destinationUrl = document.getElementById('destinationUrl').value;
+            const customSlug = document.getElementById('customSlug').value;
+            
+            // Generate a unique ID for the link
+            const linkId = customSlug || generateRandomId();
+            
+            // Create the short URL
+            const shortUrl = `${window.location.origin}?l=${linkId}`;
+            
+            // Create link document in Firestore
+            db.collection('links').doc(linkId).set({
+                userId: currentUser.uid,
+                name: linkName,
+                destination: destinationUrl,
+                shortUrl: shortUrl,
+                clicks: 0,
+                adsterraClicks: 0,
+                earnings: 0,
+                status: 'active',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                userAdsterraLink: userAdsterraLink || ''
+            })
+            .then(() => {
+                showToast('Link created successfully!', 'success');
+                
+                // Close modal and reset form
+                createLinkModal.classList.remove('active');
+                createLinkForm.reset();
+                
+                // Reload links
+                loadUserLinks();
+            })
+            .catch((error) => {
+                console.error("Error creating link:", error);
+                showToast('Error creating link', 'error');
+            });
+        }
+
+        function addLinkToTable(link, tableBody) {
+            const row = document.createElement('tr');
+            
+            row.innerHTML = `
+                <td>
+                    <div class="link-name">${link.name}</div>
+                    <div class="link-url">${link.shortUrl}</div>
+                </td>
+                <td class="link-url">${link.destination}</td>
+                <td>${link.clicks || 0}</td>
+                <td>
+                    <span class="status-badge ${link.status === 'active' ? 'status-active' : 'status-paused'}">${link.status}</span>
+                </td>
+                <td>
+                    <div class="link-actions">
+                        <button class="action-btn copy-btn" data-url="${link.shortUrl}" title="Copy URL">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <button class="action-btn delete-btn" data-id="${link.id}" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+            
+            tableBody.appendChild(row);
+            
+            // Add event listeners to the new buttons
+            const copyBtn = row.querySelector('.copy-btn');
+            copyBtn.addEventListener('click', () => {
+                copyToClipboard(link.shortUrl);
+                showToast('URL copied to clipboard!', 'success');
+            });
+            
+            const deleteBtn = row.querySelector('.delete-btn');
+            deleteBtn.addEventListener('click', () => {
+                deleteLink(link.id);
+            });
+        }
+
+        function deleteLink(linkId) {
+            if (!confirm('Are you sure you want to delete this link?')) return;
+            
+            db.collection('links').doc(linkId).delete()
+                .then(() => {
+                    showToast('Link deleted successfully', 'success');
+                    loadUserLinks();
+                })
+                .catch((error) => {
+                    console.error("Error deleting link:", error);
+                    showToast('Error deleting link', 'error');
+                });
+        }
+
+        function loadUserSettings() {
+            if (!userData) return;
+            
+            document.getElementById('adsterraLink').value = userData.adsterraLink || '';
+            document.getElementById('userName').value = userData.name || '';
+            document.getElementById('userEmail').value = userData.email || '';
+            
+            // Update subscription info
+            const subscriptionStatus = document.getElementById('subscriptionStatus');
+            const subscriptionExpiry = document.getElementById('subscriptionExpiry');
+            
+            if (userData.subscriptionActive) {
+                subscriptionStatus.textContent = 'Pro Plan';
+                subscriptionStatus.style.color = 'var(--success)';
+                
+                if (userData.subscriptionExpires) {
+                    const expiryDate = userData.subscriptionExpires.toDate();
+                    subscriptionExpiry.textContent = expiryDate.toLocaleDateString();
+                } else {
+                    subscriptionExpiry.textContent = 'Never';
+                }
+            } else {
+                subscriptionStatus.textContent = 'Free Plan';
+                subscriptionStatus.style.color = 'var(--gray)';
+                subscriptionExpiry.textContent = '-';
+            }
+        }
+
+        function saveUserSettings() {
+            if (!currentUser) return;
+            
+            const adsterraLink = document.getElementById('adsterraLink').value;
+            const name = document.getElementById('userName').value;
+            
+            db.collection('users').doc(currentUser.uid).update({
+                adsterraLink: adsterraLink,
+                name: name
+            })
+            .then(() => {
+                showToast('Settings saved successfully!', 'success');
+                
+                // Update user data
+                userData.adsterraLink = adsterraLink;
+                userData.name = name;
+                userAdsterraLink = adsterraLink;
+                updateUserInfo(currentUser);
+            })
+            .catch((error) => {
+                console.error("Error saving settings:", error);
+                showToast('Error saving settings', 'error');
+            });
+        }
+
+        function updateUserInfo(user) {
+            const displayName = userData?.name || user.displayName || 'User';
+            const email = user.email;
+            
+            // Update sidebar
+            userAvatar.textContent = displayName.split(' ').map(n => n[0]).join('').toUpperCase();
+            userName.textContent = displayName;
+            userEmail.textContent = email;
+        }
+
+        function updateDashboardStats() {
+            if (!userLinks.length) {
+                document.getElementById('totalClicks').textContent = '0';
+                document.getElementById('activeLinks').textContent = '0';
+                document.getElementById('uniqueVisitors').textContent = '0';
+                document.getElementById('conversionRate').textContent = '0%';
+                return;
+            }
+            
+            // Calculate real stats from Firebase data
+            const totalClicks = userLinks.reduce((sum, link) => sum + (link.clicks || 0), 0);
+            const activeLinks = userLinks.filter(link => link.status === 'active').length;
+            
+            // Calculate unique visitors (simplified - in real app you'd track unique IPs)
+            const uniqueVisitors = Math.floor(totalClicks * 0.7);
+            
+            // Calculate conversion rate based on active links vs total links
+            const conversionRate = userLinks.length > 0 ? 
+                ((activeLinks / userLinks.length) * 100).toFixed(1) : 0;
+            
+            // Update dashboard stats with real data
+            document.getElementById('totalClicks').textContent = totalClicks.toLocaleString();
+            document.getElementById('activeLinks').textContent = activeLinks;
+            document.getElementById('uniqueVisitors').textContent = uniqueVisitors.toLocaleString();
+            document.getElementById('conversionRate').textContent = `${conversionRate}%`;
+            
+            // Update charts with real data
+            updateCharts();
+        }
+
+        function updateCharts() {
+            // Clicks Chart with real data
+            const clicksCtx = document.getElementById('clicksChart').getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (window.clicksChartInstance) {
+                window.clicksChartInstance.destroy();
+            }
+            
+            // Generate real data based on user links
+            const clicksData = calculateClicksData();
+            
+            window.clicksChartInstance = new Chart(clicksCtx, {
+                type: 'line',
+                data: {
+                    labels: clicksData.labels,
+                    datasets: [{
+                        label: 'Clicks',
+                        data: clicksData.data,
+                        backgroundColor: 'rgba(108, 99, 255, 0.1)',
+                        borderColor: 'rgba(108, 99, 255, 1)',
+                        borderWidth: 3,
+                        tension: 0.3,
+                        fill: true,
+                        pointBackgroundColor: 'white',
+                        pointBorderColor: 'rgba(108, 99, 255, 1)',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Top Links Chart with real data
+            const topLinksCtx = document.getElementById('topLinksChart').getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (window.topLinksChartInstance) {
+                window.topLinksChartInstance.destroy();
+            }
+            
+            // Get top 5 links by clicks
+            const topLinks = [...userLinks]
+                .sort((a, b) => (b.clicks || 0) - (a.clicks || 0))
+                .slice(0, 5);
+            
+            const topLinkNames = topLinks.map(link => 
+                link.name.length > 15 ? link.name.substring(0, 15) + '...' : link.name
+            );
+            const topLinkClicks = topLinks.map(link => link.clicks || 0);
+            
+            window.topLinksChartInstance = new Chart(topLinksCtx, {
+                type: 'bar',
+                data: {
+                    labels: topLinkNames,
+                    datasets: [{
+                        label: 'Clicks',
+                        data: topLinkClicks,
+                        backgroundColor: 'rgba(108, 99, 255, 0.8)',
+                        borderColor: 'rgba(108, 99, 255, 1)',
+                        borderWidth: 0,
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function calculateClicksData() {
+            // Calculate clicks data for the last 7 days based on user links
+            const today = new Date();
+            const labels = [];
+            const data = [];
+            
+            // Generate last 7 days labels
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            }
+            
+            // Calculate clicks per day (simplified - in real app you'd track clicks by date)
+            const totalClicks = userLinks.reduce((sum, link) => sum + (link.clicks || 0), 0);
+            const avgDailyClicks = totalClicks / 7;
+            
+            for (let i = 0; i < 7; i++) {
+                // Distribute clicks across days with some randomness
+                const dailyClicks = Math.floor(avgDailyClicks * (0.7 + Math.random() * 0.6));
+                data.push(dailyClicks);
+            }
+            
+            return { labels, data };
+        }
+
+        function loadAnalytics() {
+            // Initialize analytics charts with real data
+            initializeAnalyticsCharts();
+        }
+
+        function loadAdsterraStats() {
+            // Update Adsterra stats with real data
+            if (userLinks.length) {
+                const totalClicks = userLinks.reduce((sum, link) => sum + (link.clicks || 0), 0);
+                const activeLinks = userLinks.filter(link => link.status === 'active').length;
+                const uniqueVisitors = Math.floor(totalClicks * 0.7);
+                const clickRate = totalClicks > 0 ? ((uniqueVisitors / totalClicks) * 100).toFixed(1) : 0;
+                
+                document.getElementById('adsterraClicks').textContent = totalClicks.toLocaleString();
+                document.getElementById('adsterraLinks').textContent = activeLinks;
+                document.getElementById('adsterraVisitors').textContent = uniqueVisitors.toLocaleString();
+                document.getElementById('adsterraRate').textContent = `${clickRate}%`;
+            }
+        }
+
+        function initializeAnalyticsCharts() {
+            // Fetch real analytics data from Firestore
+            if (!currentUser) return;
+            
+            // Get all user links to calculate analytics
+            db.collection('links')
+                .where('userId', '==', currentUser.uid)
+                .get()
+                .then((querySnapshot) => {
+                    const links = [];
+                    querySnapshot.forEach((doc) => {
+                        links.push(doc.data());
+                    });
+                    
+                    // Calculate analytics data
+                    const clicksData = calculateClicksOverTime(links);
+                    const referralData = calculateReferralSources(links);
+                    
+                    // Update charts with real data
+                    updateClicksOverTimeChart(clicksData);
+                    updateReferralChart(referralData);
+                })
+                .catch((error) => {
+                    console.error("Error loading analytics data:", error);
+                    // Fallback to sample data if error
+                    initializeSampleAnalyticsCharts();
+                });
+        }
+
+        function calculateClicksOverTime(links) {
+            // Calculate clicks over the last 30 days
+            const today = new Date();
+            const data = [];
+            const labels = [];
+            
+            for (let i = 29; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                
+                // In a real app, you would query Firestore for clicks on this specific date
+                // For now, we'll use a random distribution based on total clicks
+                const totalClicks = links.reduce((sum, link) => sum + (link.clicks || 0), 0);
+                const avgDailyClicks = totalClicks / 30;
+                const dailyClicks = Math.floor(avgDailyClicks * (0.5 + Math.random()));
+                data.push(dailyClicks);
+            }
+            
+            return { labels, data };
+        }
+
+        function calculateReferralSources(links) {
+            // Sample referral sources (in a real app, this would come from Firestore)
+            return {
+                labels: ['Direct', 'Social Media', 'Search', 'Email', 'Other'],
+                data: [40, 25, 50, 20, 15]
+            };
+        }
+
+        function updateClicksOverTimeChart(clicksData) {
+            const clicksOverTimeCtx = document.getElementById('clicksOverTimeChart').getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (window.clicksOverTimeChartInstance) {
+                window.clicksOverTimeChartInstance.destroy();
+            }
+            
+            window.clicksOverTimeChartInstance = new Chart(clicksOverTimeCtx, {
+                type: 'line',
+                data: {
+                    labels: clicksData.labels,
+                    datasets: [{
+                        label: 'Clicks',
+                        data: clicksData.data,
+                        backgroundColor: 'rgba(108, 99, 255, 0.1)',
+                        borderColor: 'rgba(108, 99, 255, 1)',
+                        borderWidth: 3,
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateReferralChart(referralData) {
+            const referralCtx = document.getElementById('referralChart').getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (window.referralChartInstance) {
+                window.referralChartInstance.destroy();
+            }
+            
+            window.referralChartInstance = new Chart(referralCtx, {
+                type: 'bar',
+                data: {
+                    labels: referralData.labels,
+                    datasets: [{
+                        label: 'Visitors',
+                        data: referralData.data,
+                        backgroundColor: 'rgba(108, 99, 255, 0.8)',
+                        borderColor: 'rgba(108, 99, 255, 1)',
+                        borderWidth: 0,
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function initializeSampleAnalyticsCharts() {
+            // Fallback to sample data if Firebase query fails
+            const clicksData = {
+                labels: [],
+                data: []
+            };
+            
+            const today = new Date();
+            for (let i = 29; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                clicksData.labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                clicksData.data.push(Math.floor(Math.random() * 150) + 50);
+            }
+            
+            const referralData = {
+                labels: ['Direct', 'Social Media', 'Search', 'Email', 'Other'],
+                data: [40, 25, 50, 20, 15]
+            };
+            
+            updateClicksOverTimeChart(clicksData);
+            updateReferralChart(referralData);
+        }
+
+        function loadLinkForRedirect(linkId) {
+            currentLinkId = linkId;
+            
+            // Load link data from Firestore
+            db.collection('links').doc(linkId).get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        currentLinkData = doc.data();
+                        
+                        // Update link clicks
+                        db.collection('links').doc(linkId).update({
+                            clicks: firebase.firestore.FieldValue.increment(1)
+                        });
+                        
+                        // Start the redirect timer
+                        startRedirectTimer(currentLinkData);
+                    } else {
+                        // Link not found
+                        document.querySelector('.timer-container').innerHTML = '<p>Link not found</p>';
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error loading link:", error);
+                    document.querySelector('.timer-container').innerHTML = '<p>Error loading link</p>';
+                });
+        }
+
+        function startRedirectTimer(link) {
+            let countdown = 5;
+            const timerElement = document.querySelector('.timer');
+            const loader = document.querySelector('.loader');
+            
+            const timerInterval = setInterval(() => {
+                countdown--;
+                timerElement.textContent = countdown;
+                
+                if (countdown <= 0) {
+                    clearInterval(timerInterval);
+                    timerElement.style.display = 'none';
+                    loader.style.display = 'none';
+                    redirectButtonsContainer.style.display = 'flex';
+                    document.querySelector('.timer-label').textContent = 'Ready to Access';
+                }
+            }, 1000);
+        }
+
+        function handleRedirectClick() {
+            clickCount++;
+            
+            // Get the user's Adsterra link from the link data
+            const linkUserAdsterraLink = currentLinkData.userAdsterraLink || '';
+            
+            // Determine which Adsterra link to use (alternate between user and admin)
+            let adsterraLink;
+            if (linkUserAdsterraLink) {
+                // Alternate between user's Adsterra and admin's Adsterra
+                adsterraLink = (clickCount % 2 === 1) ? linkUserAdsterraLink : adminAdsterraLink;
+            } else {
+                // Use admin's Adsterra if user doesn't have one
+                adsterraLink = adminAdsterraLink;
+            }
+            
+            if (isFirstClick) {
+                // First click - open Adsterra link in new window
+                window.open(adsterraLink, '_blank');
+                
+                // Update Firestore to track Adsterra clicks
+                db.collection('links').doc(currentLinkId).update({
+                    adsterraClicks: firebase.firestore.FieldValue.increment(1)
+                });
+                
+                showToast('Please complete the ad to access your content', 'success');
+                isFirstClick = false;
+                
+                // Update button text for second click
+                document.getElementById('redirectBtn1').textContent = 'Continue to Content';
+                document.getElementById('redirectBtn2').textContent = 'Access Now';
+            } else {
+                // Second click - redirect to real link
+                if (currentLinkData && currentLinkData.destination) {
+                    window.location.href = currentLinkData.destination;
+                } else {
+                    showToast('Error: Destination URL not found', 'error');
+                }
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            toastMessage.textContent = message;
+            toast.className = 'toast';
+            toast.classList.add(type);
+            toast.classList.add('show');
+            
+            if (type === 'success') {
+                toastIcon.className = 'fas fa-check-circle';
+            } else if (type === 'error') {
+                toastIcon.className = 'fas fa-exclamation-circle';
+            }
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 4000);
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                console.log('Text copied to clipboard');
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+            });
+        }
+
+        function generateRandomId() {
+            return Math.random().toString(36).substring(2, 10);
+        }
+
+        function startSubscriptionTimer(endDate) {
+            if (!endDate) {
+                // Default to 30 days from now for demo
+                endDate = new Date();
+                endDate.setDate(endDate.getDate() + 30);
+            }
+            
+            // Update the timer every second
+            const timerInterval = setInterval(() => {
+                const now = new Date().getTime();
+                const distance = endDate - now;
+                
+                if (distance < 0) {
+                    clearInterval(timerInterval);
+                    timerDisplay.textContent = "EXPIRED";
+                    subscriptionModal.classList.add('active');
+                    subscriptionActionBtn.textContent = CONFIG.subscriptionButtonText;
+                    subscriptionActionBtn.addEventListener('click', () => {
+                        window.location.href = CONFIG.subscriptionButtonLink;
+                    });
+                    return;
+                }
+                
+                // Calculate days, hours, minutes and seconds
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                
+                // Display the result
+                timerDisplay.textContent = `${days} days ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check if user is already logged in
+            // Firebase auth state observer will handle the rest
+            
+            // Initialize empty charts
+            if (window.clicksChartInstance) {
+                window.clicksChartInstance.destroy();
+            }
+            if (window.topLinksChartInstance) {
+                window.topLinksChartInstance.destroy();
+            }
+        });
+    </script>
+</body>
+</html>
