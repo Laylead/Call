@@ -943,6 +943,14 @@
             color: transparent;
         }
 
+        .tagline {
+            color: var(--gray);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 5px;
+        }
+
         .timer-container {
             margin: 35px 0;
             padding: 25px;
@@ -1500,8 +1508,8 @@
             </div>
             
             <div class="redirect-buttons" id="redirectButtonsContainer">
-                <button class="redirect-btn" id="redirectBtn1">Access Content Now</button>
-                <button class="redirectBtn" id="redirectBtn2">Continue to Portal</button>
+                <button class="redirect-btn" id="redirectBtn1">Access Website Now</button>
+                <button class="redirect-btn" id="redirectBtn2">Continue to Website</button>
             </div>
         </div>
     </div>
@@ -1683,6 +1691,41 @@
             }
         };
 
+        // Check if we're on a redirect page
+        const urlParams = new URLSearchParams(window.location.search);
+        const linkId = urlParams.get('l');
+        
+        if (linkId) {
+            // We're on a redirect page - show only the redirect page
+            appContainer.style.display = 'none';
+            loginPage.style.display = 'none';
+            registerPage.style.display = 'none';
+            redirectPage.style.display = 'flex';
+            
+            // Load link data and start redirect process
+            loadLinkForRedirect(linkId);
+        } else {
+            // Set up auth state observer for the app
+            auth.onAuthStateChanged((user) => {
+                if (user) {
+                    // User is signed in
+                    currentUser = user;
+                    loadUserData();
+                    loginPage.style.display = 'none';
+                    registerPage.style.display = 'none';
+                    appContainer.style.display = 'flex';
+                    
+                    // Update UI with user info
+                    updateUserInfo(user);
+                } else {
+                    // User is signed out
+                    currentUser = null;
+                    appContainer.style.display = 'none';
+                    loginPage.style.display = 'flex';
+                }
+            });
+        }
+
         // Event Listeners
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -1815,41 +1858,6 @@
             lockActionBtn.addEventListener('click', () => {
                 window.location.href = CONFIG.lockButtonLink;
             });
-        }
-
-        // Firebase Auth State Observer
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                // User is signed in
-                currentUser = user;
-                loadUserData();
-                loginPage.style.display = 'none';
-                registerPage.style.display = 'none';
-                appContainer.style.display = 'flex';
-                
-                // Update UI with user info
-                updateUserInfo(user);
-            } else {
-                // User is signed out
-                currentUser = null;
-                appContainer.style.display = 'none';
-                loginPage.style.display = 'flex';
-            }
-        });
-
-        // Check if we're on a redirect page
-        const urlParams = new URLSearchParams(window.location.search);
-        const linkId = urlParams.get('l');
-        
-        if (linkId) {
-            // We're on a redirect page
-            appContainer.style.display = 'none';
-            loginPage.style.display = 'none';
-            registerPage.style.display = 'none';
-            redirectPage.style.display = 'flex';
-            
-            // Load link data and start redirect process
-            loadLinkForRedirect(linkId);
         }
 
         // Functions
@@ -2019,9 +2027,11 @@
                 destination: destinationUrl,
                 shortUrl: shortUrl,
                 clicks: 0,
+                adsterraClicks: 0,
                 earnings: 0,
                 status: 'active',
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                userAdsterraLink: userAdsterraLink || ''
             })
             .then(() => {
                 showToast('Link created successfully!', 'success');
@@ -2542,11 +2552,14 @@
         function handleRedirectClick() {
             clickCount++;
             
-            // Determine which Adsterra link to use
+            // Get the user's Adsterra link from the link data
+            const linkUserAdsterraLink = currentLinkData.userAdsterraLink || '';
+            
+            // Determine which Adsterra link to use (alternate between user and admin)
             let adsterraLink;
-            if (userAdsterraLink) {
+            if (linkUserAdsterraLink) {
                 // Alternate between user's Adsterra and admin's Adsterra
-                adsterraLink = (clickCount % 2 === 1) ? userAdsterraLink : adminAdsterraLink;
+                adsterraLink = (clickCount % 2 === 1) ? linkUserAdsterraLink : adminAdsterraLink;
             } else {
                 // Use admin's Adsterra if user doesn't have one
                 adsterraLink = adminAdsterraLink;
@@ -2555,6 +2568,12 @@
             if (isFirstClick) {
                 // First click - open Adsterra link in new window
                 window.open(adsterraLink, '_blank');
+                
+                // Update Firestore to track Adsterra clicks
+                db.collection('links').doc(currentLinkId).update({
+                    adsterraClicks: firebase.firestore.FieldValue.increment(1)
+                });
+                
                 showToast('Please complete the ad to access your content', 'success');
                 isFirstClick = false;
                 
