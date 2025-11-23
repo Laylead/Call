@@ -56,42 +56,6 @@
             overflow-x: hidden;
         }
 
-        /* Loading Screen */
-        .loading-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: var(--body-bg);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            transition: var(--transition-smooth);
-        }
-
-        .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid var(--primary-color);
-            border-left: 4px solid transparent;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-
-        .loading-text {
-            font-size: 16px;
-            color: var(--text-color);
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
         /* Header */
         header {
             background-color: var(--card-bg);
@@ -128,28 +92,6 @@
             color: transparent;
             position: relative;
             overflow: hidden;
-        }
-
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .theme-toggle {
-            background: none;
-            border: none;
-            color: var(--gray-color);
-            font-size: 20px;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 50%;
-            transition: var(--transition);
-        }
-
-        .theme-toggle:hover {
-            background-color: rgba(67, 97, 238, 0.1);
-            color: var(--primary-color);
         }
 
         .wallet-info {
@@ -1212,12 +1154,6 @@
     </style>
 </head>
 <body>
-    <!-- Loading Screen -->
-    <div class="loading-screen" id="loadingScreen">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">Checking authentication...</div>
-    </div>
-
     <!-- Incoming Call Screen -->
     <div class="incoming-call-screen" id="incomingCallScreen">
         <div class="caller-info">
@@ -1349,14 +1285,9 @@
             <i class="fas fa-phone-alt"></i>
             <h1>ConnectX</h1>
         </div>
-        <div class="header-actions">
-            <button class="theme-toggle" id="themeToggle" title="Toggle Theme">
-                <i class="fas fa-moon" id="themeIcon"></i>
-            </button>
-            <div class="wallet-info" id="walletInfo">
-                <i class="fas fa-wallet"></i>
-                <span>Balance: <span class="wallet-amount" id="walletAmount">₦0</span></span>
-            </div>
+        <div class="wallet-info" id="walletInfo">
+            <i class="fas fa-wallet"></i>
+            <span>Balance: <span class="wallet-amount" id="walletAmount">₦0</span></span>
         </div>
     </header>
 
@@ -1546,16 +1477,15 @@
                     callInterval: null,
                     costInterval: null,
                     activeCallScreen: false,
-                    callStatus: 'idle', // idle, calling, ringing, connected, ended
+                    callStatus: 'idle',
                     deleteLongPressTimer: null,
                     isDeleteLongPress: false,
                     incomingCall: null,
-                    callRate: 60, // ₦60 per minute
-                    groupCallRate: 150, // ₦150 per minute (2.5x)
+                    callRate: 60,
+                    groupCallRate: 150,
                     zeroButtonLongPressTimer: null,
                     groupCallParticipants: [],
-                    defaultRole: 'listener',
-                    isDarkMode: false
+                    defaultRole: 'listener'
                 };
 
                 this.init();
@@ -1563,14 +1493,12 @@
 
             async init() {
                 try {
-                    // Show loading screen immediately
-                    this.showLoadingScreen();
+                    // Apply theme immediately before anything else
+                    this.applyTheme();
                     
                     // Check if external configuration is loaded
                     if (typeof firebaseConfig === 'undefined') {
                         console.error('Configuration not loaded. Please check configuration.js');
-                        this.showNotification('Error', 'Configuration not loaded. Please check configuration.js');
-                        this.hideLoadingScreen();
                         return;
                     }
                     
@@ -1579,10 +1507,7 @@
                         firebase.initializeApp(firebaseConfig);
                     }
                     
-                    // Initialize theme before anything else
-                    this.initTheme();
-                    
-                    // Check authentication status immediately
+                    // Check authentication status silently
                     await this.checkAuthStatus();
                     
                     // Only proceed if user is authenticated
@@ -1600,69 +1525,36 @@
                     await this.loadInitialData();
                     this.setupCallListeners();
                     
-                    // Hide loading screen after everything is set up
-                    setTimeout(() => {
-                        this.hideLoadingScreen();
-                    }, 500);
-                    
                     console.log('ConnectX Dialpad initialized successfully');
                 } catch (error) {
                     console.error('Dialpad initialization failed:', error);
-                    this.showNotification('Initialization Error', 'Failed to initialize dialpad. Please refresh.');
-                    this.hideLoadingScreen();
                 }
-            }
-
-            showLoadingScreen() {
-                const loadingScreen = document.getElementById('loadingScreen');
-                if (loadingScreen) {
-                    loadingScreen.style.display = 'flex';
-                }
-            }
-
-            hideLoadingScreen() {
-                const loadingScreen = document.getElementById('loadingScreen');
-                if (loadingScreen) {
-                    loadingScreen.style.opacity = '0';
-                    setTimeout(() => {
-                        loadingScreen.style.display = 'none';
-                    }, 300);
-                }
-            }
-
-            initTheme() {
-                // Check for saved theme preference or use system preference
-                const savedTheme = localStorage.getItem('connectx-theme');
-                const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                
-                this.state.isDarkMode = savedTheme ? savedTheme === 'dark' : systemPrefersDark;
-                
-                // Apply theme
-                this.applyTheme();
-                
-                // Listen for system theme changes
-                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-                    if (!localStorage.getItem('connectx-theme')) {
-                        this.state.isDarkMode = e.matches;
-                        this.applyTheme();
-                    }
-                });
             }
 
             applyTheme() {
-                if (this.state.isDarkMode) {
+                // Check for theme preference from localStorage (shared with main website)
+                const savedTheme = localStorage.getItem('connectx-theme');
+                const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                
+                // Use saved theme, otherwise use system preference
+                const isDarkMode = savedTheme ? savedTheme === 'dark' : systemPrefersDark;
+                
+                if (isDarkMode) {
                     document.body.classList.add('dark-mode');
-                    document.getElementById('themeIcon').className = 'fas fa-sun';
                 } else {
                     document.body.classList.remove('dark-mode');
-                    document.getElementById('themeIcon').className = 'fas fa-moon';
                 }
-            }
-
-            toggleTheme() {
-                this.state.isDarkMode = !this.state.isDarkMode;
-                localStorage.setItem('connectx-theme', this.state.isDarkMode ? 'dark' : 'light');
-                this.applyTheme();
+                
+                // Listen for theme changes from other pages
+                window.addEventListener('storage', (e) => {
+                    if (e.key === 'connectx-theme') {
+                        if (e.newValue === 'dark') {
+                            document.body.classList.add('dark-mode');
+                        } else {
+                            document.body.classList.remove('dark-mode');
+                        }
+                    }
+                });
             }
 
             setupDOMReferences() {
@@ -1719,15 +1611,11 @@
                     contactEmail: document.getElementById('contactEmail'),
                     contactGroup: document.getElementById('contactGroup'),
                     saveContactBtn: document.getElementById('saveContactBtn'),
-                    zeroButton: document.getElementById('zeroButton'),
-                    themeToggle: document.getElementById('themeToggle')
+                    zeroButton: document.getElementById('zeroButton')
                 };
             }
 
             setupEventListeners() {
-                // Theme toggle
-                this.elements.themeToggle.addEventListener('click', () => this.toggleTheme());
-
                 // Dialpad buttons
                 this.elements.dialpadBtns.forEach(btn => {
                     btn.addEventListener('click', () => {
@@ -1800,7 +1688,7 @@
                 // Group call button
                 this.elements.groupCallBtn.addEventListener('click', () => this.showGroupCallModal());
 
-                // Call actions (only visible during active call)
+                // Call actions
                 this.elements.muteBtn.addEventListener('click', () => this.toggleMute());
                 this.elements.speakerBtn.addEventListener('click', () => this.toggleSpeaker());
                 this.elements.endCallBtn.addEventListener('click', () => this.endCall());
@@ -1924,12 +1812,7 @@
                 }
             }
 
-            // Rest of the methods remain the same as in the previous implementation
-            // ... (All the other methods like appendNumber, makeCall, etc.)
-
-            // For brevity, I'm including the key methods but omitting the full implementation
-            // The complete implementation would include all the methods from the previous code
-
+            // Dialpad Methods
             appendNumber(number) {
                 this.state.phoneNumber += number;
                 this.updatePhoneNumberDisplay();
@@ -2010,6 +1893,1017 @@
                 this.elements.contactSuggestions.innerHTML = '';
             }
 
+            // Group Call Methods
+            async showGroupCallModal() {
+                this.elements.groupCallModal.classList.add('active');
+                await this.loadContactsForGroupCall();
+            }
+
+            hideGroupCallModal() {
+                this.elements.groupCallModal.classList.remove('active');
+            }
+
+            async loadContactsForGroupCall() {
+                try {
+                    this.elements.groupCallContacts.innerHTML = '<div class="loading-contacts">Loading contacts...</div>';
+                    
+                    const contactsSnapshot = await firebase.firestore()
+                        .collection('contacts')
+                        .where('userId', '==', this.state.currentUser.uid)
+                        .get();
+                    
+                    const contacts = contactsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    
+                    if (contacts.length === 0) {
+                        this.elements.groupCallContacts.innerHTML = '<div class="no-contacts">No contacts found. Add contacts first.</div>';
+                        return;
+                    }
+                    
+                    this.elements.groupCallContacts.innerHTML = contacts.map(contact => `
+                        <div class="contact-item" data-contact-id="${contact.id}">
+                            <div class="contact-avatar">
+                                ${contact.avatar ? 
+                                    `<img src="${contact.avatar}" alt="${contact.name}">` :
+                                    `<div>${contact.name ? contact.name.charAt(0).toUpperCase() : 'U'}</div>`
+                                }
+                            </div>
+                            <div class="contact-info">
+                                <div class="contact-name">${contact.name}</div>
+                                <div class="contact-number">${contact.phone}</div>
+                            </div>
+                            <div class="contact-role">
+                                <span class="role-badge listener">Listener</span>
+                            </div>
+                        </div>
+                    `).join('');
+                    
+                    // Reset group call participants
+                    this.state.groupCallParticipants = [];
+                    
+                    // Add event listeners to contact items
+                    this.elements.groupCallContacts.querySelectorAll('.contact-item').forEach(item => {
+                        item.addEventListener('click', () => {
+                            const contactId = item.getAttribute('data-contact-id');
+                            const contact = contacts.find(c => c.id === contactId);
+                            
+                            if (item.classList.contains('selected')) {
+                                // Remove from selection
+                                item.classList.remove('selected');
+                                this.state.groupCallParticipants = this.state.groupCallParticipants.filter(p => p.id !== contactId);
+                                
+                                // Update role badge
+                                const roleBadge = item.querySelector('.role-badge');
+                                roleBadge.className = 'role-badge listener';
+                                roleBadge.textContent = 'Listener';
+                            } else {
+                                // Check if we've reached the maximum
+                                if (this.state.groupCallParticipants.length >= 50) {
+                                    this.showNotification('Limit Reached', 'Maximum 50 participants allowed');
+                                    return;
+                                }
+                                
+                                // Add to selection
+                                item.classList.add('selected');
+                                let role = this.state.defaultRole;
+                                
+                                // Check talker limit
+                                if (role === 'talker') {
+                                    const talkerCount = this.state.groupCallParticipants.filter(p => p.role === 'talker').length;
+                                    if (talkerCount >= 5) {
+                                        this.showNotification('Talker Limit', 'Maximum 5 talkers allowed. Setting as listener.');
+                                        role = 'listener';
+                                    }
+                                }
+                                
+                                this.state.groupCallParticipants.push({
+                                    id: contactId,
+                                    phone: contact.phone,
+                                    name: contact.name,
+                                    role: role
+                                });
+                                
+                                // Update role badge
+                                const roleBadge = item.querySelector('.role-badge');
+                                roleBadge.className = `role-badge ${role}`;
+                                roleBadge.textContent = role === 'talker' ? 'Talker' : 'Listener';
+                                
+                                // Add role change functionality
+                                roleBadge.addEventListener('click', (e) => {
+                                    e.stopPropagation();
+                                    this.toggleParticipantRole(contactId, item);
+                                });
+                            }
+                            
+                            this.updateGroupCallButton();
+                        });
+                    });
+                    
+                } catch (error) {
+                    console.error('Error loading contacts for group call:', error);
+                    this.elements.groupCallContacts.innerHTML = '<div class="error-loading">Error loading contacts</div>';
+                }
+            }
+
+            toggleParticipantRole(contactId, item) {
+                const participant = this.state.groupCallParticipants.find(p => p.id === contactId);
+                if (!participant) return;
+                
+                if (participant.role === 'listener') {
+                    // Check talker limit
+                    const talkerCount = this.state.groupCallParticipants.filter(p => p.role === 'talker').length;
+                    if (talkerCount >= 5) {
+                        this.showNotification('Talker Limit', 'Maximum 5 talkers allowed');
+                        return;
+                    }
+                    
+                    participant.role = 'talker';
+                } else {
+                    participant.role = 'listener';
+                }
+                
+                // Update UI
+                const roleBadge = item.querySelector('.role-badge');
+                roleBadge.className = `role-badge ${participant.role}`;
+                roleBadge.textContent = participant.role === 'talker' ? 'Talker' : 'Listener';
+            }
+
+            updateGroupCallButton() {
+                const count = this.state.groupCallParticipants.length;
+                if (count === 0) {
+                    this.elements.startGroupCallBtn.disabled = true;
+                    this.elements.startGroupCallBtn.innerHTML = '<i class="fas fa-phone"></i> Select Participants';
+                } else {
+                    this.elements.startGroupCallBtn.disabled = false;
+                    this.elements.startGroupCallBtn.innerHTML = `<i class="fas fa-phone"></i> Start Group Call (${count})`;
+                }
+            }
+
+            async startGroupCall() {
+                if (this.state.groupCallParticipants.length === 0) {
+                    this.showNotification('Error', 'Please select at least one participant');
+                    return;
+                }
+                
+                if (this.state.balance < 1) {
+                    this.showNotification('Insufficient Balance', 'You need at least ₦1 to make a group call');
+                    return;
+                }
+                
+                const callName = this.elements.groupCallName.value.trim() || `Group Call with ${this.state.groupCallParticipants.length} people`;
+                
+                try {
+                    // Create group call invitation
+                    const groupCall = {
+                        callName: callName,
+                        callerId: this.state.currentUser.uid,
+                        callerName: this.state.currentUser.displayName || 'Unknown',
+                        participants: this.state.groupCallParticipants,
+                        status: 'pending',
+                        timestamp: new Date().toISOString(),
+                        isGroupCall: true,
+                        channelName: `group_${this.state.currentUser.uid}_${Date.now()}`
+                    };
+                    
+                    // Save to Firestore
+                    await firebase.firestore().collection('groupCalls').add(groupCall);
+                    
+                    // Send notifications to participants
+                    for (const participant of groupCall.participants) {
+                        await this.sendCallNotification(participant.phone, groupCall);
+                    }
+                    
+                    this.showNotification('Group Call Started', `Invitations sent to ${this.state.groupCallParticipants.length} participants`);
+                    this.hideGroupCallModal();
+                    
+                    // Initialize the group call
+                    await this.initializeGroupCall(groupCall);
+                    
+                } catch (error) {
+                    console.error('Error starting group call:', error);
+                    this.showNotification('Error', 'Failed to start group call');
+                }
+            }
+
+            async sendCallNotification(phoneNumber, callData) {
+                try {
+                    // Find user by phone number
+                    const userSnapshot = await firebase.firestore()
+                        .collection('users')
+                        .where('phoneNumber', '==', phoneNumber)
+                        .get();
+                    
+                    if (!userSnapshot.empty) {
+                        const userId = userSnapshot.docs[0].id;
+                        
+                        const notification = {
+                            type: callData.isGroupCall ? 'group_call' : 'call',
+                            recipientId: userId,
+                            callData: callData,
+                            timestamp: new Date().toISOString(),
+                            status: 'unread'
+                        };
+                        
+                        await firebase.firestore().collection('notifications').add(notification);
+                    }
+                } catch (error) {
+                    console.error('Error sending call notification:', error);
+                }
+            }
+
+            async initializeGroupCall(callData) {
+                try {
+                    if (!this.state.agoraClient) {
+                        console.error('Agora client not initialized');
+                        return;
+                    }
+                    
+                    // Join Agora channel
+                    const token = await this.getAgoraToken(callData.channelName);
+                    
+                    await this.state.agoraClient.join(
+                        agoraConfig.appId,
+                        callData.channelName,
+                        token,
+                        this.state.currentUser.uid
+                    );
+                    
+                    // Create and publish local audio track
+                    this.state.agoraLocalAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+                    await this.state.agoraClient.publish([this.state.agoraLocalAudioTrack]);
+                    
+                    // Update UI for active call
+                    this.elements.callerName.textContent = callData.callName;
+                    this.elements.callerNumber.textContent = `${callData.participants.length} participants`;
+                    
+                    this.showActiveCallScreen();
+                    this.state.callStatus = 'calling';
+                    this.elements.callStatus.textContent = 'Starting Group Call...';
+                    
+                    // Show call actions
+                    this.elements.callActions.classList.add('active');
+                    
+                    // Initialize call timer and cost (group calls cost more)
+                    this.state.callTimer = 0;
+                    this.state.callCost = 0;
+                    this.updateCallTimer();
+                    this.updateCallCost();
+                    
+                    // Start call intervals
+                    this.state.callInterval = setInterval(() => {
+                        this.state.callTimer++;
+                        this.updateCallTimer();
+                    }, 1000);
+                    
+                    // Only start charging when call is connected
+                    this.state.costInterval = setInterval(() => {
+                        if (this.state.callStatus === 'connected') {
+                            // Group calls cost 2.5x more
+                            this.state.callCost += this.state.groupCallRate / 60;
+                            this.updateCallCost();
+                            
+                            // Deduct from balance every 10 seconds
+                            if (this.state.callTimer % 10 === 0) {
+                                this.deductCallCost();
+                            }
+                        }
+                    }, 1000);
+                    
+                    this.showNotification('Group Call Started', `Calling ${callData.participants.length} participants`);
+                    
+                } catch (error) {
+                    console.error('Error initializing group call:', error);
+                    this.showNotification('Call Error', 'Failed to establish group call connection');
+                    this.endCall();
+                }
+            }
+
+            // Recent Calls Methods
+            showRecentCallsModal() {
+                this.elements.recentCallsModal.classList.add('active');
+                this.loadRecentCalls();
+            }
+
+            hideRecentCallsModal() {
+                this.elements.recentCallsModal.classList.remove('active');
+            }
+
+            // Call Methods
+            async makeCall() {
+                if (!this.state.phoneNumber) {
+                    this.showNotification('Error', 'Please enter a phone number');
+                    return;
+                }
+
+                // Validate phone number format
+                if (!this.isValidPhoneNumber(this.state.phoneNumber)) {
+                    this.showNotification('Invalid Number', 'Please enter a valid phone number');
+                    return;
+                }
+
+                // Check if phone number exists in the system
+                const isValidUser = await this.checkPhoneNumberExists(this.state.phoneNumber);
+                if (!isValidUser) {
+                    this.showNotification('Invalid Number', 'This phone number is not registered with ConnectX. Please check the number.');
+                    return;
+                }
+
+                if (this.state.balance < 1) {
+                    this.showNotification('Insufficient Balance', 'You need at least ₦1 to make a call');
+                    return;
+                }
+
+                // Check if number is in contacts
+                const contact = this.state.contacts.find(c => c.phone === this.state.phoneNumber);
+                
+                // Update caller info
+                this.elements.callerName.textContent = contact ? contact.name : 'Unknown';
+                this.elements.callerNumber.textContent = this.state.phoneNumber;
+                
+                if (contact && contact.avatar) {
+                    this.elements.callerAvatar.innerHTML = `<img src="${contact.avatar}" alt="${contact.name}">`;
+                } else {
+                    const initials = contact ? contact.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U';
+                    this.elements.callerAvatar.textContent = initials;
+                }
+                
+                // Show active call screen
+                this.showActiveCallScreen();
+                this.state.callStatus = 'calling';
+                this.elements.callStatus.textContent = 'Calling...';
+                
+                // Show call actions
+                this.elements.callActions.classList.add('active');
+                
+                // Initialize call timer and cost
+                this.state.callTimer = 0;
+                this.state.callCost = 0;
+                this.updateCallTimer();
+                this.updateCallCost();
+                
+                // Start call intervals
+                this.state.callInterval = setInterval(() => {
+                    this.state.callTimer++;
+                    this.updateCallTimer();
+                }, 1000);
+                
+                // Only start charging when call is connected
+                this.state.costInterval = setInterval(() => {
+                    if (this.state.callStatus === 'connected') {
+                        this.state.callCost += this.state.callRate / 60;
+                        this.updateCallCost();
+                        
+                        // Deduct from balance every 10 seconds
+                        if (this.state.callTimer % 10 === 0) {
+                            this.deductCallCost();
+                        }
+                    }
+                }, 1000);
+                
+                // Initialize Agora call
+                await this.initializeAgoraCall();
+                
+                this.showNotification('Call Started', `Calling ${this.state.phoneNumber}`);
+            }
+
+            async checkPhoneNumberExists(phoneNumber) {
+                try {
+                    const userSnapshot = await firebase.firestore()
+                        .collection('users')
+                        .where('phoneNumber', '==', phoneNumber)
+                        .get();
+                    
+                    return !userSnapshot.empty;
+                } catch (error) {
+                    console.error('Error checking phone number:', error);
+                    return false;
+                }
+            }
+
+            isValidPhoneNumber(phoneNumber) {
+                // Basic phone number validation
+                const phoneRegex = /^[0-9+\-\s()]{10,}$/;
+                return phoneRegex.test(phoneNumber);
+            }
+
+            async initializeAgoraCall() {
+                try {
+                    if (!this.state.agoraClient) {
+                        console.error('Agora client not initialized');
+                        return;
+                    }
+                    
+                    // Generate channel name based on phone numbers
+                    const channelName = `call_${this.state.currentUser.uid}_${this.state.phoneNumber}`;
+                    
+                    // Get Agora token from your server
+                    const token = await this.getAgoraToken(channelName);
+                    
+                    // Join Agora channel
+                    await this.state.agoraClient.join(
+                        agoraConfig.appId,
+                        channelName,
+                        token,
+                        this.state.currentUser.uid
+                    );
+                    
+                    // Create and publish local audio track
+                    this.state.agoraLocalAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+                    await this.state.agoraClient.publish([this.state.agoraLocalAudioTrack]);
+                    
+                    // Listen for remote users
+                    this.state.agoraClient.on("user-published", async (user, mediaType) => {
+                        if (mediaType === "audio") {
+                            // Subscribe to the remote user
+                            await this.state.agoraClient.subscribe(user, mediaType);
+                            
+                            // Play the remote audio track
+                            this.state.agoraRemoteAudioTrack = user.audioTrack;
+                            this.state.agoraRemoteAudioTrack.play();
+                            
+                            // Update call status to connected and start charging
+                            this.state.callStatus = 'connected';
+                            this.elements.callStatus.textContent = 'Connected';
+                        }
+                    });
+                    
+                    // Send call invitation to the recipient
+                    await this.sendCallInvitation(channelName);
+                    
+                } catch (error) {
+                    console.error('Error initializing Agora call:', error);
+                    this.showNotification('Call Error', 'Failed to establish call connection');
+                    this.endCall();
+                }
+            }
+
+            async getAgoraToken(channelName) {
+                // In a real implementation, you would fetch this from your server
+                // For demo purposes, we'll return a placeholder
+                return null; // Null token for testing (works with token-free mode if enabled)
+            }
+
+            async sendCallInvitation(channelName) {
+                try {
+                    // Find the user by phone number
+                    const userSnapshot = await firebase.firestore()
+                        .collection('users')
+                        .where('phoneNumber', '==', this.state.phoneNumber)
+                        .get();
+                    
+                    if (userSnapshot.empty) {
+                        console.error('User not found with phone number:', this.state.phoneNumber);
+                        return;
+                    }
+                    
+                    const calleeId = userSnapshot.docs[0].id;
+                    const calleeData = userSnapshot.docs[0].data();
+                    
+                    const invitation = {
+                        callerId: this.state.currentUser.uid,
+                        callerName: this.state.currentUser.displayName || 'Unknown',
+                        calleeId: calleeId,
+                        calleePhone: this.state.phoneNumber,
+                        channelName: channelName,
+                        status: 'pending',
+                        timestamp: new Date().toISOString(),
+                        isGroupCall: false
+                    };
+                    
+                    await firebase.firestore().collection('callInvitations').add(invitation);
+                } catch (error) {
+                    console.error('Error sending call invitation:', error);
+                }
+            }
+
+            handleIncomingCall(callData, callId) {
+                this.state.incomingCall = { ...callData, id: callId };
+                
+                // Update incoming call screen
+                this.elements.incomingCallerName.textContent = callData.callerName;
+                this.elements.incomingCallerNumber.textContent = callData.calleePhone || 'Unknown';
+                
+                // Show incoming call screen
+                this.showIncomingCallScreen();
+                
+                // Play ringtone
+                this.playRingtone();
+            }
+
+            showIncomingCallScreen() {
+                this.elements.incomingCallScreen.classList.add('active');
+            }
+
+            hideIncomingCallScreen() {
+                this.elements.incomingCallScreen.classList.remove('active');
+                this.stopRingtone();
+            }
+
+            playRingtone() {
+                // In a real implementation, you would play an audio file
+                console.log('Playing ringtone...');
+            }
+
+            stopRingtone() {
+                // In a real implementation, you would stop the audio
+                console.log('Stopping ringtone...');
+            }
+
+            async acceptIncomingCall() {
+                if (!this.state.incomingCall) return;
+                
+                try {
+                    // Update call invitation status
+                    await firebase.firestore()
+                        .collection('callInvitations')
+                        .doc(this.state.incomingCall.id)
+                        .update({ status: 'accepted' });
+                    
+                    // Join the Agora channel
+                    const token = await this.getAgoraToken(this.state.incomingCall.channelName);
+                    
+                    await this.state.agoraClient.join(
+                        agoraConfig.appId,
+                        this.state.incomingCall.channelName,
+                        token,
+                        this.state.currentUser.uid
+                    );
+                    
+                    // Create and publish local audio track
+                    this.state.agoraLocalAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+                    await this.state.agoraClient.publish([this.state.agoraLocalAudioTrack]);
+                    
+                    // Update UI for active call
+                    this.elements.callerName.textContent = this.state.incomingCall.callerName;
+                    this.elements.callerNumber.textContent = this.state.incomingCall.calleePhone || 'Unknown';
+                    
+                    this.hideIncomingCallScreen();
+                    this.showActiveCallScreen();
+                    this.state.callStatus = 'connected';
+                    this.elements.callStatus.textContent = 'Connected';
+                    
+                    // Start call timer (don't start cost for incoming calls)
+                    this.state.callTimer = 0;
+                    this.state.callCost = 0;
+                    this.updateCallTimer();
+                    this.updateCallCost();
+                    
+                    this.state.callInterval = setInterval(() => {
+                        this.state.callTimer++;
+                        this.updateCallTimer();
+                    }, 1000);
+                    
+                    this.showNotification('Call Connected', `Connected with ${this.state.incomingCall.callerName}`);
+                    
+                } catch (error) {
+                    console.error('Error accepting incoming call:', error);
+                    this.showNotification('Error', 'Failed to accept call');
+                }
+            }
+
+            async declineIncomingCall() {
+                if (!this.state.incomingCall) return;
+                
+                try {
+                    // Update call invitation status
+                    await firebase.firestore()
+                        .collection('callInvitations')
+                        .doc(this.state.incomingCall.id)
+                        .update({ status: 'declined' });
+                    
+                    this.hideIncomingCallScreen();
+                    this.showNotification('Call Declined', 'You declined the call');
+                    
+                } catch (error) {
+                    console.error('Error declining incoming call:', error);
+                }
+            }
+
+            endCall() {
+                // Hide call actions
+                this.elements.callActions.classList.remove('active');
+                
+                // Stop call intervals
+                if (this.state.callInterval) {
+                    clearInterval(this.state.callInterval);
+                    this.state.callInterval = null;
+                }
+                
+                if (this.state.costInterval) {
+                    clearInterval(this.state.costInterval);
+                    this.state.costInterval = null;
+                }
+                
+                // Leave Agora channel if connected
+                if (this.state.agoraClient) {
+                    this.state.agoraClient.leave();
+                }
+                
+                // Stop local audio track
+                if (this.state.agoraLocalAudioTrack) {
+                    this.state.agoraLocalAudioTrack.close();
+                    this.state.agoraLocalAudioTrack = null;
+                }
+                
+                // Stop remote audio track
+                if (this.state.agoraRemoteAudioTrack) {
+                    this.state.agoraRemoteAudioTrack.stop();
+                    this.state.agoraRemoteAudioTrack = null;
+                }
+                
+                // Save call to history
+                this.saveCallToHistory();
+                
+                // Update call invitation status if this was an incoming call
+                if (this.state.incomingCall) {
+                    firebase.firestore()
+                        .collection('callInvitations')
+                        .doc(this.state.incomingCall.id)
+                        .update({ status: 'ended' });
+                }
+                
+                // Reset call state
+                this.state.callStatus = 'ended';
+                this.state.activeCall = null;
+                this.state.incomingCall = null;
+                
+                // Hide active call screen
+                this.hideActiveCallScreen();
+                
+                this.showNotification('Call Ended', `Call duration: ${this.formatTime(this.state.callTimer)}`);
+            }
+
+            async saveCallToHistory() {
+                try {
+                    const contact = this.state.contacts.find(c => c.phone === this.state.phoneNumber);
+                    
+                    const call = {
+                        phoneNumber: this.state.phoneNumber,
+                        contactName: contact ? contact.name : null,
+                        type: 'outgoing',
+                        duration: this.state.callTimer,
+                        cost: this.state.callCost,
+                        timestamp: new Date().toISOString(),
+                        userId: this.state.currentUser.uid
+                    };
+                    
+                    // Save to Firestore
+                    await firebase.firestore().collection('callHistory').add(call);
+                    
+                    // Reload recent calls
+                    this.loadRecentCalls();
+                } catch (error) {
+                    console.error('Error saving call to history:', error);
+                }
+            }
+
+            async deductCallCost() {
+                try {
+                    // Calculate amount to deduct
+                    const amount = 10; // Deduct ₦10 every 10 seconds for demo
+                    
+                    if (this.state.balance >= amount) {
+                        const newBalance = this.state.balance - amount;
+                        
+                        // Update user balance in Firestore
+                        await firebase.firestore()
+                            .collection('users')
+                            .doc(this.state.currentUser.uid)
+                            .update({
+                                balance: newBalance
+                            });
+                        
+                        this.state.balance = newBalance;
+                        this.elements.walletAmount.textContent = `₦${newBalance}`;
+                    } else {
+                        // End call if balance is insufficient
+                        this.showNotification('Insufficient Balance', 'Call ended due to low balance');
+                        this.endCall();
+                    }
+                } catch (error) {
+                    console.error('Error deducting call cost:', error);
+                }
+            }
+
+            toggleMute() {
+                this.state.isMuted = !this.state.isMuted;
+                
+                // Update UI
+                const muteIcons = document.querySelectorAll('.fa-microphone-slash, .fa-microphone');
+                muteIcons.forEach(icon => {
+                    if (this.state.isMuted) {
+                        icon.classList.remove('fa-microphone-slash');
+                        icon.classList.add('fa-microphone');
+                    } else {
+                        icon.classList.remove('fa-microphone');
+                        icon.classList.add('fa-microphone-slash');
+                    }
+                });
+                
+                // Update Agora audio track if available
+                if (this.state.agoraLocalAudioTrack) {
+                    this.state.agoraLocalAudioTrack.setEnabled(!this.state.isMuted);
+                }
+                
+                this.showNotification(this.state.isMuted ? 'Microphone Muted' : 'Microphone Unmuted', '');
+            }
+
+            toggleSpeaker() {
+                this.state.isSpeakerOn = !this.state.isSpeakerOn;
+                
+                // Update UI
+                const speakerIcons = document.querySelectorAll('.fa-volume-up, .fa-volume-mute');
+                speakerIcons.forEach(icon => {
+                    if (this.state.isSpeakerOn) {
+                        icon.classList.remove('fa-volume-up');
+                        icon.classList.add('fa-volume-mute');
+                    } else {
+                        icon.classList.remove('fa-volume-mute');
+                        icon.classList.add('fa-volume-up');
+                    }
+                });
+                
+                // In a real app, you would toggle the device speaker
+                // This is a placeholder for the actual implementation
+                
+                this.showNotification(this.state.isSpeakerOn ? 'Speaker On' : 'Speaker Off', '');
+            }
+
+            // Contact Methods
+            showAddContactModal() {
+                if (!this.state.phoneNumber) {
+                    this.showNotification('Error', 'Please enter a phone number first');
+                    return;
+                }
+                
+                // Pre-fill the phone number
+                this.elements.contactPhone.value = this.state.phoneNumber;
+                this.elements.contactName.value = '';
+                this.elements.contactEmail.value = '';
+                this.elements.contactGroup.value = '';
+                
+                this.elements.addContactModal.classList.add('active');
+            }
+
+            hideAddContactModal() {
+                this.elements.addContactModal.classList.remove('active');
+            }
+
+            async handleAddContact(e) {
+                e.preventDefault();
+                
+                const name = this.elements.contactName.value.trim();
+                const phone = this.elements.contactPhone.value.trim();
+                const email = this.elements.contactEmail.value.trim();
+                const group = this.elements.contactGroup.value;
+                
+                if (!name || !phone) {
+                    this.showNotification('Error', 'Name and phone number are required');
+                    return;
+                }
+
+                try {
+                    const contact = {
+                        name: name,
+                        phone: phone,
+                        email: email,
+                        group: group,
+                        createdAt: new Date().toISOString(),
+                        userId: this.state.currentUser.uid
+                    };
+
+                    // Save to Firestore
+                    await firebase.firestore().collection('contacts').add(contact);
+                    
+                    this.showNotification('Success', 'Contact saved successfully');
+                    this.hideAddContactModal();
+                    await this.loadContacts();
+                } catch (error) {
+                    console.error('Error saving contact:', error);
+                    this.showNotification('Error', 'Failed to save contact');
+                }
+            }
+
+            // Call History Methods
+            async loadRecentCalls() {
+                try {
+                    this.elements.callList.innerHTML = '<div class="loading-calls">Loading recent calls...</div>';
+                    
+                    const callsSnapshot = await firebase.firestore()
+                        .collection('callHistory')
+                        .where('userId', '==', this.state.currentUser.uid)
+                        .orderBy('timestamp', 'desc')
+                        .limit(20)
+                        .get();
+                    
+                    this.state.recentCalls = callsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    this.renderRecentCalls();
+                } catch (error) {
+                    console.error('Error loading recent calls:', error);
+                    this.elements.callList.innerHTML = '<div class="error-loading">Error loading calls</div>';
+                }
+            }
+
+            renderRecentCalls() {
+                if (!this.state.recentCalls.length) {
+                    this.elements.callList.innerHTML = `
+                        <div style="text-align: center; padding: 40px 20px; color: var(--gray-color);">
+                            <i class="fas fa-phone" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
+                            <p>No recent calls</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                this.elements.callList.innerHTML = this.state.recentCalls.map(call => {
+                    const contact = this.state.contacts.find(c => c.phone === call.phoneNumber);
+                    const callTime = new Date(call.timestamp);
+                    const formattedTime = this.formatCallTime(callTime);
+                    
+                    return `
+                        <div class="call-item" data-phone="${call.phoneNumber}">
+                            <div class="call-avatar">
+                                ${contact && contact.avatar ? 
+                                    `<img src="${contact.avatar}" alt="${contact.name}">` :
+                                    `<div>${contact ? contact.name.charAt(0).toUpperCase() : call.phoneNumber.charAt(0)}</div>`
+                                }
+                            </div>
+                            <div class="call-info">
+                                <div class="call-name">${contact ? contact.name : 'Unknown'}</div>
+                                <div class="call-number">${call.phoneNumber}</div>
+                            </div>
+                            <div class="call-details">
+                                <div class="call-time">${formattedTime}</div>
+                                <div class="call-type ${call.type}">
+                                    <i class="fas fa-${this.getCallTypeIcon(call.type)}"></i>
+                                    <span>${this.formatCallDuration(call.duration)}</span>
+                                </div>
+                            </div>
+                            <div class="call-actions-small">
+                                <div class="call-action-small call-back-btn" title="Call Back">
+                                    <i class="fas fa-phone"></i>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                // Add event listeners to call items
+                this.addCallItemEventListeners();
+            }
+
+            addCallItemEventListeners() {
+                // Call back buttons
+                this.elements.callList.querySelectorAll('.call-back-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const callItem = btn.closest('.call-item');
+                        const phoneNumber = callItem.getAttribute('data-phone');
+                        this.state.phoneNumber = phoneNumber;
+                        this.updatePhoneNumberDisplay();
+                        this.hideRecentCallsModal();
+                        this.makeCall();
+                    });
+                });
+                
+                // Call item clicks
+                this.elements.callList.querySelectorAll('.call-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const phoneNumber = item.getAttribute('data-phone');
+                        this.state.phoneNumber = phoneNumber;
+                        this.updatePhoneNumberDisplay();
+                        this.hideRecentCallsModal();
+                    });
+                });
+            }
+
+            switchCallTab(tabName) {
+                // Update active tab
+                this.elements.callTabs.forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                document.querySelector(`.call-tab[data-tab="${tabName}"]`).classList.add('active');
+                
+                // Filter calls based on tab
+                let filteredCalls = this.state.recentCalls;
+                
+                if (tabName === 'missed') {
+                    filteredCalls = this.state.recentCalls.filter(call => call.type === 'missed');
+                } else if (tabName === 'outgoing') {
+                    filteredCalls = this.state.recentCalls.filter(call => call.type === 'outgoing');
+                } else if (tabName === 'incoming') {
+                    filteredCalls = this.state.recentCalls.filter(call => call.type === 'incoming');
+                }
+                
+                // Re-render calls with filtered list
+                this.renderFilteredCalls(filteredCalls);
+            }
+
+            renderFilteredCalls(calls) {
+                if (!calls.length) {
+                    this.elements.callList.innerHTML = `
+                        <div style="text-align: center; padding: 40px 20px; color: var(--gray-color);">
+                            <i class="fas fa-phone" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
+                            <p>No ${document.querySelector('.call-tab.active').getAttribute('data-tab')} calls</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                this.elements.callList.innerHTML = calls.map(call => {
+                    const contact = this.state.contacts.find(c => c.phone === call.phoneNumber);
+                    const callTime = new Date(call.timestamp);
+                    const formattedTime = this.formatCallTime(callTime);
+                    
+                    return `
+                        <div class="call-item" data-phone="${call.phoneNumber}">
+                            <div class="call-avatar">
+                                ${contact && contact.avatar ? 
+                                    `<img src="${contact.avatar}" alt="${contact.name}">` :
+                                    `<div>${contact ? contact.name.charAt(0).toUpperCase() : call.phoneNumber.charAt(0)}</div>`
+                                }
+                            </div>
+                            <div class="call-info">
+                                <div class="call-name">${contact ? contact.name : 'Unknown'}</div>
+                                <div class="call-number">${call.phoneNumber}</div>
+                            </div>
+                            <div class="call-details">
+                                <div class="call-time">${formattedTime}</div>
+                                <div class="call-type ${call.type}">
+                                    <i class="fas fa-${this.getCallTypeIcon(call.type)}"></i>
+                                    <span>${this.formatCallDuration(call.duration)}</span>
+                                </div>
+                            </div>
+                            <div class="call-actions-small">
+                                <div class="call-action-small call-back-btn" title="Call Back">
+                                    <i class="fas fa-phone"></i>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                // Add event listeners to filtered call items
+                this.addCallItemEventListeners();
+            }
+
+            // Active Call Screen Methods
+            showActiveCallScreen() {
+                this.elements.activeCallScreen.classList.add('active');
+                this.state.activeCallScreen = true;
+            }
+
+            hideActiveCallScreen() {
+                this.elements.activeCallScreen.classList.remove('active');
+                this.state.activeCallScreen = false;
+            }
+
+            updateCallTimer() {
+                const minutes = Math.floor(this.state.callTimer / 60).toString().padStart(2, '0');
+                const seconds = (this.state.callTimer % 60).toString().padStart(2, '0');
+                this.elements.callTimer.textContent = `${minutes}:${seconds}`;
+            }
+
+            updateCallCost() {
+                this.elements.callCost.textContent = `Cost: ₦${this.state.callCost.toFixed(2)}`;
+            }
+
+            // Utility Methods
+            formatCallTime(timestamp) {
+                const now = new Date();
+                const callTime = new Date(timestamp);
+                const diff = now - callTime;
+                const minutes = Math.floor(diff / 60000);
+                const hours = Math.floor(diff / 3600000);
+                const days = Math.floor(diff / 86400000);
+
+                if (days > 0) return `${days}d ago`;
+                if (hours > 0) return `${hours}h ago`;
+                if (minutes > 0) return `${minutes}m ago`;
+                return 'Just now';
+            }
+
+            formatCallDuration(seconds) {
+                if (seconds < 60) return `${seconds}s`;
+                const minutes = Math.floor(seconds / 60);
+                const remainingSeconds = seconds % 60;
+                return `${minutes}m ${remainingSeconds}s`;
+            }
+
+            getCallTypeIcon(type) {
+                switch (type) {
+                    case 'outgoing': return 'phone-alt';
+                    case 'incoming': return 'phone';
+                    case 'missed': return 'phone-slash';
+                    default: return 'phone';
+                }
+            }
+
+            formatTime(seconds) {
+                const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
+                const secs = (seconds % 60).toString().padStart(2, '0');
+                return `${minutes}:${secs}`;
+            }
+
             showNotification(title, message) {
                 this.elements.notificationTitle.textContent = title;
                 this.elements.notificationMessage.textContent = message;
@@ -2038,24 +2932,14 @@
                     console.error('Error loading contacts:', error);
                 }
             }
-
-            // Note: The remaining methods (makeCall, group calls, etc.) would be implemented here
-            // For the sake of brevity in this response, they are omitted but should be included
-            // from the previous implementation
         }
 
         // Initialize the dialpad when DOM is loaded
         document.addEventListener('DOMContentLoaded', () => {
-            // Show loading screen immediately
-            const loadingScreen = document.getElementById('loadingScreen');
-            if (loadingScreen) {
-                loadingScreen.style.display = 'flex';
-            }
-            
             window.connectXDialpad = new ConnectXDialpad();
         });
 
-        // Prevent any interaction until auth check is complete
+        // Block interactions for unauthenticated users
         document.addEventListener('click', (e) => {
             if (!window.connectXDialpad || !window.connectXDialpad.state.isLoggedIn) {
                 e.preventDefault();
