@@ -111,6 +111,7 @@
         .header-actions {
             display: flex;
             gap: 15px;
+            position: relative;
         }
 
         .header-actions i {
@@ -127,6 +128,23 @@
             color: var(--primary-color);
             background-color: rgba(67, 97, 238, 0.1);
             transform: translateY(-2px);
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: var(--warning-color);
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            animation: pulse 1.5s infinite;
         }
 
         /* Bottom Navigation */
@@ -2434,8 +2452,13 @@
         </div>
         <div class="header-actions">
             <i class="fas fa-search" id="searchBtn" title="Search"></i>
-            <i class="fas fa-comments" id="messagesBtn" title="Messages"></i>
-            <i class="fas fa-bell" id="notificationsBtn" title="Notifications"></i>
+            <a href="message.html" style="text-decoration: none; color: inherit;">
+                <i class="fas fa-comments" id="messagesBtn" title="Messages"></i>
+            </a>
+            <div style="position: relative;">
+                <i class="fas fa-bell" id="notificationsBtn" title="Notifications"></i>
+                <div class="notification-badge" id="notificationBadge" style="display: none;">0</div>
+            </div>
             <i class="fas fa-bars" id="menuToggle" title="Menu"></i>
         </div>
     </header>
@@ -2621,7 +2644,7 @@
             <li><a href="#" class="sidebar-link active" data-page="homePage"><i class="fas fa-home"></i> Home</a></li>
             <li><a href="#" class="sidebar-link" data-page="profilePage"><i class="fas fa-user"></i> Profile</a></li>
             <li><a href="#" class="sidebar-link" data-page="findFriendsPage"><i class="fas fa-user-friends"></i> Find Friends</a></li>
-            <li><a href="keypad.html" class="sidebar-link"><i class="fas fa-dialpad"></i> Keypad</a></li>
+            <li><a href="keypad.html" class="sidebar-link"><i class="fas fa-phone"></i> Keypad</a></li>
             <li><a href="groups.html" class="sidebar-link"><i class="fas fa-users"></i> Groups & Channels</a></li>
             <li><a href="mentors.html" class="sidebar-link"><i class="fas fa-user-graduate"></i> Mentors</a></li>
             <li><a href="smile.html" class="sidebar-link"><i class="fas fa-smile"></i> Smile</a></li>
@@ -2643,7 +2666,7 @@
             <span>Friends</span>
         </a>
         <a href="keypad.html" class="nav-item">
-            <i class="fas fa-dialpad"></i>
+            <i class="fas fa-phone"></i>
             <span>Keypad</span>
         </a>
         <a href="contacts.html" class="nav-item">
@@ -2695,7 +2718,9 @@
                     balance: 0,
                     replyingTo: null, // Track if user is replying to a message
                     freeMessagesRemaining: 3, // First 3 messages are free for new users
-                    hasSeenTutorial: false // Track if user has seen the tutorial
+                    hasSeenTutorial: false, // Track if user has seen the tutorial
+                    notifications: [],
+                    unreadNotifications: 0
                 };
 
                 this.init();
@@ -2813,6 +2838,7 @@
                     replyIndicatorText: document.getElementById('replyIndicatorText'),
                     cancelReplyBtn: document.getElementById('cancelReplyBtn'),
                     notificationsBtn: document.getElementById('notificationsBtn'),
+                    notificationBadge: document.getElementById('notificationBadge'),
                     tutorialOverlay: document.getElementById('tutorialOverlay'),
                     tutorialGotIt: document.getElementById('tutorialGotIt'),
                     // Profile elements
@@ -2911,7 +2937,7 @@
                 });
 
                 // Messages Events
-                this.elements.messagesBtn.addEventListener('click', () => this.showMessagesModal());
+                this.elements.notificationsBtn.addEventListener('click', () => this.showNotifications());
                 this.elements.closeMessagesModal.addEventListener('click', () => this.hideMessagesModal());
                 this.elements.closeChatModal.addEventListener('click', () => this.hideChatModal());
                 this.elements.sendMessageBtn.addEventListener('click', () => this.sendMessage());
@@ -2951,11 +2977,6 @@
                         const tabName = e.currentTarget.getAttribute('data-tab');
                         this.switchTab(tabName);
                     });
-                });
-
-                // Notifications
-                this.elements.notificationsBtn.addEventListener('click', () => {
-                    this.showNotification('Notifications', 'You have new notifications');
                 });
 
                 // Bottom nav scroll behavior
@@ -3051,10 +3072,12 @@
                             await this.updateUserUI();
                             await this.loadUserProfile();
                             this.hideAuthModal();
+                            this.loadNotifications();
                         } else {
                             this.state.isLoggedIn = false;
                             this.state.currentUser = null;
-                            this.showAuthModal();
+                            // Redirect to index.html for logged out users
+                            window.location.href = 'index.html';
                         }
                         resolve();
                     });
@@ -3125,9 +3148,8 @@
                 e.preventDefault();
                 if (confirm('Are you sure you want to logout?')) {
                     await firebase.auth().signOut();
-                    this.showNotification('Logged Out', 'You have been successfully logged out.');
-                    this.state.posts = [];
-                    this.renderPosts();
+                    // Redirect to index.html after logout
+                    window.location.href = 'index.html';
                 }
             }
 
@@ -4151,6 +4173,22 @@
                         icon.classList.remove('far');
                         icon.classList.add('fas');
                         span.textContent = 'Liked';
+                        
+                        // Create notification for post owner
+                        const postDoc = await postRef.get();
+                        const postData = postDoc.data();
+                        
+                        if (postData.authorId !== this.state.currentUser.uid) {
+                            await firebase.firestore().collection('notifications').add({
+                                type: 'like',
+                                fromUserId: this.state.currentUser.uid,
+                                fromUserName: this.state.userProfile.name,
+                                toUserId: postData.authorId,
+                                postId: postId,
+                                read: false,
+                                createdAt: new Date().toISOString()
+                            });
+                        }
                     } else {
                         // Remove like
                         await postRef.update({
@@ -4290,6 +4328,22 @@
                         comments: firebase.firestore.FieldValue.arrayUnion(comment)
                     });
 
+                    // Create notification for post owner
+                    const postDoc = await firebase.firestore().collection('posts').doc(postId).get();
+                    const postData = postDoc.data();
+                    
+                    if (postData.authorId !== this.state.currentUser.uid) {
+                        await firebase.firestore().collection('notifications').add({
+                            type: 'comment',
+                            fromUserId: this.state.currentUser.uid,
+                            fromUserName: this.state.userProfile.name,
+                            toUserId: postData.authorId,
+                            postId: postId,
+                            read: false,
+                            createdAt: new Date().toISOString()
+                        });
+                    }
+
                     this.showNotification('Comment Added', 'Your comment has been posted');
                     this.loadComments(postId);
                 } catch (error) {
@@ -4408,6 +4462,16 @@
                         
                         this.state.following.push(userId);
                         this.showNotification('Followed', 'You are now following this user');
+                        
+                        // Create notification for followed user
+                        await firebase.firestore().collection('notifications').add({
+                            type: 'follow',
+                            fromUserId: this.state.currentUser.uid,
+                            fromUserName: this.state.userProfile.name,
+                            toUserId: userId,
+                            read: false,
+                            createdAt: new Date().toISOString()
+                        });
                         
                         // Update follower counts
                         this.updateFollowerCounts();
@@ -5689,6 +5753,141 @@
                 } catch (error) {
                     console.error('Error sending message:', error);
                     this.showNotification('Error', 'Failed to send message');
+                }
+            }
+
+            // Notifications Methods
+            async loadNotifications() {
+                if (!this.state.currentUser) return;
+                
+                try {
+                    // Set up real-time listener for notifications
+                    firebase.firestore()
+                        .collection('notifications')
+                        .where('toUserId', '==', this.state.currentUser.uid)
+                        .orderBy('createdAt', 'desc')
+                        .onSnapshot(snapshot => {
+                            this.state.notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                            this.updateNotificationBadge();
+                        }, error => {
+                            console.error('Error loading notifications:', error);
+                        });
+                } catch (error) {
+                    console.error('Error loading notifications:', error);
+                }
+            }
+
+            updateNotificationBadge() {
+                const unreadCount = this.state.notifications.filter(n => !n.read).length;
+                this.state.unreadNotifications = unreadCount;
+                
+                if (unreadCount > 0) {
+                    this.elements.notificationBadge.textContent = unreadCount;
+                    this.elements.notificationBadge.style.display = 'flex';
+                } else {
+                    this.elements.notificationBadge.style.display = 'none';
+                }
+            }
+
+            showNotifications() {
+                if (!this.state.isLoggedIn) {
+                    this.showNotification('Authentication Required', 'Please login to view notifications');
+                    return;
+                }
+                
+                this.renderNotifications();
+                this.elements.messagesModal.classList.add('active');
+            }
+
+            renderNotifications() {
+                if (!this.state.notifications.length) {
+                    this.elements.messagesList.innerHTML = `
+                        <div style="text-align: center; padding: 40px 20px; color: var(--gray-color);">
+                            <i class="fas fa-bell" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
+                            <p>No notifications yet</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                this.elements.messagesList.innerHTML = `
+                    <div class="messages-header">
+                        <h3><i class="fas fa-bell"></i> Notifications</h3>
+                        <i class="fas fa-times close-modal" id="closeMessagesModal"></i>
+                    </div>
+                    ${this.state.notifications.map(notification => {
+                        let message = '';
+                        let action = '';
+                        
+                        switch (notification.type) {
+                            case 'like':
+                                message = `${notification.fromUserName} liked your post`;
+                                action = 'View Post';
+                                break;
+                            case 'comment':
+                                message = `${notification.fromUserName} commented on your post`;
+                                action = 'View Post';
+                                break;
+                            case 'follow':
+                                message = `${notification.fromUserName} started following you`;
+                                action = 'View Profile';
+                                break;
+                            default:
+                                message = 'You have a new notification';
+                                action = 'View';
+                        }
+                        
+                        return `
+                            <div class="message-item ${notification.read ? '' : 'unread'}" data-notification-id="${notification.id}" data-type="${notification.type}" data-post-id="${notification.postId}" data-user-id="${notification.fromUserId}">
+                                <div class="message-item-avatar">${notification.fromUserName ? notification.fromUserName.charAt(0).toUpperCase() : 'U'}</div>
+                                <div class="message-item-info">
+                                    <div class="message-item-header">
+                                        <div class="message-item-name">${notification.fromUserName || 'User'}</div>
+                                        <div class="message-item-time">${this.formatTime(notification.createdAt)}</div>
+                                    </div>
+                                    <div class="message-item-preview">${message}</div>
+                                    <div class="notification-action" style="margin-top: 5px;">
+                                        <button class="follow-btn-small" style="font-size: 10px; padding: 4px 8px;">${action}</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                `;
+                
+                // Add event listeners to notification items
+                this.elements.messagesList.querySelectorAll('.message-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const notificationId = item.getAttribute('data-notification-id');
+                        const type = item.getAttribute('data-type');
+                        const postId = item.getAttribute('data-post-id');
+                        const userId = item.getAttribute('data-user-id');
+                        
+                        // Mark notification as read
+                        this.markNotificationAsRead(notificationId);
+                        
+                        // Navigate based on notification type
+                        if (type === 'like' || type === 'comment') {
+                            // Navigate to the post
+                            this.hideMessagesModal();
+                            this.showPage('homePage');
+                            // In a real app, you would scroll to the specific post
+                        } else if (type === 'follow') {
+                            // Navigate to the user's profile
+                            this.hideMessagesModal();
+                            this.showPage('otherUserProfilePage', userId);
+                        }
+                    });
+                });
+            }
+
+            async markNotificationAsRead(notificationId) {
+                try {
+                    await firebase.firestore().collection('notifications').doc(notificationId).update({
+                        read: true
+                    });
+                } catch (error) {
+                    console.error('Error marking notification as read:', error);
                 }
             }
 
