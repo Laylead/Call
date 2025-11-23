@@ -746,6 +746,32 @@
             font-size: 12px;
         }
 
+        .contact-role {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 5px;
+        }
+
+        .role-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            background-color: var(--body-bg);
+            color: var(--gray-color);
+        }
+
+        .role-badge.talker {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .role-badge.listener {
+            background-color: var(--gray-color);
+            color: white;
+        }
+
         .role-selector {
             display: flex;
             gap: 10px;
@@ -760,6 +786,7 @@
             background-color: var(--body-bg);
             cursor: pointer;
             transition: var(--transition);
+            font-size: 14px;
         }
 
         .role-option.selected {
@@ -794,21 +821,72 @@
         /* Recent Calls Modal */
         .recent-calls-modal .modal-content {
             max-width: 600px;
+            padding: 0;
+        }
+
+        .recent-calls-header {
+            padding: 20px 25px 15px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .recent-calls-header h2 {
+            margin: 0;
+            color: var(--primary-color);
+        }
+
+        .call-tabs {
+            display: flex;
+            gap: 0;
+            padding: 0 25px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .call-tab {
+            padding: 15px 20px;
+            background-color: transparent;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            color: var(--gray-color);
+        }
+
+        .call-tab.active {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .call-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--primary-color);
+            border-radius: 2px;
         }
 
         .call-list {
             max-height: 400px;
             overflow-y: auto;
+            padding: 0 15px;
         }
 
         .call-item {
             display: flex;
             align-items: center;
             gap: 15px;
-            padding: 15px 0;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 15px 10px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
             transition: var(--transition);
             cursor: pointer;
+            border-radius: var(--border-radius-small);
+            margin: 5px 0;
         }
 
         .call-item:hover {
@@ -828,22 +906,30 @@
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 20px;
+            font-size: 18px;
             font-weight: bold;
+            flex-shrink: 0;
         }
 
         .call-info {
             flex: 1;
+            min-width: 0;
         }
 
         .call-name {
             font-weight: 600;
             margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .call-number {
             color: var(--gray-color);
             font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .call-details {
@@ -851,11 +937,13 @@
             flex-direction: column;
             align-items: flex-end;
             gap: 5px;
+            flex-shrink: 0;
         }
 
         .call-time {
             font-size: 12px;
             color: var(--gray-color);
+            white-space: nowrap;
         }
 
         .call-type {
@@ -899,6 +987,11 @@
             background-color: var(--primary-color);
             color: white;
             transform: scale(1.1);
+        }
+
+        /* Add Contact Modal */
+        .add-contact-modal .modal-content {
+            max-width: 500px;
         }
 
         /* Notification */
@@ -1017,6 +1110,16 @@
                 width: 60px;
                 height: 60px;
             }
+
+            .call-item {
+                padding: 12px 8px;
+            }
+            
+            .call-avatar {
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
         }
 
         @media (max-height: 700px) {
@@ -1081,41 +1184,39 @@
                 <h2><i class="fas fa-users"></i> Start Group Call</h2>
                 <i class="fas fa-times close-modal" id="closeGroupCallModal"></i>
             </div>
-            <form id="groupCallForm">
-                <div class="form-group">
-                    <label for="groupCallName"><i class="fas fa-heading"></i> Call Name (Optional)</label>
-                    <input type="text" id="groupCallName" placeholder="Enter call name">
+            <div class="form-group">
+                <label for="groupCallName"><i class="fas fa-heading"></i> Call Name (Optional)</label>
+                <input type="text" id="groupCallName" placeholder="Enter call name">
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-user-friends"></i> Select Participants</label>
+                <div class="contact-list" id="groupCallContacts">
+                    <div class="loading-contacts">Loading contacts...</div>
                 </div>
-                <div class="form-group">
-                    <label><i class="fas fa-user-friends"></i> Select Participants</label>
-                    <div class="contact-list" id="groupCallContacts">
-                        <!-- Contacts will be loaded here -->
-                    </div>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-microphone"></i> Default Role for New Participants</label>
+                <div class="role-selector" id="defaultRoleSelector">
+                    <div class="role-option" data-role="talker">Talker</div>
+                    <div class="role-option selected" data-role="listener">Listener</div>
                 </div>
-                <div class="form-group">
-                    <label><i class="fas fa-microphone"></i> Default Role for Participants</label>
-                    <div class="role-selector">
-                        <div class="role-option" data-role="talker">Talker</div>
-                        <div class="role-option selected" data-role="listener">Listener</div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <p style="font-size: 14px; color: var(--gray-color);">
-                        <i class="fas fa-info-circle"></i> Group calls cost 2.5x more than regular calls. 
-                        Maximum 5 talkers and 50 participants total.
-                    </p>
-                </div>
-                <button type="submit" class="btn btn-primary" id="startGroupCallBtn">
-                    <i class="fas fa-phone"></i> Start Group Call
-                </button>
-            </form>
+            </div>
+            <div class="form-group">
+                <p style="font-size: 14px; color: var(--gray-color);">
+                    <i class="fas fa-info-circle"></i> Group calls cost 2.5x more than regular calls. 
+                    Maximum 5 talkers and 50 participants total.
+                </p>
+            </div>
+            <button class="btn btn-primary" id="startGroupCallBtn">
+                <i class="fas fa-phone"></i> Start Group Call
+            </button>
         </div>
     </div>
 
     <!-- Recent Calls Modal -->
     <div class="modal recent-calls-modal" id="recentCallsModal">
         <div class="modal-content">
-            <div class="modal-header">
+            <div class="recent-calls-header">
                 <h2><i class="fas fa-history"></i> Recent Calls</h2>
                 <i class="fas fa-times close-modal" id="closeRecentCallsModal"></i>
             </div>
@@ -1126,8 +1227,45 @@
                 <div class="call-tab" data-tab="incoming">Incoming</div>
             </div>
             <div class="call-list" id="callList">
-                <!-- Call items will be loaded here -->
+                <div class="loading-calls">Loading recent calls...</div>
             </div>
+        </div>
+    </div>
+
+    <!-- Add Contact Modal -->
+    <div class="modal add-contact-modal" id="addContactModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-user-plus"></i> Add Contact</h2>
+                <i class="fas fa-times close-modal" id="closeAddContactModal"></i>
+            </div>
+            <form id="addContactForm">
+                <div class="form-group">
+                    <label for="contactName"><i class="fas fa-user"></i> Full Name</label>
+                    <input type="text" id="contactName" placeholder="Enter full name" required>
+                </div>
+                <div class="form-group">
+                    <label for="contactPhone"><i class="fas fa-phone"></i> Phone Number</label>
+                    <input type="tel" id="contactPhone" placeholder="Enter phone number" required>
+                </div>
+                <div class="form-group">
+                    <label for="contactEmail"><i class="fas fa-envelope"></i> Email (Optional)</label>
+                    <input type="email" id="contactEmail" placeholder="Enter email address">
+                </div>
+                <div class="form-group">
+                    <label for="contactGroup"><i class="fas fa-users"></i> Group (Optional)</label>
+                    <select id="contactGroup">
+                        <option value="">Select Group</option>
+                        <option value="family">Family</option>
+                        <option value="friends">Friends</option>
+                        <option value="work">Work</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary" id="saveContactBtn">
+                    <i class="fas fa-save"></i> Save Contact
+                </button>
+            </form>
         </div>
     </div>
 
@@ -1210,7 +1348,7 @@
             <button class="dialpad-btn" data-number="*">
                 <span class="dialpad-number">*</span>
             </button>
-            <button class="dialpad-btn" data-number="0">
+            <button class="dialpad-btn" data-number="0" id="zeroButton">
                 <span class="dialpad-number">0</span>
                 <span class="dialpad-letters">+</span>
             </button>
@@ -1292,8 +1430,12 @@
             <span>Recent</span>
         </a>
         <a href="dialpad.html" class="nav-item active">
-            <i class="fas fa-dialpad"></i>
+            <i class="fas fa-phone"></i>
             <span>Keypad</span>
+        </a>
+        <a href="contacts.html" class="nav-item">
+            <i class="fas fa-address-book"></i>
+            <span>Contacts</span>
         </a>
         <a href="wallet.html" class="nav-item">
             <i class="fas fa-wallet"></i>
@@ -1339,7 +1481,10 @@
                     isDeleteLongPress: false,
                     incomingCall: null,
                     callRate: 60, // ₦60 per minute
-                    groupCallRate: 150 // ₦150 per minute (2.5x)
+                    groupCallRate: 150, // ₦150 per minute (2.5x)
+                    zeroButtonLongPressTimer: null,
+                    groupCallParticipants: [],
+                    defaultRole: 'listener'
                 };
 
                 this.init();
@@ -1350,6 +1495,7 @@
                     // Check if external configuration is loaded
                     if (typeof firebaseConfig === 'undefined') {
                         console.error('Configuration not loaded. Please check configuration.js');
+                        this.showNotification('Error', 'Configuration not loaded. Please check configuration.js');
                         return;
                     }
                     
@@ -1358,6 +1504,9 @@
                         firebase.initializeApp(firebaseConfig);
                     }
                     
+                    // Check authentication status
+                    await this.checkAuthStatus();
+                    
                     // Initialize Agora if available
                     if (typeof AgoraRTC !== 'undefined') {
                         this.state.agoraClient = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
@@ -1365,7 +1514,6 @@
                     
                     this.setupDOMReferences();
                     this.setupEventListeners();
-                    await this.checkAuthStatus();
                     await this.loadInitialData();
                     this.setupCallListeners();
                     console.log('ConnectX Dialpad initialized successfully');
@@ -1389,9 +1537,10 @@
                     endCallBtn: document.getElementById('endCallBtn'),
                     groupCallModal: document.getElementById('groupCallModal'),
                     closeGroupCallModal: document.getElementById('closeGroupCallModal'),
-                    groupCallForm: document.getElementById('groupCallForm'),
+                    groupCallName: document.getElementById('groupCallName'),
                     groupCallContacts: document.getElementById('groupCallContacts'),
                     startGroupCallBtn: document.getElementById('startGroupCallBtn'),
+                    defaultRoleSelector: document.getElementById('defaultRoleSelector'),
                     notification: document.getElementById('notification'),
                     notificationTitle: document.getElementById('notificationTitle'),
                     notificationMessage: document.getElementById('notificationMessage'),
@@ -1419,7 +1568,16 @@
                     incomingCallerNumber: document.getElementById('incomingCallerNumber'),
                     incomingCallStatus: document.getElementById('incomingCallStatus'),
                     declineCallBtn: document.getElementById('declineCallBtn'),
-                    acceptCallBtn: document.getElementById('acceptCallBtn')
+                    acceptCallBtn: document.getElementById('acceptCallBtn'),
+                    addContactModal: document.getElementById('addContactModal'),
+                    closeAddContactModal: document.getElementById('closeAddContactModal'),
+                    addContactForm: document.getElementById('addContactForm'),
+                    contactName: document.getElementById('contactName'),
+                    contactPhone: document.getElementById('contactPhone'),
+                    contactEmail: document.getElementById('contactEmail'),
+                    contactGroup: document.getElementById('contactGroup'),
+                    saveContactBtn: document.getElementById('saveContactBtn'),
+                    zeroButton: document.getElementById('zeroButton')
                 };
             }
 
@@ -1430,6 +1588,31 @@
                         const number = btn.getAttribute('data-number');
                         this.appendNumber(number);
                     });
+                });
+
+                // Zero button with long press for '+'
+                this.elements.zeroButton.addEventListener('mousedown', () => {
+                    this.state.zeroButtonLongPressTimer = setTimeout(() => {
+                        this.appendNumber('+');
+                    }, 500);
+                });
+                
+                this.elements.zeroButton.addEventListener('mouseup', () => {
+                    clearTimeout(this.state.zeroButtonLongPressTimer);
+                });
+                
+                this.elements.zeroButton.addEventListener('mouseleave', () => {
+                    clearTimeout(this.state.zeroButtonLongPressTimer);
+                });
+                
+                this.elements.zeroButton.addEventListener('touchstart', () => {
+                    this.state.zeroButtonLongPressTimer = setTimeout(() => {
+                        this.appendNumber('+');
+                    }, 500);
+                });
+                
+                this.elements.zeroButton.addEventListener('touchend', () => {
+                    clearTimeout(this.state.zeroButtonLongPressTimer);
                 });
 
                 // Delete button with long press support
@@ -1478,7 +1661,7 @@
 
                 // Modal events
                 this.elements.closeGroupCallModal.addEventListener('click', () => this.hideGroupCallModal());
-                this.elements.groupCallForm.addEventListener('submit', (e) => this.handleGroupCall(e));
+                this.elements.startGroupCallBtn.addEventListener('click', () => this.startGroupCall());
                 
                 this.elements.closeRecentCallsModal.addEventListener('click', () => this.hideRecentCallsModal());
                 this.elements.recentCallsBtn.addEventListener('click', () => this.showRecentCallsModal());
@@ -1505,6 +1688,22 @@
                 this.elements.declineCallBtn.addEventListener('click', () => this.declineIncomingCall());
                 this.elements.acceptCallBtn.addEventListener('click', () => this.acceptIncomingCall());
 
+                // Add contact events
+                this.elements.addContactBtn.addEventListener('click', () => this.showAddContactModal());
+                this.elements.closeAddContactModal.addEventListener('click', () => this.hideAddContactModal());
+                this.elements.addContactForm.addEventListener('submit', (e) => this.handleAddContact(e));
+
+                // Default role selector
+                this.elements.defaultRoleSelector.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('role-option')) {
+                        this.elements.defaultRoleSelector.querySelectorAll('.role-option').forEach(option => {
+                            option.classList.remove('selected');
+                        });
+                        e.target.classList.add('selected');
+                        this.state.defaultRole = e.target.getAttribute('data-role');
+                    }
+                });
+
                 // Keyboard support for dialpad
                 document.addEventListener('keydown', (e) => {
                     if (e.key >= '0' && e.key <= '9') {
@@ -1513,6 +1712,8 @@
                         this.appendNumber('*');
                     } else if (e.key === '#') {
                         this.appendNumber('#');
+                    } else if (e.key === '+') {
+                        this.appendNumber('+');
                     } else if (e.key === 'Backspace') {
                         this.backspace();
                     } else if (e.key === 'Escape') {
@@ -1549,13 +1750,13 @@
                             this.state.currentUser = user;
                             this.state.isLoggedIn = true;
                             await this.loadUserData();
+                            resolve();
                         } else {
                             this.state.isLoggedIn = false;
                             this.state.currentUser = null;
                             // Redirect to login if not authenticated
                             window.location.href = 'index.html';
                         }
-                        resolve();
                     });
                 });
             }
@@ -1662,9 +1863,9 @@
             }
 
             // Group Call Methods
-            showGroupCallModal() {
+            async showGroupCallModal() {
                 this.elements.groupCallModal.classList.add('active');
-                this.loadContactsForGroupCall();
+                await this.loadContactsForGroupCall();
             }
 
             hideGroupCallModal() {
@@ -1673,12 +1874,19 @@
 
             async loadContactsForGroupCall() {
                 try {
+                    this.elements.groupCallContacts.innerHTML = '<div class="loading-contacts">Loading contacts...</div>';
+                    
                     const contactsSnapshot = await firebase.firestore()
                         .collection('contacts')
                         .where('userId', '==', this.state.currentUser.uid)
                         .get();
                     
                     const contacts = contactsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    
+                    if (contacts.length === 0) {
+                        this.elements.groupCallContacts.innerHTML = '<div class="no-contacts">No contacts found. Add contacts first.</div>';
+                        return;
+                    }
                     
                     this.elements.groupCallContacts.innerHTML = contacts.map(contact => `
                         <div class="contact-item" data-contact-id="${contact.id}">
@@ -1692,68 +1900,125 @@
                                 <div class="contact-name">${contact.name}</div>
                                 <div class="contact-number">${contact.phone}</div>
                             </div>
-                            <div class="role-selector" style="display: none;">
-                                <div class="role-option" data-role="talker">Talker</div>
-                                <div class="role-option selected" data-role="listener">Listener</div>
+                            <div class="contact-role">
+                                <span class="role-badge listener">Listener</span>
                             </div>
                         </div>
                     `).join('');
                     
+                    // Reset group call participants
+                    this.state.groupCallParticipants = [];
+                    
                     // Add event listeners to contact items
                     this.elements.groupCallContacts.querySelectorAll('.contact-item').forEach(item => {
                         item.addEventListener('click', () => {
-                            item.classList.toggle('selected');
+                            const contactId = item.getAttribute('data-contact-id');
+                            const contact = contacts.find(c => c.id === contactId);
                             
-                            // Show role selector for selected contacts
-                            const roleSelector = item.querySelector('.role-selector');
                             if (item.classList.contains('selected')) {
-                                roleSelector.style.display = 'flex';
+                                // Remove from selection
+                                item.classList.remove('selected');
+                                this.state.groupCallParticipants = this.state.groupCallParticipants.filter(p => p.id !== contactId);
                                 
-                                // Add event listeners to role options
-                                roleSelector.querySelectorAll('.role-option').forEach(option => {
-                                    option.addEventListener('click', (e) => {
-                                        e.stopPropagation();
-                                        roleSelector.querySelectorAll('.role-option').forEach(o => o.classList.remove('selected'));
-                                        option.classList.add('selected');
-                                    });
-                                });
+                                // Update role badge
+                                const roleBadge = item.querySelector('.role-badge');
+                                roleBadge.className = 'role-badge listener';
+                                roleBadge.textContent = 'Listener';
                             } else {
-                                roleSelector.style.display = 'none';
+                                // Check if we've reached the maximum
+                                if (this.state.groupCallParticipants.length >= 50) {
+                                    this.showNotification('Limit Reached', 'Maximum 50 participants allowed');
+                                    return;
+                                }
+                                
+                                // Add to selection
+                                item.classList.add('selected');
+                                const role = this.state.defaultRole;
+                                
+                                // Check talker limit
+                                if (role === 'talker') {
+                                    const talkerCount = this.state.groupCallParticipants.filter(p => p.role === 'talker').length;
+                                    if (talkerCount >= 5) {
+                                        this.showNotification('Talker Limit', 'Maximum 5 talkers allowed. Setting as listener.');
+                                        role = 'listener';
+                                    }
+                                }
+                                
+                                this.state.groupCallParticipants.push({
+                                    id: contactId,
+                                    phone: contact.phone,
+                                    name: contact.name,
+                                    role: role
+                                });
+                                
+                                // Update role badge
+                                const roleBadge = item.querySelector('.role-badge');
+                                roleBadge.className = `role-badge ${role}`;
+                                roleBadge.textContent = role === 'talker' ? 'Talker' : 'Listener';
+                                
+                                // Add role change functionality
+                                roleBadge.addEventListener('click', (e) => {
+                                    e.stopPropagation();
+                                    this.toggleParticipantRole(contactId, item);
+                                });
                             }
+                            
+                            this.updateGroupCallButton();
                         });
                     });
+                    
                 } catch (error) {
                     console.error('Error loading contacts for group call:', error);
+                    this.elements.groupCallContacts.innerHTML = '<div class="error-loading">Error loading contacts</div>';
                 }
             }
 
-            async handleGroupCall(e) {
-                e.preventDefault();
+            toggleParticipantRole(contactId, item) {
+                const participant = this.state.groupCallParticipants.find(p => p.id === contactId);
+                if (!participant) return;
                 
-                const selectedContacts = this.elements.groupCallContacts.querySelectorAll('.contact-item.selected');
+                if (participant.role === 'listener') {
+                    // Check talker limit
+                    const talkerCount = this.state.groupCallParticipants.filter(p => p.role === 'talker').length;
+                    if (talkerCount >= 5) {
+                        this.showNotification('Talker Limit', 'Maximum 5 talkers allowed');
+                        return;
+                    }
+                    
+                    participant.role = 'talker';
+                } else {
+                    participant.role = 'listener';
+                }
                 
-                if (selectedContacts.length === 0) {
+                // Update UI
+                const roleBadge = item.querySelector('.role-badge');
+                roleBadge.className = `role-badge ${participant.role}`;
+                roleBadge.textContent = participant.role === 'talker' ? 'Talker' : 'Listener';
+            }
+
+            updateGroupCallButton() {
+                const count = this.state.groupCallParticipants.length;
+                if (count === 0) {
+                    this.elements.startGroupCallBtn.disabled = true;
+                    this.elements.startGroupCallBtn.innerHTML = '<i class="fas fa-phone"></i> Select Participants';
+                } else {
+                    this.elements.startGroupCallBtn.disabled = false;
+                    this.elements.startGroupCallBtn.innerHTML = `<i class="fas fa-phone"></i> Start Group Call (${count})`;
+                }
+            }
+
+            async startGroupCall() {
+                if (this.state.groupCallParticipants.length === 0) {
                     this.showNotification('Error', 'Please select at least one participant');
                     return;
                 }
                 
-                if (selectedContacts.length > 50) {
-                    this.showNotification('Error', 'Maximum 50 participants allowed');
+                if (this.state.balance < 1) {
+                    this.showNotification('Insufficient Balance', 'You need at least ₦1 to make a group call');
                     return;
                 }
                 
-                const talkers = Array.from(selectedContacts).filter(item => {
-                    const roleSelector = item.querySelector('.role-selector');
-                    const selectedRole = roleSelector.querySelector('.role-option.selected').getAttribute('data-role');
-                    return selectedRole === 'talker';
-                });
-                
-                if (talkers.length > 5) {
-                    this.showNotification('Error', 'Maximum 5 talkers allowed');
-                    return;
-                }
-                
-                const callName = this.elements.groupCallName.value.trim() || `Group Call with ${selectedContacts.length} people`;
+                const callName = this.elements.groupCallName.value.trim() || `Group Call with ${this.state.groupCallParticipants.length} people`;
                 
                 try {
                     // Create group call invitation
@@ -1761,22 +2026,11 @@
                         callName: callName,
                         callerId: this.state.currentUser.uid,
                         callerName: this.state.currentUser.displayName || 'Unknown',
-                        participants: Array.from(selectedContacts).map(item => {
-                            const contactId = item.getAttribute('data-contact-id');
-                            const contact = this.state.contacts.find(c => c.id === contactId);
-                            const roleSelector = item.querySelector('.role-selector');
-                            const role = roleSelector.querySelector('.role-option.selected').getAttribute('data-role');
-                            
-                            return {
-                                contactId: contactId,
-                                phone: contact.phone,
-                                name: contact.name,
-                                role: role
-                            };
-                        }),
+                        participants: this.state.groupCallParticipants,
                         status: 'pending',
                         timestamp: new Date().toISOString(),
-                        isGroupCall: true
+                        isGroupCall: true,
+                        channelName: `group_${this.state.currentUser.uid}_${Date.now()}`
                     };
                     
                     // Save to Firestore
@@ -1787,8 +2041,11 @@
                         await this.sendCallNotification(participant.phone, groupCall);
                     }
                     
-                    this.showNotification('Group Call Started', `Invitations sent to ${selectedContacts.length} participants`);
+                    this.showNotification('Group Call Started', `Invitations sent to ${this.state.groupCallParticipants.length} participants`);
                     this.hideGroupCallModal();
+                    
+                    // Initialize the group call
+                    await this.initializeGroupCall(groupCall);
                     
                 } catch (error) {
                     console.error('Error starting group call:', error);
@@ -1798,19 +2055,94 @@
 
             async sendCallNotification(phoneNumber, callData) {
                 try {
-                    // In a real implementation, this would use FCM or another push notification service
-                    // For now, we'll store it in Firestore for the callee to retrieve
-                    const notification = {
-                        type: 'call',
-                        phoneNumber: phoneNumber,
-                        callData: callData,
-                        timestamp: new Date().toISOString(),
-                        status: 'unread'
-                    };
+                    // Find user by phone number
+                    const userSnapshot = await firebase.firestore()
+                        .collection('users')
+                        .where('phoneNumber', '==', phoneNumber)
+                        .get();
                     
-                    await firebase.firestore().collection('notifications').add(notification);
+                    if (!userSnapshot.empty) {
+                        const userId = userSnapshot.docs[0].id;
+                        
+                        const notification = {
+                            type: callData.isGroupCall ? 'group_call' : 'call',
+                            recipientId: userId,
+                            callData: callData,
+                            timestamp: new Date().toISOString(),
+                            status: 'unread'
+                        };
+                        
+                        await firebase.firestore().collection('notifications').add(notification);
+                    }
                 } catch (error) {
                     console.error('Error sending call notification:', error);
+                }
+            }
+
+            async initializeGroupCall(callData) {
+                try {
+                    if (!this.state.agoraClient) {
+                        console.error('Agora client not initialized');
+                        return;
+                    }
+                    
+                    // Join Agora channel
+                    const token = await this.getAgoraToken(callData.channelName);
+                    
+                    await this.state.agoraClient.join(
+                        agoraConfig.appId,
+                        callData.channelName,
+                        token,
+                        this.state.currentUser.uid
+                    );
+                    
+                    // Create and publish local audio track
+                    this.state.agoraLocalAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+                    await this.state.agoraClient.publish([this.state.agoraLocalAudioTrack]);
+                    
+                    // Update UI for active call
+                    this.elements.callerName.textContent = callData.callName;
+                    this.elements.callerNumber.textContent = `${callData.participants.length} participants`;
+                    
+                    this.showActiveCallScreen();
+                    this.state.callStatus = 'calling';
+                    this.elements.callStatus.textContent = 'Starting Group Call...';
+                    
+                    // Show call actions
+                    this.elements.callActions.classList.add('active');
+                    
+                    // Initialize call timer and cost (group calls cost more)
+                    this.state.callTimer = 0;
+                    this.state.callCost = 0;
+                    this.updateCallTimer();
+                    this.updateCallCost();
+                    
+                    // Start call intervals
+                    this.state.callInterval = setInterval(() => {
+                        this.state.callTimer++;
+                        this.updateCallTimer();
+                    }, 1000);
+                    
+                    // Only start charging when call is connected
+                    this.state.costInterval = setInterval(() => {
+                        if (this.state.callStatus === 'connected') {
+                            // Group calls cost 2.5x more
+                            this.state.callCost += this.state.groupCallRate / 60;
+                            this.updateCallCost();
+                            
+                            // Deduct from balance every 10 seconds
+                            if (this.state.callTimer % 10 === 0) {
+                                this.deductCallCost();
+                            }
+                        }
+                    }, 1000);
+                    
+                    this.showNotification('Group Call Started', `Calling ${callData.participants.length} participants`);
+                    
+                } catch (error) {
+                    console.error('Error initializing group call:', error);
+                    this.showNotification('Call Error', 'Failed to establish group call connection');
+                    this.endCall();
                 }
             }
 
@@ -1831,7 +2163,20 @@
                     return;
                 }
 
-                if (this.state.balance < 1) { // Minimum balance check
+                // Validate phone number format
+                if (!this.isValidPhoneNumber(this.state.phoneNumber)) {
+                    this.showNotification('Invalid Number', 'Please enter a valid phone number');
+                    return;
+                }
+
+                // Check if phone number exists in the system
+                const isValidUser = await this.checkPhoneNumberExists(this.state.phoneNumber);
+                if (!isValidUser) {
+                    this.showNotification('Invalid Number', 'This phone number is not registered with ConnectX. Please check the number.');
+                    return;
+                }
+
+                if (this.state.balance < 1) {
                     this.showNotification('Insufficient Balance', 'You need at least ₦1 to make a call');
                     return;
                 }
@@ -1870,14 +2215,16 @@
                     this.updateCallTimer();
                 }, 1000);
                 
+                // Only start charging when call is connected
                 this.state.costInterval = setInterval(() => {
-                    // Calculate cost: based on call rate
-                    this.state.callCost += this.state.callRate / 60; // Convert to per second
-                    this.updateCallCost();
-                    
-                    // Deduct from balance every 10 seconds
-                    if (this.state.callTimer % 10 === 0) {
-                        this.deductCallCost();
+                    if (this.state.callStatus === 'connected') {
+                        this.state.callCost += this.state.callRate / 60;
+                        this.updateCallCost();
+                        
+                        // Deduct from balance every 10 seconds
+                        if (this.state.callTimer % 10 === 0) {
+                            this.deductCallCost();
+                        }
                     }
                 }, 1000);
                 
@@ -1885,6 +2232,26 @@
                 await this.initializeAgoraCall();
                 
                 this.showNotification('Call Started', `Calling ${this.state.phoneNumber}`);
+            }
+
+            async checkPhoneNumberExists(phoneNumber) {
+                try {
+                    const userSnapshot = await firebase.firestore()
+                        .collection('users')
+                        .where('phoneNumber', '==', phoneNumber)
+                        .get();
+                    
+                    return !userSnapshot.empty;
+                } catch (error) {
+                    console.error('Error checking phone number:', error);
+                    return false;
+                }
+            }
+
+            isValidPhoneNumber(phoneNumber) {
+                // Basic phone number validation
+                const phoneRegex = /^[0-9+\-\s()]{10,}$/;
+                return phoneRegex.test(phoneNumber);
             }
 
             async initializeAgoraCall() {
@@ -1897,7 +2264,7 @@
                     // Generate channel name based on phone numbers
                     const channelName = `call_${this.state.currentUser.uid}_${this.state.phoneNumber}`;
                     
-                    // Get Agora token from your server (you'll need to implement this)
+                    // Get Agora token from your server
                     const token = await this.getAgoraToken(channelName);
                     
                     // Join Agora channel
@@ -1922,14 +2289,14 @@
                             this.state.agoraRemoteAudioTrack = user.audioTrack;
                             this.state.agoraRemoteAudioTrack.play();
                             
-                            // Update call status
+                            // Update call status to connected and start charging
                             this.state.callStatus = 'connected';
                             this.elements.callStatus.textContent = 'Connected';
                         }
                     });
                     
                     // Send call invitation to the recipient
-                    await this.sendCallInvitation();
+                    await this.sendCallInvitation(channelName);
                     
                 } catch (error) {
                     console.error('Error initializing Agora call:', error);
@@ -1944,13 +2311,28 @@
                 return null; // Null token for testing (works with token-free mode if enabled)
             }
 
-            async sendCallInvitation() {
+            async sendCallInvitation(channelName) {
                 try {
+                    // Find the user by phone number
+                    const userSnapshot = await firebase.firestore()
+                        .collection('users')
+                        .where('phoneNumber', '==', this.state.phoneNumber)
+                        .get();
+                    
+                    if (userSnapshot.empty) {
+                        console.error('User not found with phone number:', this.state.phoneNumber);
+                        return;
+                    }
+                    
+                    const calleeId = userSnapshot.docs[0].id;
+                    const calleeData = userSnapshot.docs[0].data();
+                    
                     const invitation = {
                         callerId: this.state.currentUser.uid,
                         callerName: this.state.currentUser.displayName || 'Unknown',
+                        calleeId: calleeId,
                         calleePhone: this.state.phoneNumber,
-                        channelName: `call_${this.state.currentUser.uid}_${this.state.phoneNumber}`,
+                        channelName: channelName,
                         status: 'pending',
                         timestamp: new Date().toISOString(),
                         isGroupCall: false
@@ -2028,7 +2410,7 @@
                     this.state.callStatus = 'connected';
                     this.elements.callStatus.textContent = 'Connected';
                     
-                    // Start call timer
+                    // Start call timer (don't start cost for incoming calls)
                     this.state.callTimer = 0;
                     this.state.callCost = 0;
                     this.updateCallTimer();
@@ -2037,15 +2419,6 @@
                     this.state.callInterval = setInterval(() => {
                         this.state.callTimer++;
                         this.updateCallTimer();
-                    }, 1000);
-                    
-                    this.state.costInterval = setInterval(() => {
-                        this.state.callCost += this.state.callRate / 60;
-                        this.updateCallCost();
-                        
-                        if (this.state.callTimer % 10 === 0) {
-                            this.deductCallCost();
-                        }
                     }, 1000);
                     
                     this.showNotification('Call Connected', `Connected with ${this.state.incomingCall.callerName}`);
@@ -2224,9 +2597,66 @@
                 this.showNotification(this.state.isSpeakerOn ? 'Speaker On' : 'Speaker Off', '');
             }
 
+            // Contact Methods
+            showAddContactModal() {
+                if (!this.state.phoneNumber) {
+                    this.showNotification('Error', 'Please enter a phone number first');
+                    return;
+                }
+                
+                // Pre-fill the phone number
+                this.elements.contactPhone.value = this.state.phoneNumber;
+                this.elements.contactName.value = '';
+                this.elements.contactEmail.value = '';
+                this.elements.contactGroup.value = '';
+                
+                this.elements.addContactModal.classList.add('active');
+            }
+
+            hideAddContactModal() {
+                this.elements.addContactModal.classList.remove('active');
+            }
+
+            async handleAddContact(e) {
+                e.preventDefault();
+                
+                const name = this.elements.contactName.value.trim();
+                const phone = this.elements.contactPhone.value.trim();
+                const email = this.elements.contactEmail.value.trim();
+                const group = this.elements.contactGroup.value;
+                
+                if (!name || !phone) {
+                    this.showNotification('Error', 'Name and phone number are required');
+                    return;
+                }
+
+                try {
+                    const contact = {
+                        name: name,
+                        phone: phone,
+                        email: email,
+                        group: group,
+                        createdAt: new Date().toISOString(),
+                        userId: this.state.currentUser.uid
+                    };
+
+                    // Save to Firestore
+                    await firebase.firestore().collection('contacts').add(contact);
+                    
+                    this.showNotification('Success', 'Contact saved successfully');
+                    this.hideAddContactModal();
+                    await this.loadContacts();
+                } catch (error) {
+                    console.error('Error saving contact:', error);
+                    this.showNotification('Error', 'Failed to save contact');
+                }
+            }
+
             // Call History Methods
             async loadRecentCalls() {
                 try {
+                    this.elements.callList.innerHTML = '<div class="loading-calls">Loading recent calls...</div>';
+                    
                     const callsSnapshot = await firebase.firestore()
                         .collection('callHistory')
                         .where('userId', '==', this.state.currentUser.uid)
@@ -2238,6 +2668,7 @@
                     this.renderRecentCalls();
                 } catch (error) {
                     console.error('Error loading recent calls:', error);
+                    this.elements.callList.innerHTML = '<div class="error-loading">Error loading calls</div>';
                 }
             }
 
@@ -2298,6 +2729,7 @@
                         const phoneNumber = callItem.getAttribute('data-phone');
                         this.state.phoneNumber = phoneNumber;
                         this.updatePhoneNumberDisplay();
+                        this.hideRecentCallsModal();
                         this.makeCall();
                     });
                 });
