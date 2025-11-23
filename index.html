@@ -1,203 +1,1207 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Login & Signup</title>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="configuration.js"></script>
-  <style>
-    body { font-family: Arial; background:#f7f7f7; padding:20px; }
-    .container { max-width:400px; margin:auto; background:#fff; padding:20px; border-radius:5px; box-shadow:0 0 5px rgba(0,0,0,0.2); }
-    input, select, button { width:100%; padding:8px; margin:5px 0; }
-    .toggle { text-align:center; margin-top:10px; cursor:pointer; color:#007BFF; }
-    .loading { display:none; text-align:center; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConnectX - Connect Instantly</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3a0ca3;
+            --accent-color: #7209b7;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+            --success-color: #4cc9f0;
+            --warning-color: #f72585;
+            --gray-color: #6c757d;
+            --card-bg: #ffffff;
+            --body-bg: #f5f7fb;
+            --text-color: #333333;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.12);
+            --transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            --transition-smooth: all 0.3s ease;
+            --border-radius: 20px;
+            --border-radius-small: 12px;
+        }
+
+        .dark-mode {
+            --primary-color: #4895ef;
+            --secondary-color: #560bad;
+            --accent-color: #b5179e;
+            --light-color: #2d3748;
+            --dark-color: #f8f9fa;
+            --card-bg: #1a202c;
+            --body-bg: #121826;
+            --text-color: #e2e8f0;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+            --shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.35);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: var(--text-color);
+            transition: var(--transition-smooth);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .app-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            color: white;
+            font-weight: 600;
+            background: rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            flex-shrink: 0;
+        }
+
+        .time {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .status-icons {
+            display: flex;
+            gap: 6px;
+        }
+
+        .status-icons i {
+            font-size: 14px;
+        }
+
+        .header {
+            padding: 15px 20px 10px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .app-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .app-logo i {
+            font-size: 28px;
+            color: white;
+        }
+
+        .app-logo h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+            letter-spacing: 1px;
+        }
+
+        .app-tagline {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 13px;
+            font-weight: 400;
+        }
+
+        .display-area {
+            padding: 15px 20px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .phone-number {
+            font-size: 32px;
+            font-weight: 300;
+            color: white;
+            letter-spacing: 2px;
+            margin-bottom: 6px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            word-break: break-all;
+            padding: 0 10px;
+        }
+
+        .call-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            font-weight: 400;
+        }
+
+        .keypad-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 20px 15px;
+            overflow: hidden;
+        }
+
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .key {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            width: 100%;
+            aspect-ratio: 1/1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            transition: var(--transition);
+            user-select: none;
+            max-width: 70px;
+            margin: 0 auto;
+        }
+
+        .key:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .key:active {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(0.95);
+        }
+
+        .number {
+            font-size: 26px;
+            font-weight: 300;
+        }
+
+        .letters {
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: -4px;
+            letter-spacing: 1px;
+        }
+
+        .call-actions {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            margin-top: 15px;
+            flex-shrink: 0;
+        }
+
+        .action-btn {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .call-btn {
+            background: #00c853;
+            color: white;
+            width: 65px;
+            height: 65px;
+            box-shadow: 0 4px 15px rgba(0, 200, 83, 0.3);
+        }
+
+        .call-btn:hover {
+            background: #00e676;
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(0, 200, 83, 0.5);
+        }
+
+        .delete-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .delete-btn:hover {
+            background: rgba(255, 69, 58, 0.7);
+            transform: scale(1.1);
+        }
+
+        .delete-btn.long-press {
+            background: rgba(255, 69, 58, 0.9);
+        }
+
+        .bottom-nav {
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+            flex-shrink: 0;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: white;
+            cursor: pointer;
+            transition: var(--transition);
+            padding: 8px 12px;
+            border-radius: var(--border-radius-small);
+        }
+
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-item i {
+            font-size: 18px;
+        }
+
+        .nav-item span {
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        /* Auth Modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition-smooth);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+        }
+
+        .modal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 25px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: var(--shadow-hover);
+            transform: translateY(30px) scale(0.9);
+            transition: var(--transition);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal.active .modal-content {
+            transform: translateY(0) scale(1);
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            margin-bottom: 8px;
+            color: var(--primary-color);
+            font-weight: 700;
+        }
+
+        .modal-header p {
+            color: var(--gray-color);
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid var(--body-bg);
+            border-radius: var(--border-radius-small);
+            background-color: var(--body-bg);
+            color: var(--text-color);
+            transition: var(--transition);
+            font-size: 16px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+        }
+
+        .btn {
+            padding: 14px 20px;
+            border: none;
+            border-radius: var(--border-radius-small);
+            cursor: pointer;
+            font-weight: 600;
+            transition: var(--transition);
+            width: 100%;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(67, 97, 238, 0.4);
+        }
+
+        .auth-toggle {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 14px;
+            color: var(--gray-color);
+        }
+
+        .auth-toggle a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 16px;
+            box-shadow: var(--shadow-hover);
+            z-index: 1100;
+            transform: translateX(150%) scale(0.9);
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            max-width: 300px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .notification.active {
+            transform: translateX(0) scale(1);
+        }
+
+        .notification-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .notification-header i {
+            color: var(--primary-color);
+            font-size: 18px;
+        }
+
+        .notification-header h4 {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .notification p {
+            font-size: 13px;
+            color: var(--gray-color);
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Long press animation */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .long-press-animation {
+            animation: pulse 0.5s infinite;
+        }
+
+        /* Auto-redirect overlay */
+        .redirect-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .redirect-overlay i {
+            font-size: 50px;
+            margin-bottom: 16px;
+            color: var(--primary-color);
+        }
+
+        .redirect-overlay h2 {
+            font-size: 22px;
+            margin-bottom: 8px;
+        }
+
+        .redirect-overlay p {
+            font-size: 15px;
+            opacity: 0.8;
+            margin-bottom: 16px;
+        }
+
+        /* Responsive adjustments for very small screens */
+        @media (max-height: 700px) {
+            .header {
+                padding: 10px 20px 5px;
+            }
+            
+            .display-area {
+                padding: 10px 20px;
+            }
+            
+            .phone-number {
+                font-size: 28px;
+                min-height: 40px;
+            }
+            
+            .keypad {
+                gap: 10px;
+                margin-bottom: 10px;
+            }
+            
+            .key {
+                max-width: 60px;
+            }
+            
+            .number {
+                font-size: 22px;
+            }
+            
+            .letters {
+                font-size: 8px;
+            }
+            
+            .call-actions {
+                gap: 25px;
+                margin-top: 10px;
+            }
+            
+            .action-btn {
+                width: 50px;
+                height: 50px;
+            }
+            
+            .call-btn {
+                width: 60px;
+                height: 60px;
+            }
+            
+            .bottom-nav {
+                padding: 10px 20px;
+            }
+            
+            .nav-item {
+                padding: 6px 10px;
+            }
+            
+            .nav-item i {
+                font-size: 16px;
+            }
+            
+            .nav-item span {
+                font-size: 10px;
+            }
+        }
+
+        @media (max-height: 600px) {
+            .status-bar {
+                padding: 8px 20px;
+            }
+            
+            .header {
+                padding: 8px 20px 4px;
+            }
+            
+            .app-logo {
+                margin-bottom: 4px;
+            }
+            
+            .app-logo i {
+                font-size: 24px;
+            }
+            
+            .app-logo h1 {
+                font-size: 22px;
+            }
+            
+            .app-tagline {
+                font-size: 12px;
+            }
+            
+            .display-area {
+                padding: 8px 20px;
+            }
+            
+            .phone-number {
+                font-size: 24px;
+                min-height: 36px;
+            }
+            
+            .call-label {
+                font-size: 13px;
+            }
+            
+            .keypad-container {
+                padding: 0 20px 10px;
+            }
+            
+            .key {
+                max-width: 55px;
+            }
+            
+            .number {
+                font-size: 20px;
+            }
+            
+            .letters {
+                font-size: 7px;
+            }
+            
+            .call-actions {
+                gap: 20px;
+            }
+        }
+
+        /* For landscape orientation */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .app-container {
+                max-width: 100%;
+                height: 100vh;
+            }
+            
+            .status-bar {
+                padding: 6px 15px;
+            }
+            
+            .header {
+                padding: 5px 15px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+            
+            .app-logo {
+                margin-bottom: 0;
+            }
+            
+            .app-tagline {
+                display: none;
+            }
+            
+            .display-area {
+                padding: 5px 15px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+            
+            .phone-number {
+                font-size: 22px;
+                min-height: auto;
+                margin-bottom: 0;
+            }
+            
+            .call-label {
+                display: none;
+            }
+            
+            .keypad-container {
+                flex-direction: row;
+                padding: 0 15px 10px;
+            }
+            
+            .keypad {
+                flex: 1;
+                margin-bottom: 0;
+                margin-right: 15px;
+            }
+            
+            .call-actions {
+                flex-direction: column;
+                gap: 15px;
+                margin-top: 0;
+            }
+            
+            .bottom-nav {
+                padding: 8px 15px;
+            }
+        }
+    </style>
 </head>
 <body>
-  <div class="container" id="loginForm">
-    <h3>Login</h3>
-    <input type="email" id="loginEmail" placeholder="Email">
-    <input type="password" id="loginPassword" placeholder="Password">
-    <button id="loginBtn">Login</button>
-    <div class="loading" id="loginLoading">Loading...</div>
-    <div class="toggle" id="showSignup">Don't have an account? Sign up</div>
-    <div class="toggle" id="showReset">Forgot Password?</div>
-  </div>
+    <!-- Redirect Overlay -->
+    <div class="redirect-overlay" id="redirectOverlay" style="display: none;">
+        <i class="fas fa-check-circle"></i>
+        <h2>Welcome Back!</h2>
+        <p>You're already signed in. Redirecting to your dashboard...</p>
+        <div class="loading"></div>
+    </div>
 
-  <div class="container" id="signupForm" style="display:none;">
-    <h3>Sign Up</h3>
-    <input type="text" id="signupName" placeholder="Name">
-    <input type="email" id="signupEmail" placeholder="Email">
-    <input type="text" id="signupPhone" placeholder="Phone">
-    <select id="signupGender">
-      <option value="">Gender</option>
-      <option value="male">Male</option>
-      <option value="female">Female</option>
-    </select>
-    <input type="text" id="signupReferral" placeholder="Referral Code (optional)">
-    <input type="password" id="signupPassword" placeholder="Password">
-    <button id="signupBtn">Sign Up</button>
-    <div class="loading" id="signupLoading">Creating account...</div>
-    <div class="toggle" id="showLogin">Already have an account? Login</div>
-  </div>
+    <!-- Auth Modal -->
+    <div class="modal" id="authModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="authTitle">Create Account</h2>
+                <p>Join ConnectX to start connecting with others</p>
+            </div>
+            <form id="authForm">
+                <div class="form-group" id="fullNameGroup">
+                    <label for="fullName"><i class="fas fa-user"></i> Full Name</label>
+                    <input type="text" id="fullName" placeholder="Enter your full name">
+                </div>
+                <div class="form-group">
+                    <label for="email"><i class="fas fa-envelope"></i> Email</label>
+                    <input type="email" id="email" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group" id="usernameGroup">
+                    <label for="username"><i class="fas fa-at"></i> Username</label>
+                    <input type="text" id="username" placeholder="Choose a username">
+                </div>
+                <div class="form-group">
+                    <label for="password"><i class="fas fa-lock"></i> Password</label>
+                    <input type="password" id="password" placeholder="Create a password" required>
+                </div>
+                <button type="submit" class="btn btn-primary" id="authButton">
+                    <span id="authButtonText">Create Account</span>
+                </button>
+            </form>
+            <div class="auth-toggle">
+                <p>Already have an account? <a id="toggleAuth">Sign In</a></p>
+            </div>
+        </div>
+    </div>
 
-  <div class="container" id="resetForm" style="display:none;">
-    <h3>Reset Password</h3>
-    <input type="email" id="resetEmail" placeholder="Email">
-    <button id="resetBtn">Send Reset Link</button>
-    <div class="toggle" id="backToLogin">Back to Login</div>
-  </div>
+    <!-- Notification -->
+    <div class="notification" id="notification">
+        <div class="notification-header">
+            <i class="fas fa-bell"></i>
+            <h4 id="notificationTitle">Welcome</h4>
+        </div>
+        <p id="notificationMessage">Welcome to ConnectX!</p>
+    </div>
 
-  <script>
-    const app = firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+    <!-- Keypad Interface -->
+    <div class="app-container">
+        <div class="status-bar">
+            <div class="time" id="currentTime">9:41</div>
+            <div class="status-icons">
+                <i class="fas fa-signal"></i>
+                <i class="fas fa-wifi"></i>
+                <i class="fas fa-battery-three-quarters"></i>
+            </div>
+        </div>
 
-    // Toggle forms
-    document.getElementById("showSignup").onclick = () => {
-      document.getElementById("loginForm").style.display = "none";
-      document.getElementById("signupForm").style.display = "block";
-    };
-    document.getElementById("showLogin").onclick = () => {
-      document.getElementById("signupForm").style.display = "none";
-      document.getElementById("loginForm").style.display = "block";
-    };
-    document.getElementById("showReset").onclick = () => {
-      document.getElementById("loginForm").style.display = "none";
-      document.getElementById("resetForm").style.display = "block";
-    };
-    document.getElementById("backToLogin").onclick = () => {
-      document.getElementById("resetForm").style.display = "none";
-      document.getElementById("loginForm").style.display = "block";
-    };
+        <div class="header">
+            <div class="app-logo">
+                <i class="fas fa-phone-alt"></i>
+                <h1>ConnectX</h1>
+            </div>
+            <div class="app-tagline">Connect instantly with anyone, anywhere</div>
+        </div>
 
-    // Login
-    document.getElementById("loginBtn").onclick = async () => {
-      const email = document.getElementById("loginEmail").value;
-      const password = document.getElementById("loginPassword").value;
-      document.getElementById("loginLoading").style.display = "block";
-      try {
-        const cred = await auth.signInWithEmailAndPassword(email, password);
-        setTimeout(async () => {
-          try {
-            const docRef = db.collection("users").doc(cred.user.uid);
-            const doc = await docRef.get();
-            if (!doc.exists) {
-              // Auto-create profile for legacy accounts
-              await docRef.set({
-                name: "New User",
-                email: cred.user.email,
-                phone: "",
-                gender: "",
-                referral: "",
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                earnings: 0,
-                enrolled: false,
-                status: "active",
-                require2FA: "no",
-                referrals: [],
-                role: "user"
-              });
-              window.location.href = "user.html";
-            } else {
-              const role = doc.data().role || "user";
-              if (role === "admin") {
-                window.location.href = "admin.html";
-              } else {
-                window.location.href = "user.html";
-              }
+        <div class="display-area">
+            <div class="phone-number" id="phoneNumber"></div>
+            <div class="call-label" id="callLabel">Enter phone number</div>
+        </div>
+
+        <div class="keypad-container">
+            <div class="keypad">
+                <div class="key" data-number="1">
+                    <div class="number">1</div>
+                    <div class="letters"></div>
+                </div>
+                <div class="key" data-number="2">
+                    <div class="number">2</div>
+                    <div class="letters">ABC</div>
+                </div>
+                <div class="key" data-number="3">
+                    <div class="number">3</div>
+                    <div class="letters">DEF</div>
+                </div>
+                <div class="key" data-number="4">
+                    <div class="number">4</div>
+                    <div class="letters">GHI</div>
+                </div>
+                <div class="key" data-number="5">
+                    <div class="number">5</div>
+                    <div class="letters">JKL</div>
+                </div>
+                <div class="key" data-number="6">
+                    <div class="number">6</div>
+                    <div class="letters">MNO</div>
+                </div>
+                <div class="key" data-number="7">
+                    <div class="number">7</div>
+                    <div class="letters">PQRS</div>
+                </div>
+                <div class="key" data-number="8">
+                    <div class="number">8</div>
+                    <div class="letters">TUV</div>
+                </div>
+                <div class="key" data-number="9">
+                    <div class="number">9</div>
+                    <div class="letters">WXYZ</div>
+                </div>
+                <div class="key" data-number="*">
+                    <div class="number">*</div>
+                </div>
+                <div class="key" data-number="0">
+                    <div class="number">0</div>
+                    <div class="letters">+</div>
+                </div>
+                <div class="key" data-number="#">
+                    <div class="number">#</div>
+                </div>
+            </div>
+
+            <div class="call-actions">
+                <div class="action-btn delete-btn" id="deleteBtn">
+                    <i class="fas fa-delete-left"></i>
+                </div>
+                <div class="action-btn call-btn" id="callBtn">
+                    <i class="fas fa-phone"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom-nav">
+            <div class="nav-item active" id="navKeypad">
+                <i class="fas fa-dialpad"></i>
+                <span>Keypad</span>
+            </div>
+            <div class="nav-item" id="navContacts">
+                <i class="fas fa-address-book"></i>
+                <span>Contacts</span>
+            </div>
+            <div class="nav-item" id="navRecents">
+                <i class="fas fa-history"></i>
+                <span>Recents</span>
+            </div>
+            <div class="nav-item" id="navVoicemail">
+                <i class="fas fa-voicemail"></i>
+                <span>Voicemail</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- External Configuration -->
+    <script src="configuration.js"></script>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        // Keypad Application
+        class ConnectXKeypad {
+            constructor() {
+                this.state = {
+                    phoneNumber: '',
+                    isLoggedIn: false,
+                    currentUser: null,
+                    longPressTimer: null,
+                    isLongPressing: false
+                };
+
+                this.init();
             }
-          } catch (e) {
-            alert("Error loading user data: " + e.message);
-          }
-          document.getElementById("loginLoading").style.display = "none";
-        }, 1000);
-      } catch (e) {
-        alert(e.message);
-        document.getElementById("loginLoading").style.display = "none";
-      }
-    };
 
-    // Signup
-    document.getElementById("signupBtn").onclick = async () => {
-      const name = document.getElementById("signupName").value.trim();
-      const email = document.getElementById("signupEmail").value.trim();
-      const phone = document.getElementById("signupPhone").value.trim();
-      const gender = document.getElementById("signupGender").value;
-      const referral = document.getElementById("signupReferral").value.trim();
-      const password = document.getElementById("signupPassword").value;
-      if (!name || !email || !phone || !gender || !password) {
-        alert("Please fill all fields.");
-        return;
-      }
-      document.getElementById("signupLoading").style.display = "block";
-      try {
-        const cred = await auth.createUserWithEmailAndPassword(email, password);
-        await db.collection("users").doc(cred.user.uid).set({
-          name, email, phone, gender, referral,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          earnings: 0, enrolled: false, status: "active", require2FA: "no", referrals: [],
-          role: "user"
+            init() {
+                this.setupDOMReferences();
+                this.setupEventListeners();
+                this.updateTime();
+                this.checkAuthStatus();
+                
+                // Update time every minute
+                setInterval(() => this.updateTime(), 60000);
+            }
+
+            setupDOMReferences() {
+                this.elements = {
+                    authModal: document.getElementById('authModal'),
+                    authForm: document.getElementById('authForm'),
+                    authTitle: document.getElementById('authTitle'),
+                    authButton: document.getElementById('authButton'),
+                    authButtonText: document.getElementById('authButtonText'),
+                    toggleAuth: document.getElementById('toggleAuth'),
+                    fullNameGroup: document.getElementById('fullNameGroup'),
+                    usernameGroup: document.getElementById('usernameGroup'),
+                    notification: document.getElementById('notification'),
+                    notificationTitle: document.getElementById('notificationTitle'),
+                    notificationMessage: document.getElementById('notificationMessage'),
+                    phoneNumber: document.getElementById('phoneNumber'),
+                    callLabel: document.getElementById('callLabel'),
+                    keys: document.querySelectorAll('.key'),
+                    deleteBtn: document.getElementById('deleteBtn'),
+                    callBtn: document.getElementById('callBtn'),
+                    currentTime: document.getElementById('currentTime'),
+                    navKeypad: document.getElementById('navKeypad'),
+                    navContacts: document.getElementById('navContacts'),
+                    navRecents: document.getElementById('navRecents'),
+                    navVoicemail: document.getElementById('navVoicemail'),
+                    redirectOverlay: document.getElementById('redirectOverlay')
+                };
+            }
+
+            setupEventListeners() {
+                // Keypad buttons
+                this.elements.keys.forEach(key => {
+                    key.addEventListener('click', () => {
+                        const number = key.getAttribute('data-number');
+                        this.appendNumber(number);
+                    });
+                });
+
+                // Delete button with long press functionality
+                this.elements.deleteBtn.addEventListener('mousedown', () => this.startLongPress());
+                this.elements.deleteBtn.addEventListener('touchstart', () => this.startLongPress());
+                
+                this.elements.deleteBtn.addEventListener('mouseup', () => this.endLongPress());
+                this.elements.deleteBtn.addEventListener('touchend', () => this.endLongPress());
+                this.elements.deleteBtn.addEventListener('mouseleave', () => this.endLongPress());
+
+                // Call button
+                this.elements.callBtn.addEventListener('click', () => {
+                    this.handleCall();
+                });
+
+                // Auth events
+                this.elements.toggleAuth.addEventListener('click', () => this.toggleAuthForm());
+                this.elements.authForm.addEventListener('submit', (e) => this.handleAuthSubmit(e));
+
+                // Navigation
+                this.elements.navContacts.addEventListener('click', () => {
+                    this.showNotification('Contacts', 'Please sign in to access contacts');
+                });
+
+                this.elements.navRecents.addEventListener('click', () => {
+                    this.showNotification('Recents', 'Please sign in to view call history');
+                });
+
+                this.elements.navVoicemail.addEventListener('click', () => {
+                    this.showNotification('Voicemail', 'Please sign in to access voicemail');
+                });
+            }
+
+            startLongPress() {
+                this.state.isLongPressing = true;
+                this.elements.deleteBtn.classList.add('long-press');
+                
+                this.state.longPressTimer = setTimeout(() => {
+                    if (this.state.isLongPressing) {
+                        this.clearAllNumbers();
+                        this.elements.deleteBtn.classList.add('long-press-animation');
+                    }
+                }, 500);
+            }
+
+            endLongPress() {
+                this.state.isLongPressing = false;
+                clearTimeout(this.state.longPressTimer);
+                this.elements.deleteBtn.classList.remove('long-press', 'long-press-animation');
+                
+                // If not a long press, delete one character
+                if (!this.state.isLongPressing) {
+                    this.removeLastNumber();
+                }
+            }
+
+            appendNumber(number) {
+                this.state.phoneNumber += number;
+                this.updateDisplay();
+                
+                // If user is not logged in and starts typing, show auth modal
+                if (!this.state.isLoggedIn && this.state.phoneNumber.length === 1) {
+                    setTimeout(() => {
+                        this.showAuthModal();
+                    }, 500);
+                }
+            }
+
+            removeLastNumber() {
+                this.state.phoneNumber = this.state.phoneNumber.slice(0, -1);
+                this.updateDisplay();
+            }
+
+            clearAllNumbers() {
+                this.state.phoneNumber = '';
+                this.updateDisplay();
+            }
+
+            updateDisplay() {
+                this.elements.phoneNumber.textContent = this.formatPhoneNumber(this.state.phoneNumber);
+                
+                if (this.state.phoneNumber.length === 0) {
+                    this.elements.callLabel.textContent = 'Enter phone number';
+                } else {
+                    this.elements.callLabel.textContent = 'Ready to connect';
+                }
+            }
+
+            formatPhoneNumber(phoneNumber) {
+                // Simple formatting for display
+                if (phoneNumber.length <= 3) {
+                    return phoneNumber;
+                } else if (phoneNumber.length <= 6) {
+                    return phoneNumber.slice(0, 3) + ' ' + phoneNumber.slice(3);
+                } else {
+                    return phoneNumber.slice(0, 3) + ' ' + phoneNumber.slice(3, 6) + ' ' + phoneNumber.slice(6);
+                }
+            }
+
+            updateTime() {
+                const now = new Date();
+                const hours = now.getHours().toString().padStart(2, '0');
+                const minutes = now.getMinutes().toString().padStart(2, '0');
+                this.elements.currentTime.textContent = `${hours}:${minutes}`;
+            }
+
+            async handleCall() {
+                if (this.state.phoneNumber.length === 0) {
+                    this.showNotification('Error', 'Please enter a phone number');
+                    return;
+                }
+
+                if (!this.state.isLoggedIn) {
+                    this.showAuthModal();
+                    this.showNotification('Authentication Required', 'Please sign in to make calls');
+                    return;
+                }
+
+                try {
+                    this.showNotification('Calling', `Connecting to ${this.formatPhoneNumber(this.state.phoneNumber)}`);
+                    
+                    // In a real app, you would initiate a call here
+                    // For demo purposes, we'll simulate a call
+                    setTimeout(() => {
+                        this.showNotification('Call Connected', 'You are now connected');
+                    }, 2000);
+                } catch (error) {
+                    this.showNotification('Call Failed', 'Unable to connect. Please try again.');
+                }
+            }
+
+            // Authentication Methods
+            async checkAuthStatus() {
+                return new Promise((resolve) => {
+                    firebase.auth().onAuthStateChanged(async (user) => {
+                        if (user) {
+                            this.state.currentUser = user;
+                            this.state.isLoggedIn = true;
+                            this.hideAuthModal();
+                            
+                            // Show redirect overlay and redirect to home page
+                            this.showRedirectOverlay();
+                            
+                            setTimeout(() => {
+                                window.location.href = 'home.html';
+                            }, 2000);
+                        } else {
+                            this.state.isLoggedIn = false;
+                            this.state.currentUser = null;
+                        }
+                        resolve();
+                    });
+                });
+            }
+
+            showRedirectOverlay() {
+                this.elements.redirectOverlay.style.display = 'flex';
+            }
+
+            async handleAuthSubmit(e) {
+                e.preventDefault();
+                
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                
+                // Show loading state
+                const originalText = this.elements.authButtonText.textContent;
+                this.elements.authButtonText.innerHTML = '<div class="loading"></div>';
+                this.elements.authButton.disabled = true;
+                
+                try {
+                    let userCredential;
+                    
+                    if (this.elements.authTitle.textContent === 'Create Account') {
+                        const fullName = document.getElementById('fullName').value;
+                        const username = document.getElementById('username').value;
+                        
+                        userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+                        
+                        // Update user profile
+                        await userCredential.user.updateProfile({
+                            displayName: fullName
+                        });
+                        
+                        // Save user data to Firestore
+                        await firebase.firestore().collection('users').doc(userCredential.user.uid).set({
+                            name: fullName,
+                            username: username,
+                            email: email,
+                            createdAt: new Date().toISOString(),
+                            usernameChanges: 0,
+                            lastUsernameChange: null,
+                            bio: '',
+                            followers: [],
+                            following: [],
+                            posts: []
+                        });
+                    } else {
+                        userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+                    }
+                    
+                    this.showNotification('Success', `Welcome ${this.elements.authTitle.textContent === 'Create Account' ? 'to ConnectX' : 'back'}!`);
+                    this.elements.authForm.reset();
+                    this.hideAuthModal();
+                    
+                    // Redirect to home page after successful auth
+                    setTimeout(() => {
+                        window.location.href = 'home.html';
+                    }, 1500);
+                } catch (error) {
+                    this.showNotification('Error', error.message);
+                } finally {
+                    // Reset button state
+                    this.elements.authButtonText.textContent = originalText;
+                    this.elements.authButton.disabled = false;
+                }
+            }
+
+            toggleAuthForm() {
+                if (this.elements.authTitle.textContent === 'Create Account') {
+                    this.elements.authTitle.textContent = 'Sign In';
+                    this.elements.authButtonText.textContent = 'Sign In';
+                    this.elements.toggleAuth.textContent = 'Create Account';
+                    this.elements.fullNameGroup.style.display = 'none';
+                    this.elements.usernameGroup.style.display = 'none';
+                } else {
+                    this.elements.authTitle.textContent = 'Create Account';
+                    this.elements.authButtonText.textContent = 'Create Account';
+                    this.elements.toggleAuth.textContent = 'Sign In';
+                    this.elements.fullNameGroup.style.display = 'block';
+                    this.elements.usernameGroup.style.display = 'block';
+                }
+            }
+
+            showAuthModal() {
+                this.elements.authModal.classList.add('active');
+            }
+
+            hideAuthModal() {
+                this.elements.authModal.classList.remove('active');
+            }
+
+            showNotification(title, message) {
+                this.elements.notificationTitle.textContent = title;
+                this.elements.notificationMessage.textContent = message;
+                this.elements.notification.classList.add('active');
+                
+                setTimeout(() => {
+                    this.elements.notification.classList.remove('active');
+                }, 4000);
+            }
+        }
+
+        // Initialize the keypad when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Firebase if not already initialized
+            if (typeof firebaseConfig !== 'undefined' && !firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            
+            window.connectXKeypad = new ConnectXKeypad();
         });
-        alert("Account created. You can login now.");
-        document.getElementById("signupForm").style.display = "none";
-        document.getElementById("loginForm").style.display = "block";
-      } catch (e) {
-        alert(e.message);
-      }
-      document.getElementById("signupLoading").style.display = "none";
-    };
-
-    // Reset password
-    document.getElementById("resetBtn").onclick = () => {
-      const email = document.getElementById("resetEmail").value;
-      if (!email) { alert("Enter email."); return; }
-      auth.sendPasswordResetEmail(email).then(() => {
-        alert("Reset email sent.");
-        document.getElementById("resetForm").style.display = "none";
-        document.getElementById("loginForm").style.display = "block";
-      }).catch(e => alert(e.message));
-    };
-
-    // Auto redirect if already logged in
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        setTimeout(async () => {
-          try {
-            const docRef = db.collection("users").doc(user.uid);
-            const doc = await docRef.get();
-            if (!doc.exists) {
-              await docRef.set({
-                name: "New User",
-                email: user.email,
-                phone: "",
-                gender: "",
-                referral: "",
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                earnings: 0,
-                enrolled: false,
-                status: "active",
-                require2FA: "no",
-                referrals: [],
-                role: "user"
-              });
-              window.location.href = "user.html";
-            } else {
-              const role = doc.data().role || "user";
-              if (role === "admin") {
-                window.location.href = "admin.html";
-              } else {
-                window.location.href = "user.html";
-              }
-            }
-          } catch (e) {
-            console.error("Auto login failed: ", e.message);
-          }
-        }, 1000);
-      }
-    });
-  </script>
+    </script>
 </body>
 </html>
