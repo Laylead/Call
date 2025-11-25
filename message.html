@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ConnectX - Chat</title>
+    <title>ConnectX - Messages</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -18,31 +18,28 @@
             --card-bg: #ffffff;
             --body-bg: #f5f7fb;
             --text-color: #333333;
-            --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            --shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.12);
-            --transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            --transition-smooth: all 0.3s ease;
-            --border-radius: 16px;
-            --border-radius-small: 12px;
-            --online-color: #4ade80;
-            --away-color: #f59e0b;
-            --busy-color: #ef4444;
-            --offline-color: #9ca3af;
+            --message-sent: #4361ee;
+            --message-received: #f0f0f0;
+            --input-bg: #ffffff;
+            --border-color: #e0e0e0;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            --shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
+            --transition: all 0.3s ease;
+            --border-radius: 12px;
         }
 
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
         }
 
         body {
             background-color: var(--body-bg);
             color: var(--text-color);
-            transition: var(--transition-smooth);
-            min-height: 100vh;
-            overflow-x: hidden;
+            height: 100vh;
+            overflow: hidden;
         }
 
         /* Header */
@@ -56,8 +53,6 @@
             position: sticky;
             top: 0;
             z-index: 100;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
         }
 
         .logo {
@@ -69,7 +64,6 @@
         .logo i {
             color: var(--primary-color);
             font-size: 24px;
-            transition: var(--transition);
         }
 
         .logo h1 {
@@ -79,14 +73,11 @@
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
-            position: relative;
-            overflow: hidden;
         }
 
         .header-actions {
             display: flex;
             gap: 15px;
-            position: relative;
         }
 
         .header-actions i {
@@ -96,34 +87,15 @@
             transition: var(--transition);
             padding: 8px;
             border-radius: 50%;
-            background-color: transparent;
         }
 
         .header-actions i:hover {
             color: var(--primary-color);
             background-color: rgba(67, 97, 238, 0.1);
-            transform: translateY(-2px);
         }
 
-        .notification-badge {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            background-color: var(--warning-color);
-            color: white;
-            border-radius: 50%;
-            width: 18px;
-            height: 18px;
-            font-size: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            animation: pulse 1.5s infinite;
-        }
-
-        /* Main Layout */
-        .chat-container {
+        /* Main Container */
+        .main-container {
             display: flex;
             height: calc(100vh - 70px);
             max-width: 1400px;
@@ -133,41 +105,57 @@
 
         /* Sidebar */
         .sidebar {
-            width: 350px;
+            width: 400px;
             background-color: var(--card-bg);
-            border-right: 1px solid rgba(0, 0, 0, 0.05);
+            border-right: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
-            transition: var(--transition-smooth);
-            box-shadow: var(--shadow);
-            z-index: 10;
+            transition: var(--transition);
         }
 
         .sidebar-header {
             padding: 20px;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
         .sidebar-header h2 {
-            font-size: 18px;
-            font-weight: 600;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .new-chat-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .new-chat-btn:hover {
+            transform: scale(1.05);
         }
 
         .search-container {
             padding: 15px 20px;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            border-bottom: 1px solid var(--border-color);
         }
 
         .search-box {
             display: flex;
             align-items: center;
             background-color: var(--body-bg);
-            border-radius: 25px;
-            padding: 10px 15px;
-            transition: var(--transition-smooth);
+            border-radius: 20px;
+            padding: 12px 15px;
+            transition: var(--transition);
         }
 
         .search-box:focus-within {
@@ -185,37 +173,13 @@
             outline: none;
             flex: 1;
             color: var(--text-color);
-            font-size: 14px;
+            font-size: 15px;
         }
 
-        .sidebar-tabs {
-            display: flex;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-        }
-
-        .sidebar-tab {
-            flex: 1;
-            text-align: center;
-            padding: 15px 0;
-            cursor: pointer;
-            transition: var(--transition-smooth);
-            border-bottom: 3px solid transparent;
-            font-weight: 500;
-        }
-
-        .sidebar-tab.active {
-            color: var(--primary-color);
-            border-bottom-color: var(--primary-color);
-        }
-
-        .sidebar-tab:hover {
-            background-color: rgba(0, 0, 0, 0.02);
-        }
-
-        .sidebar-content {
+        /* Chat List */
+        .chat-list {
             flex: 1;
             overflow-y: auto;
-            padding: 10px 0;
         }
 
         .chat-list-item {
@@ -223,17 +187,16 @@
             align-items: center;
             padding: 15px 20px;
             cursor: pointer;
-            transition: var(--transition-smooth);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+            transition: var(--transition);
+            border-bottom: 1px solid var(--border-color);
         }
 
         .chat-list-item:hover {
-            background-color: rgba(0, 0, 0, 0.03);
+            background-color: rgba(0, 0, 0, 0.02);
         }
 
         .chat-list-item.active {
-            background-color: rgba(67, 97, 238, 0.1);
-            border-left: 3px solid var(--primary-color);
+            background-color: rgba(67, 97, 238, 0.08);
         }
 
         .chat-avatar {
@@ -270,19 +233,15 @@
         }
 
         .status-online {
-            background-color: var(--online-color);
+            background-color: #4ade80;
         }
 
         .status-away {
-            background-color: var(--away-color);
-        }
-
-        .status-busy {
-            background-color: var(--busy-color);
+            background-color: #f59e0b;
         }
 
         .status-offline {
-            background-color: var(--offline-color);
+            background-color: #9ca3af;
         }
 
         .chat-info {
@@ -290,7 +249,7 @@
             min-width: 0;
         }
 
-        .chat-header {
+        .chat-header-info {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -299,7 +258,7 @@
 
         .chat-name {
             font-weight: 600;
-            font-size: 15px;
+            font-size: 16px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -314,15 +273,10 @@
             display: flex;
             align-items: center;
             color: var(--gray-color);
-            font-size: 13px;
+            font-size: 14px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-        }
-
-        .chat-preview i {
-            margin-right: 5px;
-            font-size: 12px;
         }
 
         .unread-badge {
@@ -335,126 +289,45 @@
             margin-left: 5px;
         }
 
-        /* Contacts List */
-        .contacts-list {
-            background-color: var(--card-bg);
-            padding: 15px 20px;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            overflow-x: auto;
-            white-space: nowrap;
-            display: none;
-        }
-
-        .contacts-list.active {
-            display: block;
-        }
-
-        .contacts-scroll {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-
-        .contact-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            cursor: pointer;
-            transition: var(--transition-smooth);
-            min-width: 60px;
-        }
-
-        .contact-item:hover {
-            transform: translateY(-3px);
-        }
-
-        .contact-avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 16px;
-            font-weight: bold;
-            margin-bottom: 5px;
-            position: relative;
-        }
-
-        .contact-avatar img {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-
-        .contact-name {
-            font-size: 12px;
-            color: var(--gray-color);
-            max-width: 60px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .view-all-contacts {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            cursor: pointer;
-            transition: var(--transition-smooth);
-            min-width: 60px;
-            padding: 5px;
-            border-radius: 10px;
-        }
-
-        .view-all-contacts:hover {
-            background-color: rgba(0, 0, 0, 0.03);
-        }
-
-        .view-all-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background-color: var(--body-bg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--gray-color);
-            font-size: 18px;
-            margin-bottom: 5px;
-        }
-
         /* Chat Area */
         .chat-area {
             flex: 1;
             display: flex;
             flex-direction: column;
-            background-color: var(--body-bg);
+            background-color: #ffffff;
             position: relative;
         }
 
-        .chat-header {
-            padding: 15px 20px;
+        /* Conversation Header */
+        .conversation-header {
             background-color: var(--card-bg);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            justify-content: space-between;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
-        .chat-user-info {
+        .conversation-user-info {
             display: flex;
             align-items: center;
             gap: 12px;
         }
 
-        .chat-user-avatar {
-            width: 45px;
-            height: 45px;
+        .conversation-back-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            color: var(--primary-color);
+            cursor: pointer;
+            padding: 8px;
+            margin-right: 5px;
+        }
+
+        .conversation-avatar {
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
             display: flex;
@@ -463,22 +336,22 @@
             color: white;
             font-size: 16px;
             font-weight: bold;
-            position: relative;
         }
 
-        .chat-user-avatar img {
+        .conversation-avatar img {
             width: 100%;
             height: 100%;
             border-radius: 50%;
             object-fit: cover;
         }
 
-        .chat-user-details h3 {
+        .conversation-user-details h3 {
             font-size: 16px;
-            margin-bottom: 3px;
+            font-weight: 600;
+            margin-bottom: 2px;
         }
 
-        .chat-user-details p {
+        .conversation-user-details p {
             color: var(--gray-color);
             font-size: 13px;
             display: flex;
@@ -486,12 +359,12 @@
             gap: 5px;
         }
 
-        .chat-actions {
+        .conversation-actions {
             display: flex;
             gap: 10px;
         }
 
-        .chat-action-btn {
+        .conversation-action-btn {
             width: 40px;
             height: 40px;
             border-radius: 50%;
@@ -499,23 +372,27 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: var(--transition-smooth);
+            transition: var(--transition);
             color: var(--gray-color);
+            background: none;
+            border: none;
         }
 
-        .chat-action-btn:hover {
+        .conversation-action-btn:hover {
             background-color: rgba(0, 0, 0, 0.05);
             color: var(--primary-color);
         }
 
-        .chat-messages {
+        /* Messages Area */
+        .messages-area {
             flex: 1;
             overflow-y: auto;
             padding: 20px;
+            background-color: #ffffff;
             display: flex;
             flex-direction: column;
-            gap: 15px;
-            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23f0f2f5' fill-opacity='0.4' fill-rule='evenodd'/%3E%3C/svg%3E");
+            gap: 10px;
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23f0f2f5' fill-opacity='0.3' fill-rule='evenodd'/%3E%3C/svg%3E");
         }
 
         .message {
@@ -523,8 +400,8 @@
             padding: 12px 16px;
             border-radius: 18px;
             position: relative;
-            animation: messageAppear 0.3s ease-out;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            word-wrap: break-word;
+            animation: messageAppear 0.2s ease-out;
         }
 
         @keyframes messageAppear {
@@ -540,100 +417,95 @@
 
         .message.sent {
             align-self: flex-end;
-            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            background-color: var(--message-sent);
             color: white;
             border-bottom-right-radius: 5px;
         }
 
         .message.received {
             align-self: flex-start;
-            background-color: var(--card-bg);
+            background-color: var(--message-received);
             color: var(--text-color);
             border-bottom-left-radius: 5px;
-            border: 1px solid rgba(0, 0, 0, 0.05);
-        }
-
-        .message-reply {
-            font-size: 12px;
-            padding: 8px 12px;
-            margin-bottom: 8px;
-            border-radius: 10px;
-            background: rgba(0, 0, 0, 0.1);
-            border-left: 3px solid var(--primary-color);
-        }
-
-        .message.received .message-reply {
-            background: rgba(0, 0, 0, 0.05);
-            color: var(--gray-color);
         }
 
         .message-text {
-            font-size: 14px;
+            font-size: 15px;
             line-height: 1.4;
-            margin-bottom: 5px;
-            word-wrap: break-word;
+            margin-bottom: 4px;
+        }
+
+        .message-time {
+            font-size: 11px;
+            opacity: 0.7;
+            text-align: right;
+        }
+
+        .message.received .message-time {
+            text-align: left;
         }
 
         .message-media {
             margin-top: 8px;
-            border-radius: 10px;
+            border-radius: 12px;
             overflow: hidden;
             max-width: 300px;
         }
 
-        .message-media img, .message-media video {
+        .message-media img {
             width: 100%;
             display: block;
         }
 
-        .message-audio {
+        /* Voice Message */
+        .voice-message {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 25px;
             margin-top: 8px;
         }
 
-        .voice-player {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: rgba(0, 0, 0, 0.1);
-            padding: 10px 15px;
-            border-radius: 25px;
+        .message.received .voice-message {
+            background: rgba(0,0,0,0.05);
         }
 
-        .message.received .voice-player {
-            background: rgba(0, 0, 0, 0.05);
-        }
-
-        .play-btn {
-            width: 35px;
-            height: 35px;
+        .voice-play-btn {
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: var(--transition-smooth);
+            transition: all 0.2s;
         }
 
-        .message.received .play-btn {
-            background: rgba(0, 0, 0, 0.1);
+        .message.received .voice-play-btn {
+            background: rgba(0,0,0,0.1);
+            color: var(--text-color);
         }
 
-        .play-btn:hover {
+        .voice-play-btn:hover {
             transform: scale(1.1);
         }
 
         .voice-progress {
             flex: 1;
             height: 4px;
-            background: rgba(255, 255, 255, 0.3);
+            background: rgba(255,255,255,0.3);
             border-radius: 2px;
             position: relative;
             cursor: pointer;
         }
 
         .message.received .voice-progress {
-            background: rgba(0, 0, 0, 0.1);
+            background: rgba(0,0,0,0.1);
         }
 
         .voice-progress-bar {
@@ -651,628 +523,255 @@
             background: var(--primary-color);
         }
 
-        .voice-time {
+        .voice-duration {
             font-size: 12px;
             min-width: 40px;
             text-align: center;
+            opacity: 0.8;
         }
 
-        .message-time {
-            font-size: 11px;
-            opacity: 0.7;
-            text-align: right;
-            margin-top: 5px;
-        }
-
-        .message.received .message-time {
-            text-align: left;
-        }
-
-        .message-reactions {
-            display: flex;
-            gap: 5px;
-            margin-top: 5px;
-            flex-wrap: wrap;
-        }
-
-        .reaction {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            padding: 3px 8px;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            gap: 3px;
-        }
-
-        .message.received .reaction {
-            background: rgba(0, 0, 0, 0.05);
-        }
-
-        .reaction-count {
-            font-size: 10px;
-        }
-
-        .message-options {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            opacity: 0;
-            transition: var(--transition-smooth);
-            display: flex;
-            gap: 5px;
-        }
-
-        .message:hover .message-options {
-            opacity: 1;
-        }
-
-        .message-option {
-            width: 25px;
-            height: 25px;
-            border-radius: 50%;
-            background: rgba(0, 0, 0, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 12px;
-            transition: var(--transition-smooth);
-        }
-
-        .message-option:hover {
-            background: rgba(0, 0, 0, 0.2);
-        }
-
-        .chat-input-area {
-            padding: 15px 20px;
+        /* Input Area */
+        .input-area {
             background-color: var(--card-bg);
-            border-top: 1px solid rgba(0, 0, 0, 0.05);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .reply-indicator {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(67, 97, 238, 0.1);
-            padding: 10px 15px;
-            border-radius: 10px;
-            margin-bottom: 5px;
-            border-left: 3px solid var(--primary-color);
-        }
-
-        .reply-info {
-            flex: 1;
-        }
-
-        .reply-label {
-            font-size: 12px;
-            color: var(--gray-color);
-            margin-bottom: 3px;
-        }
-
-        .reply-content {
-            font-size: 13px;
-            color: var(--text-color);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .cancel-reply {
-            background: none;
-            border: none;
-            color: var(--gray-color);
-            cursor: pointer;
-            transition: var(--transition-smooth);
-            padding: 5px;
-            border-radius: 5px;
-        }
-
-        .cancel-reply:hover {
-            color: var(--warning-color);
-            background: rgba(247, 37, 133, 0.1);
+            padding: 15px 20px;
+            border-top: 1px solid var(--border-color);
         }
 
         .input-container {
             display: flex;
             align-items: flex-end;
-            gap: 10px;
+            gap: 12px;
         }
 
-        .chat-input {
+        .chat-input-wrapper {
             flex: 1;
-            padding: 12px 18px;
-            border: 1px solid var(--body-bg);
-            border-radius: 25px;
-            background: var(--body-bg);
-            color: var(--text-color);
-            font-size: 14px;
-            resize: none;
-            max-height: 120px;
-            min-height: 50px;
-            transition: var(--transition-smooth);
+            background-color: var(--input-bg);
+            border-radius: 24px;
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+            display: flex;
+            align-items: flex-end;
         }
 
-        .chat-input:focus {
-            outline: none;
+        .chat-input-wrapper:focus-within {
             border-color: var(--primary-color);
             box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.1);
         }
 
-        .chat-actions {
-            display: flex;
-            gap: 10px;
-            align-items: center;
+        .chat-input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-size: 16px;
+            line-height: 1.4;
+            max-height: 120px;
+            min-height: 24px;
+            resize: none;
+            padding: 4px 0;
+            font-family: inherit;
         }
 
-        .chat-action-btn {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background: var(--body-bg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: var(--transition-smooth);
+        .chat-input::placeholder {
             color: var(--gray-color);
         }
 
-        .chat-action-btn:hover {
-            background: var(--primary-color);
-            color: white;
-            transform: scale(1.1);
+        .input-actions {
+            display: flex;
+            gap: 5px;
+            margin-left: 10px;
         }
 
-        .send-message-btn {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-            color: white;
+        .input-action-btn {
+            background: none;
             border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            font-size: 20px;
+            color: var(--gray-color);
             cursor: pointer;
-            transition: var(--transition-smooth);
-            box-shadow: 0 3px 10px rgba(67, 97, 238, 0.3);
+            padding: 8px;
+            border-radius: 50%;
+            transition: all 0.2s;
         }
 
-        .send-message-btn:hover {
-            background: linear-gradient(135deg, var(--secondary-color), var(--accent-color));
-            transform: scale(1.1) rotate(15deg);
-            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.4);
-        }
-
-        .send-message-btn:disabled {
-            background: var(--gray-color);
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .send-message-btn:disabled:hover {
-            transform: none;
-        }
-
-        .balance-info {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 15px;
-            background: rgba(67, 97, 238, 0.1);
-            border-radius: 20px;
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
-
-        .balance-amount {
-            font-weight: 600;
+        .input-action-btn:hover {
+            background-color: rgba(0,0,0,0.05);
             color: var(--primary-color);
         }
 
-        /* Voice Recording */
-        .voice-recorder {
-            background-color: var(--body-bg);
-            border-radius: var(--border-radius-small);
-            padding: 20px;
-            margin-bottom: 15px;
-            text-align: center;
-            transition: var(--transition);
-            display: none;
-        }
-
-        .voice-recorder.active {
-            display: block;
-            animation: slideUpFade 0.4s forwards;
-        }
-
-        .voice-recorder.recording {
-            background-color: rgba(247, 37, 133, 0.1);
-            box-shadow: 0 0 0 2px rgba(247, 37, 133, 0.2);
-        }
-
-        .record-btn {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+        .send-btn {
+            background-color: var(--primary-color);
             color: white;
             border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            margin: 0 auto 15px;
             transition: var(--transition);
-            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
-            position: relative;
-            overflow: hidden;
         }
 
-        .record-btn.recording {
-            background: linear-gradient(135deg, var(--warning-color), #ff6b9d);
+        .send-btn:hover {
+            background-color: var(--secondary-color);
+            transform: scale(1.05);
+        }
+
+        .send-btn:disabled {
+            background-color: var(--gray-color);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Voice Recorder */
+        .voice-recorder {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--card-bg);
+            border-radius: 24px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            z-index: 1000;
+            min-width: 200px;
+        }
+
+        .voice-recorder.active {
+            display: flex;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        .recording-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--warning-color);
+            font-weight: 600;
+        }
+
+        .recording-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--warning-color);
             animation: pulse 1.5s infinite;
         }
 
         @keyframes pulse {
-            0% { 
-                transform: scale(1);
-                box-shadow: 0 4px 15px rgba(247, 37, 133, 0.3);
-            }
-            50% { 
-                transform: scale(1.1);
-                box-shadow: 0 6px 25px rgba(247, 37, 133, 0.5);
-            }
-            100% { 
-                transform: scale(1);
-                box-shadow: 0 4px 15px rgba(247, 37, 133, 0.3);
-            }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
-        .voice-visualizer {
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 3px;
-            margin-bottom: 10px;
-        }
-
-        .voice-bar {
-            width: 4px;
-            background: linear-gradient(to top, var(--primary-color), var(--accent-color));
-            border-radius: 2px;
-            transition: height 0.2s ease;
-            animation: wave 1.5s ease-in-out infinite;
-        }
-
-        @keyframes wave {
-            0%, 100% { transform: scaleY(0.5); }
-            50% { transform: scaleY(1); }
-        }
-
-        .voice-duration {
-            color: var(--gray-color);
+        .recording-timer {
             font-size: 14px;
             font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .recording-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        .record-action-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .record-action-btn.send {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .record-action-btn.cancel {
+            background-color: var(--gray-color);
+            color: white;
+        }
+
+        .record-action-btn:hover {
+            transform: scale(1.1);
         }
 
         /* Media Preview */
         .media-preview {
+            position: fixed;
+            bottom: 90px;
+            left: 20px;
+            right: 20px;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
             display: none;
-            margin-bottom: 10px;
-            border-radius: 10px;
-            overflow: hidden;
-            position: relative;
-            max-width: 300px;
+            z-index: 1000;
         }
 
         .media-preview.active {
             display: block;
-            animation: slideUpFade 0.4s forwards;
+            animation: slideUp 0.3s ease-out;
         }
 
-        .media-preview img, .media-preview video {
-            width: 100%;
-            display: block;
-        }
-
-        .remove-media {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background-color: var(--warning-color);
-            color: white;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
+        .media-preview-content {
             display: flex;
             align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: var(--transition);
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            gap: 15px;
         }
 
-        .remove-media:hover {
-            transform: scale(1.1) rotate(90deg);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        .media-preview img {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
         }
 
-        /* Reaction Picker */
-        .reaction-picker {
-            position: absolute;
-            bottom: 70px;
-            background: var(--card-bg);
-            border-radius: 25px;
-            padding: 10px;
-            box-shadow: var(--shadow-hover);
+        .media-preview-actions {
             display: flex;
-            gap: 8px;
-            z-index: 20;
-            display: none;
+            gap: 10px;
+            margin-top: 10px;
         }
 
-        .reaction-picker.active {
-            display: flex;
-            animation: popIn 0.3s ease-out;
-        }
-
-        @keyframes popIn {
-            0% { opacity: 0; transform: scale(0.8) translateY(10px); }
-            100% { opacity: 1; transform: scale(1) translateY(0); }
-        }
-
-        .reaction-option {
-            font-size: 24px;
-            cursor: pointer;
-            transition: var(--transition-smooth);
-            padding: 5px;
-            border-radius: 50%;
-        }
-
-        .reaction-option:hover {
-            transform: scale(1.3);
-            background: rgba(0, 0, 0, 0.05);
-        }
-
-        /* Settings Modal */
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.7);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: var(--transition-smooth);
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
-        }
-
-        .modal.active {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .modal-content {
-            background-color: var(--card-bg);
-            border-radius: var(--border-radius);
-            padding: 25px;
-            width: 90%;
-            max-width: 500px;
-            box-shadow: var(--shadow);
-            transform: translateY(20px) scale(0.95);
-            transition: var(--transition);
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .modal.active .modal-content {
-            transform: translateY(0) scale(1);
-        }
-
-        .modal-header {
-            text-align: center;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .modal-header h2 {
-            margin-bottom: 10px;
-            color: var(--primary-color);
-            position: relative;
-            display: inline-block;
-        }
-
-        .modal-header h2::after {
-            content: '';
-            position: absolute;
-            bottom: -5px;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
-            border-radius: 2px;
-        }
-
-        .close-modal {
-            font-size: 20px;
-            color: var(--gray-color);
-            cursor: pointer;
-            transition: var(--transition);
-            padding: 8px;
-            border-radius: 50%;
-        }
-
-        .close-modal:hover {
-            color: var(--warning-color);
-            background-color: rgba(247, 37, 133, 0.1);
-            transform: rotate(90deg);
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-            position: relative;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 15px 18px;
-            border: 1px solid var(--body-bg);
-            border-radius: var(--border-radius-small);
-            background-color: var(--body-bg);
-            color: var(--text-color);
-            transition: var(--transition);
-            font-size: 15px;
-        }
-
-        .form-group input:focus, .form-group select:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-        }
-
-        .btn {
-            padding: 15px 20px;
+        .preview-action-btn {
+            padding: 8px 16px;
             border: none;
-            border-radius: var(--border-radius-small);
+            border-radius: 6px;
+            font-size: 14px;
             cursor: pointer;
-            font-weight: 600;
-            transition: var(--transition);
-            width: 100%;
-            font-size: 16px;
-            position: relative;
-            overflow: hidden;
+            transition: all 0.2s;
         }
 
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+        .preview-action-btn.send {
+            background-color: var(--primary-color);
             color: white;
-            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
         }
 
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(67, 97, 238, 0.4);
+        .preview-action-btn.cancel {
+            background-color: var(--gray-color);
+            color: white;
         }
 
-        .pricing-info {
-            background: rgba(67, 97, 238, 0.05);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-
-        .pricing-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
-
-        .pricing-item:last-child {
-            margin-bottom: 0;
-        }
-
-        .pricing-label {
-            color: var(--gray-color);
-        }
-
-        .pricing-value {
-            font-weight: 600;
-            color: var(--primary-color);
-        }
-
-        .earnings-info {
-            background: rgba(76, 201, 240, 0.1);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-
-        .earnings-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
-
-        .earnings-item:last-child {
-            margin-bottom: 0;
-        }
-
-        .earnings-label {
-            color: var(--gray-color);
-        }
-
-        .earnings-value {
-            font-weight: 600;
-            color: var(--success-color);
-        }
-
-        /* Notification */
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: var(--card-bg);
-            border-radius: var(--border-radius);
-            padding: 20px;
-            box-shadow: var(--shadow-hover);
-            z-index: 400;
-            transform: translateX(150%) scale(0.9);
-            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            max-width: 300px;
-            border-left: 4px solid var(--primary-color);
-        }
-
-        .notification.active {
-            transform: translateX(0) scale(1);
-        }
-
-        .notification-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 10px;
-        }
-
-        .notification-header i {
-            color: var(--primary-color);
-            font-size: 20px;
-        }
-
-        .notification-header h4 {
-            font-size: 16px;
-        }
-
-        .notification p {
-            font-size: 14px;
-            color: var(--gray-color);
-        }
-
-        /* Empty State */
+        /* Empty States */
         .empty-state {
             display: flex;
             flex-direction: column;
@@ -1285,7 +784,7 @@
         }
 
         .empty-state i {
-            font-size: 60px;
+            font-size: 64px;
             margin-bottom: 20px;
             opacity: 0.5;
         }
@@ -1293,49 +792,21 @@
         .empty-state h3 {
             margin-bottom: 10px;
             font-weight: 600;
+            font-size: 18px;
         }
 
         .empty-state p {
             max-width: 300px;
             line-height: 1.5;
+            font-size: 14px;
         }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 100%;
-                position: absolute;
-                z-index: 20;
-                height: 100%;
-                transform: translateX(-100%);
-            }
-
-            .sidebar.active {
-                transform: translateX(0);
-            }
-
-            .chat-area {
-                width: 100%;
-            }
-
-            .message {
-                max-width: 85%;
-            }
-        }
-
-        @keyframes slideUpFade {
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-
-        /* Loading Animation */
+        /* Loading */
         .loading {
             display: inline-block;
             width: 20px;
             height: 20px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
+            border: 3px solid rgba(255,255,255,0.3);
             border-radius: 50%;
             border-top-color: white;
             animation: spin 1s ease-in-out infinite;
@@ -1350,13 +821,12 @@
             display: flex;
             align-items: center;
             gap: 5px;
-            padding: 10px 15px;
-            background: var(--card-bg);
+            padding: 12px 16px;
+            background-color: var(--message-received);
             border-radius: 18px;
             align-self: flex-start;
             border-bottom-left-radius: 5px;
-            border: 1px solid rgba(0, 0, 0, 0.05);
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             max-width: 70px;
         }
 
@@ -1386,35 +856,86 @@
                 opacity: 1;
             }
         }
+
+        /* Word Counter */
+        .word-counter {
+            font-size: 12px;
+            color: var(--gray-color);
+            text-align: right;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .word-counter.near-limit {
+            color: var(--warning-color);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                position: absolute;
+                z-index: 10;
+                height: 100%;
+            }
+            
+            .chat-area {
+                width: 100%;
+            }
+            
+            .message {
+                max-width: 85%;
+            }
+            
+            .conversation-header {
+                padding: 12px 15px;
+            }
+            
+            .messages-area {
+                padding: 15px;
+            }
+            
+            .input-area {
+                padding: 12px 15px;
+            }
+        }
+
+        /* Hide elements when in conversation view */
+        .conversation-view header,
+        .conversation-view .sidebar {
+            display: none;
+        }
+
+        .conversation-view .chat-area {
+            width: 100%;
+        }
     </style>
 </head>
 <body>
     <!-- Header -->
     <header>
         <div class="logo">
-            <i class="fas fa-phone-alt"></i>
-            <h1>ConnectX</h1>
+            <i class="fas fa-comments"></i>
+            <h1>ConnectX Messages</h1>
         </div>
         <div class="header-actions">
-            <i class="fas fa-cog" id="settingsBtn" title="Settings"></i>
+            <i class="fas fa-cog" id="settingsBtn"></i>
             <a href="home.html" style="text-decoration: none; color: inherit;">
-                <i class="fas fa-home" title="Home"></i>
+                <i class="fas fa-home"></i>
             </a>
-            <div style="position: relative;">
-                <i class="fas fa-bell" id="notificationsBtn" title="Notifications"></i>
-                <div class="notification-badge" id="notificationBadge" style="display: none;">0</div>
-            </div>
-            <i class="fas fa-bars" id="menuToggle" title="Menu"></i>
+            <i class="fas fa-bell" id="notificationsBtn"></i>
         </div>
     </header>
 
-    <!-- Main Chat Container -->
-    <div class="chat-container">
-        <!-- Sidebar -->
-        <div class="sidebar" id="sidebar">
+    <!-- Main Container -->
+    <div class="main-container" id="mainContainer">
+        <!-- Sidebar with Chat List -->
+        <div class="sidebar">
             <div class="sidebar-header">
-                <h2>Messages</h2>
-                <i class="fas fa-edit" id="newChatBtn" title="New Chat"></i>
+                <h2>Conversations</h2>
+                <button class="new-chat-btn" id="newChatBtn">
+                    <i class="fas fa-edit"></i>
+                </button>
             </div>
             
             <div class="search-container">
@@ -1424,14 +945,8 @@
                 </div>
             </div>
             
-            <div class="sidebar-tabs">
-                <div class="sidebar-tab active" data-tab="chats">Chats</div>
-                <div class="sidebar-tab" data-tab="online">Online</div>
-                <div class="sidebar-tab" data-tab="requests">Requests</div>
-            </div>
-            
-            <div class="sidebar-content" id="sidebarContent">
-                <!-- Chats will be loaded here -->
+            <div class="chat-list" id="chatList">
+                <!-- Chat list will be populated here -->
             </div>
         </div>
         
@@ -1440,202 +955,93 @@
             <div class="empty-state" id="emptyState">
                 <i class="fas fa-comments"></i>
                 <h3>No conversation selected</h3>
-                <p>Select a conversation from the sidebar or start a new chat to begin messaging.</p>
+                <p>Select a conversation from the list or start a new chat to begin messaging.</p>
             </div>
             
-            <!-- Contacts List -->
-            <div class="contacts-list" id="contactsList">
-                <div class="contacts-scroll" id="contactsScroll">
-                    <!-- Contacts will be loaded here -->
-                </div>
-            </div>
-            
-            <div class="chat-header" id="chatHeader" style="display: none;">
-                <div class="chat-user-info">
-                    <div class="chat-user-avatar" id="chatUserAvatar">
-                        <!-- Avatar will be loaded here -->
-                    </div>
-                    <div class="chat-user-details">
-                        <h3 id="chatUserName">User Name</h3>
-                        <p id="chatUserStatus">
-                            <span class="status-indicator status-online"></span>
-                            Online
-                        </p>
-                    </div>
-                </div>
-                <div class="chat-actions">
-                    <div class="chat-action-btn" id="viewProfileBtn" title="View Profile">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <div class="chat-action-btn" id="voiceCallBtn" title="Voice Call">
-                        <i class="fas fa-phone-alt"></i>
-                    </div>
-                    <div class="chat-action-btn" id="videoCallBtn" title="Video Call">
-                        <i class="fas fa-video"></i>
-                    </div>
-                    <div class="chat-action-btn" id="chatInfoBtn" title="Chat Info">
-                        <i class="fas fa-info-circle"></i>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="chat-messages" id="chatMessages" style="display: none;">
-                <!-- Messages will be loaded here -->
-            </div>
-            
-            <div class="chat-input-area" id="chatInputArea" style="display: none;">
-                <div class="balance-info">
-                    <i class="fas fa-wallet"></i>
-                    <span>Balance: <span class="balance-amount" id="balanceAmount">₦0</span></span>
-                    <span>• Text: ₦10 • Voice: ₦30/min</span>
-                </div>
-                
-                <div class="reply-indicator" id="replyIndicator" style="display: none;">
-                    <div class="reply-info">
-                        <div class="reply-label">Replying to</div>
-                        <div class="reply-content" id="replyContent">Message content</div>
-                    </div>
-                    <button class="cancel-reply" id="cancelReplyBtn">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                
-                <div class="voice-recorder" id="voiceRecorder">
-                    <button class="record-btn" id="recordBtn">
-                        <i class="fas fa-microphone"></i>
-                    </button>
-                    <div class="voice-visualizer" id="voiceVisualizer"></div>
-                    <div class="voice-duration" id="voiceDuration">00:00</div>
-                </div>
-                
-                <div class="media-preview" id="mediaPreview">
-                    <!-- Media preview will be shown here -->
-                    <div class="remove-media" id="removeMedia">
-                        <i class="fas fa-times"></i>
-                    </div>
-                </div>
-                
-                <div class="input-container">
-                    <div class="chat-actions">
-                        <div class="chat-action-btn" id="attachBtn" title="Attach File">
-                            <i class="fas fa-paperclip"></i>
+            <!-- Conversation View (hidden by default) -->
+            <div class="conversation-view" id="conversationView" style="display: none;">
+                <!-- Conversation Header -->
+                <div class="conversation-header">
+                    <div class="conversation-user-info">
+                        <button class="conversation-back-btn" id="conversationBackBtn">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <div class="conversation-avatar" id="conversationAvatar">
+                            <!-- Avatar will be loaded here -->
                         </div>
-                        <div class="chat-action-btn" id="gifBtn" title="Send GIF">
-                            <i class="fas fa-smile"></i>
-                        </div>
-                        <div class="chat-action-btn" id="voiceBtn" title="Record Voice">
-                            <i class="fas fa-microphone"></i>
+                        <div class="conversation-user-details">
+                            <h3 id="conversationUserName">User Name</h3>
+                            <p id="conversationUserStatus">
+                                <span class="status-indicator status-online"></span>
+                                <span id="statusText">Online</span>
+                            </p>
                         </div>
                     </div>
-                    
-                    <textarea class="chat-input" id="chatInput" placeholder="Type a message..."></textarea>
-                    
-                    <button class="send-message-btn" id="sendMessageBtn">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
+                    <div class="conversation-actions">
+                        <button class="conversation-action-btn" id="viewProfileBtn" title="View Profile">
+                            <i class="fas fa-user"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Messages Area -->
+                <div class="messages-area" id="messagesArea">
+                    <!-- Messages will be loaded here -->
+                </div>
+                
+                <!-- Input Area -->
+                <div class="input-area">
+                    <div class="input-container">
+                        <div class="chat-input-wrapper">
+                            <textarea class="chat-input" id="chatInput" placeholder="Type a message..." rows="1"></textarea>
+                            <div class="input-actions">
+                                <button class="input-action-btn" id="attachBtn" title="Attach File">
+                                    <i class="fas fa-paperclip"></i>
+                                </button>
+                                <button class="input-action-btn" id="voiceBtn" title="Record Voice">
+                                    <i class="fas fa-microphone"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button class="send-btn" id="sendMessageBtn">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                    <div class="word-counter" id="wordCounter">0/35 words</div>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- Reaction Picker -->
-    <div class="reaction-picker" id="reactionPicker">
-        <div class="reaction-option" data-reaction="❤️">❤️</div>
-        <div class="reaction-option" data-reaction="😂">😂</div>
-        <div class="reaction-option" data-reaction="😮">😮</div>
-        <div class="reaction-option" data-reaction="😢">😢</div>
-        <div class="reaction-option" data-reaction="😡">😡</div>
-        <div class="reaction-option" data-reaction="👍">👍</div>
-    </div>
-    
-    <!-- Settings Modal -->
-    <div class="modal" id="settingsModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Chat Settings</h2>
-                <i class="fas fa-times close-modal" id="closeSettingsModal"></i>
-            </div>
-            
-            <div class="pricing-info">
-                <h3 style="margin-bottom: 15px; font-size: 16px;">Current Pricing</h3>
-                <div class="pricing-item">
-                    <span class="pricing-label">Text Message</span>
-                    <span class="pricing-value" id="currentTextPrice">₦10</span>
-                </div>
-                <div class="pricing-item">
-                    <span class="pricing-label">Voice Message (per minute)</span>
-                    <span class="pricing-value" id="currentVoicePrice">₦30</span>
-                </div>
-            </div>
-            
-            <div class="earnings-info">
-                <h3 style="margin-bottom: 15px; font-size: 16px;">Your Earnings</h3>
-                <div class="earnings-item">
-                    <span class="earnings-label">Total Earnings</span>
-                    <span class="earnings-value" id="totalEarnings">₦0</span>
-                </div>
-                <div class="earnings-item">
-                    <span class="earnings-label">Available for Withdrawal</span>
-                    <span class="earnings-value" id="availableEarnings">₦0</span>
-                </div>
-            </div>
-            
-            <div id="customPricingSection" style="display: none;">
-                <h3 style="margin-bottom: 15px; font-size: 16px;">Custom Pricing</h3>
-                <p style="margin-bottom: 15px; font-size: 14px; color: var(--gray-color);">
-                    You've reached the eligibility criteria! You can now set your own pricing.
-                </p>
-                
-                <div class="form-group">
-                    <label for="textMessagePrice">Text Message Price (₦)</label>
-                    <input type="number" id="textMessagePrice" min="5" max="100" value="10">
-                </div>
-                
-                <div class="form-group">
-                    <label for="voiceMessagePrice">Voice Message Price per Minute (₦)</label>
-                    <input type="number" id="voiceMessagePrice" min="10" max="200" value="30">
-                </div>
-                
-                <button class="btn btn-primary" id="savePricingBtn">Save Pricing</button>
-            </div>
-            
-            <div class="form-group">
-                <label for="onlineStatus">Online Status</label>
-                <select id="onlineStatus">
-                    <option value="online">Online</option>
-                    <option value="away">Away</option>
-                    <option value="busy">Busy</option>
-                    <option value="offline">Offline</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="messageSounds">Message Sounds</label>
-                <select id="messageSounds">
-                    <option value="enabled">Enabled</option>
-                    <option value="disabled">Disabled</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="browserNotifications">Browser Notifications</label>
-                <select id="browserNotifications">
-                    <option value="enabled">Enabled</option>
-                    <option value="disabled">Disabled</option>
-                </select>
-            </div>
-            
-            <button class="btn btn-primary" id="saveSettingsBtn">Save Settings</button>
+    <!-- Voice Recorder -->
+    <div class="voice-recorder" id="voiceRecorder">
+        <div class="recording-indicator">
+            <div class="recording-dot"></div>
+            <span>Recording</span>
+        </div>
+        <div class="recording-timer" id="recordingTimer">00:00</div>
+        <div class="recording-actions">
+            <button class="record-action-btn cancel" id="cancelRecordingBtn">
+                <i class="fas fa-times"></i>
+            </button>
+            <button class="record-action-btn send" id="sendRecordingBtn">
+                <i class="fas fa-check"></i>
+            </button>
         </div>
     </div>
     
-    <!-- Notification -->
-    <div class="notification" id="notification">
-        <div class="notification-header">
-            <i class="fas fa-bell"></i>
-            <h4 id="notificationTitle">New Message</h4>
+    <!-- Media Preview -->
+    <div class="media-preview" id="mediaPreview">
+        <div class="media-preview-content">
+            <img id="mediaPreviewImage" src="" alt="Preview">
+            <div>
+                <div id="mediaPreviewName">image.jpg</div>
+                <div class="media-preview-actions">
+                    <button class="preview-action-btn send" id="sendMediaBtn">Send</button>
+                    <button class="preview-action-btn cancel" id="cancelMediaBtn">Cancel</button>
+                </div>
+            </div>
         </div>
-        <p id="notificationMessage">You have a new message</p>
     </div>
 
     <!-- External Configuration -->
@@ -1655,37 +1061,19 @@
             constructor() {
                 this.state = {
                     currentUser: null,
-                    isLoggedIn: false,
                     conversations: [],
                     activeConversation: null,
                     messages: [],
-                    onlineUsers: [],
-                    chatRequests: [],
+                    userProfile: null,
                     mediaFile: null,
                     isRecording: false,
-                    mediaRecorder: null,
-                    audioChunks: [],
                     recordingTimer: null,
                     recordingStartTime: null,
-                    userProfile: null,
-                    balance: 0,
-                    replyingTo: null,
-                    freeMessagesRemaining: 3,
-                    settings: {
-                        onlineStatus: 'online',
-                        messageSounds: 'enabled',
-                        browserNotifications: 'enabled',
-                        textMessagePrice: 10,
-                        voiceMessagePrice: 30
-                    },
-                    agoraClient: null,
-                    agoraLocalAudioTrack: null,
-                    agoraRecording: false,
-                    typingUsers: {},
-                    reactionPickerMessageId: null,
-                    unreadMessages: 0,
-                    activeTab: 'chats',
-                    contacts: []
+                    audioChunks: [],
+                    mediaRecorder: null,
+                    voiceNote: null,
+                    conversationId: null,
+                    isInConversationView: false
                 };
 
                 this.init();
@@ -1696,7 +1084,7 @@
                     // Check if external configuration is loaded
                     if (typeof firebaseConfig === 'undefined') {
                         console.error('Configuration not loaded.');
-                        this.showNotification('Configuration Error', 'Failed to initialize chat. Please refresh.');
+                        this.showError('Configuration Error');
                         return;
                     }
                     
@@ -1705,95 +1093,79 @@
                         firebase.initializeApp(firebaseConfig);
                     }
                     
-                    // Initialize Agora if available
-                    if (typeof AgoraRTC !== 'undefined') {
-                        this.state.agoraClient = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-                    }
-                    
                     this.setupDOMReferences();
                     this.setupEventListeners();
                     await this.checkAuthStatus();
                     await this.loadUserProfile();
                     await this.loadConversations();
-                    await this.loadContacts();
-                    this.setupRealTimeListeners();
-                    
-                    // Check for conversation ID in URL parameters
                     await this.handleURLParameters();
                     
                     console.log('ConnectX Chat initialized successfully');
                 } catch (error) {
                     console.error('Chat initialization failed:', error);
-                    this.showNotification('Initialization Error', 'Failed to initialize chat. Please refresh.');
+                    this.showError('Initialization Error');
                 }
             }
 
             setupDOMReferences() {
                 this.elements = {
-                    sidebar: document.getElementById('sidebar'),
-                    menuToggle: document.getElementById('menuToggle'),
-                    sidebarContent: document.getElementById('sidebarContent'),
+                    // Main container
+                    mainContainer: document.getElementById('mainContainer'),
+                    
+                    // Sidebar elements
+                    chatList: document.getElementById('chatList'),
+                    searchChats: document.getElementById('searchChats'),
+                    newChatBtn: document.getElementById('newChatBtn'),
+                    
+                    // Chat area elements
                     chatArea: document.getElementById('chatArea'),
                     emptyState: document.getElementById('emptyState'),
-                    contactsList: document.getElementById('contactsList'),
-                    contactsScroll: document.getElementById('contactsScroll'),
-                    chatHeader: document.getElementById('chatHeader'),
-                    chatUserAvatar: document.getElementById('chatUserAvatar'),
-                    chatUserName: document.getElementById('chatUserName'),
-                    chatUserStatus: document.getElementById('chatUserStatus'),
-                    chatMessages: document.getElementById('chatMessages'),
-                    chatInputArea: document.getElementById('chatInputArea'),
-                    balanceAmount: document.getElementById('balanceAmount'),
+                    
+                    // Conversation view elements
+                    conversationView: document.getElementById('conversationView'),
+                    conversationBackBtn: document.getElementById('conversationBackBtn'),
+                    conversationAvatar: document.getElementById('conversationAvatar'),
+                    conversationUserName: document.getElementById('conversationUserName'),
+                    conversationUserStatus: document.getElementById('conversationUserStatus'),
+                    statusText: document.getElementById('statusText'),
+                    viewProfileBtn: document.getElementById('viewProfileBtn'),
+                    messagesArea: document.getElementById('messagesArea'),
                     chatInput: document.getElementById('chatInput'),
                     sendMessageBtn: document.getElementById('sendMessageBtn'),
                     attachBtn: document.getElementById('attachBtn'),
-                    gifBtn: document.getElementById('gifBtn'),
                     voiceBtn: document.getElementById('voiceBtn'),
+                    wordCounter: document.getElementById('wordCounter'),
+                    
+                    // Voice recording elements
                     voiceRecorder: document.getElementById('voiceRecorder'),
-                    recordBtn: document.getElementById('recordBtn'),
-                    voiceVisualizer: document.getElementById('voiceVisualizer'),
-                    voiceDuration: document.getElementById('voiceDuration'),
+                    recordingTimer: document.getElementById('recordingTimer'),
+                    cancelRecordingBtn: document.getElementById('cancelRecordingBtn'),
+                    sendRecordingBtn: document.getElementById('sendRecordingBtn'),
+                    
+                    // Media preview elements
                     mediaPreview: document.getElementById('mediaPreview'),
-                    removeMedia: document.getElementById('removeMedia'),
-                    replyIndicator: document.getElementById('replyIndicator'),
-                    replyContent: document.getElementById('replyContent'),
-                    cancelReplyBtn: document.getElementById('cancelReplyBtn'),
-                    settingsBtn: document.getElementById('settingsBtn'),
-                    settingsModal: document.getElementById('settingsModal'),
-                    closeSettingsModal: document.getElementById('closeSettingsModal'),
-                    onlineStatus: document.getElementById('onlineStatus'),
-                    messageSounds: document.getElementById('messageSounds'),
-                    browserNotifications: document.getElementById('browserNotifications'),
-                    saveSettingsBtn: document.getElementById('saveSettingsBtn'),
-                    currentTextPrice: document.getElementById('currentTextPrice'),
-                    currentVoicePrice: document.getElementById('currentVoicePrice'),
-                    totalEarnings: document.getElementById('totalEarnings'),
-                    availableEarnings: document.getElementById('availableEarnings'),
-                    customPricingSection: document.getElementById('customPricingSection'),
-                    textMessagePrice: document.getElementById('textMessagePrice'),
-                    voiceMessagePrice: document.getElementById('voiceMessagePrice'),
-                    savePricingBtn: document.getElementById('savePricingBtn'),
-                    notification: document.getElementById('notification'),
-                    notificationTitle: document.getElementById('notificationTitle'),
-                    notificationMessage: document.getElementById('notificationMessage'),
-                    notificationBadge: document.getElementById('notificationBadge'),
-                    newChatBtn: document.getElementById('newChatBtn'),
-                    searchChats: document.getElementById('searchChats'),
-                    sidebarTabs: document.querySelectorAll('.sidebar-tab'),
-                    reactionPicker: document.getElementById('reactionPicker'),
-                    voiceCallBtn: document.getElementById('voiceCallBtn'),
-                    videoCallBtn: document.getElementById('videoCallBtn'),
-                    chatInfoBtn: document.getElementById('chatInfoBtn'),
-                    viewProfileBtn: document.getElementById('viewProfileBtn')
+                    mediaPreviewImage: document.getElementById('mediaPreviewImage'),
+                    mediaPreviewName: document.getElementById('mediaPreviewName'),
+                    sendMediaBtn: document.getElementById('sendMediaBtn'),
+                    cancelMediaBtn: document.getElementById('cancelMediaBtn')
                 };
             }
 
             setupEventListeners() {
-                // Navigation Events
-                this.elements.menuToggle.addEventListener('click', () => this.toggleSidebar());
+                // Navigation
+                this.elements.newChatBtn.addEventListener('click', () => this.startNewChat());
+                this.elements.conversationBackBtn.addEventListener('click', () => this.exitConversationView());
+                this.elements.viewProfileBtn.addEventListener('click', () => this.viewUserProfile());
                 
-                // Chat Input Events
-                this.elements.chatInput.addEventListener('input', () => this.handleTyping());
+                // Search
+                this.elements.searchChats.addEventListener('input', () => this.filterConversations());
+                
+                // Message Input
+                this.elements.chatInput.addEventListener('input', () => {
+                    this.handleInputResize();
+                    this.updateWordCounter();
+                });
+                
                 this.elements.chatInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -1803,60 +1175,26 @@
                 
                 this.elements.sendMessageBtn.addEventListener('click', () => this.sendMessage());
                 this.elements.attachBtn.addEventListener('click', () => this.handleAttachFile());
-                this.elements.gifBtn.addEventListener('click', () => this.handleGifPicker());
                 this.elements.voiceBtn.addEventListener('click', () => this.toggleVoiceRecording());
-                this.elements.recordBtn.addEventListener('click', () => this.toggleVoiceRecording());
                 
-                // Reply Events
-                this.elements.cancelReplyBtn.addEventListener('click', () => this.cancelReply());
+                // Voice Recording
+                this.elements.cancelRecordingBtn.addEventListener('click', () => this.cancelRecording());
+                this.elements.sendRecordingBtn.addEventListener('click', () => this.sendVoiceMessage());
                 
-                // Settings Events
-                this.elements.settingsBtn.addEventListener('click', () => this.showSettingsModal());
-                this.elements.closeSettingsModal.addEventListener('click', () => this.hideSettingsModal());
-                this.elements.saveSettingsBtn.addEventListener('click', () => this.saveSettings());
-                this.elements.savePricingBtn.addEventListener('click', () => this.saveCustomPricing());
-                
-                // Media Events
-                this.elements.removeMedia.addEventListener('click', () => this.clearMediaPreview());
-                
-                // New Chat Events
-                this.elements.newChatBtn.addEventListener('click', () => this.startNewChat());
-                
-                // Search Events
-                this.elements.searchChats.addEventListener('input', () => this.filterConversations());
-                
-                // Tab Events
-                this.elements.sidebarTabs.forEach(tab => {
-                    tab.addEventListener('click', () => {
-                        const tabName = tab.getAttribute('data-tab');
-                        this.switchTab(tabName);
-                    });
-                });
-                
-                // Reaction Events
-                document.addEventListener('click', (e) => {
-                    if (!this.elements.reactionPicker.contains(e.target)) {
-                        this.hideReactionPicker();
-                    }
-                });
-                
-                // Call Events
-                this.elements.voiceCallBtn.addEventListener('click', () => this.startVoiceCall());
-                this.elements.videoCallBtn.addEventListener('click', () => this.startVideoCall());
-                this.elements.chatInfoBtn.addEventListener('click', () => this.showChatInfo());
-                this.elements.viewProfileBtn.addEventListener('click', () => this.viewUserProfile());
-                
-                // Notification permission
-                this.requestNotificationPermission();
+                // Media Preview
+                this.elements.sendMediaBtn.addEventListener('click', () => this.sendMediaMessage());
+                this.elements.cancelMediaBtn.addEventListener('click', () => this.cancelMedia());
             }
 
             async handleURLParameters() {
                 const urlParams = new URLSearchParams(window.location.search);
                 const conversationId = urlParams.get('conversation');
+                const userId = urlParams.get('user');
                 
                 if (conversationId) {
-                    // Load the conversation from URL parameter
-                    await this.selectConversation(conversationId);
+                    await this.loadConversation(conversationId);
+                } else if (userId) {
+                    await this.startConversation(userId);
                 }
             }
 
@@ -1865,9 +1203,7 @@
                     firebase.auth().onAuthStateChanged(async (user) => {
                         if (user) {
                             this.state.currentUser = user;
-                            this.state.isLoggedIn = true;
                         } else {
-                            // Redirect to index.html if not logged in
                             window.location.href = 'index.html';
                         }
                         resolve();
@@ -1879,156 +1215,16 @@
                 if (!this.state.currentUser) return;
 
                 try {
-                    // Set up real-time listener for user profile
-                    firebase.firestore()
+                    const userDoc = await firebase.firestore()
                         .collection('users')
                         .doc(this.state.currentUser.uid)
-                        .onSnapshot(doc => {
-                            if (doc.exists) {
-                                this.state.userProfile = doc.data();
-                                this.state.balance = this.state.userProfile.balance || 0;
-                                this.state.freeMessagesRemaining = 3 - (this.state.userProfile.freeMessagesUsed || 0);
-                                
-                                // Update UI
-                                this.elements.balanceAmount.textContent = `₦${this.state.balance}`;
-                                
-                                // Check if user is eligible for custom pricing
-                                this.checkCustomPricingEligibility();
-                                
-                                // Update settings with user's custom pricing if available
-                                if (this.state.userProfile.customPricing) {
-                                    this.state.settings.textMessagePrice = this.state.userProfile.customPricing.text || 10;
-                                    this.state.settings.voiceMessagePrice = this.state.userProfile.customPricing.voice || 30;
-                                }
-                                
-                                // Update pricing display
-                                this.elements.currentTextPrice.textContent = `₦${this.state.settings.textMessagePrice}`;
-                                this.elements.currentVoicePrice.textContent = `₦${this.state.settings.voiceMessagePrice}`;
-                                
-                                // Update earnings
-                                const totalEarnings = this.state.userProfile.totalEarnings || 0;
-                                const availableEarnings = this.state.userProfile.availableEarnings || 0;
-                                this.elements.totalEarnings.textContent = `₦${totalEarnings}`;
-                                this.elements.availableEarnings.textContent = `₦${availableEarnings}`;
-                            }
-                        }, error => {
-                            console.error('Error loading user profile:', error);
-                        });
+                        .get();
+                    
+                    if (userDoc.exists) {
+                        this.state.userProfile = userDoc.data();
+                    }
                 } catch (error) {
                     console.error('Error loading user profile:', error);
-                }
-            }
-
-            async loadContacts() {
-                if (!this.state.currentUser || !this.state.userProfile) return;
-
-                try {
-                    // Get user's followers and following
-                    const followers = this.state.userProfile.followers || [];
-                    const following = this.state.userProfile.following || [];
-                    
-                    // Combine and deduplicate
-                    const contactIds = [...new Set([...followers, ...following])];
-                    
-                    // Fetch user data for each contact
-                    const contactsPromises = contactIds.map(async (userId) => {
-                        const userDoc = await firebase.firestore()
-                            .collection('users')
-                            .doc(userId)
-                            .get();
-                        
-                        if (userDoc.exists) {
-                            return {
-                                id: userId,
-                                ...userDoc.data()
-                            };
-                        }
-                        return null;
-                    });
-                    
-                    const contacts = await Promise.all(contactsPromises);
-                    this.state.contacts = contacts.filter(contact => contact !== null);
-                    
-                    this.renderContacts();
-                } catch (error) {
-                    console.error('Error loading contacts:', error);
-                }
-            }
-
-            renderContacts() {
-                if (!this.state.contacts.length) {
-                    this.elements.contactsList.style.display = 'none';
-                    return;
-                }
-
-                this.elements.contactsList.style.display = 'block';
-                this.elements.contactsList.classList.add('active');
-                
-                // Show first 10 contacts, add view all button if more
-                const displayContacts = this.state.contacts.slice(0, 10);
-                
-                this.elements.contactsScroll.innerHTML = displayContacts.map(contact => {
-                    return `
-                        <div class="contact-item" data-user-id="${contact.id}">
-                            <div class="contact-avatar">
-                                ${contact.profilePicture ? 
-                                    `<img src="${contact.profilePicture}" alt="${contact.name}">` :
-                                    `${contact.name.charAt(0).toUpperCase()}`
-                                }
-                                <div class="status-indicator status-${contact.onlineStatus || 'offline'}"></div>
-                            </div>
-                            <div class="contact-name">${contact.name}</div>
-                        </div>
-                    `;
-                }).join('');
-                
-                // Add view all button if there are more contacts
-                if (this.state.contacts.length > 10) {
-                    this.elements.contactsScroll.innerHTML += `
-                        <div class="view-all-contacts" id="viewAllContactsBtn">
-                            <div class="view-all-icon">
-                                <i class="fas fa-ellipsis-h"></i>
-                            </div>
-                            <div class="contact-name">View All</div>
-                        </div>
-                    `;
-                    
-                    // Add event listener to view all button
-                    document.getElementById('viewAllContactsBtn').addEventListener('click', () => {
-                        this.showAllContacts();
-                    });
-                }
-                
-                // Add event listeners to contact items
-                this.elements.contactsScroll.querySelectorAll('.contact-item').forEach(item => {
-                    item.addEventListener('click', () => {
-                        const userId = item.getAttribute('data-user-id');
-                        this.startConversation(userId);
-                    });
-                });
-            }
-
-            showAllContacts() {
-                // In a real implementation, this would open a modal with all contacts
-                // For demo purposes, we'll just show a notification
-                this.showNotification('All Contacts', `You have ${this.state.contacts.length} contacts`);
-            }
-
-            checkCustomPricingEligibility() {
-                if (!this.state.userProfile) return false;
-                
-                const followers = this.state.userProfile.followers ? this.state.userProfile.followers.length : 0;
-                const totalComments = this.state.userProfile.totalComments || 0;
-                const totalLikes = this.state.userProfile.totalLikes || 0;
-                
-                const isEligible = followers >= 1000 && totalComments >= 200 && totalLikes >= 500;
-                
-                if (isEligible) {
-                    this.elements.customPricingSection.style.display = 'block';
-                    return true;
-                } else {
-                    this.elements.customPricingSection.style.display = 'none';
-                    return false;
                 }
             }
 
@@ -2036,7 +1232,6 @@
                 if (!this.state.currentUser) return;
 
                 try {
-                    // Get conversations where current user is a participant
                     const conversationsSnapshot = await firebase.firestore()
                         .collection('conversations')
                         .where('participants', 'array-contains', this.state.currentUser.uid)
@@ -2049,21 +1244,23 @@
                     }));
                     
                     this.renderConversations();
+                    
+                    // Set up real-time listener for conversations
+                    this.setupConversationsListener();
                 } catch (error) {
                     console.error('Error loading conversations:', error);
                 }
             }
 
-            setupRealTimeListeners() {
+            setupConversationsListener() {
                 if (!this.state.currentUser) return;
                 
-                // Listen for new messages in real-time
                 firebase.firestore()
                     .collection('conversations')
                     .where('participants', 'array-contains', this.state.currentUser.uid)
                     .onSnapshot(snapshot => {
                         snapshot.docChanges().forEach(change => {
-                            if (change.type === 'modified') {
+                            if (change.type === 'added' || change.type === 'modified') {
                                 const conversation = {
                                     id: change.doc.id,
                                     ...change.doc.data()
@@ -2079,43 +1276,16 @@
                                 
                                 // Re-render conversations
                                 this.renderConversations();
-                                
-                                // If this is the active conversation, load messages
-                                if (this.state.activeConversation && this.state.activeConversation.id === conversation.id) {
-                                    this.loadMessages(conversation.id);
-                                }
-                                
-                                // Show notification for new messages
-                                if (change.doc.data().lastMessageSender !== this.state.currentUser.uid) {
-                                    this.handleNewMessageNotification(conversation);
-                                }
                             }
                         });
                     }, error => {
-                        console.error('Error in real-time listener:', error);
-                    });
-                
-                // Listen for online users
-                firebase.firestore()
-                    .collection('users')
-                    .where('onlineStatus', '==', 'online')
-                    .onSnapshot(snapshot => {
-                        this.state.onlineUsers = snapshot.docs
-                            .filter(doc => doc.id !== this.state.currentUser.uid)
-                            .map(doc => ({
-                                id: doc.id,
-                                ...doc.data()
-                            }));
-                        
-                        if (this.state.activeTab === 'online') {
-                            this.renderOnlineUsers();
-                        }
+                        console.error('Error in conversations listener:', error);
                     });
             }
 
             renderConversations() {
                 if (!this.state.conversations.length) {
-                    this.elements.sidebarContent.innerHTML = `
+                    this.elements.chatList.innerHTML = `
                         <div class="empty-state">
                             <i class="fas fa-comments"></i>
                             <h3>No conversations yet</h3>
@@ -2125,7 +1295,7 @@
                     return;
                 }
 
-                this.elements.sidebarContent.innerHTML = this.state.conversations.map(conversation => {
+                this.elements.chatList.innerHTML = this.state.conversations.map(conversation => {
                     // Get the other participant's ID
                     const otherParticipantId = conversation.participants.find(id => id !== this.state.currentUser.uid);
                     const otherParticipant = conversation.participantsData ? conversation.participantsData[otherParticipantId] : null;
@@ -2133,27 +1303,23 @@
                     const isActive = this.state.activeConversation && this.state.activeConversation.id === conversation.id;
                     const unreadCount = conversation.unreadCount && conversation.unreadCount[this.state.currentUser.uid] || 0;
                     
-                    // Update global unread count
-                    this.updateUnreadBadge();
-                    
                     return `
                         <div class="chat-list-item ${isActive ? 'active' : ''}" data-conversation-id="${conversation.id}">
                             <div class="chat-avatar">
                                 ${otherParticipant && otherParticipant.profilePicture ? 
-                                    `<img src="${otherParticipant.profilePicture}" alt="${otherParticipant.name}">` :
+                                    `<img src="${otherParticipant.profilePicture}" alt="${otherParticipant.name}" loading="lazy">` :
                                     `${otherParticipant ? otherParticipant.name.charAt(0).toUpperCase() : 'U'}`
                                 }
                                 <div class="status-indicator ${otherParticipant ? `status-${otherParticipant.onlineStatus || 'offline'}` : 'status-offline'}"></div>
                             </div>
                             <div class="chat-info">
-                                <div class="chat-header">
+                                <div class="chat-header-info">
                                     <div class="chat-name">${otherParticipant ? otherParticipant.name : 'Unknown User'}</div>
                                     <div class="chat-time">${this.formatTime(conversation.lastMessageAt)}</div>
                                 </div>
                                 <div class="chat-preview">
                                     ${conversation.lastMessageType === 'voice' ? '<i class="fas fa-microphone"></i> Voice message' : 
                                       conversation.lastMessageType === 'image' ? '<i class="fas fa-image"></i> Image' :
-                                      conversation.lastMessageType === 'gif' ? '<i class="fas fa-smile"></i> GIF' :
                                       conversation.lastMessage || 'No messages yet'}
                                     ${unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : ''}
                                 </div>
@@ -2163,67 +1329,95 @@
                 }).join('');
                 
                 // Add event listeners to conversation items
-                this.elements.sidebarContent.querySelectorAll('.chat-list-item').forEach(item => {
+                this.elements.chatList.querySelectorAll('.chat-list-item').forEach(item => {
                     item.addEventListener('click', () => {
                         const conversationId = item.getAttribute('data-conversation-id');
-                        this.selectConversation(conversationId);
+                        this.loadConversation(conversationId);
                     });
                 });
             }
 
-            renderOnlineUsers() {
-                if (!this.state.onlineUsers.length) {
-                    this.elements.sidebarContent.innerHTML = `
+            filterConversations() {
+                const query = this.elements.searchChats.value.toLowerCase();
+                
+                if (!query) {
+                    this.renderConversations();
+                    return;
+                }
+                
+                const filteredConversations = this.state.conversations.filter(conversation => {
+                    const otherParticipantId = conversation.participants.find(id => id !== this.state.currentUser.uid);
+                    const otherParticipant = conversation.participantsData ? conversation.participantsData[otherParticipantId] : null;
+                    
+                    if (!otherParticipant) return false;
+                    
+                    return otherParticipant.name.toLowerCase().includes(query) || 
+                           (otherParticipant.username && otherParticipant.username.toLowerCase().includes(query));
+                });
+                
+                if (!filteredConversations.length) {
+                    this.elements.chatList.innerHTML = `
                         <div class="empty-state">
-                            <i class="fas fa-user-friends"></i>
-                            <h3>No users online</h3>
-                            <p>There are no other users online at the moment.</p>
+                            <i class="fas fa-search"></i>
+                            <h3>No conversations found</h3>
+                            <p>No conversations match your search.</p>
                         </div>
                     `;
                     return;
                 }
-
-                this.elements.sidebarContent.innerHTML = this.state.onlineUsers.map(user => {
+                
+                this.elements.chatList.innerHTML = filteredConversations.map(conversation => {
+                    const otherParticipantId = conversation.participants.find(id => id !== this.state.currentUser.uid);
+                    const otherParticipant = conversation.participantsData ? conversation.participantsData[otherParticipantId] : null;
+                    
+                    const isActive = this.state.activeConversation && this.state.activeConversation.id === conversation.id;
+                    const unreadCount = conversation.unreadCount && conversation.unreadCount[this.state.currentUser.uid] || 0;
+                    
                     return `
-                        <div class="chat-list-item" data-user-id="${user.id}">
+                        <div class="chat-list-item ${isActive ? 'active' : ''}" data-conversation-id="${conversation.id}">
                             <div class="chat-avatar">
-                                ${user.profilePicture ? 
-                                    `<img src="${user.profilePicture}" alt="${user.name}">` :
-                                    `${user.name.charAt(0).toUpperCase()}`
+                                ${otherParticipant && otherParticipant.profilePicture ? 
+                                    `<img src="${otherParticipant.profilePicture}" alt="${otherParticipant.name}" loading="lazy">` :
+                                    `${otherParticipant ? otherParticipant.name.charAt(0).toUpperCase() : 'U'}`
                                 }
-                                <div class="status-indicator status-online"></div>
+                                <div class="status-indicator ${otherParticipant ? `status-${otherParticipant.onlineStatus || 'offline'}` : 'status-offline'}"></div>
                             </div>
                             <div class="chat-info">
-                                <div class="chat-header">
-                                    <div class="chat-name">${user.name}</div>
+                                <div class="chat-header-info">
+                                    <div class="chat-name">${otherParticipant ? otherParticipant.name : 'Unknown User'}</div>
+                                    <div class="chat-time">${this.formatTime(conversation.lastMessageAt)}</div>
                                 </div>
                                 <div class="chat-preview">
-                                    @${user.username}
+                                    ${conversation.lastMessageType === 'voice' ? '<i class="fas fa-microphone"></i> Voice message' : 
+                                      conversation.lastMessageType === 'image' ? '<i class="fas fa-image"></i> Image' :
+                                      conversation.lastMessage || 'No messages yet'}
+                                    ${unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : ''}
                                 </div>
                             </div>
                         </div>
                     `;
                 }).join('');
                 
-                // Add event listeners to online users
-                this.elements.sidebarContent.querySelectorAll('.chat-list-item').forEach(item => {
+                // Add event listeners to filtered conversation items
+                this.elements.chatList.querySelectorAll('.chat-list-item').forEach(item => {
                     item.addEventListener('click', () => {
-                        const userId = item.getAttribute('data-user-id');
-                        this.startConversation(userId);
+                        const conversationId = item.getAttribute('data-conversation-id');
+                        this.loadConversation(conversationId);
                     });
                 });
             }
 
-            async selectConversation(conversationId) {
+            async loadConversation(conversationId) {
                 try {
-                    // Get conversation data
+                    this.showLoading();
+                    
                     const conversationDoc = await firebase.firestore()
                         .collection('conversations')
                         .doc(conversationId)
                         .get();
                     
                     if (!conversationDoc.exists) {
-                        this.showNotification('Error', 'Conversation not found');
+                        this.showError('Conversation not found');
                         return;
                     }
                     
@@ -2233,6 +1427,7 @@
                     };
                     
                     this.state.activeConversation = conversation;
+                    this.state.conversationId = conversationId;
                     
                     // Get the other participant's ID
                     const otherParticipantId = conversation.participants.find(id => id !== this.state.currentUser.uid);
@@ -2250,31 +1445,32 @@
                         };
                     }
                     
-                    // Mark conversation as read
-                    await this.markConversationAsRead(conversationId);
-                    
                     // Update UI
-                    this.showChatArea();
-                    this.updateChatHeader();
-                    this.loadMessages(conversationId);
+                    this.enterConversationView();
+                    this.updateConversationHeader();
+                    await this.loadMessages();
+                    this.setupMessagesListener();
                     
-                    // Re-render conversations to update active state
-                    this.renderConversations();
+                    // Mark conversation as read
+                    await this.markAsRead();
+                    
                 } catch (error) {
-                    console.error('Error selecting conversation:', error);
-                    this.showNotification('Error', 'Failed to load conversation');
+                    console.error('Error loading conversation:', error);
+                    this.showError('Failed to load conversation');
                 }
             }
 
             async startConversation(userId) {
                 try {
+                    this.showLoading();
+                    
                     // Check if conversation already exists
                     const existingConversation = this.state.conversations.find(conv => 
                         conv.participants.includes(userId)
                     );
                     
                     if (existingConversation) {
-                        this.selectConversation(existingConversation.id);
+                        await this.loadConversation(existingConversation.id);
                         return;
                     }
                     
@@ -2285,7 +1481,7 @@
                         .get();
                     
                     if (!userDoc.exists) {
-                        this.showNotification('Error', 'User not found');
+                        this.showError('User not found');
                         return;
                     }
                     
@@ -2298,7 +1494,7 @@
                             [this.state.currentUser.uid]: {
                                 name: this.state.userProfile.name,
                                 profilePicture: this.state.userProfile.profilePicture,
-                                onlineStatus: this.state.settings.onlineStatus
+                                onlineStatus: 'online'
                             },
                             [userId]: {
                                 name: userData.name,
@@ -2322,39 +1518,36 @@
                         .collection('conversations')
                         .add(conversationData);
                     
-                    // Add to local state
-                    const newConversation = {
+                    this.state.activeConversation = {
                         id: conversationRef.id,
-                        ...conversationData
+                        ...conversationData,
+                        user: {
+                            id: userId,
+                            ...userData
+                        }
                     };
                     
-                    this.state.conversations.unshift(newConversation);
-                    this.state.activeConversation = newConversation;
-                    this.state.activeConversation.user = {
-                        id: userId,
-                        ...userData
-                    };
+                    this.state.conversationId = conversationRef.id;
                     
                     // Update UI
-                    this.showChatArea();
-                    this.updateChatHeader();
-                    this.loadMessages(conversationRef.id);
+                    this.enterConversationView();
+                    this.updateConversationHeader();
+                    await this.loadMessages();
+                    this.setupMessagesListener();
                     
-                    // Re-render conversations
-                    this.renderConversations();
-                    
-                    this.showNotification('Conversation Started', `You started a chat with ${userData.name}`);
                 } catch (error) {
                     console.error('Error starting conversation:', error);
-                    this.showNotification('Error', 'Failed to start conversation');
+                    this.showError('Failed to start conversation');
                 }
             }
 
-            async loadMessages(conversationId) {
+            async loadMessages() {
+                if (!this.state.conversationId) return;
+
                 try {
                     const conversationDoc = await firebase.firestore()
                         .collection('conversations')
-                        .doc(conversationId)
+                        .doc(this.state.conversationId)
                         .get();
                     
                     if (conversationDoc.exists) {
@@ -2367,9 +1560,32 @@
                 }
             }
 
+            setupMessagesListener() {
+                if (!this.state.conversationId) return;
+                
+                // Listen for new messages in real-time
+                firebase.firestore()
+                    .collection('conversations')
+                    .doc(this.state.conversationId)
+                    .onSnapshot(doc => {
+                        if (doc.exists) {
+                            const conversation = doc.data();
+                            this.state.messages = conversation.messages || [];
+                            this.renderMessages();
+                            
+                            // Mark as read if it's not our message
+                            if (conversation.lastMessageSender !== this.state.currentUser.uid) {
+                                this.markAsRead();
+                            }
+                        }
+                    }, error => {
+                        console.error('Error in messages listener:', error);
+                    });
+            }
+
             renderMessages() {
                 if (!this.state.messages.length) {
-                    this.elements.chatMessages.innerHTML = `
+                    this.elements.messagesArea.innerHTML = `
                         <div class="empty-state">
                             <i class="fas fa-comment-alt"></i>
                             <h3>No messages yet</h3>
@@ -2379,489 +1595,254 @@
                     return;
                 }
 
-                this.elements.chatMessages.innerHTML = this.state.messages.map(message => {
+                const messagesHTML = this.state.messages.map(message => {
                     const isSent = message.senderId === this.state.currentUser.uid;
                     
-                    let replyHtml = '';
-                    if (message.replyTo) {
-                        const repliedMessage = this.state.messages.find(m => m.id === message.replyTo);
-                        if (repliedMessage) {
-                            const replyText = repliedMessage.type === 'voice' ? 'Voice message' : 
-                                            repliedMessage.type === 'image' ? 'Image' :
-                                            repliedMessage.type === 'gif' ? 'GIF' :
-                                            repliedMessage.content;
-                            replyHtml = `<div class="message-reply">${replyText}</div>`;
-                        }
-                    }
+                    let messageContent = '';
                     
-                    let mediaHtml = '';
-                    if (message.type === 'image') {
-                        mediaHtml = `
-                            <div class="message-media">
-                                <img src="${message.mediaUrl}" alt="Shared image">
-                            </div>
+                    if (message.type === 'text') {
+                        messageContent = `
+                            <div class="message-text">${message.content}</div>
                         `;
-                    } else if (message.type === 'gif') {
-                        mediaHtml = `
+                    } else if (message.type === 'image') {
+                        messageContent = `
                             <div class="message-media">
-                                <img src="${message.mediaUrl}" alt="GIF">
+                                <img src="${message.mediaUrl}" alt="Shared image" loading="lazy">
                             </div>
                         `;
                     } else if (message.type === 'voice') {
-                        mediaHtml = `
-                            <div class="message-audio">
-                                <div class="voice-player">
-                                    <div class="play-btn" id="playBtn-${message.id}">
-                                        <i class="fas fa-play"></i>
-                                    </div>
-                                    <div class="voice-progress" id="voiceProgress-${message.id}">
-                                        <div class="voice-progress-bar" id="voiceProgressBar-${message.id}"></div>
-                                    </div>
-                                    <div class="voice-time" id="voiceTime-${message.id}">${message.duration || '0:00'}</div>
+                        messageContent = `
+                            <div class="voice-message">
+                                <button class="voice-play-btn" data-audio="${message.mediaUrl}">
+                                    <i class="fas fa-play"></i>
+                                </button>
+                                <div class="voice-progress">
+                                    <div class="voice-progress-bar"></div>
                                 </div>
-                                <audio id="audio-${message.id}" src="${message.mediaUrl}" style="display: none;"></audio>
-                            </div>
-                        `;
-                    }
-                    
-                    let reactionsHtml = '';
-                    if (message.reactions && Object.keys(message.reactions).length > 0) {
-                        reactionsHtml = `
-                            <div class="message-reactions">
-                                ${Object.entries(message.reactions).map(([reaction, users]) => `
-                                    <div class="reaction" data-reaction="${reaction}">
-                                        <span>${reaction}</span>
-                                        <span class="reaction-count">${users.length}</span>
-                                    </div>
-                                `).join('')}
+                                <div class="voice-duration">${message.duration || '0:00'}</div>
                             </div>
                         `;
                     }
                     
                     return `
                         <div class="message ${isSent ? 'sent' : 'received'}" data-message-id="${message.id}">
-                            <div class="message-options">
-                                <div class="message-option react-btn" data-message-id="${message.id}">
-                                    <i class="fas fa-smile"></i>
-                                </div>
-                                ${!isSent ? `
-                                    <div class="message-option reply-btn" data-message-id="${message.id}">
-                                        <i class="fas fa-reply"></i>
-                                    </div>
-                                ` : ''}
-                            </div>
-                            ${replyHtml}
-                            <div class="message-text">${message.content || ''}</div>
-                            ${mediaHtml}
-                            ${reactionsHtml}
+                            ${messageContent}
                             <div class="message-time">${this.formatTime(message.createdAt)}</div>
                         </div>
                     `;
                 }).join('');
                 
-                // Add typing indicator if someone is typing
-                if (this.state.typingUsers[this.state.activeConversation.id]) {
-                    const typingUserIds = Object.keys(this.state.typingUsers[this.state.activeConversation.id]);
-                    if (typingUserIds.length > 0) {
-                        const typingIndicator = document.createElement('div');
-                        typingIndicator.className = 'typing-indicator';
-                        typingIndicator.innerHTML = `
-                            <div class="typing-dot"></div>
-                            <div class="typing-dot"></div>
-                            <div class="typing-dot"></div>
-                        `;
-                        this.elements.chatMessages.appendChild(typingIndicator);
-                    }
-                }
+                this.elements.messagesArea.innerHTML = messagesHTML;
                 
-                // Add event listeners to messages
-                this.addMessageEventListeners();
-                
-                // Setup voice players for voice messages
-                this.state.messages.forEach(message => {
-                    if (message.type === 'voice') {
-                        this.setupVoicePlayer(message.id);
-                    }
+                // Add event listeners to voice messages
+                this.elements.messagesArea.querySelectorAll('.voice-play-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const audioUrl = e.target.closest('.voice-play-btn').getAttribute('data-audio');
+                        this.playVoiceMessage(audioUrl, e.target.closest('.voice-message'));
+                    });
                 });
                 
                 // Scroll to bottom
                 this.scrollToBottom();
             }
 
-            addMessageEventListeners() {
-                // React buttons
-                this.elements.chatMessages.querySelectorAll('.react-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const messageId = btn.getAttribute('data-message-id');
-                        this.showReactionPicker(messageId, btn);
-                    });
-                });
-                
-                // Reply buttons
-                this.elements.chatMessages.querySelectorAll('.reply-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const messageId = btn.getAttribute('data-message-id');
-                        this.setupReply(messageId);
-                    });
-                });
-                
-                // Long press for reply on mobile
-                this.elements.chatMessages.querySelectorAll('.message.received').forEach(message => {
-                    let pressTimer;
-                    
-                    message.addEventListener('touchstart', (e) => {
-                        pressTimer = setTimeout(() => {
-                            const messageId = message.getAttribute('data-message-id');
-                            this.setupReply(messageId);
-                        }, 500);
-                    });
-                    
-                    message.addEventListener('touchend', () => {
-                        clearTimeout(pressTimer);
-                    });
-                    
-                    // Right click for desktop
-                    message.addEventListener('contextmenu', (e) => {
-                        e.preventDefault();
-                        const messageId = message.getAttribute('data-message-id');
-                        this.setupReply(messageId);
-                    });
-                });
-                
-                // Reaction items
-                this.elements.chatMessages.querySelectorAll('.reaction').forEach(reaction => {
-                    reaction.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const messageId = reaction.closest('.message').getAttribute('data-message-id');
-                        const reactionEmoji = reaction.getAttribute('data-reaction');
-                        this.addReaction(messageId, reactionEmoji);
-                    });
-                });
-            }
-
-            setupVoicePlayer(messageId) {
-                const audioElement = document.getElementById(`audio-${messageId}`);
-                const playBtn = document.getElementById(`playBtn-${messageId}`);
-                const progress = document.getElementById(`voiceProgress-${messageId}`);
-                const progressBar = document.getElementById(`voiceProgressBar-${messageId}`);
-                const voiceTime = document.getElementById(`voiceTime-${messageId}`);
-                
-                if (!audioElement || !playBtn) return;
-                
-                // Play/pause functionality
-                playBtn.addEventListener('click', () => {
-                    if (audioElement.paused) {
-                        audioElement.play();
-                        playBtn.innerHTML = '<i class="fas fa-pause"></i>';
-                    } else {
-                        audioElement.pause();
-                        playBtn.innerHTML = '<i class="fas fa-play"></i>';
-                    }
-                });
-                
-                // Update progress bar
-                audioElement.addEventListener('timeupdate', () => {
-                    const percent = (audioElement.currentTime / audioElement.duration) * 100;
-                    progressBar.style.width = `${percent}%`;
-                    
-                    // Update time display
-                    const currentTime = this.formatAudioTime(audioElement.currentTime);
-                    const duration = this.formatAudioTime(audioElement.duration);
-                    voiceTime.textContent = `${currentTime}`;
-                });
-                
-                // Seek functionality
-                progress.addEventListener('click', (e) => {
-                    const rect = progress.getBoundingClientRect();
-                    const percent = (e.clientX - rect.left) / rect.width;
-                    audioElement.currentTime = percent * audioElement.duration;
-                });
-                
-                // Reset play button when audio ends
-                audioElement.addEventListener('ended', () => {
-                    playBtn.innerHTML = '<i class="fas fa-play"></i>';
-                    progressBar.style.width = '0%';
-                });
-            }
-
             async sendMessage() {
                 const content = this.elements.chatInput.value.trim();
-                if ((!content && !this.state.mediaFile) || !this.state.activeConversation) return;
-                
-                // Check if this is a reply
-                const isReply = this.state.replyingTo !== null;
-                
-                // Check message type
-                let messageType = 'text';
-                let mediaUrl = null;
-                let duration = null;
-                
-                if (this.state.mediaFile) {
-                    if (this.state.mediaFile.type && this.state.mediaFile.type.startsWith('image/')) {
-                        messageType = 'image';
-                    } else if (this.state.mediaFile instanceof Blob && this.state.mediaFile.type === 'audio/wav') {
-                        messageType = 'voice';
-                        duration = this.elements.voiceDuration.textContent;
-                    } else if (this.state.mediaFile.type === 'gif') {
-                        messageType = 'gif';
-                    }
-                }
-                
-                // Check if user has enough balance or free messages
-                let cost = 0;
-                if (isReply) {
-                    // Replies are free if they match the message type
-                    const originalMessage = this.state.messages.find(m => m.id === this.state.replyingTo);
-                    if (originalMessage && originalMessage.type !== messageType) {
-                        // Can't reply to voice with text or vice versa
-                        this.showNotification('Error', `You can only reply to ${originalMessage.type} messages with the same type`);
+                if (!content && !this.state.mediaFile && !this.state.voiceNote) return;
+
+                // Check word limit
+                if (content) {
+                    const wordCount = content.split(/\s+/).length;
+                    if (wordCount > 35) {
+                        this.showError('Message exceeds 35 word limit');
                         return;
                     }
-                    // Reply is free
-                } else {
-                    // New message - check if user has free messages left
-                    if (this.state.freeMessagesRemaining > 0) {
-                        // Use a free message
-                        this.state.freeMessagesRemaining--;
-                    } else {
-                        // Charge for message
-                        if (messageType === 'text') {
-                            cost = this.state.settings.textMessagePrice;
-                        } else if (messageType === 'voice') {
-                            // Calculate cost based on duration (30 naira per minute)
-                            const minutes = Math.ceil((duration ? this.parseDuration(duration) : 10) / 60);
-                            cost = minutes * this.state.settings.voiceMessagePrice;
-                        } else {
-                            // Media messages have fixed cost
-                            cost = this.state.settings.textMessagePrice;
-                        }
-                        
-                        if (this.state.balance < cost) {
-                            this.showNotification('Insufficient Balance', `You need at least ₦${cost} to send this message`);
-                            return;
-                        }
-                    }
                 }
-                
+
                 try {
-                    // Upload media if present
-                    if (this.state.mediaFile && messageType !== 'gif') {
-                        const fileRef = firebase.storage().ref().child(`messages/${this.state.currentUser.uid}/${Date.now()}_${this.state.mediaFile.name || 'file'}`);
-                        await fileRef.put(this.state.mediaFile);
-                        mediaUrl = await fileRef.getDownloadURL();
-                    } else if (messageType === 'gif') {
-                        mediaUrl = this.state.mediaFile.url;
-                    }
-                    
-                    const message = {
+                    let message = {
                         id: Date.now().toString(),
                         senderId: this.state.currentUser.uid,
                         content: content,
-                        type: messageType,
-                        mediaUrl: mediaUrl,
-                        duration: duration,
-                        createdAt: new Date().toISOString(),
-                        reactions: {}
+                        type: 'text',
+                        createdAt: new Date().toISOString()
                     };
-                    
-                    // Add reply data if this is a reply
-                    if (isReply) {
-                        message.replyTo = this.state.replyingTo;
+
+                    // Handle media files
+                    if (this.state.mediaFile) {
+                        const fileRef = firebase.storage().ref().child(`messages/${this.state.currentUser.uid}/${Date.now()}_${this.state.mediaFile.name}`);
+                        await fileRef.put(this.state.mediaFile);
+                        const mediaUrl = await fileRef.getDownloadURL();
+                        
+                        message.type = 'image';
+                        message.mediaUrl = mediaUrl;
+                        message.content = '';
                     }
-                    
-                    // Deduct balance if applicable
-                    if (cost > 0) {
-                        const newBalance = this.state.balance - cost;
-                        await firebase.firestore().collection('users').doc(this.state.currentUser.uid).update({
-                            balance: newBalance,
-                            freeMessagesUsed: 3 - this.state.freeMessagesRemaining
-                        });
+
+                    // Handle voice notes
+                    if (this.state.voiceNote) {
+                        const fileRef = firebase.storage().ref().child(`voice/${this.state.currentUser.uid}/${Date.now()}_voice.wav`);
+                        await fileRef.put(this.state.voiceNote.blob);
+                        const mediaUrl = await fileRef.getDownloadURL();
                         
-                        this.state.balance = newBalance;
-                        this.elements.balanceAmount.textContent = `₦${newBalance}`;
-                        
-                        // Add earnings to the receiver (50% of cost)
-                        const earnings = Math.floor(cost * 0.5);
-                        const otherParticipantId = this.state.activeConversation.participants.find(id => id !== this.state.currentUser.uid);
-                        
-                        await firebase.firestore().collection('users').doc(otherParticipantId).update({
-                            totalEarnings: firebase.firestore.FieldValue.increment(earnings),
-                            availableEarnings: firebase.firestore.FieldValue.increment(earnings)
-                        });
+                        message.type = 'voice';
+                        message.mediaUrl = mediaUrl;
+                        message.duration = this.state.voiceNote.duration;
+                        message.content = '';
                     }
-                    
+
                     // Add message to conversation
                     await firebase.firestore()
                         .collection('conversations')
-                        .doc(this.state.activeConversation.id)
+                        .doc(this.state.conversationId)
                         .update({
                             messages: firebase.firestore.FieldValue.arrayUnion(message),
-                            lastMessage: content || (messageType === 'voice' ? 'Voice message' : 'Media'),
-                            lastMessageType: messageType,
+                            lastMessage: content || (message.type === 'voice' ? 'Voice message' : 'Media'),
+                            lastMessageType: message.type,
                             lastMessageSender: this.state.currentUser.uid,
                             lastMessageAt: new Date().toISOString(),
-                            [`unreadCount.${otherParticipantId}`]: firebase.firestore.FieldValue.increment(1)
+                            [`unreadCount.${this.state.activeConversation.user.id}`]: firebase.firestore.FieldValue.increment(1)
                         });
-                    
-                    // Clear input and media
+
+                    // Clear input and reset state
                     this.elements.chatInput.value = '';
-                    this.clearMediaPreview();
-                    this.cancelReply();
-                    
-                    // Play sent sound if enabled
-                    if (this.state.settings.messageSounds === 'enabled') {
-                        this.playSound('sent');
-                    }
+                    this.state.mediaFile = null;
+                    this.state.voiceNote = null;
+                    this.hideMediaPreview();
+                    this.handleInputResize();
+                    this.updateWordCounter();
+
                 } catch (error) {
                     console.error('Error sending message:', error);
-                    this.showNotification('Error', 'Failed to send message');
+                    this.showError('Failed to send message');
                 }
             }
 
-            async addReaction(messageId, reaction) {
-                if (!this.state.activeConversation) return;
-                
+            async markAsRead() {
+                if (!this.state.conversationId) return;
+
                 try {
-                    // Get current message
-                    const conversationDoc = await firebase.firestore()
-                        .collection('conversations')
-                        .doc(this.state.activeConversation.id)
-                        .get();
-                    
-                    const conversation = conversationDoc.data();
-                    const messageIndex = conversation.messages.findIndex(m => m.id === messageId);
-                    
-                    if (messageIndex === -1) return;
-                    
-                    // Initialize reactions object if it doesn't exist
-                    if (!conversation.messages[messageIndex].reactions) {
-                        conversation.messages[messageIndex].reactions = {};
-                    }
-                    
-                    // Initialize reaction array if it doesn't exist
-                    if (!conversation.messages[messageIndex].reactions[reaction]) {
-                        conversation.messages[messageIndex].reactions[reaction] = [];
-                    }
-                    
-                    // Check if user already reacted with this emoji
-                    const userIndex = conversation.messages[messageIndex].reactions[reaction].indexOf(this.state.currentUser.uid);
-                    
-                    if (userIndex !== -1) {
-                        // Remove reaction
-                        conversation.messages[messageIndex].reactions[reaction].splice(userIndex, 1);
-                        
-                        // Remove reaction key if empty
-                        if (conversation.messages[messageIndex].reactions[reaction].length === 0) {
-                            delete conversation.messages[messageIndex].reactions[reaction];
-                        }
-                    } else {
-                        // Add reaction
-                        conversation.messages[messageIndex].reactions[reaction].push(this.state.currentUser.uid);
-                    }
-                    
-                    // Update conversation in Firestore
                     await firebase.firestore()
                         .collection('conversations')
-                        .doc(this.state.activeConversation.id)
+                        .doc(this.state.conversationId)
                         .update({
-                            messages: conversation.messages
+                            [`unreadCount.${this.state.currentUser.uid}`]: 0
                         });
-                    
-                    // Reload messages to show updated reactions
-                    this.loadMessages(this.state.activeConversation.id);
                 } catch (error) {
-                    console.error('Error adding reaction:', error);
+                    console.error('Error marking as read:', error);
                 }
             }
 
-            setupReply(messageId) {
-                const message = this.state.messages.find(m => m.id === messageId);
-                if (!message) return;
-                
-                this.state.replyingTo = messageId;
-                
-                // Show reply indicator
-                this.elements.replyIndicator.style.display = 'flex';
-                
-                let previewText = '';
-                if (message.type === 'voice') {
-                    previewText = 'Voice message';
-                } else if (message.type === 'image') {
-                    previewText = 'Image';
-                } else if (message.type === 'gif') {
-                    previewText = 'GIF';
+            // Voice Recording
+            async toggleVoiceRecording() {
+                if (this.state.isRecording) {
+                    this.stopRecording();
                 } else {
-                    previewText = message.content;
-                    if (previewText.length > 30) {
-                        previewText = previewText.substring(0, 30) + '...';
+                    await this.startRecording();
+                }
+            }
+
+            async startRecording() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    
+                    this.state.audioChunks = [];
+                    this.state.mediaRecorder = new MediaRecorder(stream);
+                    
+                    this.state.mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            this.state.audioChunks.push(event.data);
+                        }
+                    };
+                    
+                    this.state.mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(this.state.audioChunks, { type: 'audio/wav' });
+                        const duration = Math.floor((Date.now() - this.state.recordingStartTime) / 1000);
+                        
+                        this.state.voiceNote = {
+                            blob: audioBlob,
+                            duration: this.formatAudioTime(duration)
+                        };
+                        
+                        // Stop all tracks
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+                    
+                    this.state.mediaRecorder.start();
+                    this.state.isRecording = true;
+                    this.state.recordingStartTime = Date.now();
+                    
+                    // Show voice recorder UI
+                    this.elements.voiceRecorder.classList.add('active');
+                    
+                    // Start timer
+                    this.state.recordingTimer = setInterval(() => {
+                        const elapsed = Math.floor((Date.now() - this.state.recordingStartTime) / 1000);
+                        this.elements.recordingTimer.textContent = this.formatAudioTime(elapsed);
+                    }, 1000);
+                    
+                } catch (error) {
+                    console.error('Error starting recording:', error);
+                    this.showError('Could not access microphone');
+                }
+            }
+
+            stopRecording() {
+                if (this.state.mediaRecorder && this.state.isRecording) {
+                    this.state.mediaRecorder.stop();
+                    this.state.isRecording = false;
+                    
+                    // Hide voice recorder UI
+                    this.elements.voiceRecorder.classList.remove('active');
+                    
+                    // Clear timer
+                    if (this.state.recordingTimer) {
+                        clearInterval(this.state.recordingTimer);
+                        this.state.recordingTimer = null;
                     }
                 }
-                
-                this.elements.replyContent.textContent = previewText;
-                
-                this.showNotification('Reply Mode', 'You are now in reply mode. Your next message will be a reply to this message.');
             }
 
-            cancelReply() {
-                this.state.replyingTo = null;
-                this.elements.replyIndicator.style.display = 'none';
+            cancelRecording() {
+                this.stopRecording();
+                this.state.voiceNote = null;
             }
 
-            showReactionPicker(messageId, button) {
-                this.state.reactionPickerMessageId = messageId;
+            sendVoiceMessage() {
+                this.stopRecording();
+                this.sendMessage();
+            }
+
+            playVoiceMessage(audioUrl, voiceElement) {
+                const audio = new Audio(audioUrl);
+                const playBtn = voiceElement.querySelector('.voice-play-btn');
+                const progressBar = voiceElement.querySelector('.voice-progress-bar');
                 
-                // Position the reaction picker
-                const rect = button.getBoundingClientRect();
-                this.elements.reactionPicker.style.left = `${rect.left - 100}px`;
-                this.elements.reactionPicker.style.bottom = `${window.innerHeight - rect.top + 10}px`;
+                playBtn.innerHTML = '<i class="fas fa-pause"></i>';
                 
-                this.elements.reactionPicker.classList.add('active');
-                
-                // Add event listeners to reaction options
-                this.elements.reactionPicker.querySelectorAll('.reaction-option').forEach(option => {
-                    option.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const reaction = option.getAttribute('data-reaction');
-                        this.addReaction(messageId, reaction);
-                        this.hideReactionPicker();
-                    });
+                audio.addEventListener('timeupdate', () => {
+                    const percent = (audio.currentTime / audio.duration) * 100;
+                    progressBar.style.width = `${percent}%`;
                 });
-            }
-
-            hideReactionPicker() {
-                this.elements.reactionPicker.classList.remove('active');
-                this.state.reactionPickerMessageId = null;
-            }
-
-            async handleTyping() {
-                if (!this.state.activeConversation) return;
                 
-                // Update typing status in Firestore
-                await firebase.firestore()
-                    .collection('conversations')
-                    .doc(this.state.activeConversation.id)
-                    .update({
-                        [`typing.${this.state.currentUser.uid}`]: true
-                    });
+                audio.addEventListener('ended', () => {
+                    playBtn.innerHTML = '<i class="fas fa-play"></i>';
+                    progressBar.style.width = '0%';
+                });
                 
-                // Clear typing status after 3 seconds
-                clearTimeout(this.typingTimeout);
-                this.typingTimeout = setTimeout(async () => {
-                    await firebase.firestore()
-                        .collection('conversations')
-                        .doc(this.state.activeConversation.id)
-                        .update({
-                            [`typing.${this.state.currentUser.uid}`]: firebase.firestore.FieldValue.delete()
-                        });
-                }, 3000);
+                if (audio.paused) {
+                    audio.play();
+                } else {
+                    audio.pause();
+                    playBtn.innerHTML = '<i class="fas fa-play"></i>';
+                }
             }
 
-            async handleAttachFile() {
+            // Media Handling
+            handleAttachFile() {
                 const input = document.createElement('input');
                 input.type = 'file';
-                input.accept = 'image/*,video/*';
+                input.accept = 'image/*';
                 input.onchange = (e) => {
                     const file = e.target.files[0];
                     if (file) {
@@ -2871,441 +1852,116 @@
                 input.click();
             }
 
-            async handleGifPicker() {
-                // Simple GIF search implementation
-                const gifSearch = prompt('Search for a GIF:');
-                if (!gifSearch) return;
-                
-                // In a real implementation, you would use a GIF API like Giphy
-                // For demo purposes, we'll use a placeholder
-                const gifUrl = 'https://media.giphy.com/media/3o7aD2d7hy9ktXNDP2/giphy.gif';
-                
-                this.state.mediaFile = {
-                    type: 'gif',
-                    url: gifUrl
-                };
-                
-                this.elements.mediaPreview.innerHTML = `
-                    <img src="${gifUrl}" alt="GIF">
-                `;
-                this.elements.mediaPreview.classList.add('active');
-            }
-
             previewMedia(file) {
                 this.state.mediaFile = file;
                 
-                if (file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        this.elements.mediaPreview.innerHTML = `
-                            <img src="${e.target.result}" alt="Preview">
-                        `;
-                        this.elements.mediaPreview.classList.add('active');
-                    };
-                    reader.readAsDataURL(file);
-                } else if (file.type.startsWith('video/')) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        this.elements.mediaPreview.innerHTML = `
-                            <video controls>
-                                <source src="${e.target.result}" type="${file.type}">
-                            </video>
-                        `;
-                        this.elements.mediaPreview.classList.add('active');
-                    };
-                    reader.readAsDataURL(file);
-                }
-            }
-
-            clearMediaPreview() {
-                this.elements.mediaPreview.innerHTML = '';
-                this.elements.mediaPreview.classList.remove('active');
-                this.state.mediaFile = null;
-                
-                // Stop voice recording if active
-                if (this.state.isRecording) {
-                    this.stopVoiceRecording();
-                }
-            }
-
-            async toggleVoiceRecording() {
-                if (this.state.isRecording) {
-                    this.stopVoiceRecording();
-                } else {
-                    // Clear any existing media
-                    this.clearMediaPreview();
-                    await this.startVoiceRecording();
-                }
-            }
-
-            async startVoiceRecording() {
-                try {
-                    // Use Agora for recording if available
-                    if (this.state.agoraClient) {
-                        // Initialize Agora recording
-                        this.state.agoraLocalAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
-                        this.state.agoraRecording = true;
-                        
-                        // Start visual timer
-                        this.state.recordingStartTime = Date.now();
-                        this.state.recordingTimer = setInterval(() => {
-                            const elapsed = Math.floor((Date.now() - this.state.recordingStartTime) / 1000);
-                            const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
-                            const seconds = (elapsed % 60).toString().padStart(2, '0');
-                            this.elements.voiceDuration.textContent = `${minutes}:${seconds}`;
-                            
-                            // Update visualizer
-                            this.updateVoiceVisualizer();
-                        }, 1000);
-                        
-                        this.state.isRecording = true;
-                        this.elements.voiceRecorder.classList.add('active', 'recording');
-                        this.elements.recordBtn.classList.add('recording');
-                        this.elements.recordBtn.innerHTML = '<i class="fas fa-stop"></i>';
-                    } else {
-                        // Fallback to MediaRecorder API
-                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                        
-                        // Initialize MediaRecorder
-                        this.state.mediaRecorder = new MediaRecorder(stream);
-                        this.state.audioChunks = [];
-                        
-                        this.state.mediaRecorder.ondataavailable = (event) => {
-                            if (event.data.size > 0) {
-                                this.state.audioChunks.push(event.data);
-                            }
-                        };
-                        
-                        this.state.mediaRecorder.onstop = () => {
-                            // Create audio blob
-                            const audioBlob = new Blob(this.state.audioChunks, { type: 'audio/wav' });
-                            this.state.mediaFile = audioBlob;
-                            
-                            // Show audio preview
-                            this.elements.mediaPreview.innerHTML = `
-                                <div class="voice-player">
-                                    <div class="play-btn" id="previewPlayBtn">
-                                        <i class="fas fa-play"></i>
-                                    </div>
-                                    <div class="voice-progress" id="previewVoiceProgress">
-                                        <div class="voice-progress-bar" id="previewVoiceProgressBar"></div>
-                                    </div>
-                                    <div class="voice-time" id="previewVoiceTime">${this.elements.voiceDuration.textContent}</div>
-                                </div>
-                                <audio id="previewAudio" src="${URL.createObjectURL(audioBlob)}" style="display: none;"></audio>
-                            `;
-                            this.elements.mediaPreview.classList.add('active');
-                            
-                            // Setup preview player
-                            this.setupPreviewVoicePlayer();
-                            
-                            // Stop all tracks
-                            stream.getTracks().forEach(track => track.stop());
-                        };
-                        
-                        // Start recording
-                        this.state.mediaRecorder.start();
-                        this.state.isRecording = true;
-                        this.elements.voiceRecorder.classList.add('active', 'recording');
-                        this.elements.recordBtn.classList.add('recording');
-                        this.elements.recordBtn.innerHTML = '<i class="fas fa-stop"></i>';
-                        
-                        // Start timer
-                        this.state.recordingStartTime = Date.now();
-                        this.state.recordingTimer = setInterval(() => {
-                            const elapsed = Math.floor((Date.now() - this.state.recordingStartTime) / 1000);
-                            const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
-                            const seconds = (elapsed % 60).toString().padStart(2, '0');
-                            this.elements.voiceDuration.textContent = `${minutes}:${seconds}`;
-                            
-                            // Update visualizer
-                            this.updateVoiceVisualizer();
-                        }, 1000);
-                    }
-                    
-                } catch (error) {
-                    console.error('Error starting voice recording:', error);
-                    this.showNotification('Recording Error', 'Could not access microphone. Please check permissions.');
-                }
-            }
-
-            stopVoiceRecording() {
-                if (this.state.agoraRecording) {
-                    // Stop Agora recording
-                    if (this.state.agoraLocalAudioTrack) {
-                        this.state.agoraLocalAudioTrack.close();
-                        this.state.agoraLocalAudioTrack = null;
-                    }
-                    this.state.agoraRecording = false;
-                    
-                    // For demo, create a fake audio URL
-                    const audioUrl = "https://example.com/voice-note.wav";
-                    this.state.mediaFile = { type: 'audio/wav', name: 'voice-note.wav' };
-                    
-                    // Show audio preview
-                    this.elements.mediaPreview.innerHTML = `
-                        <div class="voice-player">
-                            <div class="play-btn" id="previewPlayBtn">
-                                <i class="fas fa-play"></i>
-                            </div>
-                            <div class="voice-progress" id="previewVoiceProgress">
-                                <div class="voice-progress-bar" id="previewVoiceProgressBar"></div>
-                            </div>
-                            <div class="voice-time" id="previewVoiceTime">${this.elements.voiceDuration.textContent}</div>
-                        </div>
-                        <audio id="previewAudio" src="${audioUrl}" style="display: none;"></audio>
-                    `;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.elements.mediaPreviewImage.src = e.target.result;
+                    this.elements.mediaPreviewName.textContent = file.name;
                     this.elements.mediaPreview.classList.add('active');
-                    
-                    // Setup preview player
-                    this.setupPreviewVoicePlayer();
-                    
-                    this.state.isRecording = false;
-                    this.elements.voiceRecorder.classList.remove('recording');
-                    this.elements.recordBtn.classList.remove('recording');
-                    this.elements.recordBtn.innerHTML = '<i class="fas fa-microphone"></i>';
-                    
-                    // Clear timer
-                    if (this.state.recordingTimer) {
-                        clearInterval(this.state.recordingTimer);
-                        this.state.recordingTimer = null;
-                    }
-                    
-                    // Reset visualizer
-                    this.resetVoiceVisualizer();
-                    
-                    // Hide voice recorder after a delay
-                    setTimeout(() => {
-                        this.elements.voiceRecorder.classList.remove('active');
-                    }, 2000);
-                } else if (this.state.mediaRecorder && this.state.isRecording) {
-                    this.state.mediaRecorder.stop();
-                    this.state.isRecording = false;
-                    this.elements.voiceRecorder.classList.remove('recording');
-                    this.elements.recordBtn.classList.remove('recording');
-                    this.elements.recordBtn.innerHTML = '<i class="fas fa-microphone"></i>';
-                    
-                    // Clear timer
-                    if (this.state.recordingTimer) {
-                        clearInterval(this.state.recordingTimer);
-                        this.state.recordingTimer = null;
-                    }
-                    
-                    // Reset visualizer
-                    this.resetVoiceVisualizer();
-                    
-                    // Hide voice recorder after a delay
-                    setTimeout(() => {
-                        this.elements.voiceRecorder.classList.remove('active');
-                    }, 2000);
-                }
+                };
+                reader.readAsDataURL(file);
             }
 
-            setupPreviewVoicePlayer() {
-                const audioElement = document.getElementById('previewAudio');
-                const playBtn = document.getElementById('previewPlayBtn');
-                const progress = document.getElementById('previewVoiceProgress');
-                const progressBar = document.getElementById('previewVoiceProgressBar');
-                const voiceTime = document.getElementById('previewVoiceTime');
-                
-                if (!audioElement || !playBtn) return;
-                
-                // Play/pause functionality
-                playBtn.addEventListener('click', () => {
-                    if (audioElement.paused) {
-                        audioElement.play();
-                        playBtn.innerHTML = '<i class="fas fa-pause"></i>';
-                    } else {
-                        audioElement.pause();
-                        playBtn.innerHTML = '<i class="fas fa-play"></i>';
-                    }
-                });
-                
-                // Update progress bar
-                audioElement.addEventListener('timeupdate', () => {
-                    const percent = (audioElement.currentTime / audioElement.duration) * 100;
-                    progressBar.style.width = `${percent}%`;
-                    
-                    // Update time display
-                    const currentTime = this.formatAudioTime(audioElement.currentTime);
-                    voiceTime.textContent = `${currentTime}`;
-                });
-                
-                // Seek functionality
-                progress.addEventListener('click', (e) => {
-                    const rect = progress.getBoundingClientRect();
-                    const percent = (e.clientX - rect.left) / rect.width;
-                    audioElement.currentTime = percent * audioElement.duration;
-                });
-                
-                // Reset play button when audio ends
-                audioElement.addEventListener('ended', () => {
-                    playBtn.innerHTML = '<i class="fas fa-play"></i>';
-                    progressBar.style.width = '0%';
-                });
+            sendMediaMessage() {
+                this.sendMessage();
             }
 
-            updateVoiceVisualizer() {
-                // Create random bars for visualization
-                const barCount = 20;
-                let visualizerHTML = '';
-                
-                for (let i = 0; i < barCount; i++) {
-                    const height = Math.floor(Math.random() * 30) + 5;
-                    visualizerHTML += `<div class="voice-bar" style="height: ${height}px; animation-delay: ${i * 0.05}s;"></div>`;
-                }
-                
-                this.elements.voiceVisualizer.innerHTML = visualizerHTML;
+            cancelMedia() {
+                this.state.mediaFile = null;
+                this.hideMediaPreview();
             }
 
-            resetVoiceVisualizer() {
-                this.elements.voiceVisualizer.innerHTML = '';
-                this.elements.voiceDuration.textContent = '00:00';
-            }
-
-            // Settings Methods
-            showSettingsModal() {
-                // Load current settings
-                this.elements.onlineStatus.value = this.state.settings.onlineStatus;
-                this.elements.messageSounds.value = this.state.settings.messageSounds;
-                this.elements.browserNotifications.value = this.state.settings.browserNotifications;
-                
-                // Show custom pricing if eligible
-                if (this.checkCustomPricingEligibility()) {
-                    this.elements.textMessagePrice.value = this.state.settings.textMessagePrice;
-                    this.elements.voiceMessagePrice.value = this.state.settings.voiceMessagePrice;
-                }
-                
-                this.elements.settingsModal.classList.add('active');
-            }
-
-            hideSettingsModal() {
-                this.elements.settingsModal.classList.remove('active');
-            }
-
-            async saveSettings() {
-                try {
-                    this.state.settings.onlineStatus = this.elements.onlineStatus.value;
-                    this.state.settings.messageSounds = this.elements.messageSounds.value;
-                    this.state.settings.browserNotifications = this.elements.browserNotifications.value;
-                    
-                    // Update user's online status in Firestore
-                    await firebase.firestore()
-                        .collection('users')
-                        .doc(this.state.currentUser.uid)
-                        .update({
-                            onlineStatus: this.state.settings.onlineStatus
-                        });
-                    
-                    this.showNotification('Settings Saved', 'Your chat settings have been updated');
-                    this.hideSettingsModal();
-                } catch (error) {
-                    console.error('Error saving settings:', error);
-                    this.showNotification('Error', 'Failed to save settings');
-                }
-            }
-
-            async saveCustomPricing() {
-                try {
-                    const textPrice = parseInt(this.elements.textMessagePrice.value);
-                    const voicePrice = parseInt(this.elements.voiceMessagePrice.value);
-                    
-                    if (textPrice < 5 || textPrice > 100) {
-                        this.showNotification('Error', 'Text message price must be between ₦5 and ₦100');
-                        return;
-                    }
-                    
-                    if (voicePrice < 10 || voicePrice > 200) {
-                        this.showNotification('Error', 'Voice message price must be between ₦10 and ₦200 per minute');
-                        return;
-                    }
-                    
-                    this.state.settings.textMessagePrice = textPrice;
-                    this.state.settings.voiceMessagePrice = voicePrice;
-                    
-                    // Save to user profile
-                    await firebase.firestore()
-                        .collection('users')
-                        .doc(this.state.currentUser.uid)
-                        .update({
-                            customPricing: {
-                                text: textPrice,
-                                voice: voicePrice
-                            }
-                        });
-                    
-                    // Update UI
-                    this.elements.currentTextPrice.textContent = `₦${textPrice}`;
-                    this.elements.currentVoicePrice.textContent = `₦${voicePrice}`;
-                    
-                    this.showNotification('Pricing Updated', 'Your custom pricing has been saved');
-                } catch (error) {
-                    console.error('Error saving custom pricing:', error);
-                    this.showNotification('Error', 'Failed to save custom pricing');
-                }
+            hideMediaPreview() {
+                this.elements.mediaPreview.classList.remove('active');
             }
 
             // UI Methods
-            toggleSidebar() {
-                this.elements.sidebar.classList.toggle('active');
-            }
-
-            showChatArea() {
+            enterConversationView() {
+                this.state.isInConversationView = true;
+                this.elements.mainContainer.classList.add('conversation-view');
+                this.elements.conversationView.style.display = 'block';
                 this.elements.emptyState.style.display = 'none';
-                this.elements.chatHeader.style.display = 'flex';
-                this.elements.chatMessages.style.display = 'flex';
-                this.elements.chatInputArea.style.display = 'flex';
-                
-                // Show contacts list when a conversation is active
-                this.elements.contactsList.style.display = 'block';
             }
 
-            updateChatHeader() {
+            exitConversationView() {
+                this.state.isInConversationView = false;
+                this.elements.mainContainer.classList.remove('conversation-view');
+                this.elements.conversationView.style.display = 'none';
+                this.elements.emptyState.style.display = 'flex';
+                this.state.activeConversation = null;
+                this.state.conversationId = null;
+                
+                // Update URL to remove conversation parameter
+                const url = new URL(window.location);
+                url.searchParams.delete('conversation');
+                url.searchParams.delete('user');
+                window.history.replaceState({}, '', url);
+            }
+
+            showLoading() {
+                this.elements.conversationUserName.textContent = 'Loading...';
+                this.elements.statusText.textContent = '';
+            }
+
+            updateConversationHeader() {
                 if (!this.state.activeConversation || !this.state.activeConversation.user) return;
                 
                 const user = this.state.activeConversation.user;
                 
-                this.elements.chatUserName.textContent = user.name;
+                this.elements.conversationUserName.textContent = user.name;
                 
                 if (user.profilePicture) {
-                    this.elements.chatUserAvatar.innerHTML = `<img src="${user.profilePicture}" alt="${user.name}">`;
+                    this.elements.conversationAvatar.innerHTML = `<img src="${user.profilePicture}" alt="${user.name}" loading="lazy">`;
                 } else {
-                    this.elements.chatUserAvatar.textContent = user.name.charAt(0).toUpperCase();
+                    this.elements.conversationAvatar.textContent = user.name.charAt(0).toUpperCase();
                 }
                 
-                this.elements.chatUserStatus.innerHTML = `
-                    <span class="status-indicator status-${user.onlineStatus || 'offline'}"></span>
-                    ${user.onlineStatus === 'online' ? 'Online' : 
-                      user.onlineStatus === 'away' ? 'Away' :
-                      user.onlineStatus === 'busy' ? 'Busy' : 'Offline'}
+                const status = user.onlineStatus || 'offline';
+                this.elements.conversationUserStatus.innerHTML = `
+                    <span class="status-indicator status-${status}"></span>
+                    <span id="statusText">${status.charAt(0).toUpperCase() + status.slice(1)}</span>
                 `;
             }
 
-            switchTab(tabName) {
-                this.state.activeTab = tabName;
+            handleInputResize() {
+                const textarea = this.elements.chatInput;
+                textarea.style.height = 'auto';
+                textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+            }
+
+            updateWordCounter() {
+                const content = this.elements.chatInput.value.trim();
+                if (!content) {
+                    this.elements.wordCounter.style.display = 'none';
+                    return;
+                }
                 
-                // Update active tab UI
-                this.elements.sidebarTabs.forEach(tab => {
-                    if (tab.getAttribute('data-tab') === tabName) {
-                        tab.classList.add('active');
-                    } else {
-                        tab.classList.remove('active');
-                    }
-                });
+                const wordCount = content.split(/\s+/).length;
+                this.elements.wordCounter.textContent = `${wordCount}/35 words`;
+                this.elements.wordCounter.style.display = 'block';
                 
-                // Load appropriate content
-                if (tabName === 'chats') {
-                    this.renderConversations();
-                } else if (tabName === 'online') {
-                    this.renderOnlineUsers();
-                } else if (tabName === 'requests') {
-                    this.renderChatRequests();
+                if (wordCount > 30) {
+                    this.elements.wordCounter.classList.add('near-limit');
+                } else {
+                    this.elements.wordCounter.classList.remove('near-limit');
                 }
             }
 
+            scrollToBottom() {
+                setTimeout(() => {
+                    this.elements.messagesArea.scrollTop = this.elements.messagesArea.scrollHeight;
+                }, 100);
+            }
+
+            viewUserProfile() {
+                if (!this.state.activeConversation || !this.state.activeConversation.user) return;
+                const userId = this.state.activeConversation.user.id;
+                window.location.href = `profile.html?user=${userId}`;
+            }
+
             async startNewChat() {
-                // In a real implementation, this would open a modal to search for users
-                // For demo purposes, we'll use a prompt
                 const username = prompt('Enter username to start a chat:');
                 if (!username) return;
                 
@@ -3318,7 +1974,7 @@
                         .get();
                     
                     if (usersSnapshot.empty) {
-                        this.showNotification('Error', 'User not found');
+                        this.showError('User not found');
                         return;
                     }
                     
@@ -3326,241 +1982,8 @@
                     this.startConversation(userDoc.id);
                 } catch (error) {
                     console.error('Error starting new chat:', error);
-                    this.showNotification('Error', 'Failed to start new chat');
+                    this.showError('Failed to start new chat');
                 }
-            }
-
-            filterConversations() {
-                const query = this.elements.searchChats.value.toLowerCase();
-                
-                if (!query) {
-                    this.renderConversations();
-                    return;
-                }
-                
-                const filteredConversations = this.state.conversations.filter(conversation => {
-                    const otherParticipantId = conversation.participants.find(id => id !== this.state.currentUser.uid);
-                    const otherParticipant = conversation.participantsData ? conversation.participantsData[otherParticipantId] : null;
-                    
-                    if (!otherParticipant) return false;
-                    
-                    return otherParticipant.name.toLowerCase().includes(query) || 
-                           (otherParticipant.username && otherParticipant.username.toLowerCase().includes(query));
-                });
-                
-                if (!filteredConversations.length) {
-                    this.elements.sidebarContent.innerHTML = `
-                        <div class="empty-state">
-                            <i class="fas fa-search"></i>
-                            <h3>No conversations found</h3>
-                            <p>No conversations match your search.</p>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                this.elements.sidebarContent.innerHTML = filteredConversations.map(conversation => {
-                    const otherParticipantId = conversation.participants.find(id => id !== this.state.currentUser.uid);
-                    const otherParticipant = conversation.participantsData ? conversation.participantsData[otherParticipantId] : null;
-                    
-                    const isActive = this.state.activeConversation && this.state.activeConversation.id === conversation.id;
-                    const unreadCount = conversation.unreadCount && conversation.unreadCount[this.state.currentUser.uid] || 0;
-                    
-                    return `
-                        <div class="chat-list-item ${isActive ? 'active' : ''}" data-conversation-id="${conversation.id}">
-                            <div class="chat-avatar">
-                                ${otherParticipant && otherParticipant.profilePicture ? 
-                                    `<img src="${otherParticipant.profilePicture}" alt="${otherParticipant.name}">` :
-                                    `${otherParticipant ? otherParticipant.name.charAt(0).toUpperCase() : 'U'}`
-                                }
-                                <div class="status-indicator ${otherParticipant ? `status-${otherParticipant.onlineStatus || 'offline'}` : 'status-offline'}"></div>
-                            </div>
-                            <div class="chat-info">
-                                <div class="chat-header">
-                                    <div class="chat-name">${otherParticipant ? otherParticipant.name : 'Unknown User'}</div>
-                                    <div class="chat-time">${this.formatTime(conversation.lastMessageAt)}</div>
-                                </div>
-                                <div class="chat-preview">
-                                    ${conversation.lastMessageType === 'voice' ? '<i class="fas fa-microphone"></i> Voice message' : 
-                                      conversation.lastMessageType === 'image' ? '<i class="fas fa-image"></i> Image' :
-                                      conversation.lastMessageType === 'gif' ? '<i class="fas fa-smile"></i> GIF' :
-                                      conversation.lastMessage || 'No messages yet'}
-                                    ${unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : ''}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-                
-                // Add event listeners to filtered conversation items
-                this.elements.sidebarContent.querySelectorAll('.chat-list-item').forEach(item => {
-                    item.addEventListener('click', () => {
-                        const conversationId = item.getAttribute('data-conversation-id');
-                        this.selectConversation(conversationId);
-                    });
-                });
-            }
-
-            renderChatRequests() {
-                // In a real implementation, this would show chat requests
-                // For demo purposes, we'll show an empty state
-                this.elements.sidebarContent.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-user-clock"></i>
-                        <h3>No chat requests</h3>
-                        <p>You don't have any pending chat requests.</p>
-                    </div>
-                `;
-            }
-
-            async markConversationAsRead(conversationId) {
-                try {
-                    await firebase.firestore()
-                        .collection('conversations')
-                        .doc(conversationId)
-                        .update({
-                            [`unreadCount.${this.state.currentUser.uid}`]: 0
-                        });
-                    
-                    // Update global unread count
-                    this.updateUnreadBadge();
-                } catch (error) {
-                    console.error('Error marking conversation as read:', error);
-                }
-            }
-
-            updateUnreadBadge() {
-                const totalUnread = this.state.conversations.reduce((total, conversation) => {
-                    return total + (conversation.unreadCount && conversation.unreadCount[this.state.currentUser.uid] || 0);
-                }, 0);
-                
-                this.state.unreadMessages = totalUnread;
-                
-                if (totalUnread > 0) {
-                    this.elements.notificationBadge.textContent = totalUnread;
-                    this.elements.notificationBadge.style.display = 'flex';
-                } else {
-                    this.elements.notificationBadge.style.display = 'none';
-                }
-            }
-
-            viewUserProfile() {
-                if (!this.state.activeConversation || !this.state.activeConversation.user) return;
-                
-                const userId = this.state.activeConversation.user.id;
-                window.location.href = `profile.html?user=${userId}`;
-            }
-
-            handleNewMessageNotification(conversation) {
-                // Play sound if enabled
-                if (this.state.settings.messageSounds === 'enabled') {
-                    this.playSound('received');
-                }
-                
-                // Show browser notification if enabled and user is not focused on the chat
-                if (this.state.settings.browserNotifications === 'enabled' && !document.hasFocus()) {
-                    this.showBrowserNotification(conversation);
-                }
-            }
-
-            playSound(type) {
-                // In a real implementation, you would play actual sound files
-                // For demo purposes, we'll use the Web Audio API to generate a simple sound
-                try {
-                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    const oscillator = audioContext.createOscillator();
-                    const gainNode = audioContext.createGain();
-                    
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioContext.destination);
-                    
-                    if (type === 'received') {
-                        oscillator.frequency.value = 800;
-                    } else {
-                        oscillator.frequency.value = 600;
-                    }
-                    
-                    gainNode.gain.value = 0.1;
-                    
-                    oscillator.start();
-                    
-                    setTimeout(() => {
-                        oscillator.stop();
-                    }, 100);
-                } catch (error) {
-                    console.error('Error playing sound:', error);
-                }
-            }
-
-            showBrowserNotification(conversation) {
-                if (!('Notification' in window)) {
-                    return;
-                }
-                
-                const otherParticipantId = conversation.participants.find(id => id !== this.state.currentUser.uid);
-                const otherParticipant = conversation.participantsData ? conversation.participantsData[otherParticipantId] : null;
-                
-                const title = otherParticipant ? otherParticipant.name : 'New Message';
-                const body = conversation.lastMessageType === 'voice' ? 'Sent a voice message' : 
-                            conversation.lastMessageType === 'image' ? 'Sent an image' :
-                            conversation.lastMessageType === 'gif' ? 'Sent a GIF' :
-                            conversation.lastMessage;
-                
-                const options = {
-                    body: body,
-                    icon: '/favicon.ico',
-                    badge: '/favicon.ico'
-                };
-                
-                // Show notification
-                if (Notification.permission === 'granted') {
-                    new Notification(title, options);
-                }
-            }
-
-            requestNotificationPermission() {
-                if (!('Notification' in window)) {
-                    return;
-                }
-                
-                if (Notification.permission === 'default') {
-                    Notification.requestPermission();
-                }
-            }
-
-            async startVoiceCall() {
-                if (!this.state.activeConversation) return;
-                
-                // In a real implementation, this would start a voice call using Agora
-                this.showNotification('Voice Call', 'Starting voice call...');
-                
-                // For demo purposes, we'll just show a notification
-                setTimeout(() => {
-                    this.showNotification('Voice Call', 'Voice call connected');
-                }, 1000);
-            }
-
-            async startVideoCall() {
-                if (!this.state.activeConversation) return;
-                
-                // In a real implementation, this would start a video call using Agora
-                this.showNotification('Video Call', 'Starting video call...');
-                
-                // For demo purposes, we'll just show a notification
-                setTimeout(() => {
-                    this.showNotification('Video Call', 'Video call connected');
-                }, 1000);
-            }
-
-            showChatInfo() {
-                if (!this.state.activeConversation) return;
-                
-                // In a real implementation, this would show a modal with chat info
-                this.showNotification('Chat Info', 'Showing chat information');
-            }
-
-            scrollToBottom() {
-                this.elements.chatMessages.scrollTop = this.elements.chatMessages.scrollHeight;
             }
 
             // Utility Methods
@@ -3583,28 +2006,11 @@
             formatAudioTime(seconds) {
                 const mins = Math.floor(seconds / 60);
                 const secs = Math.floor(seconds % 60);
-                return `${mins}:${secs.toString().padStart(2, '0')}`;
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
             }
 
-            parseDuration(durationStr) {
-                // Parse duration string like "01:25" to seconds
-                const parts = durationStr.split(':');
-                if (parts.length !== 2) return 0;
-                
-                const minutes = parseInt(parts[0]);
-                const seconds = parseInt(parts[1]);
-                
-                return (minutes * 60) + seconds;
-            }
-
-            showNotification(title, message) {
-                this.elements.notificationTitle.textContent = title;
-                this.elements.notificationMessage.textContent = message;
-                this.elements.notification.classList.add('active');
-                
-                setTimeout(() => {
-                    this.elements.notification.classList.remove('active');
-                }, 4000);
+            showError(message) {
+                alert(message); // In production, use a proper notification system
             }
         }
 
