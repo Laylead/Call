@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConnectX - Find Friends</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3a0ca3;
+            --accent-color: #7209b7;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+            --success-color: #4cc9f0;
+            --warning-color: #f72585;
+            --gray-color: #6c757d;
+            --card-bg: #ffffff;
+            --body-bg: #f5f7fb;
+            --text-color: #333333;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.12);
+            --transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            --transition-smooth: all 0.3s ease;
+            --border-radius: 16px;
+            --border-radius-small: 12px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--body-bg);
+            color: var(--text-color);
+            transition: var(--transition-smooth);
+            min-height: 100vh;
+            padding-bottom: 70px;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        header {
+            background-color: var(--card-bg);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo i {
+            color: var(--primary-color);
+            font-size: 24px;
+            transition: var(--transition);
+        }
+
+        .logo h1 {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo h1::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+            transition: var(--transition);
+        }
+
+        .logo:hover h1::after {
+            width: 100%;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 15px;
+            position: relative;
+        }
+
+        .header-actions i {
+            font-size: 20px;
+            color: var(--gray-color);
+            cursor: pointer;
+            transition: var(--transition);
+            padding: 8px;
+            border-radius: 50%;
+            background-color: transparent;
+        }
+
+        .header-actions i:hover {
+            color: var(--primary-color);
+            background-color: rgba(67, 97, 238, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: var(--warning-color);
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--card-bg);
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+            box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .bottom-nav.hidden {
+            transform: translateY(100%);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            transition: var(--transition);
+            padding: 8px 12px;
+            border-radius: var(--border-radius-small);
+            text-decoration: none;
+            position: relative;
+        }
+
+        .nav-item.active, .nav-item:hover {
+            background-color: rgba(67, 97, 238, 0.1);
+            transform: translateY(-5px);
+        }
+
+        .nav-item i {
+            font-size: 20px;
+            color: var(--gray-color);
+            transition: var(--transition);
+        }
+
+        .nav-item.active i, .nav-item:hover i {
+            color: var(--primary-color);
+        }
+
+        .nav-item span {
+            font-size: 12px;
+            color: var(--gray-color);
+            transition: var(--transition);
+        }
+
+        .nav-item.active span, .nav-item:hover span {
+            color: var(--primary-color);
+        }
+
+        .nav-item::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+            border-radius: 3px;
+            transition: var(--transition);
+        }
+
+        .nav-item.active::after {
+            width: 60%;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -320px;
+            width: 320px;
+            height: 100%;
+            background-color: var(--card-bg);
+            box-shadow: var(--shadow);
+            z-index: 200;
+            transition: var(--transition);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .sidebar.active {
+            left: 0;
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 199;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition-smooth);
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .user-avatar, .user-avatar-small {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            object-fit: cover;
+            transition: var(--transition);
+            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(67, 97, 238, 0.4);
+        }
+
+        .user-avatar-small {
+            width: 40px;
+            height: 40px;
+            font-size: 16px;
+        }
+
+        .user-info h3 {
+            font-size: 18px;
+            margin-bottom: 5px;
+            transition: var(--transition);
+        }
+
+        .user-info p {
+            color: var(--gray-color);
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+        }
+
+        .sidebar-menu li {
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+
+        .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px 15px;
+            border-radius: var(--border-radius-small);
+            color: var(--text-color);
+            text-decoration: none;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar-menu a::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(67, 97, 238, 0.1), transparent);
+            transition: left 0.7s;
+        }
+
+        .sidebar-menu a:hover::before, .sidebar-menu a.active::before {
+            left: 100%;
+        }
+
+        .sidebar-menu a:hover, .sidebar-menu a.active {
+            background-color: rgba(67, 97, 238, 0.1);
+            color: var(--primary-color);
+            transform: translateX(5px);
+        }
+
+        .sidebar-menu i {
+            font-size: 20px;
+            width: 24px;
+            text-align: center;
+            transition: var(--transition);
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Search Section */
+        .search-section {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .search-input-container {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 15px 45px 15px 15px;
+            border: 1px solid var(--body-bg);
+            border-radius: var(--border-radius);
+            background: var(--body-bg);
+            color: var(--text-color);
+            font-size: 16px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray-color);
+        }
+
+        .filter-options {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 15px;
+            background: var(--body-bg);
+            border: none;
+            border-radius: 20px;
+            color: var(--text-color);
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 14px;
+        }
+
+        .filter-btn.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* User Grid */
+        .user-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .user-card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .user-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .user-card-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin: 0 auto 10px;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .user-card-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .user-card-name {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .user-card-username {
+            font-size: 12px;
+            color: var(--gray-color);
+            margin-bottom: 10px;
+        }
+
+        .user-card-bio {
+            font-size: 12px;
+            color: var(--text-color);
+            margin-bottom: 10px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .follow-btn-small {
+            padding: 6px 12px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .follow-btn-small:hover {
+            background: var(--secondary-color);
+        }
+
+        .follow-btn-small.following {
+            background: var(--gray-color);
+        }
+
+        /* Verified Badge */
+        .verified-badge {
+            color: var(--primary-color);
+            font-size: 12px;
+        }
+
+        /* Gender Badge */
+        .gender-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 5px;
+        }
+
+        .gender-male {
+            background-color: rgba(67, 97, 238, 0.1);
+            color: var(--primary-color);
+        }
+
+        .gender-female {
+            background-color: rgba(247, 37, 133, 0.1);
+            color: var(--warning-color);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 280px;
+            }
+            
+            .container {
+                padding: 15px;
+            }
+
+            .user-grid {
+                grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .user-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="logo">
+            <i class="fas fa-phone-alt"></i>
+            <h1>ConnectX</h1>
+        </div>
+        <div class="header-actions">
+            <i class="fas fa-search" id="searchBtn" title="Search"></i>
+            <a href="message.html" style="text-decoration: none; color: inherit;">
+                <i class="fas fa-comments" id="messagesBtn" title="Messages"></i>
+            </a>
+            <div style="position: relative;">
+                <i class="fas fa-bell" id="notificationsBtn" title="Notifications"></i>
+                <div class="notification-badge" id="notificationBadge" style="display: none;">0</div>
+            </div>
+            <i class="fas fa-bars" id="menuToggle" title="Menu"></i>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Search Section -->
+        <div class="search-section">
+            <div class="search-input-container">
+                <input type="text" class="search-input" id="friendsSearch" placeholder="Search for friends...">
+                <i class="fas fa-search search-icon"></i>
+            </div>
+            <div class="filter-options">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="following">Following</button>
+                <button class="filter-btn" data-filter="verified">Verified</button>
+                <button class="filter-btn" data-filter="contacts">Contacts</button>
+            </div>
+        </div>
+
+        <!-- User Grid -->
+        <div class="user-grid" id="friendsResults">
+            <!-- Search results will appear here -->
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <div class="sidebar" id="sidebar">
+        <div class="user-profile" id="sidebarUserProfile">
+            <div class="user-avatar" id="userAvatar">U</div>
+            <div class="user-info">
+                <h3 id="userName">Guest User</h3>
+                <p id="userHandle">@guest</p>
+            </div>
+        </div>
+        <ul class="sidebar-menu">
+            <li><a href="home.html" class="sidebar-link"><i class="fas fa-home"></i> Home</a></li>
+            <li><a href="profile.html" class="sidebar-link"><i class="fas fa-user"></i> Profile</a></li>
+            <li><a href="friends.html" class="sidebar-link active"><i class="fas fa-user-friends"></i> Find Friends</a></li>
+            <li><a href="keypad.html" class="sidebar-link"><i class="fas fa-phone"></i> Keypad</a></li>
+            <li><a href="groups.html" class="sidebar-link"><i class="fas fa-users"></i> Groups & Channels</a></li>
+            <li><a href="mentors.html" class="sidebar-link"><i class="fas fa-user-graduate"></i> Mentors</a></li>
+            <li><a href="smile.html" class="sidebar-link"><i class="fas fa-smile"></i> Smile</a></li>
+            <li><a href="wallet.html" class="sidebar-link"><i class="fas fa-wallet"></i> Wallet</a></li>
+            <li><a href="account.html" class="sidebar-link"><i class="fas fa-user-circle"></i> Account</a></li>
+            <li><a href="#" id="logoutBtn" class="sidebar-link"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+        </ul>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav" id="bottomNav">
+        <a href="home.html" class="nav-item">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </a>
+        <a href="friends.html" class="nav-item active">
+            <i class="fas fa-user-friends"></i>
+            <span>Friends</span>
+        </a>
+        <a href="keypad.html" class="nav-item">
+            <i class="fas fa-phone"></i>
+            <span>Keypad</span>
+        </a>
+        <a href="contacts.html" class="nav-item">
+            <i class="fas fa-address-book"></i>
+            <span>Contacts</span>
+        </a>
+        <a href="profile.html" class="nav-item">
+            <i class="fas fa-user"></i>
+            <span>Profile</span>
+        </a>
+    </div>
+
+    <!-- External Configuration -->
+    <script src="configuration.js"></script>
+
+    <!-- External Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <!-- Friends Page Script -->
+    <script>
+        // Friends Page Application
+        class ConnectXFriends {
+            constructor() {
+                this.state = {
+                    currentUser: null,
+                    isLoggedIn: false,
+                    users: [],
+                    following: [],
+                    searchQuery: '',
+                    currentFilter: 'all'
+                };
+
+                this.init();
+            }
+
+            async init() {
+                try {
+                    // Check if external configuration is loaded
+                    if (typeof firebaseConfig === 'undefined') {
+                        console.error('Configuration not loaded. Using demo mode.');
+                        this.setupDemoMode();
+                    } else {
+                        // Initialize Firebase if not already initialized
+                        if (!firebase.apps.length) {
+                            firebase.initializeApp(firebaseConfig);
+                        }
+                    }
+                    
+                    this.setupDOMReferences();
+                    this.setupEventListeners();
+                    await this.checkAuthStatus();
+                    await this.loadInitialData();
+                    console.log('ConnectX Friends initialized successfully');
+                } catch (error) {
+                    console.error('Friends initialization failed:', error);
+                }
+            }
+
+            setupDemoMode() {
+                // Demo configuration for testing
+                const demoConfig = {
+                    apiKey: "demo-api-key",
+                    authDomain: "connectx-demo.firebaseapp.com",
+                    projectId: "connectx-demo",
+                    storageBucket: "connectx-demo.appspot.com",
+                    messagingSenderId: "123456789",
+                    appId: "demo-app-id"
+                };
+                
+                try {
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(demoConfig);
+                    }
+                    console.log('Demo mode activated');
+                } catch (error) {
+                    console.log('Firebase not available, running in offline mode');
+                }
+            }
+
+            setupDOMReferences() {
+                this.elements = {
+                    menuToggle: document.getElementById('menuToggle'),
+                    sidebar: document.getElementById('sidebar'),
+                    sidebarOverlay: document.getElementById('sidebarOverlay'),
+                    bottomNav: document.getElementById('bottomNav'),
+                    userAvatar: document.getElementById('userAvatar'),
+                    userName: document.getElementById('userName'),
+                    userHandle: document.getElementById('userHandle'),
+                    sidebarUserProfile: document.getElementById('sidebarUserProfile'),
+                    logoutBtn: document.getElementById('logoutBtn'),
+                    friendsSearch: document.getElementById('friendsSearch'),
+                    friendsResults: document.getElementById('friendsResults'),
+                    filterButtons: document.querySelectorAll('.filter-btn')
+                };
+            }
+
+            setupEventListeners() {
+                // Navigation Events
+                this.elements.menuToggle.addEventListener('click', () => this.toggleSidebar());
+                this.elements.sidebarOverlay.addEventListener('click', () => this.toggleSidebar());
+                this.elements.sidebarUserProfile.addEventListener('click', () => {
+                    window.location.href = 'profile.html';
+                });
+                this.elements.logoutBtn.addEventListener('click', (e) => this.handleLogout(e));
+
+                // Search and Filter Events
+                this.elements.friendsSearch.addEventListener('input', (e) => this.handleFriendsSearch(e));
+                this.elements.filterButtons.forEach(btn => {
+                    btn.addEventListener('click', (e) => this.handleFilterChange(e));
+                });
+
+                // Bottom nav scroll behavior
+                let lastScrollTop = 0;
+                window.addEventListener('scroll', () => {
+                    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                    if (scrollTop > lastScrollTop && scrollTop > 100) {
+                        this.elements.bottomNav.classList.add('hidden');
+                    } else {
+                        this.elements.bottomNav.classList.remove('hidden');
+                    }
+                    lastScrollTop = scrollTop;
+                });
+            }
+
+            // Authentication Methods
+            async checkAuthStatus() {
+                return new Promise((resolve) => {
+                    firebase.auth().onAuthStateChanged(async (user) => {
+                        if (user) {
+                            this.state.currentUser = user;
+                            this.state.isLoggedIn = true;
+                            await this.updateUserUI();
+                        } else {
+                            this.state.isLoggedIn = false;
+                            this.state.currentUser = null;
+                            // Redirect to index.html for logged out users
+                            window.location.href = 'index.html';
+                        }
+                        resolve();
+                    });
+                });
+            }
+
+            async handleLogout(e) {
+                e.preventDefault();
+                if (confirm('Are you sure you want to logout?')) {
+                    await firebase.auth().signOut();
+                    // Redirect to index.html after logout
+                    window.location.href = 'index.html';
+                }
+            }
+
+            // UI Methods
+            async updateUserUI() {
+                if (this.state.currentUser) {
+                    try {
+                        const userDoc = await firebase.firestore().collection('users').doc(this.state.currentUser.uid).get();
+                        if (userDoc.exists) {
+                            const userData = userDoc.data();
+                            this.elements.userName.textContent = userData.name;
+                            this.elements.userHandle.textContent = `@${userData.username}`;
+                            
+                            // Set profile picture
+                            const initials = userData.name.split(' ').map(n => n[0]).join('').toUpperCase();
+                            
+                            if (userData.profilePicture) {
+                                this.elements.userAvatar.innerHTML = `<img src="${userData.profilePicture}" alt="Profile Picture">`;
+                            } else {
+                                this.elements.userAvatar.textContent = initials;
+                                this.elements.userAvatar.style.display = 'flex';
+                                this.elements.userAvatar.style.alignItems = 'center';
+                                this.elements.userAvatar.style.justifyContent = 'center';
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error loading user data:', error);
+                    }
+                }
+            }
+
+            // Sidebar Methods
+            toggleSidebar(show = null) {
+                if (show === null) {
+                    // Toggle if no parameter provided
+                    this.elements.sidebar.classList.toggle('active');
+                    this.elements.sidebarOverlay.classList.toggle('active');
+                } else {
+                    // Set specific state
+                    if (show) {
+                        this.elements.sidebar.classList.add('active');
+                        this.elements.sidebarOverlay.classList.add('active');
+                    } else {
+                        this.elements.sidebar.classList.remove('active');
+                        this.elements.sidebarOverlay.classList.remove('active');
+                    }
+                }
+            }
+
+            // Data Loading Methods
+            async loadInitialData() {
+                await this.loadFollowing();
+                await this.loadUsers();
+            }
+
+            async loadFollowing() {
+                if (!this.state.currentUser) return;
+                
+                try {
+                    const userDoc = await firebase.firestore()
+                        .collection('users')
+                        .doc(this.state.currentUser.uid)
+                        .get();
+                    
+                    if (userDoc.exists) {
+                        this.state.following = userDoc.data().following || [];
+                    }
+                } catch (error) {
+                    console.error('Error loading following:', error);
+                    this.state.following = [];
+                }
+            }
+
+            async loadUsers() {
+                try {
+                    // Get all users except current user
+                    const usersSnapshot = await firebase.firestore()
+                        .collection('users')
+                        .limit(20)
+                        .get();
+                    
+                    const users = usersSnapshot.docs
+                        .map(doc => ({ id: doc.id, ...doc.data() }))
+                        .filter(user => user.id !== this.state.currentUser?.uid);
+                    
+                    this.renderFindFriendsResults(users);
+                } catch (error) {
+                    console.error('Error loading users:', error);
+                    // For demo purposes, create some mock users
+                    this.createDemoUsers();
+                }
+            }
+
+            createDemoUsers() {
+                // Create demo users for testing
+                const users = [
+                    {
+                        id: 'user1',
+                        name: 'Alex Johnson',
+                        username: 'alexj',
+                        bio: 'Digital creator and tech enthusiast',
+                        profilePicture: null,
+                        verified: true,
+                        gender: 'male',
+                        followers: ['user3', 'user4'],
+                        following: ['user2', 'user3']
+                    },
+                    {
+                        id: 'user2',
+                        name: 'Sarah Williams',
+                        username: 'sarahw',
+                        bio: 'Travel blogger and photographer',
+                        profilePicture: null,
+                        verified: false,
+                        gender: 'female',
+                        followers: ['user1', 'user4'],
+                        following: ['user1']
+                    },
+                    {
+                        id: 'user3',
+                        name: 'Michael Chen',
+                        username: 'michaelc',
+                        bio: 'Software engineer and open source contributor',
+                        profilePicture: null,
+                        verified: true,
+                        gender: 'male',
+                        followers: ['user1', 'user2'],
+                        following: ['user1', 'user2', 'user4']
+                    },
+                    {
+                        id: 'user4',
+                        name: 'Emma Davis',
+                        username: 'emmad',
+                        bio: 'Fitness coach and nutritionist',
+                        profilePicture: null,
+                        verified: false,
+                        gender: 'female',
+                        followers: ['user1', 'user3'],
+                        following: ['user1', 'user3']
+                    }
+                ];
+
+                this.renderFindFriendsResults(users);
+            }
+
+            // Search and Filter Methods
+            handleFriendsSearch(e) {
+                this.state.searchQuery = e.target.value.toLowerCase();
+                this.applyFilters();
+            }
+
+            handleFilterChange(e) {
+                const filter = e.currentTarget.getAttribute('data-filter');
+                
+                // Update active filter button
+                this.elements.filterButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                e.currentTarget.classList.add('active');
+                
+                this.state.currentFilter = filter;
+                this.applyFilters();
+            }
+
+            applyFilters() {
+                // In a real app, you would query Firestore with the filter
+                // For demo, we'll just show a notification
+                if (this.state.currentFilter === 'following') {
+                    // Filter to show only followed users
+                    const followedUsers = this.state.users.filter(user => 
+                        this.state.following.includes(user.id)
+                    );
+                    this.renderFindFriendsResults(followedUsers);
+                } else {
+                    // For other filters, show all users
+                    this.renderFindFriendsResults(this.state.users);
+                }
+            }
+
+            // Rendering Methods
+            renderFindFriendsResults(users) {
+                if (!users.length) {
+                    this.elements.friendsResults.innerHTML = `
+                        <div style="text-align: center; padding: 40px 20px; color: var(--gray-color); grid-column: 1 / -1;">
+                            <i class="fas fa-user-friends" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
+                            <p>No users found</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                this.elements.friendsResults.innerHTML = users.map(user => `
+                    <div class="user-card" data-user-id="${user.id}">
+                        <div class="user-card-avatar">
+                            ${user.profilePicture ? 
+                                `<img src="${user.profilePicture}" alt="${user.name}">` :
+                                `<div>${user.name ? user.name.charAt(0).toUpperCase() : 'U'}</div>`
+                            }
+                        </div>
+                        <div class="user-card-name">
+                            ${user.name}
+                            ${user.verified ? '<i class="fas fa-check-circle verified-badge"></i>' : ''}
+                            ${user.gender ? `<span class="gender-badge gender-${user.gender}"><i class="fas fa-${user.gender === 'male' ? 'mars' : 'venus'}"></i> ${user.gender === 'male' ? 'Male' : 'Female'}</span>` : ''}
+                        </div>
+                        <div class="user-card-username">@${user.username}</div>
+                        <div class="user-card-bio">${user.bio || 'No bio yet'}</div>
+                        <button class="follow-btn-small ${this.state.following.includes(user.id) ? 'following' : ''}" 
+                                data-user-id="${user.id}">
+                            ${this.state.following.includes(user.id) ? 'Following' : 'Follow'}
+                        </button>
+                    </div>
+                `).join('');
+                
+                // Add event listeners to follow buttons
+                this.elements.friendsResults.querySelectorAll('.follow-btn-small').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const userId = btn.getAttribute('data-user-id');
+                        this.handleFollowUser(userId, btn);
+                    });
+                });
+
+                // Add event listeners to user cards for viewing profiles
+                this.elements.friendsResults.querySelectorAll('.user-card').forEach(card => {
+                    card.addEventListener('click', (e) => {
+                        if (!e.target.closest('.follow-btn-small')) {
+                            const userId = card.getAttribute('data-user-id');
+                            window.location.href = `profile.html?user=${userId}`;
+                        }
+                    });
+                });
+            }
+
+            // User Interaction Methods
+            async handleFollowUser(userId, button) {
+                if (!this.state.isLoggedIn) {
+                    alert('Please login to follow users');
+                    return;
+                }
+
+                const isFollowing = button.textContent.includes('Following');
+                
+                try {
+                    if (!isFollowing) {
+                        // Add to current user's following
+                        await firebase.firestore()
+                            .collection('users')
+                            .doc(this.state.currentUser.uid)
+                            .update({
+                                following: firebase.firestore.FieldValue.arrayUnion(userId)
+                            });
+                        
+                        // Add to target user's followers
+                        await firebase.firestore()
+                            .collection('users')
+                            .doc(userId)
+                            .update({
+                                followers: firebase.firestore.FieldValue.arrayUnion(this.state.currentUser.uid)
+                            });
+                        
+                        button.textContent = 'Following';
+                        button.classList.add('following');
+                        
+                        this.state.following.push(userId);
+                    } else {
+                        // Remove from current user's following
+                        await firebase.firestore()
+                            .collection('users')
+                            .doc(this.state.currentUser.uid)
+                            .update({
+                                following: firebase.firestore.FieldValue.arrayRemove(userId)
+                            });
+                        
+                        // Remove from target user's followers
+                        await firebase.firestore()
+                            .collection('users')
+                            .doc(userId)
+                            .update({
+                                followers: firebase.firestore.FieldValue.arrayRemove(this.state.currentUser.uid)
+                            });
+                        
+                        button.textContent = 'Follow';
+                        button.classList.remove('following');
+                        
+                        this.state.following = this.state.following.filter(id => id !== userId);
+                    }
+                } catch (error) {
+                    console.error('Error following/unfollowing user:', error);
+                    alert('Failed to follow user. Please try again.');
+                }
+            }
+        }
+
+        // Initialize the friends page when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            window.connectXFriends = new ConnectXFriends();
+        });
+    </script>
+</body>
+</html>
