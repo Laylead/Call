@@ -1934,6 +1934,217 @@
                 });
             }
 
+            toggleSearch() {
+                if (this.state.isSearchActive) {
+                    this.closeSearch();
+                } else {
+                    this.openSearch();
+                }
+            }
+
+            openSearch() {
+                this.state.isSearchActive = true;
+                this.elements.floatingSearch.classList.add('active');
+                this.elements.searchInput.focus();
+            }
+
+            closeSearch() {
+                this.state.isSearchActive = false;
+                this.elements.floatingSearch.classList.remove('active');
+                this.elements.searchInput.value = '';
+                this.hideSearchResults();
+            }
+
+            async handleSearch() {
+                const query = this.elements.searchInput.value.toLowerCase().trim();
+                
+                if (!query) {
+                    this.hideSearchResults();
+                    return;
+                }
+                
+                try {
+                    // Search users
+                    const usersSnapshot = await firebase.firestore()
+                        .collection('users')
+                        .where('name', '>=', query)
+                        .where('name', '<=', query + '\uf8ff')
+                        .limit(10)
+                        .get();
+                    
+                    const userResults = usersSnapshot.docs
+                        .map(doc => ({ id: doc.id, ...doc.data() }))
+                        .filter(user => user.id !== this.state.currentUser.uid);
+                    
+                    // Also search conversations
+                    const conversationsSnapshot = await firebase.firestore()
+                        .collection('conversations')
+                        .where('participants', 'array-contains', this.state.currentUser.uid)
+                        .get();
+                    
+                    const conversationResults = conversationsSnapshot.docs
+                        .map(doc => ({ id: doc.id, ...doc.data() }))
+                        .filter(conversation => {
+                            const otherParticipantId = conversation.participants.find(id => id !== this.state.currentUser.uid);
+                            const otherParticipant = conversation.participantsData ? conversation.participantsData[otherParticipantId] : null;
+                            
+                            if (!otherParticipant) return false;
+                            
+                            return otherParticipant.name.toLowerCase().includes(query) || 
+                                   (otherParticipant.username && otherParticipant.username.toLowerCase().includes(query));
+                        });
+                    
+                    this.state.searchResults = [...userResults, ...conversationResults];
+                    this.showSearchResults();
+                    
+                } catch (error) {
+                    console.error('Error searching:', error);
+                }
+            }
+
+            showSearchResults() {
+                // Create a modal or overlay for search results
+                if (!this.state.searchResults.length) {
+                    this.hideSearchResults();
+                    return;
+                }
+                
+                // Create search results container if it doesn't exist
+                let searchResultsContainer = document.getElementById('searchResultsContainer');
+                if (!searchResultsContainer) {
+                    searchResultsContainer = document.createElement('div');
+                    searchResultsContainer.id = 'searchResultsContainer';
+                    searchResultsContainer.style.cssText = `
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: rgba(0,0,0,0.7);
+                        z-index: 999;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    `;
+                    
+                    const resultsBox = document.createElement('div');
+                    resultsBox.style.cssText = `
+                        background: white;
+                        border-radius: 12px;
+                        width: 90%;
+                        max-width: 400px;
+                        max-height: 80vh;
+                        overflow-y: auto;
+                        padding: 20px;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                    `;
+                    
+                    searchResultsContainer.appendChild(resultsBox);
+                    document.body.appendChild(searchResultsContainer);
+                    
+                    // Close search results when clicking outside
+                    searchResultsContainer.addEventListener('click', (e) => {
+                        if (e.target === searchResultsContainer) {
+                            this.hideSearchResults();
+                        }
+                    });
+                }
+                
+                const resultsBox = searchResultsContainer.querySelector('div');
+                resultsBox.innerHTML = `
+                    <h3 style="margin-bottom: 15px; color: var(--primary-color);">Search Results</h3>
+                    <div id="searchResultsList">
+                        ${this.state.searchResults.map(result => {
+                            if (result.participants) {
+                                // This is a conversation
+                                const otherParticipantId = result.participants.find(id => id !== this.state.currentUser.uid);
+                                const otherParticipant = result.participantsData ? result.participantsData[otherParticipantId] : null;
+                                
+                                return `
+                                    <div class="search-result-item" data-conversation-id="${result.id}" style="display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #eee; cursor: pointer;">
+                                        <div class="chat-avatar" style="width: 40px; height: 40px; margin-right: 10px;">
+                                            ${otherParticipant && otherParticipant.profilePicture ? 
+                                                `<img src="${otherParticipant.profilePicture}" alt="${otherParticipant.name}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` :
+                                                `<div style="width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">${otherParticipant ? otherParticipant.name.charAt(0).toUpperCase() : 'U'}</div>`
+                                            }
+                                        </div>
+                                        <div>
+                                            <div style="font-weight: 600;">${otherParticipant ? otherParticipant.name : 'Unknown User'}</div>
+                                            <div style="font-size: 12px; color: #666;">${result.lastMessage || 'No messages yet'}</div>
+                                        </div>
+                                    </div>
+                                `;
+                            } else {
+                                // This is a user
+                                return `
+                                    <div class="search-result-item" data-user-id="${result.id}" style="display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #eee; cursor: pointer;">
+                                        <div class="chat-avatar" style="width: 40px; height: 40px; margin-right: 10px;">
+                                            ${result.profilePicture ? 
+                                                `<img src="${result.profilePicture}" alt="${result.name}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` :
+                                                `<div style="width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">${result.name.charAt(0).toUpperCase()}</div>`
+                                            }
+                                        </div>
+                                        <div>
+                                            <div style="font-weight: 600;">${result.name}</div>
+                                            <div style="font-size: 12px; color: #666;">${result.username || 'User'}</div>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        }).join('')}
+                    </div>
+                `;
+                
+                // Add event listeners to search results
+                resultsBox.querySelectorAll('.search-result-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const conversationId = item.getAttribute('data-conversation-id');
+                        const userId = item.getAttribute('data-user-id');
+                        
+                        if (conversationId) {
+                            this.loadConversation(conversationId);
+                        } else if (userId) {
+                            this.startConversation(userId);
+                        }
+                        
+                        this.hideSearchResults();
+                        this.closeSearch();
+                    });
+                });
+            }
+
+            hideSearchResults() {
+                const searchResultsContainer = document.getElementById('searchResultsContainer');
+                if (searchResultsContainer) {
+                    searchResultsContainer.remove();
+                }
+            }
+
+            async handleURLParameters() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const conversationId = urlParams.get('conversation');
+                const userId = urlParams.get('user');
+                
+                if (conversationId) {
+                    await this.loadConversation(conversationId);
+                } else if (userId) {
+                    await this.startConversation(userId);
+                }
+            }
+
+            async checkAuthStatus() {
+                return new Promise((resolve) => {
+                    firebase.auth().onAuthStateChanged(async (user) => {
+                        if (user) {
+                            this.state.currentUser = user;
+                            resolve();
+                        } else {
+                            window.location.href = 'index.html';
+                        }
+                    });
+                });
+            }
+
             async loadUserProfile() {
                 if (!this.state.currentUser) return;
 
@@ -1998,6 +2209,494 @@
                     this.elements.monetizationSettings.style.display = 'none';
                     this.elements.applyForMonetization.style.display = 'block';
                 }
+            }
+
+            async loadNetworkUsers() {
+                if (!this.state.currentUser) return;
+                
+                try {
+                    // Load user's followers, following, and contacts
+                    const userDoc = await firebase.firestore()
+                        .collection('users')
+                        .doc(this.state.currentUser.uid)
+                        .get();
+                    
+                    if (userDoc.exists) {
+                        const userData = userDoc.data();
+                        const followers = userData.followers || [];
+                        const following = userData.following || [];
+                        
+                        // Combine and deduplicate
+                        const allUserIds = [...new Set([...followers, ...following])];
+                        
+                        // Fetch user data for each ID
+                        const userPromises = allUserIds.map(userId => 
+                            firebase.firestore().collection('users').doc(userId).get()
+                        );
+                        
+                        const userDocs = await Promise.all(userPromises);
+                        this.state.networkUsers = userDocs
+                            .filter(doc => doc.exists)
+                            .map(doc => ({
+                                id: doc.id,
+                                ...doc.data()
+                            }));
+                        
+                        this.renderNetworkUsers();
+                    }
+                } catch (error) {
+                    console.error('Error loading network users:', error);
+                }
+            }
+
+            renderNetworkUsers() {
+                if (!this.state.networkUsers.length) {
+                    this.elements.userProfilesScroll.innerHTML = `
+                        <div style="text-align: center; width: 100%; color: var(--gray-color); font-size: 14px;">
+                            No users in your network yet
+                        </div>
+                    `;
+                    return;
+                }
+
+                this.elements.userProfilesScroll.innerHTML = this.state.networkUsers.map(user => `
+                    <div class="user-profile-item" data-user-id="${user.id}">
+                        <div class="user-profile-avatar">
+                            ${user.profilePicture ? 
+                                `<img src="${user.profilePicture}" alt="${user.name}" loading="lazy">` :
+                                `${user.name.charAt(0).toUpperCase()}`
+                            }
+                            <div class="status-indicator ${`status-${user.onlineStatus || 'offline'}`}"></div>
+                        </div>
+                        <div class="user-profile-name">${user.name}</div>
+                    </div>
+                `).join('');
+                
+                // Add event listeners to user profile items
+                this.elements.userProfilesScroll.querySelectorAll('.user-profile-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const userId = item.getAttribute('data-user-id');
+                        this.startConversation(userId);
+                    });
+                });
+            }
+
+            async loadConversations() {
+                if (!this.state.currentUser) return;
+
+                try {
+                    const conversationsSnapshot = await firebase.firestore()
+                        .collection('conversations')
+                        .where('participants', 'array-contains', this.state.currentUser.uid)
+                        .orderBy('lastMessageAt', 'desc')
+                        .get();
+                    
+                    this.state.conversations = conversationsSnapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                    
+                    this.renderConversations();
+                    
+                    // Set up real-time listener for conversations
+                    this.setupConversationsListener();
+                } catch (error) {
+                    console.error('Error loading conversations:', error);
+                }
+            }
+
+            setupConversationsListener() {
+                if (!this.state.currentUser) return;
+                
+                firebase.firestore()
+                    .collection('conversations')
+                    .where('participants', 'array-contains', this.state.currentUser.uid)
+                    .onSnapshot(snapshot => {
+                        snapshot.docChanges().forEach(change => {
+                            if (change.type === 'added' || change.type === 'modified') {
+                                const conversation = {
+                                    id: change.doc.id,
+                                    ...change.doc.data()
+                                };
+                                
+                                // Update conversation in state
+                                const index = this.state.conversations.findIndex(c => c.id === conversation.id);
+                                if (index !== -1) {
+                                    this.state.conversations[index] = conversation;
+                                } else {
+                                    this.state.conversations.unshift(conversation);
+                                }
+                                
+                                // Re-render conversations
+                                this.renderConversations();
+                                
+                                // Update notification badge
+                                this.updateNotificationBadge();
+                                
+                                // Play notification sound if enabled
+                                if (this.state.settings.messageSounds === 'enabled' && 
+                                    change.type === 'added' && 
+                                    conversation.lastMessageSender !== this.state.currentUser.uid) {
+                                    this.playNotificationSound();
+                                }
+                                
+                                // Show browser notification if enabled
+                                if (this.state.settings.browserNotifications === 'enabled' && 
+                                    change.type === 'added' && 
+                                    conversation.lastMessageSender !== this.state.currentUser.uid &&
+                                    document.hidden) {
+                                    this.showBrowserNotification(conversation);
+                                }
+                            }
+                        });
+                    }, error => {
+                        console.error('Error in conversations listener:', error);
+                    });
+            }
+
+            updateNotificationBadge() {
+                const totalUnread = this.state.conversations.reduce((total, conversation) => {
+                    return total + (conversation.unreadCount && conversation.unreadCount[this.state.currentUser.uid] || 0);
+                }, 0);
+                
+                if (totalUnread > 0) {
+                    this.elements.notificationBadge.textContent = totalUnread;
+                    this.elements.notificationBadge.style.display = 'flex';
+                } else {
+                    this.elements.notificationBadge.style.display = 'none';
+                }
+            }
+
+            playNotificationSound() {
+                const audio = new Audio('notification.mp3'); // You'll need to add this file
+                audio.play().catch(e => console.log('Could not play notification sound:', e));
+            }
+
+            showBrowserNotification(conversation) {
+                if (!("Notification" in window)) return;
+                
+                if (Notification.permission === "granted") {
+                    const otherParticipantId = conversation.participants.find(id => id !== this.state.currentUser.uid);
+                    const otherParticipant = conversation.participantsData ? conversation.participantsData[otherParticipantId] : null;
+                    
+                    const notification = new Notification(`New message from ${otherParticipant ? otherParticipant.name : 'Unknown User'}`, {
+                        body: conversation.lastMessage || 'New message',
+                        icon: otherParticipant && otherParticipant.profilePicture ? otherParticipant.profilePicture : '/icon.png'
+                    });
+                    
+                    notification.onclick = () => {
+                        window.focus();
+                        this.loadConversation(conversation.id);
+                    };
+                } else if (Notification.permission !== "denied") {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === "granted") {
+                            this.showBrowserNotification(conversation);
+                        }
+                    });
+                }
+            }
+
+            renderConversations() {
+                if (!this.state.conversations.length) {
+                    this.elements.chatList.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-comments"></i>
+                            <h3>No conversations yet</h3>
+                            <p>Start a new chat to connect with others.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                this.elements.chatList.innerHTML = this.state.conversations.map(conversation => {
+                    // Get the other participant's ID
+                    const otherParticipantId = conversation.participants.find(id => id !== this.state.currentUser.uid);
+                    const otherParticipant = conversation.participantsData ? conversation.participantsData[otherParticipantId] : null;
+                    
+                    const isActive = this.state.activeConversation && this.state.activeConversation.id === conversation.id;
+                    const unreadCount = conversation.unreadCount && conversation.unreadCount[this.state.currentUser.uid] || 0;
+                    
+                    return `
+                        <div class="chat-list-item ${isActive ? 'active' : ''}" data-conversation-id="${conversation.id}">
+                            <div class="chat-avatar">
+                                ${otherParticipant && otherParticipant.profilePicture ? 
+                                    `<img src="${otherParticipant.profilePicture}" alt="${otherParticipant.name}" loading="lazy">` :
+                                    `${otherParticipant ? otherParticipant.name.charAt(0).toUpperCase() : 'U'}`
+                                }
+                                <div class="status-indicator ${otherParticipant ? `status-${otherParticipant.onlineStatus || 'offline'}` : 'status-offline'}"></div>
+                            </div>
+                            <div class="chat-info">
+                                <div class="chat-header-info">
+                                    <div class="chat-name">${otherParticipant ? otherParticipant.name : 'Unknown User'}</div>
+                                    <div class="chat-time">${this.formatTime(conversation.lastMessageAt)}</div>
+                                </div>
+                                <div class="chat-preview">
+                                    ${conversation.lastMessageType === 'voice' ? '<i class="fas fa-microphone"></i> Voice message' : 
+                                      conversation.lastMessageType === 'image' ? '<i class="fas fa-image"></i> Image' :
+                                      conversation.lastMessage || 'No messages yet'}
+                                    ${unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                // Add event listeners to conversation items
+                this.elements.chatList.querySelectorAll('.chat-list-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const conversationId = item.getAttribute('data-conversation-id');
+                        this.loadConversation(conversationId);
+                    });
+                });
+            }
+
+            async loadConversation(conversationId) {
+                try {
+                    this.showLoading();
+                    
+                    const conversationDoc = await firebase.firestore()
+                        .collection('conversations')
+                        .doc(conversationId)
+                        .get();
+                    
+                    if (!conversationDoc.exists) {
+                        this.showError('Conversation not found');
+                        return;
+                    }
+                    
+                    const conversation = {
+                        id: conversationDoc.id,
+                        ...conversationDoc.data()
+                    };
+                    
+                    this.state.activeConversation = conversation;
+                    this.state.conversationId = conversationId;
+                    
+                    // Get the other participant's ID
+                    const otherParticipantId = conversation.participants.find(id => id !== this.state.currentUser.uid);
+                    
+                    // Get user data for the other participant
+                    const userDoc = await firebase.firestore()
+                        .collection('users')
+                        .doc(otherParticipantId)
+                        .get();
+                    
+                    if (userDoc.exists) {
+                        this.state.activeConversation.user = {
+                            id: otherParticipantId,
+                            ...userDoc.data()
+                        };
+                    }
+                    
+                    // Update UI
+                    this.enterConversationView();
+                    this.updateConversationHeader();
+                    await this.loadMessages();
+                    this.setupMessagesListener();
+                    
+                    // Mark conversation as read
+                    await this.markAsRead();
+                    
+                } catch (error) {
+                    console.error('Error loading conversation:', error);
+                    this.showError('Failed to load conversation');
+                }
+            }
+
+            async startConversation(userId) {
+                try {
+                    this.showLoading();
+                    
+                    // Check if conversation already exists
+                    const existingConversation = this.state.conversations.find(conv => 
+                        conv.participants.includes(userId)
+                    );
+                    
+                    if (existingConversation) {
+                        await this.loadConversation(existingConversation.id);
+                        return;
+                    }
+                    
+                    // Get user data
+                    const userDoc = await firebase.firestore()
+                        .collection('users')
+                        .doc(userId)
+                        .get();
+                    
+                    if (!userDoc.exists) {
+                        this.showError('User not found');
+                        return;
+                    }
+                    
+                    const userData = userDoc.data();
+                    
+                    // Create new conversation
+                    const conversationData = {
+                        participants: [this.state.currentUser.uid, userId],
+                        participantsData: {
+                            [this.state.currentUser.uid]: {
+                                name: this.state.userProfile.name,
+                                profilePicture: this.state.userProfile.profilePicture,
+                                onlineStatus: 'online'
+                            },
+                            [userId]: {
+                                name: userData.name,
+                                profilePicture: userData.profilePicture,
+                                onlineStatus: userData.onlineStatus || 'offline'
+                            }
+                        },
+                        messages: [],
+                        lastMessage: '',
+                        lastMessageType: '',
+                        lastMessageSender: '',
+                        lastMessageAt: new Date().toISOString(),
+                        createdAt: new Date().toISOString(),
+                        unreadCount: {
+                            [this.state.currentUser.uid]: 0,
+                            [userId]: 0
+                        }
+                    };
+                    
+                    const conversationRef = await firebase.firestore()
+                        .collection('conversations')
+                        .add(conversationData);
+                    
+                    this.state.activeConversation = {
+                        id: conversationRef.id,
+                        ...conversationData,
+                        user: {
+                            id: userId,
+                            ...userData
+                        }
+                    };
+                    
+                    this.state.conversationId = conversationRef.id;
+                    
+                    // Update UI
+                    this.enterConversationView();
+                    this.updateConversationHeader();
+                    await this.loadMessages();
+                    this.setupMessagesListener();
+                    
+                } catch (error) {
+                    console.error('Error starting conversation:', error);
+                    this.showError('Failed to start conversation');
+                }
+            }
+
+            async loadMessages() {
+                if (!this.state.conversationId) return;
+
+                try {
+                    const conversationDoc = await firebase.firestore()
+                        .collection('conversations')
+                        .doc(this.state.conversationId)
+                        .get();
+                    
+                    if (conversationDoc.exists) {
+                        const conversation = conversationDoc.data();
+                        this.state.messages = conversation.messages || [];
+                        this.renderMessages();
+                    }
+                } catch (error) {
+                    console.error('Error loading messages:', error);
+                }
+            }
+
+            setupMessagesListener() {
+                if (!this.state.conversationId) return;
+                
+                // Listen for new messages in real-time
+                firebase.firestore()
+                    .collection('conversations')
+                    .doc(this.state.conversationId)
+                    .onSnapshot(doc => {
+                        if (doc.exists) {
+                            const conversation = doc.data();
+                            this.state.messages = conversation.messages || [];
+                            this.renderMessages();
+                            
+                            // Mark as read if it's not our message
+                            if (conversation.lastMessageSender !== this.state.currentUser.uid) {
+                                this.markAsRead();
+                            }
+                        }
+                    }, error => {
+                        console.error('Error in messages listener:', error);
+                    });
+            }
+
+            renderMessages() {
+                if (!this.state.messages.length) {
+                    this.elements.messagesArea.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-comment-alt"></i>
+                            <h3>No messages yet</h3>
+                            <p>Send a message to start the conversation.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const messagesHTML = this.state.messages.map(message => {
+                    const isSent = message.senderId === this.state.currentUser.uid;
+                    
+                    let messageContent = '';
+                    
+                    if (message.type === 'text') {
+                        messageContent = `
+                            <div class="message-text">${message.content}</div>
+                        `;
+                    } else if (message.type === 'image') {
+                        messageContent = `
+                            <div class="message-media">
+                                <img src="${message.mediaUrl}" alt="Shared image" loading="lazy">
+                            </div>
+                        `;
+                    } else if (message.type === 'voice') {
+                        messageContent = `
+                            <div class="voice-message">
+                                <button class="voice-play-btn" data-audio="${message.mediaUrl}">
+                                    <i class="fas fa-play"></i>
+                                </button>
+                                <div class="voice-waveform">
+                                    ${this.generateVoiceWaveform()}
+                                </div>
+                                <div class="voice-duration">${message.duration || '0:00'}</div>
+                            </div>
+                        `;
+                    }
+                    
+                    return `
+                        <div class="message ${isSent ? 'sent' : 'received'}" data-message-id="${message.id}">
+                            ${messageContent}
+                            <div class="message-time">${this.formatTime(message.createdAt)}</div>
+                        </div>
+                    `;
+                }).join('');
+                
+                this.elements.messagesArea.innerHTML = messagesHTML;
+                
+                // Add event listeners to voice messages
+                this.elements.messagesArea.querySelectorAll('.voice-play-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const audioUrl = e.target.closest('.voice-play-btn').getAttribute('data-audio');
+                        this.playVoiceMessage(audioUrl, e.target.closest('.voice-message'));
+                    });
+                });
+                
+                // Scroll to bottom
+                this.scrollToBottom();
+            }
+
+            generateVoiceWaveform() {
+                let waveform = '';
+                for (let i = 0; i < 20; i++) {
+                    const height = Math.floor(Math.random() * 20) + 5;
+                    waveform += `<div class="voice-bar" style="height: ${height}px;"></div>`;
+                }
+                return waveform;
             }
 
             async sendMessage() {
@@ -2161,6 +2860,462 @@
                 } catch (error) {
                     console.error('Error sending message:', error);
                     this.showError('Failed to send message');
+                }
+            }
+
+            async markAsRead() {
+                if (!this.state.conversationId) return;
+
+                try {
+                    await firebase.firestore()
+                        .collection('conversations')
+                        .doc(this.state.conversationId)
+                        .update({
+                            [`unreadCount.${this.state.currentUser.uid}`]: 0
+                        });
+                } catch (error) {
+                    console.error('Error marking as read:', error);
+                }
+            }
+
+            // Voice Recording
+            async startRecording() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    
+                    // Set up audio analysis for waveform
+                    this.state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    this.state.analyser = this.state.audioContext.createAnalyser();
+                    const source = this.state.audioContext.createMediaStreamSource(stream);
+                    source.connect(this.state.analyser);
+                    
+                    this.state.analyser.fftSize = 256;
+                    const bufferLength = this.state.analyser.frequencyBinCount;
+                    this.state.dataArray = new Uint8Array(bufferLength);
+                    
+                    this.state.audioChunks = [];
+                    this.state.mediaRecorder = new MediaRecorder(stream);
+                    
+                    this.state.mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            this.state.audioChunks.push(event.data);
+                        }
+                    };
+                    
+                    this.state.mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(this.state.audioChunks, { type: 'audio/wav' });
+                        const duration = Math.floor((Date.now() - this.state.recordingStartTime) / 1000);
+                        
+                        this.state.voiceNote = {
+                            blob: audioBlob,
+                            duration: this.formatAudioTime(duration),
+                            url: URL.createObjectURL(audioBlob)
+                        };
+                        
+                        // Stop all tracks
+                        stream.getTracks().forEach(track => track.stop());
+                        
+                        // Stop animation
+                        if (this.state.animationId) {
+                            cancelAnimationFrame(this.state.animationId);
+                        }
+                        
+                        // Show voice preview
+                        this.showVoicePreview();
+                    };
+                    
+                    this.state.mediaRecorder.start();
+                    this.state.isRecording = true;
+                    this.state.recordingStartTime = Date.now();
+                    
+                    // Show voice recorder UI
+                    this.elements.voiceRecorder.classList.add('active');
+                    
+                    // Start timer
+                    this.state.recordingTimer = setInterval(() => {
+                        const elapsed = Math.floor((Date.now() - this.state.recordingStartTime) / 1000);
+                        this.elements.recordingTimer.textContent = this.formatAudioTime(elapsed);
+                    }, 1000);
+                    
+                    // Start waveform animation
+                    this.animateWaveform();
+                    
+                } catch (error) {
+                    console.error('Error starting recording:', error);
+                    this.showError('Could not access microphone');
+                }
+            }
+
+            animateWaveform() {
+                if (!this.state.isRecording) return;
+                
+                this.state.analyser.getByteFrequencyData(this.state.dataArray);
+                
+                // Clear previous waveform
+                this.elements.voiceWaveform.innerHTML = '';
+                
+                // Create new waveform bars
+                const barCount = 20;
+                const sliceWidth = Math.floor(this.state.dataArray.length / barCount);
+                
+                for (let i = 0; i < barCount; i++) {
+                    const barValue = this.state.dataArray[i * sliceWidth] || 0;
+                    const barHeight = Math.max(5, (barValue / 256) * 30);
+                    const bar = document.createElement('div');
+                    bar.className = 'voice-bar';
+                    bar.style.height = `${barHeight}px`;
+                    this.elements.voiceWaveform.appendChild(bar);
+                }
+                
+                this.state.animationId = requestAnimationFrame(() => this.animateWaveform());
+            }
+
+            stopRecording() {
+                if (this.state.mediaRecorder && this.state.isRecording) {
+                    this.state.mediaRecorder.stop();
+                    this.state.isRecording = false;
+                    
+                    // Hide voice recorder UI
+                    this.elements.voiceRecorder.classList.remove('active');
+                    
+                    // Clear timer
+                    if (this.state.recordingTimer) {
+                        clearInterval(this.state.recordingTimer);
+                        this.state.recordingTimer = null;
+                    }
+                }
+            }
+
+            cancelRecording() {
+                this.stopRecording();
+                this.state.voiceNote = null;
+                this.hideVoicePreview();
+            }
+
+            showVoicePreview() {
+                this.state.isVoicePreview = true;
+                this.elements.voicePreviewDuration.textContent = this.state.voiceNote.duration;
+                this.elements.voicePreview.classList.add('active');
+                
+                // Generate preview waveform
+                this.generateVoicePreviewWaveform();
+            }
+
+            hideVoicePreview() {
+                this.state.isVoicePreview = false;
+                this.elements.voicePreview.classList.remove('active');
+                this.state.voiceNote = null;
+            }
+
+            generateVoicePreviewWaveform() {
+                this.elements.voicePreviewWaveform.innerHTML = '';
+                for (let i = 0; i < 20; i++) {
+                    const height = Math.floor(Math.random() * 30) + 10;
+                    const bar = document.createElement('div');
+                    bar.className = 'voice-preview-bar';
+                    bar.style.height = `${height}px`;
+                    this.elements.voicePreviewWaveform.appendChild(bar);
+                }
+            }
+
+            toggleVoicePlayback() {
+                if (!this.state.voiceNote) return;
+                
+                if (!this.state.audioPlayer) {
+                    this.state.audioPlayer = new Audio(this.state.voiceNote.url);
+                    
+                    this.state.audioPlayer.addEventListener('ended', () => {
+                        this.state.isPlaying = false;
+                        this.elements.voicePreviewPlayBtn.innerHTML = '<i class="fas fa-play"></i>';
+                    });
+                    
+                    this.state.audioPlayer.addEventListener('timeupdate', () => {
+                        const progress = this.state.audioPlayer.currentTime / this.state.audioPlayer.duration;
+                        
+                        // Animate voice bars during playback
+                        const bars = this.elements.voicePreviewWaveform.querySelectorAll('.voice-preview-bar');
+                        bars.forEach((bar, index) => {
+                            const baseHeight = 10 + (index % 3) * 5;
+                            const animation = Math.sin((Date.now() / 100) + index) * 8;
+                            bar.style.height = `${baseHeight + animation}px`;
+                        });
+                    });
+                }
+                
+                if (this.state.isPlaying) {
+                    this.state.audioPlayer.pause();
+                    this.state.isPlaying = false;
+                    this.elements.voicePreviewPlayBtn.innerHTML = '<i class="fas fa-play"></i>';
+                } else {
+                    this.state.audioPlayer.play();
+                    this.state.isPlaying = true;
+                    this.elements.voicePreviewPlayBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                }
+            }
+
+            deleteVoicePreview() {
+                if (this.state.audioPlayer) {
+                    this.state.audioPlayer.pause();
+                    this.state.audioPlayer = null;
+                }
+                this.state.isPlaying = false;
+                this.hideVoicePreview();
+            }
+
+            sendVoiceMessage() {
+                this.sendMessage();
+            }
+
+            playVoiceMessage(audioUrl, voiceElement) {
+                const audio = new Audio(audioUrl);
+                const playBtn = voiceElement.querySelector('.voice-play-btn');
+                const voiceBars = voiceElement.querySelectorAll('.voice-bar');
+                
+                playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                
+                audio.addEventListener('timeupdate', () => {
+                    const progress = audio.currentTime / audio.duration;
+                    
+                    // Animate voice bars during playback
+                    voiceBars.forEach((bar, index) => {
+                        const baseHeight = 5 + (index % 3) * 3;
+                        const animation = Math.sin((Date.now() / 100) + index) * 5;
+                        bar.style.height = `${baseHeight + animation}px`;
+                    });
+                });
+                
+                audio.addEventListener('ended', () => {
+                    playBtn.innerHTML = '<i class="fas fa-play"></i>';
+                    // Reset voice bars
+                    voiceBars.forEach(bar => {
+                        bar.style.height = '10px';
+                    });
+                });
+                
+                if (audio.paused) {
+                    audio.play();
+                } else {
+                    audio.pause();
+                    playBtn.innerHTML = '<i class="fas fa-play"></i>';
+                }
+            }
+
+            // Media Handling
+            handleAttachFile() {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        this.previewMedia(file);
+                    }
+                };
+                input.click();
+            }
+
+            previewMedia(file) {
+                this.state.mediaFile = file;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.elements.mediaPreviewImage.src = e.target.result;
+                    this.elements.mediaPreviewName.textContent = file.name;
+                    this.elements.mediaPreview.classList.add('active');
+                };
+                reader.readAsDataURL(file);
+            }
+
+            sendMediaMessage() {
+                this.sendMessage();
+            }
+
+            cancelMedia() {
+                this.state.mediaFile = null;
+                this.hideMediaPreview();
+            }
+
+            hideMediaPreview() {
+                this.elements.mediaPreview.classList.remove('active');
+            }
+
+            // UI Methods
+            enterConversationView() {
+                this.state.isInConversationView = true;
+                this.elements.mainContainer.classList.add('conversation-view');
+                this.elements.conversationView.style.display = 'block';
+                this.elements.emptyState.style.display = 'none';
+                
+                // Hide floating search in conversation view
+                this.elements.floatingSearch.style.display = 'none';
+            }
+
+            exitConversationView() {
+                this.state.isInConversationView = false;
+                this.elements.mainContainer.classList.remove('conversation-view');
+                this.elements.conversationView.style.display = 'none';
+                this.elements.emptyState.style.display = 'flex';
+                this.state.activeConversation = null;
+                this.state.conversationId = null;
+                
+                // Show floating search again
+                this.elements.floatingSearch.style.display = 'flex';
+                
+                // Update URL to remove conversation parameter
+                const url = new URL(window.location);
+                url.searchParams.delete('conversation');
+                url.searchParams.delete('user');
+                window.history.replaceState({}, '', url);
+            }
+
+            showLoading() {
+                this.elements.conversationUserName.textContent = 'Loading...';
+                this.elements.statusText.textContent = '';
+            }
+
+            updateConversationHeader() {
+                if (!this.state.activeConversation || !this.state.activeConversation.user) return;
+                
+                const user = this.state.activeConversation.user;
+                
+                this.elements.conversationUserName.textContent = user.name;
+                
+                if (user.profilePicture) {
+                    this.elements.conversationAvatar.innerHTML = `<img src="${user.profilePicture}" alt="${user.name}" loading="lazy">`;
+                } else {
+                    this.elements.conversationAvatar.textContent = user.name.charAt(0).toUpperCase();
+                }
+                
+                const status = user.onlineStatus || 'offline';
+                this.elements.conversationUserStatus.innerHTML = `
+                    <span class="status-indicator status-${status}"></span>
+                    <span id="statusText">${status.charAt(0).toUpperCase() + status.slice(1)}</span>
+                `;
+            }
+
+            handleInputResize() {
+                const textarea = this.elements.chatInput;
+                textarea.style.height = 'auto';
+                const newHeight = Math.min(textarea.scrollHeight, 120);
+                textarea.style.height = newHeight + 'px';
+                
+                // Adjust input area padding based on height
+                const inputArea = document.querySelector('.input-area');
+                if (newHeight > 60) {
+                    inputArea.style.paddingBottom = '20px';
+                } else {
+                    inputArea.style.paddingBottom = '15px';
+                }
+            }
+
+            updateWordCounter() {
+                const content = this.elements.chatInput.value.trim();
+                if (!content) {
+                    this.elements.wordCounter.style.display = 'none';
+                    return;
+                }
+                
+                const wordCount = content.split(/\s+/).length;
+                const baseWords = 35;
+                const baseCost = this.state.settings.textMessagePrice;
+                
+                let cost = baseCost;
+                let extraInfo = '';
+                
+                if (wordCount > baseWords) {
+                    const extraWords = wordCount - baseWords;
+                    const extraCost = Math.ceil(extraWords / 10) * (baseCost / 3);
+                    cost = baseCost + extraCost;
+                    extraInfo = ` (+₦${extraCost} for ${extraWords} extra words)`;
+                }
+                
+                this.elements.wordCounter.textContent = `${wordCount}/35 words • ₦${cost}${extraInfo}`;
+                this.elements.wordCounter.style.display = 'block';
+                
+                if (wordCount > baseWords) {
+                    this.elements.wordCounter.classList.add('near-limit');
+                } else {
+                    this.elements.wordCounter.classList.remove('near-limit');
+                }
+            }
+
+            scrollToBottom() {
+                setTimeout(() => {
+                    this.elements.messagesArea.scrollTop = this.elements.messagesArea.scrollHeight;
+                }, 100);
+            }
+
+            viewUserProfile() {
+                if (!this.state.activeConversation || !this.state.activeConversation.user) return;
+                const userId = this.state.activeConversation.user.id;
+                window.location.href = `profile.html?user=${userId}`;
+            }
+
+            async startNewChat() {
+                const username = prompt('Enter username to start a chat:');
+                if (!username) return;
+                
+                try {
+                    // Search for user by username
+                    const usersSnapshot = await firebase.firestore()
+                        .collection('users')
+                        .where('username', '==', username)
+                        .limit(1)
+                        .get();
+                    
+                    if (usersSnapshot.empty) {
+                        this.showError('User not found');
+                        return;
+                    }
+                    
+                    const userDoc = usersSnapshot.docs[0];
+                    this.startConversation(userDoc.id);
+                } catch (error) {
+                    console.error('Error starting new chat:', error);
+                    this.showError('Failed to start new chat');
+                }
+            }
+
+            // Settings Methods
+            showSettingsModal() {
+                // Load current settings
+                this.elements.onlineStatus.value = this.state.settings.onlineStatus;
+                this.elements.messageSounds.value = this.state.settings.messageSounds;
+                this.elements.browserNotifications.value = this.state.settings.browserNotifications;
+                
+                // Show custom pricing if eligible
+                if (this.state.isMentor || this.state.isVerified) {
+                    this.elements.textMessagePrice.value = this.state.settings.textMessagePrice;
+                    this.elements.voiceMessagePrice.value = this.state.settings.voiceMessagePrice;
+                    this.elements.imageMessagePrice.value = this.state.settings.imageMessagePrice;
+                }
+                
+                this.elements.settingsModal.classList.add('active');
+            }
+
+            hideSettingsModal() {
+                this.elements.settingsModal.classList.remove('active');
+            }
+
+            async saveSettings() {
+                try {
+                    this.state.settings.onlineStatus = this.elements.onlineStatus.value;
+                    this.state.settings.messageSounds = this.elements.messageSounds.value;
+                    this.state.settings.browserNotifications = this.elements.browserNotifications.value;
+                    
+                    // Update user's online status in Firestore
+                    await firebase.firestore()
+                        .collection('users')
+                        .doc(this.state.currentUser.uid)
+                        .update({
+                            onlineStatus: this.state.settings.onlineStatus
+                        });
+                    
+                    this.showNotification('Settings Saved', 'Your chat settings have been updated');
+                    this.hideSettingsModal();
+                } catch (error) {
+                    console.error('Error saving settings:', error);
+                    this.showError('Failed to save settings');
                 }
             }
 
@@ -2387,11 +3542,6 @@
                 }
             }
 
-            // The rest of the methods remain the same as in the previous implementation
-            // Only the monetization-related methods were added above
-            
-            // ... (all other methods from the previous implementation remain the same)
-            
             // Utility Methods
             formatTime(timestamp) {
                 if (!timestamp) return 'Just now';
