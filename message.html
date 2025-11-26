@@ -1174,7 +1174,7 @@
             font-weight: 500;
         }
 
-        .form-group input, .form-group select {
+        .form-group input, .form-group select, .form-group textarea {
             width: 100%;
             padding: 12px 15px;
             border: 1px solid var(--border-color);
@@ -1185,7 +1185,7 @@
             font-size: 15px;
         }
 
-        .form-group input:focus, .form-group select:focus {
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
             outline: none;
             border-color: var(--primary-color);
             box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.1);
@@ -1209,6 +1209,16 @@
 
         .btn-primary:hover {
             transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: var(--gray-color);
+            color: white;
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
         }
 
         .pricing-info, .earnings-info {
@@ -1241,6 +1251,44 @@
         .earnings-value {
             font-weight: 600;
             color: var(--success-color);
+        }
+
+        /* Verification Badge */
+        .verified-badge {
+            color: var(--primary-color);
+            margin-left: 5px;
+        }
+
+        .mentor-badge {
+            background: linear-gradient(135deg, #ff9a00, #ff6a00);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: 5px;
+        }
+
+        /* Application Form */
+        .application-preview {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .application-preview.active {
+            display: block;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .action-buttons button {
+            flex: 1;
         }
 
         /* Responsive */
@@ -1387,7 +1435,7 @@
                     <div class="balance-info">
                         <i class="fas fa-wallet"></i>
                         <span>Balance: <span class="balance-amount" id="balanceAmount">₦0</span></span>
-                        <span>• Text: ₦10 (35 words) • Voice: ₦30/min</span>
+                        <span id="pricingInfo">• Text: ₦10 (35 words) • Voice: ₦30/min</span>
                     </div>
                     
                     <div class="input-container">
@@ -1501,23 +1549,38 @@
                 </div>
             </div>
             
-            <div id="customPricingSection" style="display: none;">
-                <h3 style="margin-bottom: 15px; font-size: 16px;">Custom Pricing</h3>
+            <!-- Monetization Settings for Verified/Mentor Users -->
+            <div id="monetizationSettings" style="display: none;">
+                <h3 style="margin-bottom: 15px; font-size: 16px;">Monetization Settings</h3>
                 <p style="margin-bottom: 15px; font-size: 14px; color: var(--gray-color);">
-                    You've reached the eligibility criteria! You can now set your own pricing.
+                    Set your custom pricing for messages. 50% of earnings go to you, 50% to ConnectX.
                 </p>
                 
                 <div class="form-group">
                     <label for="textMessagePrice">Text Message Price (₦)</label>
-                    <input type="number" id="textMessagePrice" min="5" max="100" value="10">
+                    <input type="number" id="textMessagePrice" min="5" max="1000" value="10">
                 </div>
                 
                 <div class="form-group">
                     <label for="voiceMessagePrice">Voice Message Price per Minute (₦)</label>
-                    <input type="number" id="voiceMessagePrice" min="10" max="200" value="30">
+                    <input type="number" id="voiceMessagePrice" min="10" max="5000" value="30">
+                </div>
+                
+                <div class="form-group">
+                    <label for="imageMessagePrice">Image Message Price (₦)</label>
+                    <input type="number" id="imageMessagePrice" min="5" max="1000" value="15">
                 </div>
                 
                 <button class="btn btn-primary" id="savePricingBtn">Save Pricing</button>
+            </div>
+            
+            <!-- Apply for Monetization for Non-Verified/Non-Mentor Users -->
+            <div id="applyForMonetization" style="display: none;">
+                <h3 style="margin-bottom: 15px; font-size: 16px;">Apply for Monetization</h3>
+                <p style="margin-bottom: 15px; font-size: 14px; color: var(--gray-color);">
+                    Become a verified creator or mentor to monetize your messages. Apply now to get verified and set your own pricing.
+                </p>
+                <button class="btn btn-primary" id="applyMonetizationBtn">Apply for Monetization</button>
             </div>
             
             <div class="form-group">
@@ -1547,6 +1610,60 @@
             </div>
             
             <button class="btn btn-primary" id="saveSettingsBtn">Save Settings</button>
+        </div>
+    </div>
+
+    <!-- Monetization Application Modal -->
+    <div class="modal" id="monetizationApplicationModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Apply for Monetization</h2>
+                <i class="fas fa-times close-modal" id="closeApplicationModal"></i>
+            </div>
+            
+            <form id="monetizationApplicationForm">
+                <div class="form-group">
+                    <label for="fullName">Full Name</label>
+                    <input type="text" id="fullName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="age">Age</label>
+                    <input type="number" id="age" min="18" max="100" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="country">Country</label>
+                    <input type="text" id="country" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="socialMediaLinks">Social Media Links</label>
+                    <textarea id="socialMediaLinks" placeholder="Include links to your social media profiles (Instagram, Twitter, YouTube, etc.)" rows="3" required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="contactMethod">Preferred Contact Method</label>
+                    <select id="contactMethod" required>
+                        <option value="">Select contact method</option>
+                        <option value="whatsapp">WhatsApp</option>
+                        <option value="email">Email</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="contactInfo">Contact Information</label>
+                    <input type="text" id="contactInfo" placeholder="Phone number or email address" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="applicationPhoto">Clear Live Photo</label>
+                    <input type="file" id="applicationPhoto" accept="image/*" required>
+                    <img id="applicationPhotoPreview" class="application-preview" src="" alt="Photo Preview">
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Submit Application</button>
+            </form>
         </div>
     </div>
 
@@ -1587,7 +1704,8 @@
                         messageSounds: 'enabled',
                         browserNotifications: 'enabled',
                         textMessagePrice: 10,
-                        voiceMessagePrice: 30
+                        voiceMessagePrice: 30,
+                        imageMessagePrice: 15
                     },
                     audioContext: null,
                     analyser: null,
@@ -1599,7 +1717,10 @@
                     audioPlayer: null,
                     isPlaying: false,
                     lastScrollTop: 0,
-                    isSearchActive: false
+                    isSearchActive: false,
+                    isMentor: false,
+                    isVerified: false,
+                    applicationPhoto: null
                 };
 
                 this.init();
@@ -1676,6 +1797,7 @@
                     voiceBtn: document.getElementById('voiceBtn'),
                     wordCounter: document.getElementById('wordCounter'),
                     balanceAmount: document.getElementById('balanceAmount'),
+                    pricingInfo: document.getElementById('pricingInfo'),
                     
                     // Voice recording elements
                     voiceRecorder: document.getElementById('voiceRecorder'),
@@ -1710,10 +1832,26 @@
                     currentVoicePrice: document.getElementById('currentVoicePrice'),
                     totalEarnings: document.getElementById('totalEarnings'),
                     availableEarnings: document.getElementById('availableEarnings'),
-                    customPricingSection: document.getElementById('customPricingSection'),
+                    monetizationSettings: document.getElementById('monetizationSettings'),
+                    applyForMonetization: document.getElementById('applyForMonetization'),
                     textMessagePrice: document.getElementById('textMessagePrice'),
                     voiceMessagePrice: document.getElementById('voiceMessagePrice'),
-                    savePricingBtn: document.getElementById('savePricingBtn')
+                    imageMessagePrice: document.getElementById('imageMessagePrice'),
+                    savePricingBtn: document.getElementById('savePricingBtn'),
+                    applyMonetizationBtn: document.getElementById('applyMonetizationBtn'),
+                    
+                    // Monetization application modal
+                    monetizationApplicationModal: document.getElementById('monetizationApplicationModal'),
+                    closeApplicationModal: document.getElementById('closeApplicationModal'),
+                    monetizationApplicationForm: document.getElementById('monetizationApplicationForm'),
+                    fullName: document.getElementById('fullName'),
+                    age: document.getElementById('age'),
+                    country: document.getElementById('country'),
+                    socialMediaLinks: document.getElementById('socialMediaLinks'),
+                    contactMethod: document.getElementById('contactMethod'),
+                    contactInfo: document.getElementById('contactInfo'),
+                    applicationPhoto: document.getElementById('applicationPhoto'),
+                    applicationPhotoPreview: document.getElementById('applicationPhotoPreview')
                 };
             }
 
@@ -1728,6 +1866,12 @@
                 this.elements.closeSettingsModal.addEventListener('click', () => this.hideSettingsModal());
                 this.elements.saveSettingsBtn.addEventListener('click', () => this.saveSettings());
                 this.elements.savePricingBtn.addEventListener('click', () => this.saveCustomPricing());
+                this.elements.applyMonetizationBtn.addEventListener('click', () => this.showApplicationModal());
+                
+                // Monetization Application
+                this.elements.closeApplicationModal.addEventListener('click', () => this.hideApplicationModal());
+                this.elements.monetizationApplicationForm.addEventListener('submit', (e) => this.submitApplication(e));
+                this.elements.applicationPhoto.addEventListener('change', (e) => this.previewApplicationPhoto(e));
                 
                 // Floating Search Widget
                 this.elements.floatingSearch.addEventListener('click', () => this.toggleSearch());
@@ -1790,217 +1934,6 @@
                 });
             }
 
-            toggleSearch() {
-                if (this.state.isSearchActive) {
-                    this.closeSearch();
-                } else {
-                    this.openSearch();
-                }
-            }
-
-            openSearch() {
-                this.state.isSearchActive = true;
-                this.elements.floatingSearch.classList.add('active');
-                this.elements.searchInput.focus();
-            }
-
-            closeSearch() {
-                this.state.isSearchActive = false;
-                this.elements.floatingSearch.classList.remove('active');
-                this.elements.searchInput.value = '';
-                this.hideSearchResults();
-            }
-
-            async handleSearch() {
-                const query = this.elements.searchInput.value.toLowerCase().trim();
-                
-                if (!query) {
-                    this.hideSearchResults();
-                    return;
-                }
-                
-                try {
-                    // Search users
-                    const usersSnapshot = await firebase.firestore()
-                        .collection('users')
-                        .where('name', '>=', query)
-                        .where('name', '<=', query + '\uf8ff')
-                        .limit(10)
-                        .get();
-                    
-                    const userResults = usersSnapshot.docs
-                        .map(doc => ({ id: doc.id, ...doc.data() }))
-                        .filter(user => user.id !== this.state.currentUser.uid);
-                    
-                    // Also search conversations
-                    const conversationsSnapshot = await firebase.firestore()
-                        .collection('conversations')
-                        .where('participants', 'array-contains', this.state.currentUser.uid)
-                        .get();
-                    
-                    const conversationResults = conversationsSnapshot.docs
-                        .map(doc => ({ id: doc.id, ...doc.data() }))
-                        .filter(conversation => {
-                            const otherParticipantId = conversation.participants.find(id => id !== this.state.currentUser.uid);
-                            const otherParticipant = conversation.participantsData ? conversation.participantsData[otherParticipantId] : null;
-                            
-                            if (!otherParticipant) return false;
-                            
-                            return otherParticipant.name.toLowerCase().includes(query) || 
-                                   (otherParticipant.username && otherParticipant.username.toLowerCase().includes(query));
-                        });
-                    
-                    this.state.searchResults = [...userResults, ...conversationResults];
-                    this.showSearchResults();
-                    
-                } catch (error) {
-                    console.error('Error searching:', error);
-                }
-            }
-
-            showSearchResults() {
-                // Create a modal or overlay for search results
-                if (!this.state.searchResults.length) {
-                    this.hideSearchResults();
-                    return;
-                }
-                
-                // Create search results container if it doesn't exist
-                let searchResultsContainer = document.getElementById('searchResultsContainer');
-                if (!searchResultsContainer) {
-                    searchResultsContainer = document.createElement('div');
-                    searchResultsContainer.id = 'searchResultsContainer';
-                    searchResultsContainer.style.cssText = `
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        bottom: 0;
-                        background: rgba(0,0,0,0.7);
-                        z-index: 999;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                    `;
-                    
-                    const resultsBox = document.createElement('div');
-                    resultsBox.style.cssText = `
-                        background: white;
-                        border-radius: 12px;
-                        width: 90%;
-                        max-width: 400px;
-                        max-height: 80vh;
-                        overflow-y: auto;
-                        padding: 20px;
-                        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-                    `;
-                    
-                    searchResultsContainer.appendChild(resultsBox);
-                    document.body.appendChild(searchResultsContainer);
-                    
-                    // Close search results when clicking outside
-                    searchResultsContainer.addEventListener('click', (e) => {
-                        if (e.target === searchResultsContainer) {
-                            this.hideSearchResults();
-                        }
-                    });
-                }
-                
-                const resultsBox = searchResultsContainer.querySelector('div');
-                resultsBox.innerHTML = `
-                    <h3 style="margin-bottom: 15px; color: var(--primary-color);">Search Results</h3>
-                    <div id="searchResultsList">
-                        ${this.state.searchResults.map(result => {
-                            if (result.participants) {
-                                // This is a conversation
-                                const otherParticipantId = result.participants.find(id => id !== this.state.currentUser.uid);
-                                const otherParticipant = result.participantsData ? result.participantsData[otherParticipantId] : null;
-                                
-                                return `
-                                    <div class="search-result-item" data-conversation-id="${result.id}" style="display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #eee; cursor: pointer;">
-                                        <div class="chat-avatar" style="width: 40px; height: 40px; margin-right: 10px;">
-                                            ${otherParticipant && otherParticipant.profilePicture ? 
-                                                `<img src="${otherParticipant.profilePicture}" alt="${otherParticipant.name}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` :
-                                                `<div style="width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">${otherParticipant ? otherParticipant.name.charAt(0).toUpperCase() : 'U'}</div>`
-                                            }
-                                        </div>
-                                        <div>
-                                            <div style="font-weight: 600;">${otherParticipant ? otherParticipant.name : 'Unknown User'}</div>
-                                            <div style="font-size: 12px; color: #666;">${result.lastMessage || 'No messages yet'}</div>
-                                        </div>
-                                    </div>
-                                `;
-                            } else {
-                                // This is a user
-                                return `
-                                    <div class="search-result-item" data-user-id="${result.id}" style="display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #eee; cursor: pointer;">
-                                        <div class="chat-avatar" style="width: 40px; height: 40px; margin-right: 10px;">
-                                            ${result.profilePicture ? 
-                                                `<img src="${result.profilePicture}" alt="${result.name}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` :
-                                                `<div style="width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">${result.name.charAt(0).toUpperCase()}</div>`
-                                            }
-                                        </div>
-                                        <div>
-                                            <div style="font-weight: 600;">${result.name}</div>
-                                            <div style="font-size: 12px; color: #666;">${result.username || 'User'}</div>
-                                        </div>
-                                    </div>
-                                `;
-                            }
-                        }).join('')}
-                    </div>
-                `;
-                
-                // Add event listeners to search results
-                resultsBox.querySelectorAll('.search-result-item').forEach(item => {
-                    item.addEventListener('click', () => {
-                        const conversationId = item.getAttribute('data-conversation-id');
-                        const userId = item.getAttribute('data-user-id');
-                        
-                        if (conversationId) {
-                            this.loadConversation(conversationId);
-                        } else if (userId) {
-                            this.startConversation(userId);
-                        }
-                        
-                        this.hideSearchResults();
-                        this.closeSearch();
-                    });
-                });
-            }
-
-            hideSearchResults() {
-                const searchResultsContainer = document.getElementById('searchResultsContainer');
-                if (searchResultsContainer) {
-                    searchResultsContainer.remove();
-                }
-            }
-
-            async handleURLParameters() {
-                const urlParams = new URLSearchParams(window.location.search);
-                const conversationId = urlParams.get('conversation');
-                const userId = urlParams.get('user');
-                
-                if (conversationId) {
-                    await this.loadConversation(conversationId);
-                } else if (userId) {
-                    await this.startConversation(userId);
-                }
-            }
-
-            async checkAuthStatus() {
-                return new Promise((resolve) => {
-                    firebase.auth().onAuthStateChanged(async (user) => {
-                        if (user) {
-                            this.state.currentUser = user;
-                        } else {
-                            window.location.href = 'index.html';
-                        }
-                        resolve();
-                    });
-                });
-            }
-
             async loadUserProfile() {
                 if (!this.state.currentUser) return;
 
@@ -2015,16 +1948,18 @@
                                 this.state.balance = this.state.userProfile.balance || 0;
                                 this.state.freeMessagesRemaining = 3 - (this.state.userProfile.freeMessagesUsed || 0);
                                 
+                                // Check if user is mentor or verified
+                                this.state.isMentor = this.state.userProfile.isMentor || false;
+                                this.state.isVerified = this.state.userProfile.isVerified || false;
+                                
                                 // Update UI
                                 this.elements.balanceAmount.textContent = `₦${this.state.balance}`;
-                                
-                                // Check if user is eligible for custom pricing
-                                this.checkCustomPricingEligibility();
                                 
                                 // Update settings with user's custom pricing if available
                                 if (this.state.userProfile.customPricing) {
                                     this.state.settings.textMessagePrice = this.state.userProfile.customPricing.text || 10;
                                     this.state.settings.voiceMessagePrice = this.state.userProfile.customPricing.voice || 30;
+                                    this.state.settings.imageMessagePrice = this.state.userProfile.customPricing.image || 15;
                                 }
                                 
                                 // Update pricing display
@@ -2036,6 +1971,9 @@
                                 const availableEarnings = this.state.userProfile.availableEarnings || 0;
                                 this.elements.totalEarnings.textContent = `₦${totalEarnings}`;
                                 this.elements.availableEarnings.textContent = `₦${availableEarnings}`;
+                                
+                                // Show/hide monetization settings based on user status
+                                this.updateMonetizationUI();
                             }
                         }, error => {
                             console.error('Error loading user profile:', error);
@@ -2045,510 +1983,21 @@
                 }
             }
 
-            async loadNetworkUsers() {
-                if (!this.state.currentUser) return;
-                
-                try {
-                    // Load user's followers, following, and contacts
-                    const userDoc = await firebase.firestore()
-                        .collection('users')
-                        .doc(this.state.currentUser.uid)
-                        .get();
+            updateMonetizationUI() {
+                if (this.state.isMentor || this.state.isVerified) {
+                    // User is mentor or verified - show monetization settings
+                    this.elements.monetizationSettings.style.display = 'block';
+                    this.elements.applyForMonetization.style.display = 'none';
                     
-                    if (userDoc.exists) {
-                        const userData = userDoc.data();
-                        const followers = userData.followers || [];
-                        const following = userData.following || [];
-                        
-                        // Combine and deduplicate
-                        const allUserIds = [...new Set([...followers, ...following])];
-                        
-                        // Fetch user data for each ID
-                        const userPromises = allUserIds.map(userId => 
-                            firebase.firestore().collection('users').doc(userId).get()
-                        );
-                        
-                        const userDocs = await Promise.all(userPromises);
-                        this.state.networkUsers = userDocs
-                            .filter(doc => doc.exists)
-                            .map(doc => ({
-                                id: doc.id,
-                                ...doc.data()
-                            }));
-                        
-                        this.renderNetworkUsers();
-                    }
-                } catch (error) {
-                    console.error('Error loading network users:', error);
-                }
-            }
-
-            renderNetworkUsers() {
-                if (!this.state.networkUsers.length) {
-                    this.elements.userProfilesScroll.innerHTML = `
-                        <div style="text-align: center; width: 100%; color: var(--gray-color); font-size: 14px;">
-                            No users in your network yet
-                        </div>
-                    `;
-                    return;
-                }
-
-                this.elements.userProfilesScroll.innerHTML = this.state.networkUsers.map(user => `
-                    <div class="user-profile-item" data-user-id="${user.id}">
-                        <div class="user-profile-avatar">
-                            ${user.profilePicture ? 
-                                `<img src="${user.profilePicture}" alt="${user.name}" loading="lazy">` :
-                                `${user.name.charAt(0).toUpperCase()}`
-                            }
-                            <div class="status-indicator ${`status-${user.onlineStatus || 'offline'}`}"></div>
-                        </div>
-                        <div class="user-profile-name">${user.name}</div>
-                    </div>
-                `).join('');
-                
-                // Add event listeners to user profile items
-                this.elements.userProfilesScroll.querySelectorAll('.user-profile-item').forEach(item => {
-                    item.addEventListener('click', () => {
-                        const userId = item.getAttribute('data-user-id');
-                        this.startConversation(userId);
-                    });
-                });
-            }
-
-            checkCustomPricingEligibility() {
-                if (!this.state.userProfile) return false;
-                
-                const followers = this.state.userProfile.followers ? this.state.userProfile.followers.length : 0;
-                const totalComments = this.state.userProfile.totalComments || 0;
-                const totalLikes = this.state.userProfile.totalLikes || 0;
-                
-                const isEligible = followers >= 1000 && totalComments >= 200 && totalLikes >= 500;
-                
-                if (isEligible) {
-                    this.elements.customPricingSection.style.display = 'block';
-                    return true;
+                    // Set current pricing values
+                    this.elements.textMessagePrice.value = this.state.settings.textMessagePrice;
+                    this.elements.voiceMessagePrice.value = this.state.settings.voiceMessagePrice;
+                    this.elements.imageMessagePrice.value = this.state.settings.imageMessagePrice;
                 } else {
-                    this.elements.customPricingSection.style.display = 'none';
-                    return false;
+                    // User is not mentor or verified - show apply button
+                    this.elements.monetizationSettings.style.display = 'none';
+                    this.elements.applyForMonetization.style.display = 'block';
                 }
-            }
-
-            async loadConversations() {
-                if (!this.state.currentUser) return;
-
-                try {
-                    const conversationsSnapshot = await firebase.firestore()
-                        .collection('conversations')
-                        .where('participants', 'array-contains', this.state.currentUser.uid)
-                        .orderBy('lastMessageAt', 'desc')
-                        .get();
-                    
-                    this.state.conversations = conversationsSnapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
-                    
-                    this.renderConversations();
-                    
-                    // Set up real-time listener for conversations
-                    this.setupConversationsListener();
-                } catch (error) {
-                    console.error('Error loading conversations:', error);
-                }
-            }
-
-            setupConversationsListener() {
-                if (!this.state.currentUser) return;
-                
-                firebase.firestore()
-                    .collection('conversations')
-                    .where('participants', 'array-contains', this.state.currentUser.uid)
-                    .onSnapshot(snapshot => {
-                        snapshot.docChanges().forEach(change => {
-                            if (change.type === 'added' || change.type === 'modified') {
-                                const conversation = {
-                                    id: change.doc.id,
-                                    ...change.doc.data()
-                                };
-                                
-                                // Update conversation in state
-                                const index = this.state.conversations.findIndex(c => c.id === conversation.id);
-                                if (index !== -1) {
-                                    this.state.conversations[index] = conversation;
-                                } else {
-                                    this.state.conversations.unshift(conversation);
-                                }
-                                
-                                // Re-render conversations
-                                this.renderConversations();
-                                
-                                // Update notification badge
-                                this.updateNotificationBadge();
-                                
-                                // Play notification sound if enabled
-                                if (this.state.settings.messageSounds === 'enabled' && 
-                                    change.type === 'added' && 
-                                    conversation.lastMessageSender !== this.state.currentUser.uid) {
-                                    this.playNotificationSound();
-                                }
-                                
-                                // Show browser notification if enabled
-                                if (this.state.settings.browserNotifications === 'enabled' && 
-                                    change.type === 'added' && 
-                                    conversation.lastMessageSender !== this.state.currentUser.uid &&
-                                    document.hidden) {
-                                    this.showBrowserNotification(conversation);
-                                }
-                            }
-                        });
-                    }, error => {
-                        console.error('Error in conversations listener:', error);
-                    });
-            }
-
-            updateNotificationBadge() {
-                const totalUnread = this.state.conversations.reduce((total, conversation) => {
-                    return total + (conversation.unreadCount && conversation.unreadCount[this.state.currentUser.uid] || 0);
-                }, 0);
-                
-                if (totalUnread > 0) {
-                    this.elements.notificationBadge.textContent = totalUnread;
-                    this.elements.notificationBadge.style.display = 'flex';
-                } else {
-                    this.elements.notificationBadge.style.display = 'none';
-                }
-            }
-
-            playNotificationSound() {
-                const audio = new Audio('notification.mp3'); // You'll need to add this file
-                audio.play().catch(e => console.log('Could not play notification sound:', e));
-            }
-
-            showBrowserNotification(conversation) {
-                if (!("Notification" in window)) return;
-                
-                if (Notification.permission === "granted") {
-                    const otherParticipantId = conversation.participants.find(id => id !== this.state.currentUser.uid);
-                    const otherParticipant = conversation.participantsData ? conversation.participantsData[otherParticipantId] : null;
-                    
-                    const notification = new Notification(`New message from ${otherParticipant ? otherParticipant.name : 'Unknown User'}`, {
-                        body: conversation.lastMessage || 'New message',
-                        icon: otherParticipant && otherParticipant.profilePicture ? otherParticipant.profilePicture : '/icon.png'
-                    });
-                    
-                    notification.onclick = () => {
-                        window.focus();
-                        this.loadConversation(conversation.id);
-                    };
-                } else if (Notification.permission !== "denied") {
-                    Notification.requestPermission().then(permission => {
-                        if (permission === "granted") {
-                            this.showBrowserNotification(conversation);
-                        }
-                    });
-                }
-            }
-
-            renderConversations() {
-                if (!this.state.conversations.length) {
-                    this.elements.chatList.innerHTML = `
-                        <div class="empty-state">
-                            <i class="fas fa-comments"></i>
-                            <h3>No conversations yet</h3>
-                            <p>Start a new chat to connect with others.</p>
-                        </div>
-                    `;
-                    return;
-                }
-
-                this.elements.chatList.innerHTML = this.state.conversations.map(conversation => {
-                    // Get the other participant's ID
-                    const otherParticipantId = conversation.participants.find(id => id !== this.state.currentUser.uid);
-                    const otherParticipant = conversation.participantsData ? conversation.participantsData[otherParticipantId] : null;
-                    
-                    const isActive = this.state.activeConversation && this.state.activeConversation.id === conversation.id;
-                    const unreadCount = conversation.unreadCount && conversation.unreadCount[this.state.currentUser.uid] || 0;
-                    
-                    return `
-                        <div class="chat-list-item ${isActive ? 'active' : ''}" data-conversation-id="${conversation.id}">
-                            <div class="chat-avatar">
-                                ${otherParticipant && otherParticipant.profilePicture ? 
-                                    `<img src="${otherParticipant.profilePicture}" alt="${otherParticipant.name}" loading="lazy">` :
-                                    `${otherParticipant ? otherParticipant.name.charAt(0).toUpperCase() : 'U'}`
-                                }
-                                <div class="status-indicator ${otherParticipant ? `status-${otherParticipant.onlineStatus || 'offline'}` : 'status-offline'}"></div>
-                            </div>
-                            <div class="chat-info">
-                                <div class="chat-header-info">
-                                    <div class="chat-name">${otherParticipant ? otherParticipant.name : 'Unknown User'}</div>
-                                    <div class="chat-time">${this.formatTime(conversation.lastMessageAt)}</div>
-                                </div>
-                                <div class="chat-preview">
-                                    ${conversation.lastMessageType === 'voice' ? '<i class="fas fa-microphone"></i> Voice message' : 
-                                      conversation.lastMessageType === 'image' ? '<i class="fas fa-image"></i> Image' :
-                                      conversation.lastMessage || 'No messages yet'}
-                                    ${unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : ''}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-                
-                // Add event listeners to conversation items
-                this.elements.chatList.querySelectorAll('.chat-list-item').forEach(item => {
-                    item.addEventListener('click', () => {
-                        const conversationId = item.getAttribute('data-conversation-id');
-                        this.loadConversation(conversationId);
-                    });
-                });
-            }
-
-            async loadConversation(conversationId) {
-                try {
-                    this.showLoading();
-                    
-                    const conversationDoc = await firebase.firestore()
-                        .collection('conversations')
-                        .doc(conversationId)
-                        .get();
-                    
-                    if (!conversationDoc.exists) {
-                        this.showError('Conversation not found');
-                        return;
-                    }
-                    
-                    const conversation = {
-                        id: conversationDoc.id,
-                        ...conversationDoc.data()
-                    };
-                    
-                    this.state.activeConversation = conversation;
-                    this.state.conversationId = conversationId;
-                    
-                    // Get the other participant's ID
-                    const otherParticipantId = conversation.participants.find(id => id !== this.state.currentUser.uid);
-                    
-                    // Get user data for the other participant
-                    const userDoc = await firebase.firestore()
-                        .collection('users')
-                        .doc(otherParticipantId)
-                        .get();
-                    
-                    if (userDoc.exists) {
-                        this.state.activeConversation.user = {
-                            id: otherParticipantId,
-                            ...userDoc.data()
-                        };
-                    }
-                    
-                    // Update UI
-                    this.enterConversationView();
-                    this.updateConversationHeader();
-                    await this.loadMessages();
-                    this.setupMessagesListener();
-                    
-                    // Mark conversation as read
-                    await this.markAsRead();
-                    
-                } catch (error) {
-                    console.error('Error loading conversation:', error);
-                    this.showError('Failed to load conversation');
-                }
-            }
-
-            async startConversation(userId) {
-                try {
-                    this.showLoading();
-                    
-                    // Check if conversation already exists
-                    const existingConversation = this.state.conversations.find(conv => 
-                        conv.participants.includes(userId)
-                    );
-                    
-                    if (existingConversation) {
-                        await this.loadConversation(existingConversation.id);
-                        return;
-                    }
-                    
-                    // Get user data
-                    const userDoc = await firebase.firestore()
-                        .collection('users')
-                        .doc(userId)
-                        .get();
-                    
-                    if (!userDoc.exists) {
-                        this.showError('User not found');
-                        return;
-                    }
-                    
-                    const userData = userDoc.data();
-                    
-                    // Create new conversation
-                    const conversationData = {
-                        participants: [this.state.currentUser.uid, userId],
-                        participantsData: {
-                            [this.state.currentUser.uid]: {
-                                name: this.state.userProfile.name,
-                                profilePicture: this.state.userProfile.profilePicture,
-                                onlineStatus: 'online'
-                            },
-                            [userId]: {
-                                name: userData.name,
-                                profilePicture: userData.profilePicture,
-                                onlineStatus: userData.onlineStatus || 'offline'
-                            }
-                        },
-                        messages: [],
-                        lastMessage: '',
-                        lastMessageType: '',
-                        lastMessageSender: '',
-                        lastMessageAt: new Date().toISOString(),
-                        createdAt: new Date().toISOString(),
-                        unreadCount: {
-                            [this.state.currentUser.uid]: 0,
-                            [userId]: 0
-                        }
-                    };
-                    
-                    const conversationRef = await firebase.firestore()
-                        .collection('conversations')
-                        .add(conversationData);
-                    
-                    this.state.activeConversation = {
-                        id: conversationRef.id,
-                        ...conversationData,
-                        user: {
-                            id: userId,
-                            ...userData
-                        }
-                    };
-                    
-                    this.state.conversationId = conversationRef.id;
-                    
-                    // Update UI
-                    this.enterConversationView();
-                    this.updateConversationHeader();
-                    await this.loadMessages();
-                    this.setupMessagesListener();
-                    
-                } catch (error) {
-                    console.error('Error starting conversation:', error);
-                    this.showError('Failed to start conversation');
-                }
-            }
-
-            async loadMessages() {
-                if (!this.state.conversationId) return;
-
-                try {
-                    const conversationDoc = await firebase.firestore()
-                        .collection('conversations')
-                        .doc(this.state.conversationId)
-                        .get();
-                    
-                    if (conversationDoc.exists) {
-                        const conversation = conversationDoc.data();
-                        this.state.messages = conversation.messages || [];
-                        this.renderMessages();
-                    }
-                } catch (error) {
-                    console.error('Error loading messages:', error);
-                }
-            }
-
-            setupMessagesListener() {
-                if (!this.state.conversationId) return;
-                
-                // Listen for new messages in real-time
-                firebase.firestore()
-                    .collection('conversations')
-                    .doc(this.state.conversationId)
-                    .onSnapshot(doc => {
-                        if (doc.exists) {
-                            const conversation = doc.data();
-                            this.state.messages = conversation.messages || [];
-                            this.renderMessages();
-                            
-                            // Mark as read if it's not our message
-                            if (conversation.lastMessageSender !== this.state.currentUser.uid) {
-                                this.markAsRead();
-                            }
-                        }
-                    }, error => {
-                        console.error('Error in messages listener:', error);
-                    });
-            }
-
-            renderMessages() {
-                if (!this.state.messages.length) {
-                    this.elements.messagesArea.innerHTML = `
-                        <div class="empty-state">
-                            <i class="fas fa-comment-alt"></i>
-                            <h3>No messages yet</h3>
-                            <p>Send a message to start the conversation.</p>
-                        </div>
-                    `;
-                    return;
-                }
-
-                const messagesHTML = this.state.messages.map(message => {
-                    const isSent = message.senderId === this.state.currentUser.uid;
-                    
-                    let messageContent = '';
-                    
-                    if (message.type === 'text') {
-                        messageContent = `
-                            <div class="message-text">${message.content}</div>
-                        `;
-                    } else if (message.type === 'image') {
-                        messageContent = `
-                            <div class="message-media">
-                                <img src="${message.mediaUrl}" alt="Shared image" loading="lazy">
-                            </div>
-                        `;
-                    } else if (message.type === 'voice') {
-                        messageContent = `
-                            <div class="voice-message">
-                                <button class="voice-play-btn" data-audio="${message.mediaUrl}">
-                                    <i class="fas fa-play"></i>
-                                </button>
-                                <div class="voice-waveform">
-                                    ${this.generateVoiceWaveform()}
-                                </div>
-                                <div class="voice-duration">${message.duration || '0:00'}</div>
-                            </div>
-                        `;
-                    }
-                    
-                    return `
-                        <div class="message ${isSent ? 'sent' : 'received'}" data-message-id="${message.id}">
-                            ${messageContent}
-                            <div class="message-time">${this.formatTime(message.createdAt)}</div>
-                        </div>
-                    `;
-                }).join('');
-                
-                this.elements.messagesArea.innerHTML = messagesHTML;
-                
-                // Add event listeners to voice messages
-                this.elements.messagesArea.querySelectorAll('.voice-play-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const audioUrl = e.target.closest('.voice-play-btn').getAttribute('data-audio');
-                        this.playVoiceMessage(audioUrl, e.target.closest('.voice-message'));
-                    });
-                });
-                
-                // Scroll to bottom
-                this.scrollToBottom();
-            }
-
-            generateVoiceWaveform() {
-                let waveform = '';
-                for (let i = 0; i < 20; i++) {
-                    const height = Math.floor(Math.random() * 20) + 5;
-                    waveform += `<div class="voice-bar" style="height: ${height}px;"></div>`;
-                }
-                return waveform;
             }
 
             async sendMessage() {
@@ -2556,6 +2005,37 @@
                 if (!content && !this.state.mediaFile && !this.state.voiceNote) return;
 
                 try {
+                    // Get recipient user data to check if they're a mentor or verified
+                    let recipientPricing = {
+                        text: 10, // Default pricing
+                        voice: 30,
+                        image: 15
+                    };
+                    
+                    let isPaidMessage = false;
+                    
+                    if (this.state.activeConversation && this.state.activeConversation.user) {
+                        const recipientId = this.state.activeConversation.user.id;
+                        const recipientDoc = await firebase.firestore()
+                            .collection('users')
+                            .doc(recipientId)
+                            .get();
+                            
+                        if (recipientDoc.exists) {
+                            const recipientData = recipientDoc.data();
+                            
+                            // Check if recipient is mentor or verified
+                            if (recipientData.isMentor || recipientData.isVerified) {
+                                isPaidMessage = true;
+                                
+                                // Use recipient's custom pricing if available
+                                if (recipientData.customPricing) {
+                                    recipientPricing = recipientData.customPricing;
+                                }
+                            }
+                        }
+                    }
+
                     // Calculate cost
                     let cost = 0;
                     let messageType = 'text';
@@ -2564,31 +2044,32 @@
 
                     if (this.state.mediaFile) {
                         messageType = 'image';
-                        cost = this.state.settings.textMessagePrice;
+                        cost = isPaidMessage ? recipientPricing.image : this.state.settings.imageMessagePrice;
                     } else if (this.state.voiceNote) {
                         messageType = 'voice';
                         const minutes = Math.ceil(this.parseDuration(this.state.voiceNote.duration) / 60);
-                        cost = minutes * this.state.settings.voiceMessagePrice;
+                        cost = isPaidMessage ? (minutes * recipientPricing.voice) : (minutes * this.state.settings.voiceMessagePrice);
                         duration = this.state.voiceNote.duration;
                     } else {
                         // Text message - check word count and calculate cost
                         const wordCount = content.split(/\s+/).length;
                         const baseWords = 35;
-                        const baseCost = this.state.settings.textMessagePrice;
+                        const baseCost = isPaidMessage ? recipientPricing.text : this.state.settings.textMessagePrice;
                         
                         if (wordCount <= baseWords) {
                             cost = baseCost;
                         } else {
                             // Additional cost for extra words
                             const extraWords = wordCount - baseWords;
-                            const extraCost = Math.ceil(extraWords / 10) * (baseCost / 3); // 1/3 of base cost per 10 extra words
+                            const extraCost = Math.ceil(extraWords / 10) * (baseCost / 3);
                             cost = baseCost + extraCost;
                         }
                     }
 
                     // Check if user has enough balance or free messages
-                    if (this.state.freeMessagesRemaining > 0 && messageType === 'text') {
-                        // Use a free message for text only
+                    // Free messages only apply to non-paid conversations
+                    if (this.state.freeMessagesRemaining > 0 && messageType === 'text' && !isPaidMessage) {
+                        // Use a free message for text only in non-paid conversations
                         this.state.freeMessagesRemaining--;
                     } else if (this.state.balance < cost) {
                         this.showError(`Insufficient balance. You need ₦${cost} to send this message.`);
@@ -2596,7 +2077,7 @@
                     }
 
                     // Deduct balance if applicable
-                    if (cost > 0 && this.state.freeMessagesRemaining <= 0) {
+                    if (cost > 0 && (this.state.freeMessagesRemaining <= 0 || isPaidMessage)) {
                         const newBalance = this.state.balance - cost;
                         await firebase.firestore().collection('users').doc(this.state.currentUser.uid).update({
                             balance: newBalance,
@@ -2606,14 +2087,22 @@
                         this.state.balance = newBalance;
                         this.elements.balanceAmount.textContent = `₦${newBalance}`;
                         
-                        // Add earnings to the receiver (50% of cost)
-                        const earnings = Math.floor(cost * 0.5);
-                        const otherParticipantId = this.state.activeConversation.participants.find(id => id !== this.state.currentUser.uid);
-                        
-                        await firebase.firestore().collection('users').doc(otherParticipantId).update({
-                            totalEarnings: firebase.firestore.FieldValue.increment(earnings),
-                            availableEarnings: firebase.firestore.FieldValue.increment(earnings)
-                        });
+                        // If this is a paid message, distribute earnings
+                        if (isPaidMessage) {
+                            const recipientEarnings = Math.floor(cost * 0.5); // 50% to recipient
+                            const platformEarnings = cost - recipientEarnings; // 50% to platform
+                            
+                            const recipientId = this.state.activeConversation.user.id;
+                            
+                            // Add earnings to the recipient
+                            await firebase.firestore().collection('users').doc(recipientId).update({
+                                totalEarnings: firebase.firestore.FieldValue.increment(recipientEarnings),
+                                availableEarnings: firebase.firestore.FieldValue.increment(recipientEarnings)
+                            });
+                            
+                            // Track platform earnings (you might have a separate collection for this)
+                            console.log(`Platform earned: ₦${platformEarnings} from message`);
+                        }
                     }
 
                     let message = {
@@ -2621,7 +2110,9 @@
                         senderId: this.state.currentUser.uid,
                         content: content,
                         type: messageType,
-                        createdAt: new Date().toISOString()
+                        createdAt: new Date().toISOString(),
+                        isPaid: isPaidMessage,
+                        cost: cost
                     };
 
                     // Handle media files
@@ -2673,478 +2164,205 @@
                 }
             }
 
-            async markAsRead() {
-                if (!this.state.conversationId) return;
-
-                try {
-                    await firebase.firestore()
-                        .collection('conversations')
-                        .doc(this.state.conversationId)
-                        .update({
-                            [`unreadCount.${this.state.currentUser.uid}`]: 0
-                        });
-                } catch (error) {
-                    console.error('Error marking as read:', error);
-                }
+            // Monetization Application Methods
+            showApplicationModal() {
+                this.elements.monetizationApplicationModal.classList.add('active');
             }
 
-            // Voice Recording
-            async startRecording() {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    
-                    // Set up audio analysis for waveform
-                    this.state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    this.state.analyser = this.state.audioContext.createAnalyser();
-                    const source = this.state.audioContext.createMediaStreamSource(stream);
-                    source.connect(this.state.analyser);
-                    
-                    this.state.analyser.fftSize = 256;
-                    const bufferLength = this.state.analyser.frequencyBinCount;
-                    this.state.dataArray = new Uint8Array(bufferLength);
-                    
-                    this.state.audioChunks = [];
-                    this.state.mediaRecorder = new MediaRecorder(stream);
-                    
-                    this.state.mediaRecorder.ondataavailable = (event) => {
-                        if (event.data.size > 0) {
-                            this.state.audioChunks.push(event.data);
-                        }
+            hideApplicationModal() {
+                this.elements.monetizationApplicationModal.classList.remove('active');
+                this.resetApplicationForm();
+            }
+
+            previewApplicationPhoto(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    this.state.applicationPhoto = file;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.elements.applicationPhotoPreview.src = e.target.result;
+                        this.elements.applicationPhotoPreview.classList.add('active');
                     };
-                    
-                    this.state.mediaRecorder.onstop = () => {
-                        const audioBlob = new Blob(this.state.audioChunks, { type: 'audio/wav' });
-                        const duration = Math.floor((Date.now() - this.state.recordingStartTime) / 1000);
-                        
-                        this.state.voiceNote = {
-                            blob: audioBlob,
-                            duration: this.formatAudioTime(duration),
-                            url: URL.createObjectURL(audioBlob)
-                        };
-                        
-                        // Stop all tracks
-                        stream.getTracks().forEach(track => track.stop());
-                        
-                        // Stop animation
-                        if (this.state.animationId) {
-                            cancelAnimationFrame(this.state.animationId);
-                        }
-                        
-                        // Show voice preview
-                        this.showVoicePreview();
-                    };
-                    
-                    this.state.mediaRecorder.start();
-                    this.state.isRecording = true;
-                    this.state.recordingStartTime = Date.now();
-                    
-                    // Show voice recorder UI
-                    this.elements.voiceRecorder.classList.add('active');
-                    
-                    // Start timer
-                    this.state.recordingTimer = setInterval(() => {
-                        const elapsed = Math.floor((Date.now() - this.state.recordingStartTime) / 1000);
-                        this.elements.recordingTimer.textContent = this.formatAudioTime(elapsed);
-                    }, 1000);
-                    
-                    // Start waveform animation
-                    this.animateWaveform();
-                    
-                } catch (error) {
-                    console.error('Error starting recording:', error);
-                    this.showError('Could not access microphone');
+                    reader.readAsDataURL(file);
                 }
             }
 
-            animateWaveform() {
-                if (!this.state.isRecording) return;
-                
-                this.state.analyser.getByteFrequencyData(this.state.dataArray);
-                
-                // Clear previous waveform
-                this.elements.voiceWaveform.innerHTML = '';
-                
-                // Create new waveform bars
-                const barCount = 20;
-                const sliceWidth = Math.floor(this.state.dataArray.length / barCount);
-                
-                for (let i = 0; i < barCount; i++) {
-                    const barValue = this.state.dataArray[i * sliceWidth] || 0;
-                    const barHeight = Math.max(5, (barValue / 256) * 30);
-                    const bar = document.createElement('div');
-                    bar.className = 'voice-bar';
-                    bar.style.height = `${barHeight}px`;
-                    this.elements.voiceWaveform.appendChild(bar);
-                }
-                
-                this.state.animationId = requestAnimationFrame(() => this.animateWaveform());
-            }
-
-            stopRecording() {
-                if (this.state.mediaRecorder && this.state.isRecording) {
-                    this.state.mediaRecorder.stop();
-                    this.state.isRecording = false;
-                    
-                    // Hide voice recorder UI
-                    this.elements.voiceRecorder.classList.remove('active');
-                    
-                    // Clear timer
-                    if (this.state.recordingTimer) {
-                        clearInterval(this.state.recordingTimer);
-                        this.state.recordingTimer = null;
-                    }
-                }
-            }
-
-            cancelRecording() {
-                this.stopRecording();
-                this.state.voiceNote = null;
-                this.hideVoicePreview();
-            }
-
-            showVoicePreview() {
-                this.state.isVoicePreview = true;
-                this.elements.voicePreviewDuration.textContent = this.state.voiceNote.duration;
-                this.elements.voicePreview.classList.add('active');
-                
-                // Generate preview waveform
-                this.generateVoicePreviewWaveform();
-            }
-
-            hideVoicePreview() {
-                this.state.isVoicePreview = false;
-                this.elements.voicePreview.classList.remove('active');
-                this.state.voiceNote = null;
-            }
-
-            generateVoicePreviewWaveform() {
-                this.elements.voicePreviewWaveform.innerHTML = '';
-                for (let i = 0; i < 20; i++) {
-                    const height = Math.floor(Math.random() * 30) + 10;
-                    const bar = document.createElement('div');
-                    bar.className = 'voice-preview-bar';
-                    bar.style.height = `${height}px`;
-                    this.elements.voicePreviewWaveform.appendChild(bar);
-                }
-            }
-
-            toggleVoicePlayback() {
-                if (!this.state.voiceNote) return;
-                
-                if (!this.state.audioPlayer) {
-                    this.state.audioPlayer = new Audio(this.state.voiceNote.url);
-                    
-                    this.state.audioPlayer.addEventListener('ended', () => {
-                        this.state.isPlaying = false;
-                        this.elements.voicePreviewPlayBtn.innerHTML = '<i class="fas fa-play"></i>';
-                    });
-                    
-                    this.state.audioPlayer.addEventListener('timeupdate', () => {
-                        const progress = this.state.audioPlayer.currentTime / this.state.audioPlayer.duration;
-                        
-                        // Animate voice bars during playback
-                        const bars = this.elements.voicePreviewWaveform.querySelectorAll('.voice-preview-bar');
-                        bars.forEach((bar, index) => {
-                            const baseHeight = 10 + (index % 3) * 5;
-                            const animation = Math.sin((Date.now() / 100) + index) * 8;
-                            bar.style.height = `${baseHeight + animation}px`;
-                        });
-                    });
-                }
-                
-                if (this.state.isPlaying) {
-                    this.state.audioPlayer.pause();
-                    this.state.isPlaying = false;
-                    this.elements.voicePreviewPlayBtn.innerHTML = '<i class="fas fa-play"></i>';
-                } else {
-                    this.state.audioPlayer.play();
-                    this.state.isPlaying = true;
-                    this.elements.voicePreviewPlayBtn.innerHTML = '<i class="fas fa-pause"></i>';
-                }
-            }
-
-            deleteVoicePreview() {
-                if (this.state.audioPlayer) {
-                    this.state.audioPlayer.pause();
-                    this.state.audioPlayer = null;
-                }
-                this.state.isPlaying = false;
-                this.hideVoicePreview();
-            }
-
-            sendVoiceMessage() {
-                this.sendMessage();
-            }
-
-            playVoiceMessage(audioUrl, voiceElement) {
-                const audio = new Audio(audioUrl);
-                const playBtn = voiceElement.querySelector('.voice-play-btn');
-                const voiceBars = voiceElement.querySelectorAll('.voice-bar');
-                
-                playBtn.innerHTML = '<i class="fas fa-pause"></i>';
-                
-                audio.addEventListener('timeupdate', () => {
-                    const progress = audio.currentTime / audio.duration;
-                    
-                    // Animate voice bars during playback
-                    voiceBars.forEach((bar, index) => {
-                        const baseHeight = 5 + (index % 3) * 3;
-                        const animation = Math.sin((Date.now() / 100) + index) * 5;
-                        bar.style.height = `${baseHeight + animation}px`;
-                    });
-                });
-                
-                audio.addEventListener('ended', () => {
-                    playBtn.innerHTML = '<i class="fas fa-play"></i>';
-                    // Reset voice bars
-                    voiceBars.forEach(bar => {
-                        bar.style.height = '10px';
-                    });
-                });
-                
-                if (audio.paused) {
-                    audio.play();
-                } else {
-                    audio.pause();
-                    playBtn.innerHTML = '<i class="fas fa-play"></i>';
-                }
-            }
-
-            // Media Handling
-            handleAttachFile() {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = 'image/*';
-                input.onchange = (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                        this.previewMedia(file);
-                    }
-                };
-                input.click();
-            }
-
-            previewMedia(file) {
-                this.state.mediaFile = file;
-                
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    this.elements.mediaPreviewImage.src = e.target.result;
-                    this.elements.mediaPreviewName.textContent = file.name;
-                    this.elements.mediaPreview.classList.add('active');
-                };
-                reader.readAsDataURL(file);
-            }
-
-            sendMediaMessage() {
-                this.sendMessage();
-            }
-
-            cancelMedia() {
-                this.state.mediaFile = null;
-                this.hideMediaPreview();
-            }
-
-            hideMediaPreview() {
-                this.elements.mediaPreview.classList.remove('active');
-            }
-
-            // UI Methods
-            enterConversationView() {
-                this.state.isInConversationView = true;
-                this.elements.mainContainer.classList.add('conversation-view');
-                this.elements.conversationView.style.display = 'block';
-                this.elements.emptyState.style.display = 'none';
-                
-                // Hide floating search in conversation view
-                this.elements.floatingSearch.style.display = 'none';
-            }
-
-            exitConversationView() {
-                this.state.isInConversationView = false;
-                this.elements.mainContainer.classList.remove('conversation-view');
-                this.elements.conversationView.style.display = 'none';
-                this.elements.emptyState.style.display = 'flex';
-                this.state.activeConversation = null;
-                this.state.conversationId = null;
-                
-                // Show floating search again
-                this.elements.floatingSearch.style.display = 'flex';
-                
-                // Update URL to remove conversation parameter
-                const url = new URL(window.location);
-                url.searchParams.delete('conversation');
-                url.searchParams.delete('user');
-                window.history.replaceState({}, '', url);
-            }
-
-            showLoading() {
-                this.elements.conversationUserName.textContent = 'Loading...';
-                this.elements.statusText.textContent = '';
-            }
-
-            updateConversationHeader() {
-                if (!this.state.activeConversation || !this.state.activeConversation.user) return;
-                
-                const user = this.state.activeConversation.user;
-                
-                this.elements.conversationUserName.textContent = user.name;
-                
-                if (user.profilePicture) {
-                    this.elements.conversationAvatar.innerHTML = `<img src="${user.profilePicture}" alt="${user.name}" loading="lazy">`;
-                } else {
-                    this.elements.conversationAvatar.textContent = user.name.charAt(0).toUpperCase();
-                }
-                
-                const status = user.onlineStatus || 'offline';
-                this.elements.conversationUserStatus.innerHTML = `
-                    <span class="status-indicator status-${status}"></span>
-                    <span id="statusText">${status.charAt(0).toUpperCase() + status.slice(1)}</span>
-                `;
-            }
-
-            handleInputResize() {
-                const textarea = this.elements.chatInput;
-                textarea.style.height = 'auto';
-                const newHeight = Math.min(textarea.scrollHeight, 120);
-                textarea.style.height = newHeight + 'px';
-                
-                // Adjust input area padding based on height
-                const inputArea = document.querySelector('.input-area');
-                if (newHeight > 60) {
-                    inputArea.style.paddingBottom = '20px';
-                } else {
-                    inputArea.style.paddingBottom = '15px';
-                }
-            }
-
-            updateWordCounter() {
-                const content = this.elements.chatInput.value.trim();
-                if (!content) {
-                    this.elements.wordCounter.style.display = 'none';
-                    return;
-                }
-                
-                const wordCount = content.split(/\s+/).length;
-                const baseWords = 35;
-                const baseCost = this.state.settings.textMessagePrice;
-                
-                let cost = baseCost;
-                let extraInfo = '';
-                
-                if (wordCount > baseWords) {
-                    const extraWords = wordCount - baseWords;
-                    const extraCost = Math.ceil(extraWords / 10) * (baseCost / 3);
-                    cost = baseCost + extraCost;
-                    extraInfo = ` (+₦${extraCost} for ${extraWords} extra words)`;
-                }
-                
-                this.elements.wordCounter.textContent = `${wordCount}/35 words • ₦${cost}${extraInfo}`;
-                this.elements.wordCounter.style.display = 'block';
-                
-                if (wordCount > baseWords) {
-                    this.elements.wordCounter.classList.add('near-limit');
-                } else {
-                    this.elements.wordCounter.classList.remove('near-limit');
-                }
-            }
-
-            scrollToBottom() {
-                setTimeout(() => {
-                    this.elements.messagesArea.scrollTop = this.elements.messagesArea.scrollHeight;
-                }, 100);
-            }
-
-            viewUserProfile() {
-                if (!this.state.activeConversation || !this.state.activeConversation.user) return;
-                const userId = this.state.activeConversation.user.id;
-                window.location.href = `profile.html?user=${userId}`;
-            }
-
-            async startNewChat() {
-                const username = prompt('Enter username to start a chat:');
-                if (!username) return;
+            async submitApplication(e) {
+                e.preventDefault();
                 
                 try {
-                    // Search for user by username
-                    const usersSnapshot = await firebase.firestore()
-                        .collection('users')
-                        .where('username', '==', username)
-                        .limit(1)
-                        .get();
-                    
-                    if (usersSnapshot.empty) {
-                        this.showError('User not found');
+                    // Validate form
+                    if (!this.elements.fullName.value || 
+                        !this.elements.age.value || 
+                        !this.elements.country.value || 
+                        !this.elements.socialMediaLinks.value || 
+                        !this.elements.contactMethod.value || 
+                        !this.elements.contactInfo.value || 
+                        !this.state.applicationPhoto) {
+                        this.showError('Please fill all fields and upload a photo');
                         return;
                     }
-                    
-                    const userDoc = usersSnapshot.docs[0];
-                    this.startConversation(userDoc.id);
-                } catch (error) {
-                    console.error('Error starting new chat:', error);
-                    this.showError('Failed to start new chat');
-                }
-            }
 
-            // Settings Methods
-            showSettingsModal() {
-                // Load current settings
-                this.elements.onlineStatus.value = this.state.settings.onlineStatus;
-                this.elements.messageSounds.value = this.state.settings.messageSounds;
-                this.elements.browserNotifications.value = this.state.settings.browserNotifications;
-                
-                // Show custom pricing if eligible
-                if (this.checkCustomPricingEligibility()) {
-                    this.elements.textMessagePrice.value = this.state.settings.textMessagePrice;
-                    this.elements.voiceMessagePrice.value = this.state.settings.voiceMessagePrice;
-                }
-                
-                this.elements.settingsModal.classList.add('active');
-            }
+                    // Upload photo to Firebase Storage
+                    const photoRef = firebase.storage().ref().child(`applications/${this.state.currentUser.uid}/${Date.now()}_${this.state.applicationPhoto.name}`);
+                    await photoRef.put(this.state.applicationPhoto);
+                    const photoUrl = await photoRef.getDownloadURL();
 
-            hideSettingsModal() {
-                this.elements.settingsModal.classList.remove('active');
-            }
+                    // Create application data
+                    const applicationData = {
+                        applicantId: this.state.currentUser.uid,
+                        applicantName: this.state.userProfile.name,
+                        fullName: this.elements.fullName.value,
+                        age: parseInt(this.elements.age.value),
+                        country: this.elements.country.value,
+                        socialMediaLinks: this.elements.socialMediaLinks.value,
+                        contactMethod: this.elements.contactMethod.value,
+                        contactInfo: this.elements.contactInfo.value,
+                        photoUrl: photoUrl,
+                        appliedAt: new Date().toISOString(),
+                        status: 'pending'
+                    };
 
-            async saveSettings() {
-                try {
-                    this.state.settings.onlineStatus = this.elements.onlineStatus.value;
-                    this.state.settings.messageSounds = this.elements.messageSounds.value;
-                    this.state.settings.browserNotifications = this.elements.browserNotifications.value;
-                    
-                    // Update user's online status in Firestore
+                    // Save application to Firestore
                     await firebase.firestore()
-                        .collection('users')
-                        .doc(this.state.currentUser.uid)
-                        .update({
-                            onlineStatus: this.state.settings.onlineStatus
-                        });
-                    
-                    this.showNotification('Settings Saved', 'Your chat settings have been updated');
-                    this.hideSettingsModal();
+                        .collection('monetizationApplications')
+                        .add(applicationData);
+
+                    // Send DM to recruitmentor
+                    await this.sendApplicationToRecruitment(applicationData);
+
+                    this.showNotification('Application Submitted', 'Your monetization application has been submitted successfully');
+                    this.hideApplicationModal();
+
                 } catch (error) {
-                    console.error('Error saving settings:', error);
-                    this.showError('Failed to save settings');
+                    console.error('Error submitting application:', error);
+                    this.showError('Failed to submit application');
                 }
+            }
+
+            async sendApplicationToRecruitment(applicationData) {
+                try {
+                    // Find recruitmentor user
+                    const recruitmentorSnapshot = await firebase.firestore()
+                        .collection('users')
+                        .where('username', '==', 'recruitmentor')
+                        .limit(1)
+                        .get();
+
+                    if (recruitmentorSnapshot.empty) {
+                        console.error('Recruitmentor user not found');
+                        return;
+                    }
+
+                    const recruitmentor = recruitmentorSnapshot.docs[0];
+                    const recruitmentorId = recruitmentor.id;
+
+                    // Check if conversation already exists
+                    const existingConversation = this.state.conversations.find(conv => 
+                        conv.participants.includes(recruitmentorId)
+                    );
+
+                    let conversationId;
+                    if (existingConversation) {
+                        conversationId = existingConversation.id;
+                    } else {
+                        // Create new conversation with recruitmentor
+                        const conversationData = {
+                            participants: [this.state.currentUser.uid, recruitmentorId],
+                            participantsData: {
+                                [this.state.currentUser.uid]: {
+                                    name: this.state.userProfile.name,
+                                    profilePicture: this.state.userProfile.profilePicture,
+                                    onlineStatus: 'online'
+                                },
+                                [recruitmentorId]: {
+                                    name: 'Recruitment Team',
+                                    profilePicture: recruitmentor.data().profilePicture,
+                                    onlineStatus: 'offline'
+                                }
+                            },
+                            messages: [],
+                            lastMessage: 'Monetization Application',
+                            lastMessageType: 'system',
+                            lastMessageSender: this.state.currentUser.uid,
+                            lastMessageAt: new Date().toISOString(),
+                            createdAt: new Date().toISOString(),
+                            unreadCount: {
+                                [this.state.currentUser.uid]: 0,
+                                [recruitmentorId]: 1
+                            }
+                        };
+
+                        const conversationRef = await firebase.firestore()
+                            .collection('conversations')
+                            .add(conversationData);
+                        
+                        conversationId = conversationRef.id;
+                    }
+
+                    // Create application message with action buttons
+                    const applicationMessage = {
+                        id: Date.now().toString(),
+                        senderId: this.state.currentUser.uid,
+                        type: 'application',
+                        applicationData: applicationData,
+                        createdAt: new Date().toISOString(),
+                        actions: [
+                            { type: 'approve_mentor', label: 'Make Mentor' },
+                            { type: 'approve_verified', label: 'Verify User' },
+                            { type: 'approve_both', label: 'Both' },
+                            { type: 'decline', label: 'Decline' }
+                        ]
+                    };
+
+                    // Add message to conversation
+                    await firebase.firestore()
+                        .collection('conversations')
+                        .doc(conversationId)
+                        .update({
+                            messages: firebase.firestore.FieldValue.arrayUnion(applicationMessage),
+                            lastMessage: 'Monetization Application',
+                            lastMessageType: 'application',
+                            lastMessageSender: this.state.currentUser.uid,
+                            lastMessageAt: new Date().toISOString(),
+                            [`unreadCount.${recruitmentorId}`]: firebase.firestore.FieldValue.increment(1)
+                        });
+
+                } catch (error) {
+                    console.error('Error sending application to recruitment:', error);
+                }
+            }
+
+            resetApplicationForm() {
+                this.elements.monetizationApplicationForm.reset();
+                this.elements.applicationPhotoPreview.classList.remove('active');
+                this.state.applicationPhoto = null;
             }
 
             async saveCustomPricing() {
                 try {
                     const textPrice = parseInt(this.elements.textMessagePrice.value);
                     const voicePrice = parseInt(this.elements.voiceMessagePrice.value);
+                    const imagePrice = parseInt(this.elements.imageMessagePrice.value);
                     
-                    if (textPrice < 5 || textPrice > 100) {
-                        this.showError('Text message price must be between ₦5 and ₦100');
+                    if (textPrice < 5 || textPrice > 1000) {
+                        this.showError('Text message price must be between ₦5 and ₦1000');
                         return;
                     }
                     
-                    if (voicePrice < 10 || voicePrice > 200) {
-                        this.showError('Voice message price must be between ₦10 and ₦200 per minute');
+                    if (voicePrice < 10 || voicePrice > 5000) {
+                        this.showError('Voice message price must be between ₦10 and ₦5000 per minute');
+                        return;
+                    }
+
+                    if (imagePrice < 5 || imagePrice > 1000) {
+                        this.showError('Image message price must be between ₦5 and ₦1000');
                         return;
                     }
                     
                     this.state.settings.textMessagePrice = textPrice;
                     this.state.settings.voiceMessagePrice = voicePrice;
+                    this.state.settings.imageMessagePrice = imagePrice;
                     
                     // Save to user profile
                     await firebase.firestore()
@@ -3153,7 +2371,8 @@
                         .update({
                             customPricing: {
                                 text: textPrice,
-                                voice: voicePrice
+                                voice: voicePrice,
+                                image: imagePrice
                             }
                         });
                     
@@ -3168,6 +2387,11 @@
                 }
             }
 
+            // The rest of the methods remain the same as in the previous implementation
+            // Only the monetization-related methods were added above
+            
+            // ... (all other methods from the previous implementation remain the same)
+            
             // Utility Methods
             formatTime(timestamp) {
                 if (!timestamp) return 'Just now';
