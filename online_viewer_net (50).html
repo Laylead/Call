@@ -1,0 +1,272 @@
+// Agora Service for High-Quality Audio
+class AgoraService {
+    constructor() {
+        this.client = null;
+        this.localAudioTrack = null;
+        this.initialized = false;
+        this.agoraEngine = null;
+    }
+
+    async initialize(appId) {
+        try {
+            // Load Agora SDK if not already loaded
+            if (typeof AgoraRTC === 'undefined') {
+                await this.loadAgoraSDK();
+            }
+
+            this.client = AgoraRTC.createClient({ 
+                mode: "rtc", 
+                codec: "vp8" 
+            });
+
+            // Initialize with optimized settings
+            await this.client.join(appId, null, null, null);
+            
+            // Configure high-quality audio
+            await this.configureAudioQuality();
+            
+            this.initialized = true;
+            console.log('Agora service initialized successfully');
+            
+            return true;
+            
+        } catch (error) {
+            console.error('Agora initialization error:', error);
+            this.initialized = false;
+            return false;
+        }
+    }
+
+    async loadAgoraSDK() {
+        return new Promise((resolve, reject) => {
+            if (typeof AgoraRTC !== 'undefined') {
+                resolve();
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = 'https://download.agora.io/sdk/release/AgoraRTC_N-4.18.2.js';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    }
+
+    async configureAudioQuality() {
+        try {
+            // Set audio profile for high quality
+            if (this.client.setAudioProfile) {
+                this.client.setAudioProfile('high_quality_stereo');
+            }
+            
+            // Enable advanced audio processing
+            await this.client.enableAudio();
+            
+        } catch (error) {
+            console.error('Audio quality configuration failed:', error);
+        }
+    }
+
+    async createHighQualityAudioTrack() {
+        if (!this.initialized) {
+            throw new Error('Agora not initialized');
+        }
+
+        try {
+            this.localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack({
+                // Optimized for voice recording
+                AEC: true,  // Echo cancellation
+                ANS: true,  // Noise suppression
+                AGC: true,  // Gain control
+                encoderConfig: {
+                    sampleRate: 48000,
+                    stereo: true,
+                    bitrate: 128
+                }
+            });
+
+            return this.localAudioTrack;
+            
+        } catch (error) {
+            console.error('Failed to create high quality audio track:', error);
+            // Fallback to standard track
+            return await AgoraRTC.createMicrophoneAudioTrack();
+        }
+    }
+
+    async createStandardAudioTrack() {
+        return await AgoraRTC.createMicrophoneAudioTrack();
+    }
+
+    async startRecording() {
+        try {
+            const track = await this.createHighQualityAudioTrack();
+            return track.getMediaStreamTrack();
+            
+        } catch (error) {
+            console.error('Recording start failed:', error);
+            throw error;
+        }
+    }
+
+    async stopRecording() {
+        if (this.localAudioTrack) {
+            this.localAudioTrack.close();
+            this.localAudioTrack = null;
+        }
+    }
+
+    async enableAdvancedAudioProcessing() {
+        try {
+            // Enable advanced audio features if available
+            if (this.client.setAudioScenario) {
+                this.client.setAudioScenario('game_streaming');
+            }
+            
+            if (this.client.setAudioProfile) {
+                this.client.setAudioProfile('high_quality_stereo');
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('Advanced audio processing not available:', error);
+            return false;
+        }
+    }
+
+    getAudioStats() {
+        if (!this.localAudioTrack) return null;
+        
+        return {
+            volume: this.localAudioTrack.getVolumeLevel(),
+            enabled: this.localAudioTrack.enabled,
+            muted: this.localAudioTrack.muted
+        };
+    }
+
+    async adjustAudioSettings(settings) {
+        try {
+            if (this.localAudioTrack && settings.volume !== undefined) {
+                this.localAudioTrack.setVolume(settings.volume);
+            }
+            
+            if (this.localAudioTrack && settings.enabled !== undefined) {
+                this.localAudioTrack.setEnabled(settings.enabled);
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('Error adjusting audio settings:', error);
+            return false;
+        }
+    }
+
+    destroy() {
+        if (this.localAudioTrack) {
+            this.localAudioTrack.close();
+            this.localAudioTrack = null;
+        }
+        if (this.client) {
+            this.client.leave();
+        }
+        this.initialized = false;
+    }
+}
+
+// Audio Quality Manager for consistent audio experience
+class AudioQualityManager {
+    constructor() {
+        this.audioContext = null;
+        this.analyser = null;
+        this.processor = null;
+    }
+
+    async initialize() {
+        try {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            this.analyser = this.audioContext.createAnalyser();
+            this.processor = this.audioContext.createScriptProcessor(2048, 1, 1);
+            
+            this.analyser.smoothingTimeConstant = 0.8;
+            this.analyser.fftSize = 1024;
+            
+            return true;
+        } catch (error) {
+            console.error('Audio quality manager initialization failed:', error);
+            return false;
+        }
+    }
+
+    analyzeAudio(stream) {
+        if (!this.audioContext) return null;
+        
+        const source = this.audioContext.createMediaStreamSource(stream);
+        source.connect(this.analyser);
+        this.analyser.connect(this.processor);
+        
+        const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+        
+        this.processor.onaudioprocess = () => {
+            this.analyser.getByteFrequencyData(dataArray);
+            
+            // Calculate audio metrics
+            const metrics = this.calculateAudioMetrics(dataArray);
+            
+            // Emit metrics for visualization
+            this.emitAudioMetrics(metrics);
+        };
+        
+        return dataArray;
+    }
+
+    calculateAudioMetrics(dataArray) {
+        let sum = 0;
+        let peak = 0;
+        
+        for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i];
+            if (dataArray[i] > peak) {
+                peak = dataArray[i];
+            }
+        }
+        
+        const average = sum / dataArray.length;
+        const dynamicRange = peak > 0 ? 20 * Math.log10(peak / average) : 0;
+        
+        return {
+            average,
+            peak,
+            dynamicRange,
+            clipping: peak > 250 // Detect potential clipping
+        };
+    }
+
+    emitAudioMetrics(metrics) {
+        // Dispatch custom event for audio visualization
+        const event = new CustomEvent('audioMetrics', { detail: metrics });
+        window.dispatchEvent(event);
+    }
+
+    destroy() {
+        if (this.processor) {
+            this.processor.disconnect();
+            this.processor = null;
+        }
+        if (this.analyser) {
+            this.analyser.disconnect();
+            this.analyser = null;
+        }
+        if (this.audioContext) {
+            this.audioContext.close();
+            this.audioContext = null;
+        }
+    }
+}
+
+// Initialize global Agora service
+window.agoraService = new AgoraService();
+
+// Export services for module systems
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { AgoraService, AudioQualityManager };
+}
