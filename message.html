@@ -126,16 +126,18 @@
             display: flex;
             flex-direction: column;
             transition: var(--transition);
+            border-right: 1px solid var(--border-color);
         }
 
-        /* User Profiles Section - Made Smaller and Moved to Top */
+        /* User Profiles Section */
         .user-profiles-section {
             padding: 15px;
             position: sticky;
             top: 0;
             background-color: var(--card-bg);
             z-index: 10;
-            transition: transform 0.3s ease;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            border-bottom: 1px solid var(--border-color);
         }
 
         .user-profiles-scroll {
@@ -163,10 +165,30 @@
             cursor: pointer;
             transition: var(--transition);
             min-width: 55px;
+            position: relative;
         }
 
         .user-profile-item:hover {
             transform: translateY(-2px);
+        }
+
+        .user-profile-item.active {
+            animation: glowPulse 2s infinite;
+        }
+
+        @keyframes glowPulse {
+            0% { 
+                transform: scale(1);
+                box-shadow: 0 0 10px rgba(67, 97, 238, 0.5);
+            }
+            50% { 
+                transform: scale(1.05);
+                box-shadow: 0 0 20px rgba(67, 97, 238, 0.8);
+            }
+            100% { 
+                transform: scale(1);
+                box-shadow: 0 0 10px rgba(67, 97, 238, 0.5);
+            }
         }
 
         .user-profile-avatar {
@@ -182,6 +204,12 @@
             font-weight: bold;
             position: relative;
             animation: fadeIn 0.5s ease;
+            border: 2px solid transparent;
+            transition: var(--transition);
+        }
+
+        .user-profile-item.active .user-profile-avatar {
+            border-color: var(--primary-color);
         }
 
         @keyframes fadeIn {
@@ -206,7 +234,7 @@
             color: var(--gray-color);
         }
 
-        /* Chat List - Made Longer */
+        /* Chat List */
         .chat-list {
             flex: 1;
             overflow-y: auto;
@@ -223,6 +251,7 @@
             border-radius: 10px;
             margin-bottom: 5px;
             animation: slideIn 0.3s ease;
+            position: relative;
         }
 
         @keyframes slideIn {
@@ -237,6 +266,7 @@
 
         .chat-list-item.active {
             background-color: rgba(67, 97, 238, 0.08);
+            animation: glowPulse 2s infinite;
         }
 
         .chat-avatar {
@@ -566,7 +596,7 @@
             background-color: var(--card-bg);
             padding: 15px 20px;
             border-top: 1px solid var(--border-color);
-            position: fixed;
+            position: sticky;
             bottom: 0;
             left: 0;
             right: 0;
@@ -1094,7 +1124,7 @@
             color: var(--warning-color);
         }
 
-        /* Settings Modal - Professional Design */
+        /* Settings Modal */
         .modal {
             position: fixed;
             top: 0;
@@ -1630,6 +1660,41 @@
         .conversation-view .floating-search {
             display: none;
         }
+
+        /* Block User Context Menu */
+        .context-menu {
+            position: fixed;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 10000;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .context-menu.active {
+            display: flex;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .context-menu-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .context-menu-item:hover {
+            background: rgba(0,0,0,0.05);
+        }
+
+        .context-menu-item.danger {
+            color: var(--warning-color);
+        }
     </style>
 </head>
 <body>
@@ -1655,7 +1720,7 @@
     <div class="main-container" id="mainContainer">
         <!-- Sidebar with Chat List -->
         <div class="sidebar">
-            <!-- User Profiles Section - Made Smaller and Moved to Top -->
+            <!-- User Profiles Section -->
             <div class="user-profiles-section" id="userProfilesSection">
                 <div class="user-profiles-scroll" id="userProfilesScroll">
                     <!-- User profiles will be populated here -->
@@ -1805,6 +1870,18 @@
                     <button class="preview-action-btn cancel" id="cancelMediaBtn">Cancel</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Context Menu for Blocking Users -->
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" id="blockUserBtn">
+            <i class="fas fa-ban"></i>
+            <span>Block User</span>
+        </div>
+        <div class="context-menu-item danger" id="reportUserBtn">
+            <i class="fas fa-flag"></i>
+            <span>Report User</span>
         </div>
     </div>
 
@@ -2073,7 +2150,11 @@
                     applicationPhoto: null,
                     recipientPricing: null,
                     cameraStream: null,
-                    notificationSound: new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA')
+                    blockedUsers: [],
+                    contextMenu: {
+                        targetUser: null,
+                        targetElement: null
+                    }
                 };
 
                 this.init();
@@ -2103,6 +2184,12 @@
                     
                     // Setup scroll behavior for user profiles
                     this.setupScrollBehavior();
+                    
+                    // Setup browser notifications
+                    this.setupBrowserNotifications();
+                    
+                    // Setup context menu for blocking users
+                    this.setupContextMenu();
                     
                     console.log('ConnectX Chat initialized successfully');
                 } catch (error) {
@@ -2212,7 +2299,12 @@
                     captureBtn: document.getElementById('captureBtn'),
                     retakeBtn: document.getElementById('retakeBtn'),
                     submitApplicationBtn: document.getElementById('submitApplicationBtn'),
-                    cameraInstructions: document.getElementById('cameraInstructions')
+                    cameraInstructions: document.getElementById('cameraInstructions'),
+                    
+                    // Context menu
+                    contextMenu: document.getElementById('contextMenu'),
+                    blockUserBtn: document.getElementById('blockUserBtn'),
+                    reportUserBtn: document.getElementById('reportUserBtn')
                 };
             }
 
@@ -2274,25 +2366,187 @@
                 // Media Preview
                 this.elements.sendMediaBtn.addEventListener('click', () => this.sendMediaMessage());
                 this.elements.cancelMediaBtn.addEventListener('click', () => this.cancelMedia());
+                
+                // Context Menu
+                this.elements.blockUserBtn.addEventListener('click', () => this.blockUser());
+                this.elements.reportUserBtn.addEventListener('click', () => this.reportUser());
+                
+                // Close context menu when clicking elsewhere
+                document.addEventListener('click', (e) => {
+                    if (!this.elements.contextMenu.contains(e.target)) {
+                        this.hideContextMenu();
+                    }
+                });
             }
 
             setupScrollBehavior() {
                 const chatList = this.elements.chatList;
+                const userProfilesSection = this.elements.userProfilesSection;
                 let lastScrollTop = 0;
+                let isScrolling;
                 
                 chatList.addEventListener('scroll', () => {
                     const scrollTop = chatList.scrollTop;
                     
-                    if (scrollTop > lastScrollTop && scrollTop > 50) {
-                        // Scrolling down - hide user profiles
-                        this.elements.userProfilesSection.style.transform = 'translateY(-100%)';
-                    } else {
+                    // Clear our timeout throughout the scroll
+                    window.clearTimeout(isScrolling);
+                    
+                    // Determine scroll direction
+                    if (scrollTop > lastScrollTop && scrollTop > 100) {
+                        // Scrolling down - hide user profiles with smooth animation
+                        userProfilesSection.style.transform = 'translateY(-100%)';
+                        userProfilesSection.style.opacity = '0';
+                        userProfilesSection.style.transition = 'all 0.3s ease';
+                    } else if (scrollTop < lastScrollTop) {
                         // Scrolling up - show user profiles
-                        this.elements.userProfilesSection.style.transform = 'translateY(0)';
+                        userProfilesSection.style.transform = 'translateY(0)';
+                        userProfilesSection.style.opacity = '1';
                     }
                     
                     lastScrollTop = scrollTop;
+                    
+                    // Set a timeout to run after scrolling ends
+                    isScrolling = setTimeout(() => {
+                        // Scroll ended
+                        this.handleScrollEnd();
+                    }, 66);
                 });
+            }
+
+            setupContextMenu() {
+                // Add context menu to chat list items and user profiles
+                this.elements.chatList.addEventListener('contextmenu', (e) => {
+                    const chatItem = e.target.closest('.chat-list-item');
+                    if (chatItem) {
+                        e.preventDefault();
+                        this.showContextMenu(e, chatItem);
+                    }
+                });
+
+                this.elements.userProfilesScroll.addEventListener('contextmenu', (e) => {
+                    const userProfile = e.target.closest('.user-profile-item');
+                    if (userProfile) {
+                        e.preventDefault();
+                        this.showContextMenu(e, userProfile);
+                    }
+                });
+            }
+
+            showContextMenu(e, element) {
+                const userId = element.getAttribute('data-user-id') || 
+                              element.getAttribute('data-conversation-id');
+                
+                if (!userId) return;
+
+                // Store target information
+                this.state.contextMenu.targetUser = userId;
+                this.state.contextMenu.targetElement = element;
+
+                // Position the context menu
+                this.elements.contextMenu.style.left = e.pageX + 'px';
+                this.elements.contextMenu.style.top = e.pageY + 'px';
+                this.elements.contextMenu.classList.add('active');
+            }
+
+            hideContextMenu() {
+                this.elements.contextMenu.classList.remove('active');
+                this.state.contextMenu.targetUser = null;
+                this.state.contextMenu.targetElement = null;
+            }
+
+            async blockUser() {
+                const userId = this.state.contextMenu.targetUser;
+                if (!userId) return;
+
+                try {
+                    // Add to blocked users list
+                    await firebase.firestore()
+                        .collection('users')
+                        .doc(this.state.currentUser.uid)
+                        .update({
+                            blockedUsers: firebase.firestore.FieldValue.arrayUnion(userId)
+                        });
+
+                    this.state.blockedUsers.push(userId);
+                    
+                    // Hide the context menu
+                    this.hideContextMenu();
+                    
+                    // Show notification
+                    this.showNotification('User Blocked', 'This user can no longer message you');
+                    
+                    // Remove from UI if currently visible
+                    if (this.state.contextMenu.targetElement) {
+                        this.state.contextMenu.targetElement.style.display = 'none';
+                    }
+                    
+                } catch (error) {
+                    console.error('Error blocking user:', error);
+                    this.showError('Failed to block user');
+                }
+            }
+
+            async reportUser() {
+                const userId = this.state.contextMenu.targetUser;
+                if (!userId) return;
+
+                const reason = prompt('Please enter the reason for reporting this user:');
+                if (!reason) return;
+
+                try {
+                    await firebase.firestore()
+                        .collection('reports')
+                        .add({
+                            reporterId: this.state.currentUser.uid,
+                            reportedUserId: userId,
+                            reason: reason,
+                            timestamp: new Date().toISOString(),
+                            status: 'pending'
+                        });
+
+                    this.hideContextMenu();
+                    this.showNotification('User Reported', 'Thank you for your report. We will review it shortly.');
+                    
+                } catch (error) {
+                    console.error('Error reporting user:', error);
+                    this.showError('Failed to report user');
+                }
+            }
+
+            setupBrowserNotifications() {
+                if (!("Notification" in window)) {
+                    console.log("This browser does not support notifications");
+                    return;
+                }
+
+                // Request permission on user interaction
+                this.elements.settingsBtn.addEventListener('click', () => {
+                    if (Notification.permission === "default") {
+                        this.requestNotificationPermission();
+                    }
+                });
+
+                // Listen for visibility changes
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) {
+                        this.enableBackgroundNotifications();
+                    }
+                });
+            }
+
+            async requestNotificationPermission() {
+                try {
+                    const permission = await Notification.requestPermission();
+                    
+                    if (permission === "granted") {
+                        this.showNotification('Notifications Enabled', 
+                            'You will now receive notifications for new messages');
+                        this.state.settings.browserNotifications = 'enabled';
+                        this.saveSettings();
+                    }
+                } catch (error) {
+                    console.error('Error requesting notification permission:', error);
+                }
             }
 
             async checkAuthStatus() {
@@ -2321,6 +2575,7 @@
                                 this.state.userProfile = doc.data();
                                 this.state.balance = this.state.userProfile.balance || 0;
                                 this.state.freeMessagesRemaining = 3 - (this.state.userProfile.freeMessagesUsed || 0);
+                                this.state.blockedUsers = this.state.userProfile.blockedUsers || [];
                                 
                                 // Check if user is mentor or verified
                                 this.state.isMentor = this.state.userProfile.isMentor || false;
@@ -2387,8 +2642,9 @@
                         const followers = userData.followers || [];
                         const following = userData.following || [];
                         
-                        // Combine and deduplicate
-                        const allUserIds = [...new Set([...followers, ...following])];
+                        // Combine and deduplicate, filter out blocked users
+                        const allUserIds = [...new Set([...followers, ...following])]
+                            .filter(userId => !this.state.blockedUsers.includes(userId));
                         
                         // Fetch user data for each ID
                         const userPromises = allUserIds.map(userId => 
@@ -2463,10 +2719,16 @@
                         .orderBy('lastMessageAt', 'desc')
                         .get();
                     
-                    this.state.conversations = conversationsSnapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
+                    // Filter out conversations with blocked users
+                    this.state.conversations = conversationsSnapshot.docs
+                        .map(doc => ({
+                            id: doc.id,
+                            ...doc.data()
+                        }))
+                        .filter(conversation => {
+                            const otherParticipantId = conversation.participants.find(id => id !== this.state.currentUser.uid);
+                            return !this.state.blockedUsers.includes(otherParticipantId);
+                        });
                     
                     this.renderConversations();
                     
@@ -2490,6 +2752,12 @@
                                     id: change.doc.id,
                                     ...change.doc.data()
                                 };
+                                
+                                // Skip if conversation is with blocked user
+                                const otherParticipantId = conversation.participants.find(id => id !== this.state.currentUser.uid);
+                                if (this.state.blockedUsers.includes(otherParticipantId)) {
+                                    return;
+                                }
                                 
                                 // Update conversation in state
                                 const index = this.state.conversations.findIndex(c => c.id === conversation.id);
@@ -2533,7 +2801,7 @@
                 }, 0);
                 
                 if (totalUnread > 0) {
-                    this.elements.notificationBadge.textContent = totalUnread;
+                    this.elements.notificationBadge.textContent = totalUnread > 99 ? '99+' : totalUnread;
                     this.elements.notificationBadge.style.display = 'flex';
                 } else {
                     this.elements.notificationBadge.style.display = 'none';
@@ -2542,34 +2810,44 @@
 
             playNotificationSound() {
                 // Create a simple notification sound
-                const context = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = context.createOscillator();
-                const gainNode = context.createGain();
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(context.destination);
-                
-                oscillator.frequency.value = 800;
-                oscillator.type = 'sine';
-                
-                gainNode.gain.setValueAtTime(0, context.currentTime);
-                gainNode.gain.linearRampToValueAtTime(0.1, context.currentTime + 0.01);
-                gainNode.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.5);
-                
-                oscillator.start(context.currentTime);
-                oscillator.stop(context.currentTime + 0.5);
+                try {
+                    const context = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = context.createOscillator();
+                    const gainNode = context.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(context.destination);
+                    
+                    oscillator.frequency.value = 800;
+                    oscillator.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0, context.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0.1, context.currentTime + 0.01);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.5);
+                    
+                    oscillator.start(context.currentTime);
+                    oscillator.stop(context.currentTime + 0.5);
+                } catch (error) {
+                    console.error('Error playing notification sound:', error);
+                }
             }
 
             async showBrowserNotification(conversation) {
                 if (!("Notification" in window)) return;
-                
-                if (Notification.permission === "granted") {
+                if (Notification.permission !== "granted") return;
+                if (!document.hidden) return; // Only show when app is in background
+
+                try {
                     const otherParticipantId = conversation.participants.find(id => id !== this.state.currentUser.uid);
                     const otherParticipant = conversation.participantsData ? conversation.participantsData[otherParticipantId] : null;
                     
                     const notification = new Notification(`New message from ${otherParticipant ? otherParticipant.name : 'Unknown User'}`, {
                         body: conversation.lastMessage || 'New message',
-                        icon: otherParticipant && otherParticipant.profilePicture ? otherParticipant.profilePicture : '/icon.png'
+                        icon: otherParticipant && otherParticipant.profilePicture ? otherParticipant.profilePicture : '/icon.png',
+                        badge: '/badge-icon.png',
+                        tag: conversation.id,
+                        requireInteraction: false,
+                        silent: false
                     });
                     
                     notification.onclick = () => {
@@ -2579,12 +2857,8 @@
                     };
                     
                     setTimeout(() => notification.close(), 5000);
-                } else if (Notification.permission !== "denied") {
-                    Notification.requestPermission().then(permission => {
-                        if (permission === "granted") {
-                            this.showBrowserNotification(conversation);
-                        }
-                    });
+                } catch (error) {
+                    console.error('Error showing browser notification:', error);
                 }
             }
 
@@ -2618,7 +2892,7 @@
                     }
                     
                     return `
-                        <div class="chat-list-item ${isActive ? 'active' : ''}" data-conversation-id="${conversation.id}">
+                        <div class="chat-list-item ${isActive ? 'active' : ''}" data-conversation-id="${conversation.id}" data-user-id="${otherParticipantId}">
                             <div class="chat-avatar">
                                 ${otherParticipant && otherParticipant.profilePicture ? 
                                     `<img src="${otherParticipant.profilePicture}" alt="${otherParticipant.name}" loading="lazy">` :
@@ -2715,9 +2989,33 @@
                     // Mark conversation as read
                     await this.markAsRead();
                     
+                    // Highlight active conversation head
+                    this.highlightActiveConversationHead(conversationId);
+                    
                 } catch (error) {
                     console.error('Error loading conversation:', error);
                     this.showError('Failed to load conversation');
+                }
+            }
+
+            highlightActiveConversationHead(conversationId) {
+                // Remove active class from all
+                document.querySelectorAll('.user-profile-item, .chat-list-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                // Add to current active
+                const activeHead = document.querySelector(`[data-conversation-id="${conversationId}"]`);
+                if (activeHead) {
+                    activeHead.classList.add('active');
+                }
+                
+                // Also highlight the user profile if available
+                if (this.state.activeConversation && this.state.activeConversation.user) {
+                    const userProfile = document.querySelector(`[data-user-id="${this.state.activeConversation.user.id}"]`);
+                    if (userProfile) {
+                        userProfile.classList.add('active');
+                    }
                 }
             }
 
@@ -2831,6 +3129,9 @@
                     this.updateConversationHeader();
                     await this.loadMessages();
                     this.setupMessagesListener();
+                    
+                    // Highlight active conversation head
+                    this.highlightActiveConversationHead(conversationRef.id);
                     
                 } catch (error) {
                     console.error('Error starting conversation:', error);
@@ -3233,125 +3534,177 @@
                 }
             }
 
-            // Voice Recording
+            // Voice Recording with Agora
             async startRecording() {
                 try {
-                    // Use Agora for better audio quality if available
-                    if (typeof AgoraRTC !== 'undefined') {
-                        // Use Agora for recording
-                        await this.startAgoraRecording();
+                    // Try to use Agora for high-quality recording
+                    if (typeof agoraAudioManager !== 'undefined') {
+                        await agoraAudioManager.startHighQualityRecording();
+                        this.setupAgoraRecording();
                     } else {
-                        // Fallback to standard MediaRecorder
+                        // Fallback to standard recording
                         await this.startStandardRecording();
                     }
                 } catch (error) {
                     console.error('Error starting recording:', error);
-                    this.showError('Could not access microphone');
+                    // Fallback to standard recording
+                    await this.startStandardRecording();
                 }
             }
 
-            async startAgoraRecording() {
-                // This would use Agora's advanced audio processing
-                // For now, we'll use the standard recording as a fallback
-                await this.startStandardRecording();
+            async setupAgoraRecording() {
+                try {
+                    this.state.isRecording = true;
+                    this.state.recordingStartTime = Date.now();
+                    
+                    // Show voice recorder UI
+                    this.elements.voiceRecorder.classList.add('active');
+                    
+                    // Start timer
+                    this.state.recordingTimer = setInterval(() => {
+                        const elapsed = Math.floor((Date.now() - this.state.recordingStartTime) / 1000);
+                        this.elements.recordingTimer.textContent = this.formatAudioTime(elapsed);
+                    }, 1000);
+                    
+                    // Start waveform animation
+                    this.animateWaveform();
+                    
+                } catch (error) {
+                    console.error('Error setting up Agora recording:', error);
+                    this.showError('Failed to start recording');
+                }
             }
 
             async startStandardRecording() {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true
-                    } 
-                });
-                
-                // Set up audio analysis for waveform
-                this.state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                this.state.analyser = this.state.audioContext.createAnalyser();
-                const source = this.state.audioContext.createMediaStreamSource(stream);
-                source.connect(this.state.analyser);
-                
-                this.state.analyser.fftSize = 256;
-                const bufferLength = this.state.analyser.frequencyBinCount;
-                this.state.dataArray = new Uint8Array(bufferLength);
-                
-                this.state.audioChunks = [];
-                this.state.mediaRecorder = new MediaRecorder(stream, {
-                    mimeType: 'audio/webm;codecs=opus'
-                });
-                
-                this.state.mediaRecorder.ondataavailable = (event) => {
-                    if (event.data.size > 0) {
-                        this.state.audioChunks.push(event.data);
-                    }
-                };
-                
-                this.state.mediaRecorder.onstop = () => {
-                    const audioBlob = new Blob(this.state.audioChunks, { type: 'audio/webm' });
-                    const duration = Math.floor((Date.now() - this.state.recordingStartTime) / 1000);
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true,
+                            channelCount: 1,
+                            sampleRate: 48000,
+                            sampleSize: 16
+                        } 
+                    });
                     
-                    this.state.voiceNote = {
-                        blob: audioBlob,
-                        duration: this.formatAudioTime(duration),
-                        url: URL.createObjectURL(audioBlob)
+                    // Set up audio analysis for waveform
+                    this.state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    this.state.analyser = this.state.audioContext.createAnalyser();
+                    const source = this.state.audioContext.createMediaStreamSource(stream);
+                    source.connect(this.state.analyser);
+                    
+                    this.state.analyser.fftSize = 256;
+                    const bufferLength = this.state.analyser.frequencyBinCount;
+                    this.state.dataArray = new Uint8Array(bufferLength);
+                    
+                    this.state.audioChunks = [];
+                    this.state.mediaRecorder = new MediaRecorder(stream, {
+                        mimeType: 'audio/webm;codecs=opus',
+                        audioBitsPerSecond: 128000
+                    });
+                    
+                    this.state.mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            this.state.audioChunks.push(event.data);
+                        }
                     };
                     
-                    // Stop all tracks
-                    stream.getTracks().forEach(track => track.stop());
+                    this.state.mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(this.state.audioChunks, { type: 'audio/webm' });
+                        const duration = Math.floor((Date.now() - this.state.recordingStartTime) / 1000);
+                        
+                        this.state.voiceNote = {
+                            blob: audioBlob,
+                            duration: this.formatAudioTime(duration),
+                            url: URL.createObjectURL(audioBlob)
+                        };
+                        
+                        // Stop all tracks
+                        stream.getTracks().forEach(track => track.stop());
+                        
+                        // Stop animation
+                        if (this.state.animationId) {
+                            cancelAnimationFrame(this.state.animationId);
+                        }
+                        
+                        // Show voice preview
+                        this.showVoicePreview();
+                    };
                     
-                    // Stop animation
-                    if (this.state.animationId) {
-                        cancelAnimationFrame(this.state.animationId);
-                    }
+                    this.state.mediaRecorder.start(100);
+                    this.state.isRecording = true;
+                    this.state.recordingStartTime = Date.now();
                     
-                    // Show voice preview
-                    this.showVoicePreview();
-                };
-                
-                this.state.mediaRecorder.start();
-                this.state.isRecording = true;
-                this.state.recordingStartTime = Date.now();
-                
-                // Show voice recorder UI
-                this.elements.voiceRecorder.classList.add('active');
-                
-                // Start timer
-                this.state.recordingTimer = setInterval(() => {
-                    const elapsed = Math.floor((Date.now() - this.state.recordingStartTime) / 1000);
-                    this.elements.recordingTimer.textContent = this.formatAudioTime(elapsed);
-                }, 1000);
-                
-                // Start waveform animation
-                this.animateWaveform();
+                    // Show voice recorder UI
+                    this.elements.voiceRecorder.classList.add('active');
+                    
+                    // Start timer
+                    this.state.recordingTimer = setInterval(() => {
+                        const elapsed = Math.floor((Date.now() - this.state.recordingStartTime) / 1000);
+                        this.elements.recordingTimer.textContent = this.formatAudioTime(elapsed);
+                    }, 1000);
+                    
+                    // Start waveform animation
+                    this.animateWaveform();
+                    
+                } catch (error) {
+                    console.error('Error starting standard recording:', error);
+                    this.showError('Could not access microphone');
+                }
             }
 
             animateWaveform() {
                 if (!this.state.isRecording) return;
                 
-                this.state.analyser.getByteFrequencyData(this.state.dataArray);
-                
-                // Clear previous waveform
-                this.elements.voiceWaveform.innerHTML = '';
-                
-                // Create new waveform bars
-                const barCount = 20;
-                const sliceWidth = Math.floor(this.state.dataArray.length / barCount);
-                
-                for (let i = 0; i < barCount; i++) {
-                    const barValue = this.state.dataArray[i * sliceWidth] || 0;
-                    const barHeight = Math.max(5, (barValue / 256) * 30);
-                    const bar = document.createElement('div');
-                    bar.className = 'voice-bar';
-                    bar.style.height = `${barHeight}px`;
-                    this.elements.voiceWaveform.appendChild(bar);
+                if (this.state.analyser && this.state.dataArray) {
+                    this.state.analyser.getByteFrequencyData(this.state.dataArray);
+                    
+                    // Clear previous waveform
+                    this.elements.voiceWaveform.innerHTML = '';
+                    
+                    // Create new waveform bars
+                    const barCount = 20;
+                    const sliceWidth = Math.floor(this.state.dataArray.length / barCount);
+                    
+                    for (let i = 0; i < barCount; i++) {
+                        const barValue = this.state.dataArray[i * sliceWidth] || 0;
+                        const barHeight = Math.max(5, (barValue / 256) * 30);
+                        const bar = document.createElement('div');
+                        bar.className = 'voice-bar';
+                        bar.style.height = `${barHeight}px`;
+                        this.elements.voiceWaveform.appendChild(bar);
+                    }
+                } else {
+                    // Fallback: generate random waveform
+                    this.elements.voiceWaveform.innerHTML = '';
+                    for (let i = 0; i < 20; i++) {
+                        const height = Math.floor(Math.random() * 20) + 5;
+                        const bar = document.createElement('div');
+                        bar.className = 'voice-bar';
+                        bar.style.height = `${height}px`;
+                        this.elements.voiceWaveform.appendChild(bar);
+                    }
                 }
                 
                 this.state.animationId = requestAnimationFrame(() => this.animateWaveform());
             }
 
-            stopRecording() {
-                if (this.state.mediaRecorder && this.state.isRecording) {
-                    this.state.mediaRecorder.stop();
+            async stopRecording() {
+                if (this.state.isRecording) {
+                    if (typeof agoraAudioManager !== 'undefined' && agoraAudioManager.isRecording) {
+                        const audioBlob = await agoraAudioManager.stopRecording();
+                        const duration = Math.floor((Date.now() - this.state.recordingStartTime) / 1000);
+                        
+                        this.state.voiceNote = {
+                            blob: audioBlob,
+                            duration: this.formatAudioTime(duration),
+                            url: URL.createObjectURL(audioBlob)
+                        };
+                    } else if (this.state.mediaRecorder) {
+                        this.state.mediaRecorder.stop();
+                    }
+                    
                     this.state.isRecording = false;
                     
                     // Hide voice recorder UI
@@ -3362,6 +3715,9 @@
                         clearInterval(this.state.recordingTimer);
                         this.state.recordingTimer = null;
                     }
+                    
+                    // Show voice preview
+                    this.showVoicePreview();
                 }
             }
 
@@ -3369,9 +3725,16 @@
                 this.stopRecording();
                 this.state.voiceNote = null;
                 this.hideVoicePreview();
+                
+                // Stop Agora recording if active
+                if (typeof agoraAudioManager !== 'undefined' && agoraAudioManager.isRecording) {
+                    agoraAudioManager.stopRecording();
+                }
             }
 
             showVoicePreview() {
+                if (!this.state.voiceNote) return;
+                
                 this.state.isVoicePreview = true;
                 this.elements.voicePreviewDuration.textContent = this.state.voiceNote.duration;
                 this.elements.voicePreview.classList.add('active');
@@ -3487,6 +3850,10 @@
                 input.onchange = (e) => {
                     const file = e.target.files[0];
                     if (file) {
+                        if (file.size > appConfig.maxFileSize) {
+                            this.showError(`File size too large. Maximum size is ${appConfig.maxFileSize / 1024 / 1024}MB`);
+                            return;
+                        }
                         this.previewMedia(file);
                     }
                 };
@@ -3545,6 +3912,11 @@
                 const url = new URL(window.location);
                 url.searchParams.delete('conversation');
                 window.history.replaceState({}, '', url);
+                
+                // Remove active class from all conversation heads
+                document.querySelectorAll('.user-profile-item, .chat-list-item').forEach(item => {
+                    item.classList.remove('active');
+                });
             }
 
             showLoading() {
@@ -3630,31 +4002,6 @@
                 window.location.href = `profile.html?user=${userId}`;
             }
 
-            async startNewChat() {
-                const username = prompt('Enter username to start a chat:');
-                if (!username) return;
-                
-                try {
-                    // Search for user by username
-                    const usersSnapshot = await firebase.firestore()
-                        .collection('users')
-                        .where('username', '==', username)
-                        .limit(1)
-                        .get();
-                    
-                    if (usersSnapshot.empty) {
-                        this.showError('User not found');
-                        return;
-                    }
-                    
-                    const userDoc = usersSnapshot.docs[0];
-                    this.startConversation(userDoc.id);
-                } catch (error) {
-                    console.error('Error starting new chat:', error);
-                    this.showError('Failed to start new chat');
-                }
-            }
-
             // Search functionality
             toggleSearch() {
                 if (this.state.isSearchActive) {
@@ -3685,9 +4032,18 @@
                     return;
                 }
                 
-                // Implement search logic here
-                // This is a simplified version - you would typically search your database
-                console.log('Searching for:', query);
+                // Search users in the network
+                const results = this.state.networkUsers.filter(user => 
+                    user.name.toLowerCase().includes(query) || 
+                    (user.username && user.username.toLowerCase().includes(query))
+                );
+                
+                this.displaySearchResults(results);
+            }
+
+            displaySearchResults(results) {
+                // Implement search results display
+                console.log('Search results:', results);
             }
 
             hideSearchResults() {
@@ -3803,13 +4159,7 @@
                 
                 try {
                     // Validate form
-                    if (!this.elements.fullName.value || 
-                        !this.elements.age.value || 
-                        !this.elements.country.value || 
-                        !this.elements.socialMediaLinks.value || 
-                        !this.elements.contactMethod.value || 
-                        !this.elements.contactInfo.value || 
-                        !this.state.applicationPhoto) {
+                    if (!this.validateApplicationForm()) {
                         this.showError('Please fill all fields and take a verification photo');
                         return;
                     }
@@ -3818,45 +4168,85 @@
                     this.elements.submitApplicationBtn.innerHTML = '<div class="loading"></div> Submitting...';
                     this.elements.submitApplicationBtn.disabled = true;
 
-                    // Upload photo to Firebase Storage
-                    const photoRef = firebase.storage().ref().child(`applications/${this.state.currentUser.uid}/${Date.now()}_verification.png`);
-                    await photoRef.put(this.state.applicationPhoto);
-                    const photoUrl = await photoRef.getDownloadURL();
+                    // Set timeout for submission
+                    const submissionTimeout = setTimeout(() => {
+                        this.showError('Submission taking longer than expected. Please try again.');
+                        this.resetApplicationButton();
+                    }, 30000);
 
+                    // Upload photo to Firebase Storage
+                    const photoUrl = await this.uploadApplicationPhoto();
+                    
                     // Create application data
-                    const applicationData = {
-                        applicantId: this.state.currentUser.uid,
-                        applicantName: this.state.userProfile.name,
-                        fullName: this.elements.fullName.value,
-                        age: parseInt(this.elements.age.value),
-                        country: this.elements.country.value,
-                        socialMediaLinks: this.elements.socialMediaLinks.value,
-                        contactMethod: this.elements.contactMethod.value,
-                        contactInfo: this.elements.contactInfo.value,
-                        photoUrl: photoUrl,
-                        appliedAt: new Date().toISOString(),
-                        status: 'pending'
-                    };
+                    const applicationData = this.buildApplicationData(photoUrl);
 
                     // Save application to Firestore
-                    await firebase.firestore()
-                        .collection('monetizationApplications')
-                        .add(applicationData);
+                    await this.saveApplicationToFirestore(applicationData);
 
                     // Send DM to recruitmentor
                     await this.sendApplicationToRecruitment(applicationData);
 
+                    clearTimeout(submissionTimeout);
+                    
                     this.showNotification('Application Submitted', 'Your monetization application has been submitted successfully');
                     this.hideApplicationModal();
 
                 } catch (error) {
                     console.error('Error submitting application:', error);
-                    this.showError('Failed to submit application');
+                    this.showError('Failed to submit application: ' + error.message);
                 } finally {
-                    // Reset button state
-                    this.elements.submitApplicationBtn.innerHTML = 'Submit Application';
-                    this.elements.submitApplicationBtn.disabled = false;
+                    this.resetApplicationButton();
                 }
+            }
+
+            validateApplicationForm() {
+                return this.elements.fullName.value && 
+                    this.elements.age.value && 
+                    this.elements.country.value && 
+                    this.elements.socialMediaLinks.value && 
+                    this.elements.contactMethod.value && 
+                    this.elements.contactInfo.value && 
+                    this.state.applicationPhoto;
+            }
+
+            async uploadApplicationPhoto() {
+                if (!this.state.applicationPhoto) {
+                    throw new Error('Verification photo is required');
+                }
+
+                const photoRef = firebase.storage().ref()
+                    .child(`applications/${this.state.currentUser.uid}/${Date.now()}_verification.png`);
+                
+                const snapshot = await photoRef.put(this.state.applicationPhoto);
+                return await snapshot.ref.getDownloadURL();
+            }
+
+            buildApplicationData(photoUrl) {
+                return {
+                    applicantId: this.state.currentUser.uid,
+                    applicantName: this.state.userProfile.name,
+                    fullName: this.elements.fullName.value,
+                    age: parseInt(this.elements.age.value),
+                    country: this.elements.country.value,
+                    socialMediaLinks: this.elements.socialMediaLinks.value,
+                    contactMethod: this.elements.contactMethod.value,
+                    contactInfo: this.elements.contactInfo.value,
+                    photoUrl: photoUrl,
+                    appliedAt: new Date().toISOString(),
+                    status: 'pending'
+                };
+            }
+
+            async saveApplicationToFirestore(applicationData) {
+                const docRef = await firebase.firestore()
+                    .collection('monetizationApplications')
+                    .add({
+                        ...applicationData,
+                        status: 'pending',
+                        submittedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                
+                return docRef.id;
             }
 
             async sendApplicationToRecruitment(applicationData) {
@@ -3949,6 +4339,7 @@
 
                 } catch (error) {
                     console.error('Error sending application to recruitment:', error);
+                    throw error;
                 }
             }
 
@@ -3967,6 +4358,11 @@
                     this.state.cameraStream.getTracks().forEach(track => track.stop());
                     this.state.cameraStream = null;
                 }
+            }
+
+            resetApplicationButton() {
+                this.elements.submitApplicationBtn.innerHTML = 'Submit Application';
+                this.elements.submitApplicationBtn.disabled = false;
             }
 
             async saveCustomPricing() {
@@ -4059,6 +4455,11 @@
                 if (conversationId) {
                     await this.loadConversation(conversationId);
                 }
+            }
+
+            handleScrollEnd() {
+                // Additional logic when scrolling stops
+                // console.log('Scrolling ended');
             }
 
             showError(message) {
