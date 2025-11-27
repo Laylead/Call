@@ -160,7 +160,7 @@
             transform: scale(1.05);
         }
 
-        /* User Profiles Section - Moved to top */
+        /* User Profiles Section */
         .user-profiles-section {
             padding: 15px 20px;
             border-bottom: 1px solid var(--border-color);
@@ -1253,42 +1253,102 @@
             color: var(--success-color);
         }
 
-        /* Verification Badge */
-        .verified-badge {
-            color: var(--primary-color);
-            margin-left: 5px;
-        }
-
-        .mentor-badge {
-            background: linear-gradient(135deg, #ff9a00, #ff6a00);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: 600;
-            margin-left: 5px;
-        }
-
         /* Application Form */
-        .application-preview {
-            max-width: 100%;
+        .application-form {
+            background: rgba(67, 97, 238, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+
+        .photo-preview {
+            width: 100px;
+            height: 100px;
             border-radius: 8px;
+            object-fit: cover;
+            border: 2px dashed var(--border-color);
             margin-top: 10px;
             display: none;
         }
 
-        .application-preview.active {
+        .photo-preview.active {
             display: block;
         }
 
-        .action-buttons {
+        .application-actions {
             display: flex;
             gap: 10px;
             margin-top: 20px;
         }
 
-        .action-buttons button {
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: var(--transition);
             flex: 1;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: var(--gray-color);
+            color: white;
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-warning {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        /* Monetization Status Badges */
+        .user-badges {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+        }
+
+        .badge {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .badge-verified {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .badge-mentor {
+            background: linear-gradient(135deg, #ff9a00, #ff6a00);
+            color: white;
+        }
+
+        /* Pricing Display in Chat */
+        .pricing-notice {
+            font-size: 12px;
+            color: var(--gray-color);
+            margin-top: 5px;
+        }
+
+        .paid-indicator {
+            background: var(--primary-color);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            margin-left: 5px;
         }
 
         /* Responsive */
@@ -1375,7 +1435,7 @@
                 </button>
             </div>
             
-            <!-- User Profiles Section - Moved to top -->
+            <!-- User Profiles Section -->
             <div class="user-profiles-section" id="userProfilesSection">
                 <div class="user-profiles-header">
                     <h3>Your Network</h3>
@@ -1416,6 +1476,9 @@
                                 <span class="status-indicator status-online"></span>
                                 <span id="statusText">Online</span>
                             </p>
+                            <div class="user-badges" id="conversationUserBadges">
+                                <!-- Badges will be loaded here -->
+                            </div>
                         </div>
                     </div>
                     <div class="conversation-actions">
@@ -1621,7 +1684,7 @@
                 <i class="fas fa-times close-modal" id="closeApplicationModal"></i>
             </div>
             
-            <form id="monetizationApplicationForm">
+            <div class="application-form">
                 <div class="form-group">
                     <label for="fullName">Full Name</label>
                     <input type="text" id="fullName" required>
@@ -1659,11 +1722,14 @@
                 <div class="form-group">
                     <label for="applicationPhoto">Clear Live Photo</label>
                     <input type="file" id="applicationPhoto" accept="image/*" required>
-                    <img id="applicationPhotoPreview" class="application-preview" src="" alt="Photo Preview">
+                    <img id="applicationPhotoPreview" class="photo-preview" src="" alt="Photo Preview">
                 </div>
                 
-                <button type="submit" class="btn btn-primary">Submit Application</button>
-            </form>
+                <div class="application-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelApplicationBtn">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="submitApplicationBtn">Submit Application</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1788,6 +1854,7 @@
                     conversationAvatar: document.getElementById('conversationAvatar'),
                     conversationUserName: document.getElementById('conversationUserName'),
                     conversationUserStatus: document.getElementById('conversationUserStatus'),
+                    conversationUserBadges: document.getElementById('conversationUserBadges'),
                     statusText: document.getElementById('statusText'),
                     viewProfileBtn: document.getElementById('viewProfileBtn'),
                     messagesArea: document.getElementById('messagesArea'),
@@ -1843,7 +1910,6 @@
                     // Monetization application modal
                     monetizationApplicationModal: document.getElementById('monetizationApplicationModal'),
                     closeApplicationModal: document.getElementById('closeApplicationModal'),
-                    monetizationApplicationForm: document.getElementById('monetizationApplicationForm'),
                     fullName: document.getElementById('fullName'),
                     age: document.getElementById('age'),
                     country: document.getElementById('country'),
@@ -1851,7 +1917,9 @@
                     contactMethod: document.getElementById('contactMethod'),
                     contactInfo: document.getElementById('contactInfo'),
                     applicationPhoto: document.getElementById('applicationPhoto'),
-                    applicationPhotoPreview: document.getElementById('applicationPhotoPreview')
+                    applicationPhotoPreview: document.getElementById('applicationPhotoPreview'),
+                    cancelApplicationBtn: document.getElementById('cancelApplicationBtn'),
+                    submitApplicationBtn: document.getElementById('submitApplicationBtn')
                 };
             }
 
@@ -1870,7 +1938,8 @@
                 
                 // Monetization Application
                 this.elements.closeApplicationModal.addEventListener('click', () => this.hideApplicationModal());
-                this.elements.monetizationApplicationForm.addEventListener('submit', (e) => this.submitApplication(e));
+                this.elements.cancelApplicationBtn.addEventListener('click', () => this.hideApplicationModal());
+                this.elements.submitApplicationBtn.addEventListener('click', () => this.submitApplication());
                 this.elements.applicationPhoto.addEventListener('change', (e) => this.previewApplicationPhoto(e));
                 
                 // Floating Search Widget
@@ -3191,6 +3260,32 @@
                     <span class="status-indicator status-${status}"></span>
                     <span id="statusText">${status.charAt(0).toUpperCase() + status.slice(1)}</span>
                 `;
+                
+                // Update user badges
+                this.updateUserBadges(user);
+            }
+
+            updateUserBadges(user) {
+                let badgesHTML = '';
+                
+                if (user.isVerified) {
+                    badgesHTML += `<span class="badge badge-verified">Verified</span>`;
+                }
+                
+                if (user.isMentor) {
+                    badgesHTML += `<span class="badge badge-mentor">Mentor</span>`;
+                }
+                
+                this.elements.conversationUserBadges.innerHTML = badgesHTML;
+                
+                // Update pricing info if user is monetized
+                if (user.isVerified || user.isMentor) {
+                    const textPrice = user.customPricing?.text || this.state.settings.textMessagePrice;
+                    const voicePrice = user.customPricing?.voice || this.state.settings.voiceMessagePrice;
+                    this.elements.pricingInfo.textContent = `• Text: ₦${textPrice} (35 words) • Voice: ₦${voicePrice}/min`;
+                } else {
+                    this.elements.pricingInfo.textContent = `• Text: ₦10 (35 words) • Voice: ₦30/min`;
+                }
             }
 
             handleInputResize() {
@@ -3342,9 +3437,7 @@
                 }
             }
 
-            async submitApplication(e) {
-                e.preventDefault();
-                
+            async submitApplication() {
                 try {
                     // Validate form
                     if (!this.elements.fullName.value || 
@@ -3489,7 +3582,13 @@
             }
 
             resetApplicationForm() {
-                this.elements.monetizationApplicationForm.reset();
+                this.elements.fullName.value = '';
+                this.elements.age.value = '';
+                this.elements.country.value = '';
+                this.elements.socialMediaLinks.value = '';
+                this.elements.contactMethod.value = '';
+                this.elements.contactInfo.value = '';
+                this.elements.applicationPhoto.value = '';
                 this.elements.applicationPhotoPreview.classList.remove('active');
                 this.state.applicationPhoto = null;
             }
